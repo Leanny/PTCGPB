@@ -104,6 +104,9 @@
 
             existResult += vRet
         }
+
+        if (pBitmap)
+            Gdip_DisposeImage(pBitmap)
         
         if(existResult = 2)
             return 2

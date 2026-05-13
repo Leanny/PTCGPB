@@ -62,6 +62,32 @@ function Write-JsonResponse {
     Write-TextResponse -Context $Context -StatusCode $StatusCode -Body $json -ContentType "application/json; charset=utf-8"
 }
 
+function Write-BytesResponse {
+    param(
+        [Parameter(Mandatory = $true)]$Context,
+        [int]$StatusCode,
+        [byte[]]$Bytes,
+        [string]$ContentType = "application/octet-stream"
+    )
+
+    $response = $Context.Response
+    $response.StatusCode = $StatusCode
+    $response.ContentType = $ContentType
+    $response.ContentLength64 = $Bytes.Length
+    $response.OutputStream.Write($Bytes, 0, $Bytes.Length)
+    $response.OutputStream.Close()
+}
+
+function Write-Utf8File {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Text
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Text, $utf8NoBom)
+}
+
 function Read-RequestBody {
     param([Parameter(Mandatory = $true)]$Context)
     $reader = New-Object System.IO.StreamReader($Context.Request.InputStream, $Context.Request.ContentEncoding)
@@ -496,10 +522,202 @@ function Invoke-InjectAccount {
     }
 }
 
+function ConvertTo-JsonStringLiteral {
+    param([AllowNull()][string]$Value)
+    return [string]($Value | ConvertTo-Json -Compress)
+}
+
+function Get-TextSha256 {
+    param([Parameter(Mandatory = $true)][string]$Text)
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $hash = $sha.ComputeHash($bytes)
+        return ([System.BitConverter]::ToString($hash)).Replace("-", "").ToLowerInvariant()
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-DashboardAccountManifest {
+    param([Parameter(Mandatory = $true)][string]$AccountsDataDir)
+
+    $files = @(Get-ChildItem -LiteralPath $AccountsDataDir -Filter "*.json" -File -ErrorAction SilentlyContinue | Sort-Object Name)
+    $manifestBuilder = New-Object System.Text.StringBuilder
+    $totalLength = [int64]0
+
+    foreach ($file in $files) {
+        $totalLength += [int64]$file.Length
+        [void]$manifestBuilder.Append($file.Name).Append("|").Append($file.Length).Append("|").Append($file.LastWriteTimeUtc.Ticks).Append("`n")
+    }
+
+    return [pscustomobject]@{
+        Files = $files
+        Signature = Get-TextSha256 -Text $manifestBuilder.ToString()
+        Count = $files.Count
+        TotalLength = $totalLength
+    }
+}
+
+function Test-DashboardAccountsCache {
+    param(
+        [Parameter(Mandatory = $true)][string]$CachePath,
+        [Parameter(Mandatory = $true)][string]$MetaPath,
+        [Parameter(Mandatory = $true)]$Manifest
+    )
+
+    if (-not (Test-Path -LiteralPath $CachePath -PathType Leaf)) { return $false }
+    if (-not (Test-Path -LiteralPath $MetaPath -PathType Leaf)) { return $false }
+
+    try {
+        $cacheFile = Get-Item -LiteralPath $CachePath -ErrorAction Stop
+        if ($cacheFile.Length -le 0) { return $false }
+
+        $metaText = [System.IO.File]::ReadAllText($MetaPath)
+        $meta = $metaText | ConvertFrom-Json
+        return [string]$meta.signature -eq [string]$Manifest.Signature
+    } catch {
+        return $false
+    }
+}
+
+function Add-DashboardJsonDefaults {
+    param(
+        [Parameter(Mandatory = $true)][string]$JsonText,
+        [Parameter(Mandatory = $true)][string]$FileName
+    )
+
+    $trimmed = $JsonText.Trim()
+    if ($trimmed.Length -lt 2 -or -not $trimmed.StartsWith("{") -or -not $trimmed.EndsWith("}")) {
+        throw "Account JSON is not an object."
+    }
+
+    $extraFields = New-Object System.Collections.Generic.List[string]
+    if ($trimmed -notmatch '(?i)"deviceAccount"\s*:') {
+        $deviceAccount = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+        $extraFields.Add('"deviceAccount":' + (ConvertTo-JsonStringLiteral -Value $deviceAccount))
+    }
+    if ($trimmed -notmatch '(?i)"metadata"\s*:') {
+        $extraFields.Add('"metadata":{}')
+    }
+    if ($trimmed -notmatch '(?i)"pulls"\s*:') {
+        $extraFields.Add('"pulls":[]')
+    }
+    if ($trimmed -notmatch '(?i)"sourceFileName"\s*:') {
+        $extraFields.Add('"sourceFileName":' + (ConvertTo-JsonStringLiteral -Value $FileName))
+    }
+
+    if ($extraFields.Count -eq 0) {
+        return $trimmed
+    }
+
+    $prefix = $trimmed.Substring(0, $trimmed.Length - 1).TrimEnd()
+    $extrasJson = [string]::Join(",", $extraFields)
+    if ($prefix.EndsWith("{")) {
+        return $prefix + $extrasJson + "}"
+    }
+    return $prefix + "," + $extrasJson + "}"
+}
+
+function Convert-SkippedFilesToJson {
+    param([Parameter(Mandatory = $true)]$SkippedFiles)
+
+    if ($SkippedFiles.Count -eq 0) { return "[]" }
+
+    $items = New-Object System.Collections.Generic.List[string]
+    foreach ($item in $SkippedFiles) {
+        $items.Add(
+            '{"file":' +
+            (ConvertTo-JsonStringLiteral -Value ([string]$item.File)) +
+            ',"error":' +
+            (ConvertTo-JsonStringLiteral -Value ([string]$item.Error)) +
+            '}'
+        )
+    }
+    return "[" + [string]::Join(",", $items) + "]"
+}
+
+function New-DashboardAccountsPayload {
+    param([Parameter(Mandatory = $true)]$Files)
+
+    $accountsBuilder = New-Object System.Text.StringBuilder
+    $skipped = New-Object System.Collections.Generic.List[object]
+    $accountCount = 0
+
+    foreach ($file in $Files) {
+        try {
+            $text = [System.IO.File]::ReadAllText($file.FullName)
+            $documentJson = Add-DashboardJsonDefaults -JsonText $text -FileName $file.Name
+            if ($accountCount -gt 0) {
+                [void]$accountsBuilder.Append(",")
+            }
+            [void]$accountsBuilder.Append($documentJson)
+            $accountCount++
+        } catch {
+            $skipped.Add([pscustomobject]@{
+                File = $file.Name
+                Error = $_.Exception.Message
+            })
+        }
+    }
+
+    $skippedJson = Convert-SkippedFilesToJson -SkippedFiles $skipped
+    $payloadBuilder = New-Object System.Text.StringBuilder
+    [void]$payloadBuilder.Append('{"ok":true,"source":"Accounts/Cards/accounts","accountCount":')
+    [void]$payloadBuilder.Append($accountCount)
+    [void]$payloadBuilder.Append(',"skippedCount":')
+    [void]$payloadBuilder.Append($skipped.Count)
+    [void]$payloadBuilder.Append(',"skipped":')
+    [void]$payloadBuilder.Append($skippedJson)
+    [void]$payloadBuilder.Append(',"accounts":[')
+    [void]$payloadBuilder.Append($accountsBuilder.ToString())
+    [void]$payloadBuilder.Append("]}")
+
+    return [pscustomobject]@{
+        Json = $payloadBuilder.ToString()
+        AccountCount = $accountCount
+        SkippedCount = $skipped.Count
+    }
+}
+
+function Invoke-DashboardCacheBuilder {
+    param(
+        [Parameter(Mandatory = $true)][string]$CachePath,
+        [Parameter(Mandatory = $true)][string]$MetaPath,
+        [Parameter(Mandatory = $true)]$Manifest
+    )
+
+    $carddbPath = Join-Path $resolvedRoot "Helper\carddb.exe"
+    if (-not (Test-Path -LiteralPath $carddbPath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $args = @(
+            "--root", $resolvedRoot,
+            "build-dashboard-cache",
+            "--output", $CachePath,
+            "--meta", $MetaPath,
+            "--signature", [string]$Manifest.Signature,
+            "--source-count", [string]$Manifest.Count,
+            "--source-bytes", [string]$Manifest.TotalLength
+        )
+        $builderOutput = & $carddbPath @args 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return $false
+        }
+        return (Test-DashboardAccountsCache -CachePath $CachePath -MetaPath $MetaPath -Manifest $Manifest)
+    } catch {
+        return $false
+    }
+}
+
 function Invoke-LoadAccountData {
     param([Parameter(Mandatory = $true)]$Context)
 
-    $accountsDataDir = Join-Path $resolvedRoot "Accounts\Cards\accounts"
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $accountsDataDir = Join-Path $cardsDir "accounts"
     if (-not (Test-Path -LiteralPath $accountsDataDir -PathType Container)) {
         Write-JsonResponse -Context $Context -StatusCode 404 -Payload @{
             ok = $false
@@ -508,51 +726,50 @@ function Invoke-LoadAccountData {
         return
     }
 
-    $documents = New-Object System.Collections.Generic.List[object]
-    $skipped = New-Object System.Collections.Generic.List[object]
+    $cacheDir = Join-Path $cardsDir "database_cache"
+    $cachePath = Join-Path $cacheDir "accounts-data.cache.json"
+    $cacheMetaPath = Join-Path $cacheDir "accounts-data.cache.meta.json"
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+    $manifest = Get-DashboardAccountManifest -AccountsDataDir $accountsDataDir
 
-    Get-ChildItem -LiteralPath $accountsDataDir -Filter "*.json" -File -ErrorAction SilentlyContinue |
-        Sort-Object Name |
-        ForEach-Object {
-            $file = $_
-            try {
-                $text = [System.IO.File]::ReadAllText($file.FullName)
-                $doc = $text | ConvertFrom-Json
-                if ($null -eq $doc) {
-                    throw "Empty JSON document."
-                }
-
-                $deviceAccount = [string]$doc.deviceAccount
-                if ([string]::IsNullOrWhiteSpace($deviceAccount)) {
-                    $deviceAccount = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
-                    $doc | Add-Member -NotePropertyName deviceAccount -NotePropertyValue $deviceAccount -Force
-                }
-
-                if (-not $doc.PSObject.Properties["metadata"] -or $null -eq $doc.metadata) {
-                    $doc | Add-Member -NotePropertyName metadata -NotePropertyValue ([pscustomobject]@{}) -Force
-                }
-                if (-not $doc.PSObject.Properties["pulls"] -or $null -eq $doc.pulls) {
-                    $doc | Add-Member -NotePropertyName pulls -NotePropertyValue @() -Force
-                }
-
-                $doc | Add-Member -NotePropertyName sourceFileName -NotePropertyValue $file.Name -Force
-                $documents.Add($doc)
-            } catch {
-                $skipped.Add([pscustomobject]@{
-                    file = $file.Name
-                    error = $_.Exception.Message
-                })
-            }
+    if (Test-DashboardAccountsCache -CachePath $cachePath -MetaPath $cacheMetaPath -Manifest $manifest) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($cachePath)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
+            return
+        } catch {
+            # Fall through and rebuild the cache.
         }
-
-    Write-JsonResponse -Context $Context -StatusCode 200 -Depth 12 -Payload @{
-        ok = $true
-        source = "Accounts/Cards/accounts"
-        accountCount = $documents.Count
-        skippedCount = $skipped.Count
-        skipped = $skipped
-        accounts = $documents
     }
+
+    if (Invoke-DashboardCacheBuilder -CachePath $cachePath -MetaPath $cacheMetaPath -Manifest $manifest) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($cachePath)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
+            return
+        } catch {
+            # Fall through and rebuild using the PowerShell fallback.
+        }
+    }
+
+    $payload = New-DashboardAccountsPayload -Files $manifest.Files
+
+    try {
+        Write-Utf8File -Path $cachePath -Text $payload.Json
+        $meta = @{
+            signature = $manifest.Signature
+            sourceCount = $manifest.Count
+            sourceBytes = $manifest.TotalLength
+            accountCount = $payload.AccountCount
+            skippedCount = $payload.SkippedCount
+            generatedAt = (Get-Date).ToUniversalTime().ToString("o")
+        } | ConvertTo-Json -Depth 4 -Compress
+        Write-Utf8File -Path $cacheMetaPath -Text $meta
+    } catch {
+        # Cache writes are an optimization; the response should still succeed.
+    }
+
+    Write-TextResponse -Context $Context -StatusCode 200 -Body $payload.Json -ContentType "application/json; charset=utf-8"
 }
 
 function Is-LocalRequest {

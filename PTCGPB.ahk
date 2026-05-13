@@ -50,8 +50,8 @@ githubUser := "kevnITG"
     ,extractPath := A_Temp . "\update"
     ,modRepoUser := "Leanny"
 
-global GUI_WIDTH := 790
-global GUI_HEIGHT := 370
+global GUI_WIDTH := 690
+global GUI_HEIGHT := 410
 global MainGuiName
 
 global ProcessedIDs := {}
@@ -106,6 +106,10 @@ if (hasInvalidScale) {
     {
         ExitApp
     }
+}
+
+GuiLabel(labelText) {
+    return RegExReplace(labelText, "[:：]\s*$", "")
 }
 
 BotLanguage := botConfig.get("BotLanguage")
@@ -175,22 +179,22 @@ NextStep:
     ; =================== UI - Instance Settings ===================
     sectionColor := "cWhite"
     Gui, Add, GroupBox, x5 y50 w240 h130 %sectionColor%, % dict["InstanceSettings"]
-    Gui, Add, Text, x20 y75 %sectionColor%, % dict["Txt_Instances"]
+    Gui, Add, Text, x20 y75 %sectionColor%, % GuiLabel(dict["Txt_Instances"])
     Gui, Add, Edit, vui_Instances w50 x125 y75 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Instances")
-    Gui, Add, Text, x20 y100 %sectionColor%, % dict["Txt_Columns"]
+    Gui, Add, Text, x20 y100 %sectionColor%, % GuiLabel(dict["Txt_Columns"])
     Gui, Add, Edit, vui_Columns w50 x125 y100 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Columns")
     Gui, Font, s8 cWhite, Segoe UI
     Gui, Add, Button, x185 y100 w50 h20 gArrangeWindows BackgroundTrans, % dict["btn_arrange"]
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, Text, x20 y125 %sectionColor%, % dict["Txt_InstanceStartDelay"]
+    Gui, Add, Text, x20 y125 %sectionColor%, % GuiLabel(dict["Txt_InstanceStartDelay"])
     Gui, Add, Edit, vui_instanceStartDelay w50 x125 y125 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("instanceStartDelay")
 
-    Gui, Add, Checkbox, % (botConfig.get("runMain") ? "Checked" : "") " vui_runMain gmainSettings x20 y150 " . sectionColor, % dict["Txt_runMain"]
+    Gui, Add, Checkbox, % (botConfig.get("runMain") ? "Checked" : "") " vui_runMain gmainSettings x20 y150 " . sectionColor, % GuiLabel(dict["Txt_runMain"])
     Gui, Add, Edit, % "vui_Mains w50 x125 y150 h20 -E0x200 Background2A2A2A " . sectionColor . " Center" . (botConfig.get("runMain") ? "" : " Hidden"), % botConfig.get("Mains")
 
     ; =================== UI - Bot Settings ===================
     sectionColor := "c39FF14"
-    Gui, Add, GroupBox, x5 y185 w240 h175 %sectionColor%, % dict["BotSettings"]
+    Gui, Add, GroupBox, x5 y185 w240 h220 %sectionColor%, % dict["BotSettings"]
 
     defaultDelete := 1
     botMethod := botConfig.get("deleteMethod")
@@ -202,13 +206,14 @@ NextStep:
         defaultDelete := 3
     else if (botMethod = "Inject Rewards")
         defaultDelete := 4
-    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y210 w200 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards
+    Gui, Add, Text, x20 y207 %sectionColor%, Bot Mode
+    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y227 w200 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards
 
-    Gui, Add, Checkbox, % (botConfig.get("packMethod") ? "Checked" : "") " vui_packMethod x20 y240 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % dict["Txt_packMethod"]
-    Gui, Add, Checkbox, % (botConfig.get("openExtraPack") ? "Checked" : "") " vui_openExtraPack gopenExtraPackSettings x20 y260 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+" || botMethod = "Inject 13P+") ? "" : " Hidden"), % dict["Txt_openExtraPack"]
-    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y280 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards")? " Hidden":""), % dict["Txt_spendHourGlass"]
+    Gui, Add, Checkbox, % (botConfig.get("packMethod") ? "Checked" : "") " vui_packMethod x20 y257 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % dict["Txt_packMethod"]
+    Gui, Add, Checkbox, % (botConfig.get("openExtraPack") ? "Checked" : "") " vui_openExtraPack gopenExtraPackSettings x20 y277 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+" || botMethod = "Inject 13P+") ? "" : " Hidden"), % dict["Txt_openExtraPack"]
+    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y297 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards")? " Hidden":""), % dict["Txt_spendHourGlass"]
 
-    Gui, Add, Text, x20 y305 %sectionColor% vui_SortByText, % dict["SortByText"]
+    Gui, Add, Text, x20 y322 %sectionColor% vui_SortByText, % GuiLabel(dict["SortByText"])
     sortOption := 1
     if (botConfig.get("injectSortMethod") = "ModifiedDesc")
         sortOption := 2
@@ -216,10 +221,10 @@ NextStep:
         sortOption := 3
     else if (botConfig.get("injectSortMethod") = "PacksDesc")
         sortOption := 4
-    Gui, Add, DropDownList, vui_SortByDropdown gSortByDropdownHandler choose%sortOption% x20 y325 w130 Background2A2A2A cWhite, Oldest First|Newest First|Fewest Packs First|Most Packs First
+    Gui, Add, DropDownList, vui_SortByDropdown gSortByDropdownHandler choose%sortOption% x20 y342 w130 Background2A2A2A cWhite, Oldest First|Newest First|Fewest Packs First|Most Packs First
 
-    Gui, Add, Text, x20 y260 %sectionColor% vui_AccountNameText, % dict["Txt_AccountName"]
-    Gui, Add, Edit, vui_AccountName w90 x130 y260 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("AccountName")
+    Gui, Add, Text, x20 y277 %sectionColor% vui_AccountNameText, % GuiLabel(dict["Txt_AccountName"])
+    Gui, Add, Edit, vui_AccountName w90 x130 y277 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("AccountName")
 
     GuiControlGet, curMethod, , ui_deleteMethod
     if (curMethod = "Create Bots (13P)") {
@@ -234,98 +239,88 @@ NextStep:
     ; =================== UI - Pack Selection ===================
     sectionColor := "cFFD700"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y0 w180 h50 %sectionColor%, % dict["PackHeading"]
+    Gui, Add, GroupBox, x255 y0 w215 h52 %sectionColor%, % dict["PackHeading"]
 
-    Gui, Add, Button, x275 y20 w140 h25 gShowPackSelection vui_PackSelectionButton BackgroundTrans, Loading...
+    Gui, Add, Button, x277 y19 w170 h25 gShowPackSelection vui_PackSelectionButton BackgroundTrans, Loading...
     UpdatePackSelectionButtonText()
 
     ; =================== UI - Inject WP Card Detection ===================
     sectionColor := "cFF4500"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y55 w180 h50 %sectionColor%, % dict["CardDetection"]
+    Gui, Add, GroupBox, x255 y57 w215 h52 %sectionColor%, % dict["CardDetection"]
 
-    Gui, Add, Button, x275 y75 w140 h25 gShowCardDetection vui_CardDetectionButton BackgroundTrans, Loading...
+    Gui, Add, Button, x277 y76 w170 h25 gShowCardDetection vui_CardDetectionButton BackgroundTrans, Loading...
 
     UpdateCardDetectionButtonText()
 
     ; =================== UI - Save for Trade ===================
     sectionColor := "c4169E1"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y110 w180 h70 %sectionColor%, % dict["SaveForTrade"]
+    Gui, Add, GroupBox, x255 y114 w215 h78 %sectionColor%, % dict["SaveForTrade"]
 
-    Gui, Add, Button, x275 y130 w140 h25 gShowS4TSettings vui_S4TButton BackgroundTrans, Loading...
+    Gui, Add, Button, x277 y133 w170 h25 gShowS4TSettings vui_S4TButton BackgroundTrans, Loading...
 
-    Gui, Font, s6 cWhite, Segoe UI
-    Gui, Add, Button, x292 y160 w106 h15 gOpenCardDatabase BackgroundTrans, Open Card Database
+    Gui, Font, s7 cWhite, Segoe UI
+    Gui, Add, Button, x297 y163 w130 h20 gOpenCardDatabase BackgroundTrans, Open Card Database
 
     UpdateS4TButtonText()
 
     ; =================== UI - Group Settings ===================
     sectionColor := "cWhite"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y195 w180 h50 %sectionColor%, % dict["GroupSettings"]
+    Gui, Add, GroupBox, x255 y197 w215 h50 %sectionColor%, % dict["GroupSettings"]
 
-    Gui, Add, Button, x275 y215 w140 h25 gShowGroupRerollSettings vui_GroupRerollButton BackgroundTrans, Loading...
+    Gui, Add, Button, x277 y216 w170 h25 gShowGroupRerollSettings vui_GroupRerollButton BackgroundTrans, Loading...
 
     UpdateGroupRerollButtonText()
+
+    ; =================== UI - Discord Settings ===================
+    sectionColor := "c00FFFF"
+    Gui, Font, s10 cWhite, Segoe UI
+    Gui, Add, GroupBox, x255 y252 w215 h55 %sectionColor%, % dict["DiscordSettingsHeading"]
+    Gui, Add, Button, x277 y271 w170 h25 gShowDiscordSettings vui_DiscordSettingsButton BackgroundTrans, Loading...
+    UpdateDiscordSettingsButtonText()
 
     ; =================== UI - Time Settings ===================
     Gui, Font, s10 cWhite, Segoe UI
     sectionColor := "c9370DB"
-    Gui, Add, GroupBox, x255 y260 w180 h100 %sectionColor%, % dict["TimeSettings"]
-    Gui, Add, Text, x270 y285 %sectionColor%, % dict["Txt_Delay"]
-    Gui, Add, Edit, vui_Delay w30 x400 y285 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
-    Gui, Add, Text, x270 y310 %sectionColor%, % dict["Txt_SwipeSpeed"]
-    Gui, Add, Edit, vui_swipeSpeed w30 x400 y310 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
-    Gui, Add, Text, x270 y335 %sectionColor%, % dict["Txt_WaitTime"]
-    Gui, Add, Edit, vui_waitTime w30 x400 y335 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
-
-    ; =================== UI - Heartbeat Settings ===================
-    sectionColor := "c00FFFF"
-    Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x445 y0 w156 h230 %sectionColor%, % dict["HeartbeatSettingsSubHeading"]
-    Gui, Add, Checkbox, % (botConfig.get("heartBeat") ? "Checked" : "") " vui_heartBeat x455 y25 gdiscordSettings " . sectionColor, % dict["Txt_heartBeat"]
-
-    if(StrLen(botConfig.get("heartBeatName")) < 3)
-        botConfig.set("heartBeatName", "", "General")
-    if(StrLen(botConfig.get("heartBeatWebhookURL")) < 3)
-        botConfig.set("heartBeatWebhookURL", "", "General")
-
-    hiddenOption := botConfig.get("heartBeat") ? "" : "Hidden"
-
-    Gui, Add, Text, vui_hbName x455 y45 %hiddenOption% %sectionColor%, % dict["hbName"]
-    Gui, Add, Edit, vui_heartBeatName w136 x455 y65 h20 %hiddenOption% -E0x200 Background2A2A2A cWhite, % botConfig.get("heartBeatName")
-    Gui, Add, Text, vui_hbURL x455 y85 %hiddenOption% %sectionColor%, Webhook URL:
-    Gui, Add, Edit, vui_heartBeatWebhookURL w136 x455 y105 h20 %hiddenOption% -E0x200 Background2A2A2A cWhite, % botConfig.get("heartBeatWebhookURL")
-    Gui, Add, Text, vui_hbDelay x455 y130 %hiddenOption% %sectionColor%, % dict["hbDelay"]
-    Gui, Add, Edit, vui_heartBeatDelay w50 x455 y150 h20 %hiddenOption% -E0x200 Background2A2A2A cWhite Center, % botConfig.get("heartBeatDelay")
-    Gui, Add, Text, vui_ownerWebHookURL x455 y175 %hiddenOption% %sectionColor%, Owner Webhook URL
-    Gui, Add, Edit, vui_heartBeatOwnerWebHookURL w136 x455 y195 h20 %hiddenOption% -E0x200 Background2A2A2A cWhite Center, % botConfig.get("heartBeatOwnerWebHookURL")
-
-    ; =================== UI - Icon ===================
-    Gui, Font, s10 cWhite
-    Gui, Add, Picture, gOpenDiscord x455 y320 w36 h36, %A_ScriptDir%\GUI\Images\discord-icon.png
-    Gui, Add, Picture, gOpenToolTip x505 y320 w36 h36, %A_ScriptDir%\GUI\Images\help-icon.png
-    Gui, Add, Picture, gShowToolsAndSystemSettings x555 y322 w32 h32, %A_ScriptDir%\GUI\Images\tools-icon.png
+    Gui, Add, GroupBox, x255 y312 w215 h93 %sectionColor%, % dict["TimeSettings"]
+    Gui, Add, Text, x270 y332 %sectionColor%, % GuiLabel(dict["Txt_Delay"])
+    Gui, Add, Edit, vui_Delay w34 x427 y330 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
+    Gui, Add, Text, x270 y356 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
+    Gui, Add, Edit, vui_swipeSpeed w34 x427 y354 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
+    Gui, Add, Text, x270 y380 w150 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
+    Gui, Add, Edit, vui_waitTime w34 x427 y378 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
 
     ; =================== UI - Description & Button ===================
     sectionColor := "cWhite"
-    Gui, Add, GroupBox, x611 y0 w175 h360 %sectionColor%
+    Gui, Add, GroupBox, x480 y0 w205 h405 %sectionColor%
 
     Gui, Font, s12 cWhite Bold
-    Gui, Add, Text, x621 y20 w155 h50 Left BackgroundTrans cWhite, % dict["title_main"]
+    Gui, Add, Text, x493 y20 w180 h50 Center BackgroundTrans cWhite, % dict["title_main"]
     Gui, Font, s10 cWhite Bold
-    Gui, Add, Text, x621 y20 w155 h150 Left BackgroundTrans cWhite, % "`n" localVersion "`n(Mod: improve Card Detection)`n`nModder: Lean & xedranort " modVersion
+    Gui, Add, Text, x493 y43 w180 h20 Center BackgroundTrans cWhite, % localVersion
+    Gui, Font, s8 cWhite Bold
+    Gui, Add, Text, x485 y63 w195 h18 Center BackgroundTrans cWhite, (Mod: Improve Card Detection)
+    Gui, Font, s10 cWhite Bold
+    Gui, Add, Text, x493 y93 w180 h20 Center BackgroundTrans cWhite, Modder: Lean && xedranort
+    Gui, Add, Text, x493 y113 w180 h20 Center BackgroundTrans cWhite, % modVersion
 
-    Gui, Add, Picture, gBuyMeCoffee x625 y130 w150, %A_ScriptDir%\GUI\Images\support_me_on_kofi.png
+    Gui, Add, Picture, gBuyMeCoffee x508 y145 w150, %A_ScriptDir%\GUI\Images\support_me_on_kofi.png
+
+    ; =================== UI - Icon ===================
+    Gui, Font, s10 cWhite
+    Gui, Add, Picture, gOpenDiscord x518 y194 w32 h32, %A_ScriptDir%\GUI\Images\discord-icon.png
+    Gui, Add, Picture, gOpenToolTip x568 y194 w32 h32, %A_ScriptDir%\GUI\Images\help-icon.png
+    Gui, Add, Picture, gShowToolsAndSystemSettings x618 y195 w30 h30, %A_ScriptDir%\GUI\Images\tools-icon.png
 
     Gui, Font, s10 cWhite Bold
-    Gui, Add, Button, x621 y205 w155 h25 gBalanceXMLs BackgroundTrans, % dict["btn_balance"]
-    Gui, Add, Button, x621 y240 w155 h40 gLaunchAllMumu BackgroundTrans, % dict["btn_mumu"]
-    Gui, Add, Button, gSave x621 y290 w155 h40, Start Bot
+    Gui, Add, Button, x497 y246 w170 h34 gBalanceXMLs BackgroundTrans, % dict["btn_balance"]
+    Gui, Add, Button, x497 y292 w170 h34 gLaunchAllMumu BackgroundTrans, % dict["btn_mumu"]
+    Gui, Add, Button, gSave x497 y338 w170 h34, Start Bot
 
     Gui, Font, s7 cGray
-    Gui, Add, Text, x620 y340 w165 Center BackgroundTrans, CC BY-NC 4.0 international license
+    Gui, Add, Text, x489 y376 w190 Center BackgroundTrans, CC BY-NC 4.0 international license
 
     Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
 
@@ -436,29 +431,176 @@ saveSortOption:
         botConfig.set("injectSortMethod", "ModifiedAsc", "General")
 return
 
-discordSettings:
-    Gui, Submit, NoHide
-    botConfig.set("heartBeat", ui_heartBeat, "General")
-    if (ui_heartBeat) {
-        GuiControl, Show, ui_heartBeatName
-        GuiControl, Show, ui_heartBeatWebhookURL
-        GuiControl, Show, ui_heartBeatDelay
-        GuiControl, Show, ui_hbName
-        GuiControl, Show, ui_hbURL
-        GuiControl, Show, ui_hbDelay
-        GuiControl, Show, ui_ownerWebHookURL
-        GuiControl, Show, ui_heartBeatOwnerWebHookURL
+UpdateDiscordSettingsButtonText() {
+    global botConfig, dict
+
+    activeProfile := botConfig.get("groupRerollEnabled") ? "Group" : "Solo"
+    activeWebhook := botConfig.get("groupRerollEnabled") ? botConfig.get("groupRerollDiscordWebhookURL") : botConfig.get("discordWebhookURL")
+    statusText := dict["btn_discord"]
+    fontColor := "cWhite"
+
+    if (activeWebhook = "") {
+        statusText := activeProfile . " webhook missing"
+        fontColor := "cFF6666"
     } else {
-        GuiControl, Hide, ui_heartBeatName
-        GuiControl, Hide, ui_heartBeatWebhookURL
-        GuiControl, Hide, ui_heartBeatDelay
-        GuiControl, Hide, ui_hbName
-        GuiControl, Hide, ui_hbURL
-        GuiControl, Hide, ui_hbDelay
-        GuiControl, Hide, ui_ownerWebHookURL
-        GuiControl, Hide, ui_heartBeatOwnerWebHookURL
+        statusText := activeProfile . " Discord configured"
+        fontColor := "cLime"
     }
+
+    Gui, Font, s8 %fontColor%, Segoe UI
+    GuiControl, Font, ui_DiscordSettingsButton
+    GuiControl,, ui_DiscordSettingsButton, %statusText%
+}
+
+ShowDiscordSettings:
+    ShowDiscordSettingsPopup()
 return
+
+ShowDiscordSettingsPopup() {
+    global botConfig, dict
+
+    Gui, Submit, NoHide
+    WinGetPos, mainWinX, mainWinY, mainWinW, mainWinH, A
+
+    popupWidth := 540
+    popupX := mainWinX + ((mainWinW - popupWidth) / 2)
+    popupY := mainWinY + 30
+
+    Gui, DiscordSettingsSelect:Destroy
+    Gui, DiscordSettingsSelect:New, +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Discord Settings
+    Gui, DiscordSettingsSelect:Color, 1E1E1E, 333333
+    Gui, DiscordSettingsSelect:Font, s10 cWhite, Segoe UI
+
+    soloDiscordColor := "cWhite"
+    groupDiscordColor := "cFF4500"
+    s4tDiscordColor := "c4169E1"
+    heartBeatDiscordColor := "c00FFFF"
+
+    Gui, DiscordSettingsSelect:Add, GroupBox, x10 y10 w255 h150 %soloDiscordColor%, Solo Reroll InjectWP
+    Gui, DiscordSettingsSelect:Add, Text, x20 y35 %soloDiscordColor%, Discord ID
+    Gui, DiscordSettingsSelect:Add, Edit, vui_soloDiscordUserId_Popup w225 x20 y55 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("discordUserId")
+    Gui, DiscordSettingsSelect:Add, Text, x20 y82 %soloDiscordColor%, Webhook URL
+    Gui, DiscordSettingsSelect:Add, Edit, vui_soloDiscordWebhookURL_Popup w225 x20 y102 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("discordWebhookURL")
+    Gui, DiscordSettingsSelect:Add, Checkbox, % (botConfig.get("sendAccountXml") ? "Checked" : "") " vui_soloSendAccountXml_Popup x20 y130 " . soloDiscordColor, Send Account XML
+
+    Gui, DiscordSettingsSelect:Add, GroupBox, x275 y10 w255 h150 %groupDiscordColor%, Group Reroll InjectWP
+    Gui, DiscordSettingsSelect:Add, Text, x285 y35 %groupDiscordColor%, Discord ID
+    Gui, DiscordSettingsSelect:Add, Edit, vui_groupDiscordUserId_Popup w225 x285 y55 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("groupRerollDiscordUserId")
+    Gui, DiscordSettingsSelect:Add, Text, x285 y82 %groupDiscordColor%, Webhook URL
+    Gui, DiscordSettingsSelect:Add, Edit, vui_groupDiscordWebhookURL_Popup w225 x285 y102 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("groupRerollDiscordWebhookURL")
+    Gui, DiscordSettingsSelect:Add, Checkbox, % (botConfig.get("groupRerollSendAccountXml") ? "Checked" : "") " vui_groupSendAccountXml_Popup x285 y130 " . groupDiscordColor, Send Account XML
+
+    Gui, DiscordSettingsSelect:Add, GroupBox, x10 y170 w520 h120 %s4tDiscordColor%, Save for Trade
+    Gui, DiscordSettingsSelect:Add, Text, x20 y195 %s4tDiscordColor%, Discord ID
+    Gui, DiscordSettingsSelect:Add, Edit, vui_s4tDiscordUserId_Popup w310 x200 y192 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("s4tDiscordUserId")
+    Gui, DiscordSettingsSelect:Add, Text, x20 y225 %s4tDiscordColor%, Webhook URL
+    Gui, DiscordSettingsSelect:Add, Edit, vui_s4tDiscordWebhookURL_Popup w310 x200 y222 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("s4tDiscordWebhookURL")
+    Gui, DiscordSettingsSelect:Add, Checkbox, % (botConfig.get("s4tSendAccountXml") ? "Checked" : "") " vui_s4tSendAccountXml_Popup x20 y255 " . s4tDiscordColor, Send Account XML
+
+    Gui, DiscordSettingsSelect:Add, GroupBox, x10 y300 w520 h205 %heartBeatDiscordColor%, Heartbeat
+    Gui, DiscordSettingsSelect:Add, Checkbox, % (botConfig.get("heartBeat") ? "Checked" : "") " vui_heartBeat_Popup x20 y325 " . heartBeatDiscordColor, % dict["Txt_heartBeat"]
+    Gui, DiscordSettingsSelect:Add, Text, x20 y355 %heartBeatDiscordColor%, Name
+    Gui, DiscordSettingsSelect:Add, Edit, vui_heartBeatName_Popup w310 x200 y352 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("heartBeatName")
+    Gui, DiscordSettingsSelect:Add, Text, x20 y385 %heartBeatDiscordColor%, Solo HB Webhook URL
+    Gui, DiscordSettingsSelect:Add, Edit, vui_heartBeatWebhookURL_Popup w310 x200 y382 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("heartBeatWebhookURL")
+    Gui, DiscordSettingsSelect:Add, Text, x20 y415 %heartBeatDiscordColor%, Group HB Webhook URL
+    Gui, DiscordSettingsSelect:Add, Edit, vui_groupHeartBeatWebhookURL_Popup w310 x200 y412 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("groupRerollHeartBeatWebhookURL")
+    Gui, DiscordSettingsSelect:Add, Text, x20 y445 %heartBeatDiscordColor%, Owner Webhook
+    Gui, DiscordSettingsSelect:Add, Edit, vui_heartBeatOwnerWebHookURL_Popup w310 x200 y442 h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("heartBeatOwnerWebHookURL")
+    Gui, DiscordSettingsSelect:Add, Text, x20 y475 %heartBeatDiscordColor%, HB Delay (min)
+    Gui, DiscordSettingsSelect:Add, Edit, vui_heartBeatDelay_Popup w60 x200 y472 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("heartBeatDelay")
+
+    Gui, DiscordSettingsSelect:Add, Button, x185 y520 w80 h30 gApplyDiscordSettings, Apply
+    Gui, DiscordSettingsSelect:Add, Button, x275 y520 w80 h30 gCancelDiscordSettings, Cancel
+    Gui, DiscordSettingsSelect:Show, x%popupX% y%popupY% w540 h565
+}
+return
+
+ApplyDiscordSettings:
+    Gui, DiscordSettingsSelect:Submit, NoHide
+
+    GoSub, saveDiscordSettings
+
+    Gui, DiscordSettingsSelect:Destroy
+
+    Gui, 1:Default
+
+    UpdateDiscordSettingsButtonText()
+return
+
+saveDiscordSettings:
+    botConfig.set("discordUserId", ui_soloDiscordUserId_Popup, "Wonderpick")
+    botConfig.set("discordWebhookURL", ui_soloDiscordWebhookURL_Popup, "Wonderpick")
+    botConfig.set("sendAccountXml", ui_soloSendAccountXml_Popup, "Wonderpick")
+
+    botConfig.set("groupRerollDiscordUserId", ui_groupDiscordUserId_Popup, "GroupReroll")
+    botConfig.set("groupRerollDiscordWebhookURL", ui_groupDiscordWebhookURL_Popup, "GroupReroll")
+    botConfig.set("groupRerollSendAccountXml", ui_groupSendAccountXml_Popup, "GroupReroll")
+
+    botConfig.set("s4tDiscordUserId", ui_s4tDiscordUserId_Popup, "SaveForTrade")
+    botConfig.set("s4tDiscordWebhookURL", ui_s4tDiscordWebhookURL_Popup, "SaveForTrade")
+    botConfig.set("s4tSendAccountXml", ui_s4tSendAccountXml_Popup, "SaveForTrade")
+
+    botConfig.set("heartBeat", ui_heartBeat_Popup, "General")
+    botConfig.set("heartBeatName", ui_heartBeatName_Popup, "General")
+    botConfig.set("heartBeatWebhookURL", ui_heartBeatWebhookURL_Popup, "General")
+    botConfig.set("groupRerollHeartBeatWebhookURL", ui_groupHeartBeatWebhookURL_Popup, "GroupReroll")
+    botConfig.set("heartBeatOwnerWebHookURL", ui_heartBeatOwnerWebHookURL_Popup, "General")
+    if (ui_heartBeatDelay_Popup = "" || (ui_heartBeatDelay_Popup + 0) <= 0)
+        botConfig.set("heartBeatDelay", 30, "General")
+    else
+        botConfig.set("heartBeatDelay", ui_heartBeatDelay_Popup, "General")
+return
+
+CancelDiscordSettings:
+    Gui, DiscordSettingsSelect:Destroy
+return
+
+GetActiveHeartbeatWebhookURL() {
+    global botConfig
+
+    if (botConfig.get("groupRerollEnabled"))
+        return botConfig.get("groupRerollHeartBeatWebhookURL")
+
+    return botConfig.get("heartBeatWebhookURL")
+}
+
+ValidateDiscordSettingsBeforeStart() {
+    global botConfig
+
+    missing := ""
+
+    if (botConfig.get("groupRerollEnabled")) {
+        if (botConfig.get("groupRerollDiscordWebhookURL") = "")
+            missing .= "- Group Reroll webhook is empty. If your old webhook was used for Group Reroll, copy it into the Group Reroll profile.`n"
+    } else {
+        if (botConfig.get("discordWebhookURL") = "")
+            missing .= "- Solo webhook is empty.`n"
+    }
+
+    if (botConfig.get("s4tEnabled") && !botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL") = "")
+        missing .= "- Save for Trade webhook is empty.`n"
+
+    heartbeatNeedsUserWebhook := botConfig.get("heartBeat") && (botConfig.get("groupRerollEnabled") || botConfig.get("heartBeatOwnerWebHookURL") = "")
+    if (heartbeatNeedsUserWebhook && GetActiveHeartbeatWebhookURL() = "") {
+        activeHeartbeatProfile := botConfig.get("groupRerollEnabled") ? "Group Reroll" : "Solo"
+        missing .= "- " . activeHeartbeatProfile . " heartbeat webhook is empty.`n"
+    }
+
+    if (missing = "")
+        return true
+
+    msg := "Some Discord webhook settings are missing:`n`n" . missing
+    msg .= "`nOpen Discord Settings now? Select No to continue without those Discord messages."
+    MsgBox, 52, Missing Discord Webhooks, %msg%
+    IfMsgBox, Yes
+    {
+        ShowDiscordSettingsPopup()
+        return false
+    }
+
+    return true
+}
 
 ; =================== UI - Pack Selection(New Window, Details) ===================
 
@@ -504,7 +646,7 @@ UpdatePackSelectionButtonText() {
 ShowPackSelection:
     WinGetPos, mainWinX, mainWinY, mainWinW, mainWinH, A
 
-    popupX := mainWinX + 275 + 140 + 10
+    popupX := mainWinX + 255 + 215 + 10
     popupY := mainWinY - 50
 
     Gui, PackSelect:Destroy
@@ -580,8 +722,10 @@ ShowPackSelection:
     }
 
     yPos := maxHeight + 10
-    Gui, PackSelect:Add, Button, x10 y%yPos% w80 h30 gApplyPackSelection, Apply
-    Gui, PackSelect:Add, Button, x100 y%yPos% w80 h30 gCancelPackSelection, Cancel
+    packButtonX := (windowWidth - 170) / 2
+    packCancelButtonX := packButtonX + 90
+    Gui, PackSelect:Add, Button, x%packButtonX% y%yPos% w80 h30 gApplyPackSelection, Apply
+    Gui, PackSelect:Add, Button, x%packCancelButtonX% y%yPos% w80 h30 gCancelPackSelection, Cancel
     yPos += 40
 
     Gui, PackSelect:Show, x%popupX% y%popupY% w%windowWidth% h%yPos%
@@ -636,34 +780,27 @@ UpdateCardDetectionButtonText() {
     enabledOptions := []
 
     if (botConfig.get("FullArtCheck"))
-        enabledOptions.Push("Single Full Art")
+        enabledOptions.Push("Full Art")
     if (botConfig.get("TrainerCheck"))
-        enabledOptions.Push("Single Trainer")
+        enabledOptions.Push("Trainer")
     if (botConfig.get("RainbowCheck"))
-        enabledOptions.Push("Single Rainbow")
+        enabledOptions.Push("Rainbow")
     if (botConfig.get("PseudoGodPack"))
         enabledOptions.Push("Double 2★")
     if (botConfig.get("InvalidCheck"))
         enabledOptions.Push("Ignore Invalid")
 
     statusText := ""
-    if (botConfig.get("minStars") > 0) {
-        statusText .= "Min GP 2★: " . botConfig.get("minStars")
-    }
+    if (botConfig.get("minStars") > 0)
+        statusText := "Min GP 2★: " . botConfig.get("minStars")
 
     if (enabledOptions.Length() > 0) {
         if (statusText != "")
-            statusText .= "`n"
+            statusText .= " | "
         statusText .= enabledOptions[1]
         if (enabledOptions.Length() > 1)
-            statusText .= " +" . (enabledOptions.Length() - 1) . " more"
-    } else {
-        if (statusText != "")
-            statusText .= "`n"
-        statusText .= "No options selected"
-    }
-
-    if (statusText = "No options selected" && (botConfig.get("minStars") = 0 || botConfig.get("minStars") = "")) {
+            statusText .= " +" . (enabledOptions.Length() - 1)
+    } else if (statusText = "") {
         statusText := "Configure settings..."
     }
 
@@ -683,7 +820,7 @@ ShowCardDetection:
 
     WinGetPos, mainWinX, mainWinY, mainWinW, mainWinH, A
 
-    popupX := mainWinX + 275 + 140 + 10
+    popupX := mainWinX + 255 + 215 + 10
     popupY := mainWinY + 73 + 30
 
     Gui, CardDetect:Destroy
@@ -708,31 +845,8 @@ ShowCardDetection:
     Gui, CardDetect:Add, Checkbox, % (botConfig.get("InvalidCheck") ? "Checked" : "") " vui_InvalidCheck_Popup x15 y" . yPos . " cWhite", Ignore Invalid Packs
     yPos += 35
 
-    Gui, CardDetect:Add, Text, x15 y%yPos% w200 h2 +0x10
-    yPos += 10
-
-    sectionColor := "cFF69B4"
-    Gui, CardDetect:Add, Text, x15 y%yPos% %sectionColor%, Discord Settings
-    yPos += 20
-
-    if(StrLen(botConfig.get("discordUserId")) < 3)
-        botConfig.set("discordUserId", "", "Wonderpick")
-    if(StrLen(botConfig.get("discordWebhookURL")) < 3)
-        botConfig.set("discordWebhookURL", "", "Wonderpick")
-
-    Gui, CardDetect:Add, Text, x15 y%yPos% cWhite, Discord ID:
-    yPos += 20
-    Gui, CardDetect:Add, Edit, vui_discordUserId_Popup w200 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("discordUserId")
-    yPos += 25
-    Gui, CardDetect:Add, Text, x15 y%yPos% cWhite, Webhook URL:
-    yPos += 20
-    Gui, CardDetect:Add, Edit, vui_discordWebhookURL_Popup w200 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("discordWebhookURL")
-    yPos += 25
-    Gui, CardDetect:Add, Checkbox, % (botConfig.get("sendAccountXml") ? "Checked" : "") " vui_sendAccountXml_Popup x15 y" . yPos . " cWhite", Send Account XML
-    yPos += 40
-
-    Gui, CardDetect:Add, Button, x15 y%yPos% w90 h30 gApplyCardDetection, Apply
-    Gui, CardDetect:Add, Button, x115 y%yPos% w90 h30 gCancelCardDetection, Cancel
+    Gui, CardDetect:Add, Button, x20 y%yPos% w90 h30 gApplyCardDetection, Apply
+    Gui, CardDetect:Add, Button, x120 y%yPos% w90 h30 gCancelCardDetection, Cancel
     yPos += 40
 
     Gui, CardDetect:Show, x%popupX% y%popupY% w230 h%yPos%
@@ -757,9 +871,6 @@ saveCardDetection:
     botConfig.set("RainbowCheck", ui_RainbowCheck_Popup, "Wonderpick")
     botConfig.set("PseudoGodPack", ui_PseudoGodPack_Popup, "Wonderpick")
     botConfig.set("InvalidCheck", ui_InvalidCheck_Popup, "Wonderpick")
-    botConfig.set("discordUserId", ui_discordUserId_Popup, "Wonderpick")
-    botConfig.set("discordWebhookURL", ui_discordWebhookURL_Popup, "Wonderpick")
-    botConfig.set("sendAccountXml", ui_sendAccountXml_Popup, "Wonderpick")
 return
 
 CancelCardDetection:
@@ -777,18 +888,15 @@ UpdateGroupRerollButtonText() {
         return
     }
 
-    statusText := "Group reroll enabled"
-
     idsStatus := (botConfig.get("mainIdsURL") != "" && StrLen(botConfig.get("mainIdsURL")) > 5) ? "✓" : "✗"
     vipStatus := (botConfig.get("vipIdsURL") != "" && StrLen(botConfig.get("vipIdsURL")) > 5) ? "✓" : "✗"
 
-    statusText .= "`n" . idsStatus . " ids API " . vipStatus . " vip_ids API"
-
+    statusText := "Enabled"
     if (botConfig.get("autoUseGPTest"))
-        statusText .= "`n• Auto GP Test"
-    statusText .= "`n• GP test: " . (botConfig.get("hasUnopenedPack") ? "Unopened Pack" : "Standard")
+        statusText .= " + Auto"
     if (botConfig.get("applyRoleFilters"))
-        statusText .= "`n• Role-Based filters"
+        statusText .= " + Roles"
+    statusText .= " | IDs " . idsStatus . " VIP " . vipStatus
 
     Gui, Font, s7 cLime, Segoe UI
     GuiControl, Font, ui_GroupRerollButton
@@ -798,7 +906,7 @@ UpdateGroupRerollButtonText() {
 ShowGroupRerollSettings:
     WinGetPos, mainWinX, mainWinY, mainWinW, mainWinH, A
 
-    buttonCenterX := 345
+    buttonCenterX := 362
     popupWidth := 250
     popupX := mainWinX + buttonCenterX - (popupWidth / 2)
     popupY := mainWinY + 183 + 30
@@ -842,8 +950,8 @@ ShowGroupRerollSettings:
     GroupReroll_yRoleCollapsed := GroupReroll_yRoleExpanded - 50
     Gui, GroupRerollSelect:Add, Checkbox, % (botConfig.get("applyRoleFilters") ? "Checked" : "") " vui_applyRoleFilters_Popup x15 y" . yPos . " cWhite", Role-Based Filters
     yPos += 40
-    Gui, GroupRerollSelect:Add, Button, vui_GroupRerollApplyBtn x15 y%yPos% w90 h30 gApplyGroupRerollSettings, Apply
-    Gui, GroupRerollSelect:Add, Button, vui_GroupRerollCancelBtn x115 y%yPos% w90 h30 gCancelGroupRerollSettings, Cancel
+    Gui, GroupRerollSelect:Add, Button, vui_GroupRerollApplyBtn x30 y%yPos% w90 h30 gApplyGroupRerollSettings, Apply
+    Gui, GroupRerollSelect:Add, Button, vui_GroupRerollCancelBtn x130 y%yPos% w90 h30 gCancelGroupRerollSettings, Cancel
     GroupReroll_yBtnExpanded := yPos
     GroupReroll_yBtnCollapsed := GroupReroll_yBtnExpanded - 50
     yPos += 40
@@ -853,8 +961,8 @@ ShowGroupRerollSettings:
         GuiControl, Hide, ui_gpTestWaitLabel
         GuiControl, Hide, ui_gpTestWaitTime_Popup
         GuiControl, Move, ui_applyRoleFilters_Popup, x15 y%GroupReroll_yRoleCollapsed%
-        GuiControl, Move, ui_GroupRerollApplyBtn, x15 y%GroupReroll_yBtnCollapsed%
-        GuiControl, Move, ui_GroupRerollCancelBtn, x115 y%GroupReroll_yBtnCollapsed%
+        GuiControl, Move, ui_GroupRerollApplyBtn, x30 y%GroupReroll_yBtnCollapsed%
+        GuiControl, Move, ui_GroupRerollCancelBtn, x130 y%GroupReroll_yBtnCollapsed%
         groupRerollShowH := GroupReroll_yBtnCollapsed + 40
     } else
         groupRerollShowH := yPos
@@ -869,15 +977,15 @@ GroupRerollGpTestMode:
         GuiControl, Hide, ui_gpTestWaitLabel
         GuiControl, Hide, ui_gpTestWaitTime_Popup
         GuiControl, Move, ui_applyRoleFilters_Popup, x15 y%GroupReroll_yRoleCollapsed%
-        GuiControl, Move, ui_GroupRerollApplyBtn, x15 y%GroupReroll_yBtnCollapsed%
-        GuiControl, Move, ui_GroupRerollCancelBtn, x115 y%GroupReroll_yBtnCollapsed%
+        GuiControl, Move, ui_GroupRerollApplyBtn, x30 y%GroupReroll_yBtnCollapsed%
+        GuiControl, Move, ui_GroupRerollCancelBtn, x130 y%GroupReroll_yBtnCollapsed%
         hNow := GroupReroll_yBtnCollapsed + 40
     } else {
         GuiControl, Show, ui_gpTestWaitLabel
         GuiControl, Show, ui_gpTestWaitTime_Popup
         GuiControl, Move, ui_applyRoleFilters_Popup, x15 y%GroupReroll_yRoleExpanded%
-        GuiControl, Move, ui_GroupRerollApplyBtn, x15 y%GroupReroll_yBtnExpanded%
-        GuiControl, Move, ui_GroupRerollCancelBtn, x115 y%GroupReroll_yBtnExpanded%
+        GuiControl, Move, ui_GroupRerollApplyBtn, x30 y%GroupReroll_yBtnExpanded%
+        GuiControl, Move, ui_GroupRerollCancelBtn, x130 y%GroupReroll_yBtnExpanded%
         hNow := GroupReroll_yBtnExpanded + 40
     }
     Gui, GroupRerollSelect:Show, w250 h%hNow%
@@ -893,6 +1001,7 @@ ApplyGroupRerollSettings:
     Gui, 1:Default
 
     UpdateGroupRerollButtonText()
+    UpdateDiscordSettingsButtonText()
 return
 
 saveGroupReroll:
@@ -957,9 +1066,9 @@ UpdateS4TButtonText() {
 
     statusText := dict["Txt_S4TEnabled"]
     if (enabledOptions.Length() > 0) {
-        statusText .= "`n" . enabledOptions[1]
+        statusText .= " - " . enabledOptions[1]
         if (enabledOptions.Length() > 1)
-            statusText .= " +" . (enabledOptions.Length() - 1) . " more"
+            statusText .= " +" . (enabledOptions.Length() - 1)
     }
 
     Gui, Font, s8 cLime, Segoe UI
@@ -970,7 +1079,7 @@ UpdateS4TButtonText() {
 ShowS4TSettings:
     WinGetPos, mainWinX, mainWinY, mainWinW, mainWinH, A
 
-    buttonCenterX := 375
+    buttonCenterX := 362
     popupWidth := 200
     popupX := mainWinX + buttonCenterX - (popupWidth / 2)
     popupY := mainWinY + 0
@@ -1020,33 +1129,14 @@ ShowS4TSettings:
         yPos -= 50  ; Adjust yPos since we're hiding these controls
     }
 
-    ; Discord settings
-    if(StrLen(botConfig.get("s4tDiscordUserId")) < 3)
-        botConfig.set("s4tDiscordUserId", "", "SaveForTrade")
-    if(StrLen(botConfig.get("s4tDiscordWebhookURL")) < 3)
-        botConfig.set("s4tDiscordWebhookURL", "", "SaveForTrade")
-
-    Gui, S4TSettingsSelect:Add, Text, x15 y%yPos% %sectionColor%, S4T Discord ID:
-    yPos += 20
-    Gui, S4TSettingsSelect:Add, Edit, vui_s4tDiscordUserId_Popup w170 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("s4tDiscordUserId")
-    yPos += 25
-
-    Gui, S4TSettingsSelect:Add, Text, x15 y%yPos% %sectionColor%, Webhook URL:
-    yPos += 20
-    Gui, S4TSettingsSelect:Add, Edit, vui_s4tDiscordWebhookURL_Popup w170 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("s4tDiscordWebhookURL")
-    yPos += 25
-
-    Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tSendAccountXml") ? "Checked" : "") " vui_s4tSendAccountXml_Popup x15 y" . yPos . " " . sectionColor, % dict["Txt_s4tSendAccountXml"]
-    yPos += 20
-
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tKeepSyntheticScreenshots") ? "Checked" : "") " vui_s4tKeepSyntheticScreenshots_Popup x15 y" . yPos . " " . sectionColor, Save Screenshots
     yPos += 20
 
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("ocrShinedust") ? "Checked" : "") " vui_ocrShinedust_Popup x15 y" . yPos . " " . sectionColor, Track Shinedust
     yPos += 25
 
-    Gui, S4TSettingsSelect:Add, Button, x15 y%yPos% w70 h30 gApplyS4TSettings, Apply
-    Gui, S4TSettingsSelect:Add, Button, x95 y%yPos% w70 h30 gCancelS4TSettings, Cancel
+    Gui, S4TSettingsSelect:Add, Button, x25 y%yPos% w70 h30 gApplyS4TSettings, Apply
+    Gui, S4TSettingsSelect:Add, Button, x105 y%yPos% w70 h30 gCancelS4TSettings, Cancel
     yPos += 40
 
     Gui, S4TSettingsSelect:Show, x%popupX% y%popupY% w200 h%yPos%
@@ -1080,9 +1170,6 @@ saveS4T:
     botConfig.set("s4tShiny2Star", ui_s4tShiny2Star_Popup, "SaveForTrade")
     botConfig.set("s4tWP", ui_s4tWP_Popup, "SaveForTrade")
     botConfig.set("s4tWPMinCards", ui_s4tWPMinCards_Popup, "SaveForTrade")
-    botConfig.set("s4tDiscordUserId", ui_s4tDiscordUserId_Popup, "SaveForTrade")
-    botConfig.set("s4tDiscordWebhookURL", ui_s4tDiscordWebhookURL_Popup, "SaveForTrade")
-    botConfig.set("s4tSendAccountXml", ui_s4tSendAccountXml_Popup, "SaveForTrade")
     botConfig.set("s4tKeepSyntheticScreenshots", ui_s4tKeepSyntheticScreenshots_Popup, "SaveForTrade")
     botConfig.set("ocrShinedust", ui_ocrShinedust_Popup, "SaveForTrade")
 
@@ -1124,9 +1211,12 @@ ShowToolsAndSystemSettings:
     yPos += 35
 
     sectionColor := "cWhite"
-    eventMissionBoxH := 115
+    eventMissionBoxH := 140
+    eventMissionBoxBottom := yPos + eventMissionBoxH
     Gui, ToolsAndSystemSelect:Add, GroupBox, x%col1X% y%yPos% w%col1W% h%eventMissionBoxH% %sectionColor%, Special Event Missions
     yPos += 20
+    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gOpenSpecialEventExtractor BackgroundTrans, Special Event Extractor
+    yPos += 25
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearSpecialMissionHistory BackgroundTrans, Reset Claim Status
     yPos += 25
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
@@ -1151,12 +1241,12 @@ ShowToolsAndSystemSettings:
     }
     SelectedMonitorIndex := RegExReplace(botConfig.get("SelectedMonitorIndex"), ":.*$")
     Gui, ToolsAndSystemSelect:Add, DropDownList, x%col2X% y%yPos2% w100 vui_SelectedMonitorIndex_Popup Choose%SelectedMonitorIndex% Background2A2A2A cWhite, %MonitorOptions%
-    yPos2 += 25
+    yPos2 += 30
 
     rowGapY := yPos2 + 2
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%rowGapY% %sectionColor%, % dict["Txt_RowGap"]
     Gui, ToolsAndSystemSelect:Add, Edit, vui_RowGap_Popup w25 x300 y%rowGapY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("RowGap")
-    yPos2 += 25
+    yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_FolderPath"]
     yPos2 += 20
@@ -1166,7 +1256,7 @@ ShowToolsAndSystemSettings:
         botConfig.set("folderPath", mumuFolderPath, "ToolsAndSystem")
     }
     Gui, ToolsAndSystemSelect:Add, Edit, vui_folderPath_Popup w170 x%col2X% y%yPos2% h20 -E0x200 Background2A2A2A cWhite, % mumuFolderPath
-    yPos2 += 25
+    yPos2 += 30
 
     ocrTextY := yPos2 + 2
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%ocrTextY% %sectionColor%, OCR:
@@ -1201,33 +1291,33 @@ ShowToolsAndSystemSettings:
         }
     }
     Gui, ToolsAndSystemSelect:Add, DropDownList, vui_clientLanguage_Popup choose%defaultClientLang% x345 y%yPos2% w40 Background2A2A2A cWhite, %clientLanguageList%
-    yPos2 += 25
+    yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_InstanceLaunchDelay"]
     Gui, ToolsAndSystemSelect:Add, Edit, vui_instanceLaunchDelay_Popup w30 x355 y%yPos2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("instanceLaunchDelay")
-    yPos2 += 25
+    yPos2 += 30
 
     autoMonitorY := yPos2 - 5
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("autoLaunchMonitor") ? "Checked" : "") " vui_autoLaunchMonitor_Popup x" . col2X . " y" . autoMonitorY . " " . sectionColor, % dict["Txt_autoLaunchMonitor"]
-    yPos2 += 20
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Auto Save to Git (hourly)
     yPos2 += 25
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Auto Save to Git (hourly)
+    yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
     xmlSortY := yPos2 - 5
     Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlSortY% w170 h20 gRunXMLSortTool BackgroundTrans, XML pack counts
-    yPos2 += 20
+    yPos2 += 25
     xmlDupY := yPos2 - 5
     Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlDupY% w170 h20 gRunXMLDuplicateTool BackgroundTrans, XML Duplicate Remover
-    yPos2 += 25
+    yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
 
-    finalY := yPos2
-    buttonY := finalY - 5
-    Gui, ToolsAndSystemSelect:Add, Button, x140 y%buttonY% w70 h30 gApplyToolsAndSystemSettings, Apply
-    Gui, ToolsAndSystemSelect:Add, Button, x220 y%buttonY% w70 h30 gCancelToolsAndSystemSettings, Cancel
-    finalY += 35
+    finalY := (yPos2 > eventMissionBoxBottom ? yPos2 : eventMissionBoxBottom)
+    buttonY := finalY + 15
+    Gui, ToolsAndSystemSelect:Add, Button, x130 y%buttonY% w70 h30 gApplyToolsAndSystemSettings, Apply
+    Gui, ToolsAndSystemSelect:Add, Button, x210 y%buttonY% w70 h30 gCancelToolsAndSystemSettings, Cancel
+    finalY := buttonY + 45
 
     Gui, ToolsAndSystemSelect:Show, x%popupX% y%popupY% w410 h%finalY%
 return
@@ -1266,6 +1356,15 @@ return
 
 CancelToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Destroy
+return
+
+OpenSpecialEventExtractor:
+    extractorPath := A_ScriptDir . "\SpecialEvents\SpecialEventExtractor.ahk"
+    if (FileExist(extractorPath)) {
+        Run, %extractorPath%
+    } else {
+        MsgBox, 48, Special Event Extractor, % "SpecialEventExtractor.ahk not found at:`n" extractorPath
+    }
 return
 
 saveToGit_Click:
@@ -1307,6 +1406,9 @@ Save:
 
     SaveAllSettings()
 
+    if (!ValidateDiscordSettingsBeforeStart())
+        return
+
     if(StrLen(A_ScriptDir) > 200 || InStr(A_ScriptDir, " ")) {
         MsgBox, 0x40000,, % dict["Error_BotPathTooLong"]
         return
@@ -1340,6 +1442,8 @@ Save:
         additionalSettings .= dict["Confirm_ClaimMissions"] . "`n"
     if (botConfig.get("showcaseEnabled"))
         additionalSettings .= "• Showcase Likes`n"
+    if (botConfig.get("ocrShinedust") && botConfig.get("s4tEnabled"))
+        additionalSettings .= "• Track Shinedust`n"
     if (InStr(botConfig.get("deleteMethod"), "Inject")) {
         additionalSettings .= dict["Confirm_SortBy"] . " "
         if (botConfig.get("injectSortMethod") = "ModifiedAsc")
@@ -1409,13 +1513,7 @@ Save:
         confirmMsg .= s4tSettings
     }
 
-    if (botConfig.get("s4tSendAccountXml") && botConfig.get("s4tEnabled")) {
-        confirmMsg .= "`n" . dict["Confirm_XMLWarning"] . "`n"
-    }
-    if (botConfig.get("ocrShinedust") && botConfig.get("s4tEnabled")) {
-        confirmMsg .= "• Track Shinedust`n"
-    }
-    if (botConfig.get("sendAccountXml")) {
+    if ((botConfig.get("s4tSendAccountXml") && botConfig.get("s4tEnabled")) || DiscordShouldSendAccountXml()) {
         confirmMsg .= "`n" . dict["Confirm_XMLWarning"] . "`n"
     }
 
@@ -1427,23 +1525,26 @@ Save:
             return
     }
     if (botConfig.get("deleteMethod") = "Inject Rewards") {
-        if (!botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !(botConfig.get("ocrShinedust") && botConfig.get("s4tEnabled"))) {
-            g_irDialogResult := "cancel"
-            Gui, InjectReqDlg:New, +AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Setting Warning
-            Gui, InjectReqDlg:Font, s9, Segoe UI
-            Gui, InjectReqDlg:Add, Text, x12 y12 w285, No actions are enabled for 'Inject Rewards'. Select actions here, or continue with none selected to only log in and out.
-            Gui, InjectReqDlg:Add, Checkbox, x12 y60 vui_irClaim, Claim Special Missions
-            Gui, InjectReqDlg:Add, Checkbox, x12 y82 vui_irGift, Receive Gift
-            Gui, InjectReqDlg:Add, Checkbox, x12 y104 vui_irWP, Wonderpick
-            Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irShinedust, Track Shinedust
-            Gui, InjectReqDlg:Add, Button, x12 y160 w80 h26 gInjectReqDlgOK Default, OK
-            Gui, InjectReqDlg:Add, Button, x102 y160 w80 h26 gInjectReqDlgCancel, Cancel
-            Gui, InjectReqDlg:Show, w310 h200
-            irDlgHwnd := WinExist()
-            WinWaitClose, ahk_id %irDlgHwnd%
-            if (g_irDialogResult = "cancel")
-                return
-        }
+        irClaimChecked := botConfig.get("claimSpecialMissions") ? "Checked" : ""
+        irGiftChecked := botConfig.get("receiveGift") ? "Checked" : ""
+        irWPChecked := botConfig.get("wonderpickForEventMissions") ? "Checked" : ""
+        irShinedustChecked := botConfig.get("ocrShinedust") ? "Checked" : ""
+
+        g_irDialogResult := "cancel"
+        Gui, InjectReqDlg:New, +AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Inject Rewards Options
+        Gui, InjectReqDlg:Font, s9, Segoe UI
+        Gui, InjectReqDlg:Add, Text, x12 y12 w285, Confirm the actions for 'Inject Rewards'. You can leave every option unchecked to only log in and out.
+        Gui, InjectReqDlg:Add, Checkbox, x12 y60 vui_irClaim %irClaimChecked%, Claim Special Missions
+        Gui, InjectReqDlg:Add, Checkbox, x12 y82 vui_irGift %irGiftChecked%, Receive Gift
+        Gui, InjectReqDlg:Add, Checkbox, x12 y104 vui_irWP %irWPChecked%, Wonderpick
+        Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irShinedust %irShinedustChecked%, Track Shinedust
+        Gui, InjectReqDlg:Add, Button, x12 y160 w80 h26 gInjectReqDlgOK Default, OK
+        Gui, InjectReqDlg:Add, Button, x102 y160 w80 h26 gInjectReqDlgCancel, Cancel
+        Gui, InjectReqDlg:Show, w310 h200
+        irDlgHwnd := WinExist()
+        WinWaitClose, ahk_id %irDlgHwnd%
+        if (g_irDialogResult = "cancel")
+            return
     }
 
     isIncorrectEventSetting := false
@@ -1850,14 +1951,10 @@ Return
 
 InjectReqDlgOK:
     Gui, InjectReqDlg:Submit, NoHide
-    if (ui_irClaim)
-        botConfig.set("claimSpecialMissions", 1, "ToolsAndSystem")
-    if (ui_irGift)
-        botConfig.set("receiveGift", 1, "ToolsAndSystem")
-    if (ui_irWP)
-        botConfig.set("wonderpickForEventMissions", 1, "ToolsAndSystem")
-    if (ui_irShinedust)
-        botConfig.set("ocrShinedust", 1, "SaveForTrade")
+    botConfig.set("claimSpecialMissions", ui_irClaim, "ToolsAndSystem")
+    botConfig.set("receiveGift", ui_irGift, "ToolsAndSystem")
+    botConfig.set("wonderpickForEventMissions", ui_irWP, "ToolsAndSystem")
+    botConfig.set("ocrShinedust", ui_irShinedust, "SaveForTrade")
     botConfig.saveConfigToSettings("ALL")
     g_irDialogResult := "ok"
     Gui, InjectReqDlg:Destroy
@@ -2136,8 +2233,9 @@ StartBot() {
                 discMessage .= typeMsg
                 discMessage .= selectMsg
 
-                if(botConfig.get("groupRerollEnabled") || (!botConfig.get("groupRerollEnabled") && botConfig.get("heartBeatOwnerWebHookURL") = ""))
-                    LogToDiscord(discMessage,, false,,, botConfig.get("heartBeatWebhookURL"))
+                heartBeatWebhookURL := GetActiveHeartbeatWebhookURL()
+                if((botConfig.get("groupRerollEnabled") || (!botConfig.get("groupRerollEnabled") && botConfig.get("heartBeatOwnerWebHookURL") = "")) && heartBeatWebhookURL)
+                    LogToDiscord(discMessage,, false,,, heartBeatWebhookURL)
 
                 if(botConfig.get("heartBeatOwnerWebHookURL")){
                     FormatTime, currentTime, , yyyy-MM-dd HH:mm:ss
@@ -2216,7 +2314,9 @@ SendAllInstancesOfflineStatus() {
     discMessage .= selectMsg
     discMessage .= "\n\n All instances marked as OFFLINE"
 
-    LogToDiscord(discMessage,, false,,, botConfig.get("heartBeatWebhookURL"))
+    heartBeatWebhookURL := GetActiveHeartbeatWebhookURL()
+    if (heartBeatWebhookURL)
+        LogToDiscord(discMessage,, false,,, heartBeatWebhookURL)
 }
 
 ReceiveData(wParam, lParam) {

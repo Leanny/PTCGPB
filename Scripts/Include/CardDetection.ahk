@@ -306,7 +306,7 @@ FoundStars(star) {
     logMessage := statusMessage . " in instance: " . session.get("scriptName")
     logMessage .= " (" . session.get("packsInPool") . " packs, " . session.get("openPack") . ")\n"
     logMessage .= "File name: " . accountFile . "\nBacking up to the Accounts\\SpecificCards folder and continuing..."
-    LogToDiscord(logMessage, screenShot, true, (botConfig.get("sendAccountXml") ? accountFullPath : ""), fcScreenshot)
+    LogToDiscord(logMessage, screenShot, true, (DiscordShouldSendAccountXml() ? accountFullPath : ""), fcScreenshot)
     LogToFile(StrReplace(logMessage, "\n", " "), "GPlog.txt")
 }
 
@@ -414,9 +414,9 @@ GodPackFound(validity, cards := "") {
     LogToFile(StrReplace(logMessage, "\n", " "), "GPlog.txt")
 
     if (validity = "Valid") {
-        LogToDiscord(logMessage, screenShot, true, (botConfig.get("sendAccountXml") ? accountFullPath : ""), fcScreenshot)
+        LogToDiscord(logMessage, screenShot, true, (DiscordShouldSendAccountXml() ? accountFullPath : ""), fcScreenshot)
     } else if (!botConfig.get("InvalidCheck")) {
-        LogToDiscord(logMessage, screenShot, true, (botConfig.get("sendAccountXml") ? accountFullPath : ""))
+        LogToDiscord(logMessage, screenShot, true, (DiscordShouldSendAccountXml() ? accountFullPath : ""))
     }
     ; Delete synthetic image after sending
     ; GP screenshots are always kept on disk, matching fallback persistence behavior.

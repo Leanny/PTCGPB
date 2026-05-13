@@ -1615,6 +1615,7 @@
                 cursor: not-allowed;
             }
             .expansion-nav {
+                position: relative;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -1630,6 +1631,37 @@
                 color: inherit;
                 text-align: center;
                 font: inherit;
+            }
+            .expansion-nav .ex-progress-ring {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 54px;
+                height: 54px;
+                border-radius: 50%;
+                display: grid;
+                place-items: center;
+                background:
+                    conic-gradient(var(--accent-2) calc(var(--completion) * 1%), rgba(255,255,255,0.09) 0);
+                box-shadow:
+                    inset 0 0 0 1px rgba(255,255,255,0.08),
+                    0 6px 16px rgba(0,0,0,0.24);
+            }
+            .expansion-nav .ex-progress-ring::before {
+                content: "";
+                position: absolute;
+                inset: 6px;
+                border-radius: 50%;
+                background: var(--panel);
+                border: 1px solid rgba(255,255,255,0.08);
+            }
+            .expansion-nav .ex-progress-value {
+                position: relative;
+                z-index: 1;
+                font-size: 0.72rem;
+                font-weight: 800;
+                color: var(--text);
+                line-height: 1;
             }
             .expansion-nav:hover {
                 border-color: var(--accent, #4f8cff);
@@ -2042,7 +2074,9 @@
                             <input
                                 id="accountSearch"
                                 type="search"
-                                placeholder="Account name..."
+                                placeholder="Device account or XML filename"
+                                autocomplete="off"
+                                spellcheck="false"
                             />
                         </div>
                         <div>
@@ -2052,7 +2086,9 @@
                             <input
                                 id="cardSearch"
                                 type="search"
-                                placeholder="Card name or card id..."
+                                placeholder="Card name or card ID"
+                                autocomplete="off"
+                                spellcheck="false"
                             />
                         </div>
                         <div>
@@ -2060,10 +2096,9 @@
                                 >Sort pack pulls</label
                             >
                             <select id="rowSort">
-                                <option value="original" selected>
-                                    Load order
+                                <option value="time-desc" selected>
+                                    Newest first
                                 </option>
-                                <option value="time-desc">Newest first</option>
                                 <option value="time-asc">Oldest first</option>
                             </select>
                         </div>
@@ -2079,11 +2114,9 @@
                                 "
                             >
                                 <select id="accountSort" style="flex: 1">
-                                    <option value="shinedust" selected>
+                                    <option value="cards" selected>Cards</option>
+                                    <option value="shinedust">
                                         Shinedust
-                                    </option>
-                                    <option value="account">
-                                        Alphabetical
                                     </option>
                                     <option value="age">Age</option>
                                 </select>
@@ -2415,7 +2448,9 @@
                 <input
                     id="receivedPickerSearch"
                     type="search"
-                    placeholder="Search card name or ID..."
+                    placeholder="Received card name or card ID"
+                    autocomplete="off"
+                    spellcheck="false"
                     style="
                         padding: 8px 10px;
                         border: 1px solid var(--border);
@@ -2483,6 +2518,7 @@
             const AUTOLOAD_RETRY_BASE_MS = 220;
             const INITIAL_LIMIT = 150;
             const PAGE_SIZE = 150;
+            const CATALOG_DETAIL_CARD_LIMIT = 240;
             const DEFAULT_ACCOUNTS_DATA_PATH = "/__dashboard/accounts-data";
 
             // Per-rarity icons hosted on Leanny's GitHub Pages.
@@ -2647,8 +2683,8 @@
                 rowCount: 0,
                 totalCards: 0,
                 uniqueCardCount: 0,
-                rowSort: "original",
-                accountSort: "shinedust",
+                rowSort: "time-desc",
+                accountSort: "cards",
                 accountSortAsc: false,
                 catalogAccountSort: "copies",
                 catalogAccountSortAsc: false,
@@ -2656,6 +2692,16 @@
                 catalogCardSearch: "",
                 catalogSelectedRarities: new Set(),
                 catalogRaritiesInitialized: false,
+                catalogAllKnownCardIdsCache: null,
+                catalogAllKnownCardIdsRowsRef: null,
+                catalogAllKnownCardIdsCardmasterRef: null,
+                catalogRarityKeysCache: null,
+                catalogRarityKeysAllIdsRef: null,
+                catalogAccountCountsCache: null,
+                catalogAccountCountsRowsRef: null,
+                catalogAccountCountsTradeMetaVersion: -1,
+                catalogTradeMetaVersion: 0,
+                catalogWarmupHandle: 0,
                 selectedCatalogAccount: "",
                 cardCollectionNumberMap: new Map(),
                 tradedSet: new Set(),
@@ -3242,6 +3288,7 @@
                         state.tradedMeta.delete(key);
                         saveTradedMeta();
                         state.accountRows = null;
+                        invalidateCatalogAccountCounts();
                     }
                 } else {
                     state.tradedSet.add(key);
@@ -3280,11 +3327,13 @@
             function addShared(account, cardId) {
                 state.sharedSet.add(tradedKey(account, cardId));
                 saveSharedState();
+                invalidateCatalogAccountCounts();
             }
 
             function removeShared(account, cardId) {
                 state.sharedSet.delete(tradedKey(account, cardId));
                 saveSharedState();
+                invalidateCatalogAccountCounts();
             }
 
             function loadTradedMeta() {
@@ -3321,6 +3370,7 @@
                 }
                 saveTradedMeta();
                 state.accountRows = null;
+                invalidateCatalogAccountCounts();
             }
 
             function getTradeMeta(account, cardId) {
@@ -3419,10 +3469,23 @@
             }
             function debounce(fn, delay = 160) {
                 let timer;
-                return (...args) => {
+                const debounced = (...args) => {
                     clearTimeout(timer);
-                    timer = setTimeout(() => fn(...args), delay);
+                    timer = setTimeout(() => {
+                        timer = null;
+                        fn(...args);
+                    }, delay);
                 };
+                debounced.cancel = () => {
+                    clearTimeout(timer);
+                    timer = null;
+                };
+                debounced.flush = (...args) => {
+                    clearTimeout(timer);
+                    timer = null;
+                    fn(...args);
+                };
+                return debounced;
             }
 
             function setStatus(message, kind = "normal") {
@@ -3992,6 +4055,52 @@
                 return new Set(all);
             }
 
+            function parseLocalTimestampText(text) {
+                const match = String(text ?? "")
+                    .trim()
+                    .match(
+                        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/,
+                    );
+                if (!match) return Number.NaN;
+
+                const year = Number(match[1]);
+                const month = Number(match[2]);
+                const day = Number(match[3]);
+                const hour = Number(match[4] || 0);
+                const minute = Number(match[5] || 0);
+                const second = Number(match[6] || 0);
+                const millis = Number((match[7] || "").padEnd(3, "0"));
+                const dt = new Date(
+                    year,
+                    month - 1,
+                    day,
+                    hour,
+                    minute,
+                    second,
+                    millis,
+                );
+                if (
+                    dt.getFullYear() !== year ||
+                    dt.getMonth() !== month - 1 ||
+                    dt.getDate() !== day ||
+                    dt.getHours() !== hour ||
+                    dt.getMinutes() !== minute ||
+                    dt.getSeconds() !== second
+                )
+                    return Number.NaN;
+
+                const ms = dt.getTime();
+                return Number.isFinite(ms) ? ms : Number.NaN;
+            }
+
+            function padDatePart(value) {
+                return String(value).padStart(2, "0");
+            }
+
+            function formatLocalTimestamp(date) {
+                return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+            }
+
             function parseTimestampValue(value) {
                 const text = String(value ?? "").trim();
                 if (!text) return Number.NaN;
@@ -4000,6 +4109,9 @@
                     const compactMs = parseTimestampFromFilename(text);
                     if (Number.isFinite(compactMs)) return compactMs;
                 }
+
+                const localTextMs = parseLocalTimestampText(text);
+                if (Number.isFinite(localTextMs)) return localTextMs;
 
                 const numeric = Number(text);
                 if (Number.isFinite(numeric)) {
@@ -4035,7 +4147,7 @@
                 if (row && Number.isFinite(row.timestampMs)) {
                     const date = new Date(row.timestampMs);
                     if (Number.isFinite(date.getTime()))
-                        return date.toISOString().replace(/\.\d{3}Z$/, "");
+                        return formatLocalTimestamp(date);
                 }
                 return String(row?.timestamp || "").trim();
             }
@@ -4123,6 +4235,15 @@
                 state.defaultExpanded = false;
                 state.displayLimit = INITIAL_LIMIT;
                 state.csvLoaded = false;
+                state.catalogAllKnownCardIdsCache = null;
+                state.catalogAllKnownCardIdsRowsRef = null;
+                state.catalogAllKnownCardIdsCardmasterRef = null;
+                state.catalogRarityKeysCache = null;
+                state.catalogRarityKeysAllIdsRef = null;
+                state.catalogAccountCountsCache = null;
+                state.catalogAccountCountsRowsRef = null;
+                state.selectedCatalogCardId = "";
+                state.selectedCatalogAccount = "";
                 buildFilterCheckboxes();
                 updateStats(0);
                 renderCurrent();
@@ -4515,6 +4636,7 @@
 
                 buildFilterCheckboxes();
                 applyFiltersAndRender();
+                scheduleCatalogWarmup();
                 setStatus(
                     `Loaded ${formatNumber(state.rowCount)} entries, ${formatNumber(state.totalCards)} cards, and ${formatNumber(state.accountCount)} accounts from ${sourceLabel}.`,
                 );
@@ -4659,6 +4781,7 @@
                     id: cardId,
                     raw,
                     name,
+                    searchBlob: normaliseSearch(`${name} ${cardId}`),
                     rarityValue,
                     rarityName,
                     illustrationId,
@@ -4826,6 +4949,7 @@
 
                 buildFilterCheckboxes();
                 applyFiltersAndRender();
+                scheduleCatalogWarmup();
                 setStatus(
                     `Loaded ${formatNumber(state.rowCount)} rows, ${formatNumber(state.totalCards)} cards, and ${formatNumber(state.accountCount)} accounts from ${sourceLabel}.`,
                 );
@@ -5306,9 +5430,11 @@
 
             async function autoLoadDefaultFiles() {
                 try {
+                    const resourcesPromise = loadResources(false);
                     const payload = await fetchDefaultJsonPayload(
                         DEFAULT_ACCOUNTS_DATA_PATH,
                     );
+                    await resourcesPromise;
                     const documents = Array.isArray(payload?.accounts)
                         ? payload.accounts
                         : [];
@@ -5785,6 +5911,15 @@
             }
 
             function getAllKnownCardIds() {
+                if (
+                    state.catalogAllKnownCardIdsCache &&
+                    state.catalogAllKnownCardIdsRowsRef === state.rows &&
+                    state.catalogAllKnownCardIdsCardmasterRef ===
+                        state.cardmaster
+                ) {
+                    return state.catalogAllKnownCardIdsCache;
+                }
+
                 const ids = new Set();
                 if (state.cardmaster && typeof state.cardmaster === "object") {
                     for (const id of Object.keys(state.cardmaster))
@@ -5793,10 +5928,116 @@
                 for (const row of state.rows) {
                     for (const id of row.cardIds) ids.add(String(id));
                 }
-                return [...ids];
+                const allIds = [...ids];
+                state.catalogAllKnownCardIdsCache = allIds;
+                state.catalogAllKnownCardIdsRowsRef = state.rows;
+                state.catalogAllKnownCardIdsCardmasterRef = state.cardmaster;
+                return allIds;
+            }
+
+            function invalidateCatalogAccountCounts() {
+                state.catalogTradeMetaVersion++;
+                state.catalogAccountCountsCache = null;
+            }
+
+            function getCatalogRarityKeys(allIds) {
+                if (
+                    state.catalogRarityKeysCache &&
+                    state.catalogRarityKeysAllIdsRef === allIds
+                ) {
+                    return state.catalogRarityKeysCache;
+                }
+
+                const keys = new Set();
+                for (const cardId of allIds) {
+                    const rarityKey = getCardRarityFilterKey(cardId);
+                    if (rarityKey) keys.add(rarityKey);
+                }
+                state.catalogRarityKeysCache = keys;
+                state.catalogRarityKeysAllIdsRef = allIds;
+                return keys;
+            }
+
+            function getAvailableCopyCount(cardId, accountCounts) {
+                let totalCopies = 0;
+                for (const [account, count] of accountCounts) {
+                    if (isTraded(account, cardId)) continue;
+                    if (isShared(account, cardId)) continue;
+                    totalCopies += count;
+                }
+                return totalCopies;
+            }
+
+            function buildCatalogAccountRows(
+                cardId,
+                accountCounts,
+                accountFirstSeenMs,
+            ) {
+                const accountRows = [];
+                for (const [account, count] of accountCounts) {
+                    if (isTraded(account, cardId)) continue;
+                    if (isShared(account, cardId)) continue;
+                    accountRows.push({
+                        account,
+                        count,
+                        instance: String(
+                            state.accountMetadataMap.get(account)?.instance ||
+                                "",
+                        ).trim(),
+                        shinedust: state.accountShinedustMap.has(account)
+                            ? state.accountShinedustMap.get(account)
+                            : Number.NaN,
+                        ageDays: calculateAccountAgeDays(
+                            account,
+                            accountFirstSeenMs.get(account),
+                        ),
+                    });
+                }
+                return sortCatalogAccounts(accountRows);
+            }
+
+            function scheduleCatalogWarmup() {
+                if (state.catalogWarmupHandle) return;
+                const run = () => {
+                    state.catalogWarmupHandle = 0;
+                    if (
+                        !state.rows.length ||
+                        !state.cardmaster ||
+                        !state.localisation ||
+                        !state.cardmap
+                    )
+                        return;
+                    const allIds = getAllKnownCardIds();
+                    getCatalogRarityKeys(allIds);
+                    buildCardAccountCounts();
+                };
+
+                if ("requestIdleCallback" in window) {
+                    state.catalogWarmupHandle = window.requestIdleCallback(
+                        run,
+                        { timeout: 2000 },
+                    );
+                } else {
+                    state.catalogWarmupHandle = window.setTimeout(run, 650);
+                }
+            }
+
+            function renderCatalogPlaceholder() {
+                el.showMoreBtn.classList.add("hidden");
+                el.resultNote.textContent = "Preparing Card Library...";
+                el.rows.innerHTML = `<div class="empty panel">Preparing Card Library...</div>`;
             }
 
             function buildCardAccountCounts() {
+                if (
+                    state.catalogAccountCountsCache &&
+                    state.catalogAccountCountsRowsRef === state.rows &&
+                    state.catalogAccountCountsTradeMetaVersion ===
+                        state.catalogTradeMetaVersion
+                ) {
+                    return state.catalogAccountCountsCache;
+                }
+
                 const cardToAccounts = new Map();
                 const accountFirstSeenMs = new Map();
                 for (const row of state.rows) {
@@ -5837,7 +6078,12 @@
                         accountMap.set(acc, (accountMap.get(acc) || 0) + 1);
                     }
                 }
-                return { cardToAccounts, accountFirstSeenMs };
+                const cache = { cardToAccounts, accountFirstSeenMs };
+                state.catalogAccountCountsCache = cache;
+                state.catalogAccountCountsRowsRef = state.rows;
+                state.catalogAccountCountsTradeMetaVersion =
+                    state.catalogTradeMetaVersion;
+                return cache;
             }
 
             function sortCatalogAccounts(rows) {
@@ -5925,12 +6171,7 @@
 
                 for (const cardId of allIds) {
                     const info = getCardInfo(cardId);
-                    if (
-                        searchTerm &&
-                        !normaliseSearch(`${info.name} ${cardId}`).includes(
-                            searchTerm,
-                        )
-                    )
+                    if (searchTerm && !info.searchBlob.includes(searchTerm))
                         continue;
 
                     const sectionCode =
@@ -5942,30 +6183,10 @@
 
                     const accountCounts =
                         cardToAccounts.get(cardId) || new Map();
-                    const accountRows = [];
-                    let totalCopies = 0;
-                    for (const [account, count] of accountCounts) {
-                        if (isTraded(account, cardId)) continue;
-                        if (isShared(account, cardId)) continue;
-                        totalCopies += count;
-                        accountRows.push({
-                            account,
-                            count,
-                            instance: String(
-                                state.accountMetadataMap.get(account)
-                                    ?.instance || "",
-                            ).trim(),
-                            shinedust: state.accountShinedustMap.has(account)
-                                ? state.accountShinedustMap.get(account)
-                                : Number.NaN,
-                            ageDays: calculateAccountAgeDays(
-                                account,
-                                accountFirstSeenMs.get(account),
-                            ),
-                        });
-                    }
-
-                    sortCatalogAccounts(accountRows);
+                    const totalCopies = getAvailableCopyCount(
+                        cardId,
+                        accountCounts,
+                    );
                     if (totalCopies > 0) {
                         availableCards++;
                         availableCopies += totalCopies;
@@ -5978,7 +6199,6 @@
                         sectionLabel,
                         expansionNo: getCardExpansionNumber(cardId, info),
                         totalCopies,
-                        accountRows,
                     };
                     byCardId.set(cardId, item);
                     if (!sections.has(sectionCode))
@@ -6005,15 +6225,7 @@
                         return a.id.localeCompare(b.id);
                     });
 
-                const catalogRarityKeys = new Set();
-                // Build the list of rarity filter chips from ALL known cards,
-                // not just the ones currently visible after search/expansion
-                // filtering. Otherwise selecting a single card would shrink
-                // the rarity panel to that one rarity.
-                for (const cardId of allIds) {
-                    const rarityKey = getCardRarityFilterKey(cardId);
-                    if (rarityKey) catalogRarityKeys.add(rarityKey);
-                }
+                const catalogRarityKeys = getCatalogRarityKeys(allIds);
 
                 if (!state.catalogRaritiesInitialized) {
                     state.catalogSelectedRarities = new Set(catalogRarityKeys);
@@ -6085,27 +6297,55 @@
                               section.code === state.catalogExpansionFilter,
                       );
 
-                const hasVisibleCards = filteredSections.length > 0;
-
+                const filteredCardCount = filteredSections.reduce(
+                    (sum, section) => sum + section.cards.length,
+                    0,
+                );
+                let renderedSections = filteredSections;
+                let renderedCardCount = filteredCardCount;
                 if (
-                    hasVisibleCards &&
-                    !byCardId.has(state.selectedCatalogCardId)
-                )
-                    state.selectedCatalogCardId =
-                        filteredSections[0].cards[0].id;
+                    !showingAllExpansions &&
+                    filteredCardCount > CATALOG_DETAIL_CARD_LIMIT
+                ) {
+                    let remaining = CATALOG_DETAIL_CARD_LIMIT;
+                    renderedSections = [];
+                    for (const section of filteredSections) {
+                        if (remaining <= 0) break;
+                        const cards = section.cards.slice(0, remaining);
+                        if (cards.length) {
+                            renderedSections.push({ ...section, cards });
+                            remaining -= cards.length;
+                        }
+                    }
+                    renderedCardCount = CATALOG_DETAIL_CARD_LIMIT;
+                }
+                const hiddenCardCount = Math.max(
+                    0,
+                    filteredCardCount - renderedCardCount,
+                );
 
-                const selectedInFiltered = hasVisibleCards
-                    ? filteredSections
-                          .flatMap((section) => section.cards)
-                          .some(
-                              (card) => card.id === state.selectedCatalogCardId,
-                          )
-                    : false;
-                if (hasVisibleCards && !selectedInFiltered)
-                    state.selectedCatalogCardId =
-                        filteredSections[0].cards[0].id;
+                const hasVisibleCards = renderedSections.length > 0;
 
-                const selected = hasVisibleCards
+                let selectedInFiltered = false;
+                if (hasVisibleCards && state.selectedCatalogCardId) {
+                    for (const section of renderedSections) {
+                        if (
+                            section.cards.some(
+                                (card) =>
+                                    card.id === state.selectedCatalogCardId,
+                            )
+                        ) {
+                            selectedInFiltered = true;
+                            break;
+                        }
+                    }
+                }
+                if (!selectedInFiltered) {
+                    state.selectedCatalogCardId = "";
+                    state.selectedCatalogAccount = "";
+                }
+
+                const selected = state.selectedCatalogCardId
                     ? byCardId.get(state.selectedCatalogCardId)
                     : null;
 
@@ -6142,39 +6382,7 @@
                         )
                         .join("");
 
-                // Build autocomplete options from cards in the currently
-                // selected expansion (or all expansions) that pass the rarity
-                // filter, sorted by name.
-                const selectCards = [];
-                const seenNames = new Set();
-                const allExpansions =
-                    state.catalogExpansionFilter === "__all__";
-                for (const cardId of allIds) {
-                    if (
-                        !allExpansions &&
-                        getCardExpansionId(cardId) !==
-                            state.catalogExpansionFilter
-                    )
-                        continue;
-                    const info = getCardInfo(cardId);
-                    if (!allRaritiesSelected) {
-                        const key = getCardRarityFilterKey(cardId, info);
-                        if (!key || !state.catalogSelectedRarities.has(key))
-                            continue;
-                    }
-                    const name = info.name || cardId;
-                    if (seenNames.has(name)) continue;
-                    seenNames.add(name);
-                    selectCards.push({ name, id: cardId });
-                }
-                selectCards.sort((a, b) => a.name.localeCompare(b.name));
                 const currentSearch = state.catalogCardSearch || "";
-                const cardAutocompleteOptions = selectCards
-                    .map(
-                        (c) =>
-                            `<option value="${escapeHtml(c.name)}"></option>`,
-                    )
-                    .join("");
 
                 const expansionResetDisabled =
                     state.catalogExpansionFilter === "__all__"
@@ -6200,11 +6408,11 @@
                     )
                     .join("");
 
-                const controlsHtml = `<div class="catalog-controls"><div class="catalog-controls-panel panel"><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Expansion</div></div><div class="catalog-control-body"><div><label class="field-label" for="catalogExpansionFilter">Set</label><div class="catalog-select-row"><select id="catalogExpansionFilter">${expansionOptions}</select><button type="button" class="catalog-clear-btn" id="catalogExpansionClear" title="Reset to all expansions" aria-label="Reset expansion filter" ${expansionResetDisabled}>\u00d7</button></div></div><div><label class="field-label" for="catalogCardSearch">Card</label><div class="catalog-select-row"><input id="catalogCardSearch" type="text" list="catalogCardSearchOptions" value="${escapeHtml(currentSearch)}" placeholder="All cards" autocomplete="off"><datalist id="catalogCardSearchOptions">${cardAutocompleteOptions}</datalist><button type="button" class="catalog-clear-btn" id="catalogCardClear" title="Reset card filter" aria-label="Reset card filter" ${cardResetDisabled}>\u00d7</button></div></div><div><label class="field-label" for="catalogCardSize">Card image size</label><select id="catalogCardSize">${cardSizeOptions}</select></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Rarity</div><div class="small-actions"><button type="button" style="padding-top:2px;padding-bottom:2px" data-catalog-rarity-action="all">All</button><button type="button" style="padding-top:2px;padding-bottom:2px" data-catalog-rarity-action="none">Clear</button></div></div><div class="checkbox-list" id="catalogRarityFilters">${rarityControls}</div></div></div></div>`;
+                const controlsHtml = `<div class="catalog-controls"><div class="catalog-controls-panel panel"><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Expansion</div></div><div class="catalog-control-body"><div><label class="field-label" for="catalogExpansionFilter">Set</label><div class="catalog-select-row"><select id="catalogExpansionFilter">${expansionOptions}</select><button type="button" class="catalog-clear-btn" id="catalogExpansionClear" title="Reset to all expansions" aria-label="Reset expansion filter" ${expansionResetDisabled}>\u00d7</button></div></div><div><label class="field-label" for="catalogCardSearch">Card</label><div class="catalog-select-row"><input id="catalogCardSearch" type="search" value="${escapeHtml(currentSearch)}" placeholder="Card name or card ID" autocomplete="off" spellcheck="false"><button type="button" class="catalog-clear-btn" id="catalogCardClear" title="Reset card filter" aria-label="Reset card filter" ${cardResetDisabled}>\u00d7</button></div></div><div><label class="field-label" for="catalogCardSize">Card image size</label><select id="catalogCardSize">${cardSizeOptions}</select></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Rarity</div><div class="small-actions"><button type="button" style="padding-top:2px;padding-bottom:2px" data-catalog-rarity-action="all">All</button><button type="button" style="padding-top:2px;padding-bottom:2px" data-catalog-rarity-action="none">Clear</button></div></div><div class="checkbox-list" id="catalogRarityFilters">${rarityControls}</div></div></div></div>`;
 
                 const sectionsHtml = hasVisibleCards
                     ? showingAllExpansions
-                        ? `<div class="expansions-grid">${filteredSections
+                        ? `<div class="expansions-grid">${renderedSections
                               .map((section) => {
                                   const total = section.cards.length;
                                   const avail = section.cards.filter(
@@ -6214,15 +6422,18 @@
                                       (s, c) => s + c.totalCopies,
                                       0,
                                   );
+                                  const completion = total
+                                      ? Math.round((avail / total) * 100)
+                                      : 0;
                                   const iconUrl = getPackIconUrl(section.code);
-                                  return `<button type="button" class="expansion-nav" data-jump-expansion="${escapeHtml(section.code)}"><div class="ex-logo-wrap">${
+                                  return `<button type="button" class="expansion-nav" data-jump-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
                                       iconUrl
                                           ? `<img class="ex-icon" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'ex-icon-empty\\'></div>'">`
                                           : `<div class="ex-icon-empty"></div>`
                                   }</div><div class="ex-title">${escapeHtml(section.label)}</div><div class="ex-meta">${formatNumber(avail)}/${formatNumber(total)} cards · ${formatNumber(copies)} copies</div><div class="ex-go">Open \u2192</div></button>`;
                               })
                               .join("")}</div>`
-                        : filteredSections
+                        : renderedSections
                               .map((section) => {
                                   const cardsHtml = section.cards
                                       .map((card) => {
@@ -6264,8 +6475,13 @@
                               .join("")
                     : `<div class="empty panel">No cards match the selected rarity filters.</div>`;
 
-                const accountRows = selected ? [...selected.accountRows] : [];
-                sortCatalogAccounts(accountRows);
+                const accountRows = selected
+                    ? buildCatalogAccountRows(
+                          selected.id,
+                          cardToAccounts.get(selected.id) || new Map(),
+                          accountFirstSeenMs,
+                      )
+                    : [];
 
                 if (
                     selected &&
@@ -6341,9 +6557,14 @@
                 const sideHtml = `<aside class="catalog-side panel"><div class="catalog-side-title">Card availability</div>${selectedMeta}<div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div></div><div class="catalog-account-list">${accountItemsHtml}</div></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:10px"><button type="button" id="goToTradedBtn" style="flex:1;text-align:left;color:var(--muted);font-size:0.82rem;background:none;border:none;cursor:pointer;padding:4px 0">Traded cards →</button><button type="button" id="goToSharedBtn" style="flex:1;text-align:right;color:var(--muted);font-size:0.82rem;background:none;border:none;cursor:pointer;padding:4px 0">Shared cards →</button></div></aside>`;
 
                 el.rows.innerHTML = `<div class="catalog-layout"><section class="catalog-sections">${controlsHtml}${sectionsHtml}</section>${sideHtml}</div>`;
+                const clippedNote = hiddenCardCount
+                    ? ` Showing first ${formatNumber(renderedCardCount)} of ${formatNumber(filteredCardCount)} matching cards.`
+                    : "";
                 el.resultNote.textContent = hasVisibleCards
                     ? `${formatNumber(availableCards)} of ${formatNumber(byCardId.size)} cards available · ${formatNumber(availableCopies)} total available copy(s).`
                     : "No cards match the selected rarity filters.";
+                if (hasVisibleCards && hiddenCardCount)
+                    el.resultNote.textContent += clippedNote;
 
                 el.rows
                     .querySelectorAll("[data-catalog-card-id]")
@@ -6469,10 +6690,11 @@
                 if (searchInput) {
                     searchInput.addEventListener("input", () => {
                         state.catalogCardSearch = searchInput.value;
-                        deferRender(renderAllCardsView);
+                        debouncedCatalogRender();
                     });
                     searchInput.addEventListener("change", () => {
                         state.catalogCardSearch = searchInput.value;
+                        debouncedCatalogRender.cancel();
                         renderAllCardsView();
                     });
                 }
@@ -6504,6 +6726,7 @@
                     cardClearBtn.addEventListener("click", () => {
                         if (!state.catalogCardSearch) return;
                         state.catalogCardSearch = "";
+                        debouncedCatalogRender.cancel();
                         renderAllCardsView();
                     });
 
@@ -6862,6 +7085,7 @@
             function buildAccountOverview() {
                 if (state.accountRows) return state.accountRows;
                 const accountMap = new Map();
+                const cardFilterConfig = getActiveCardFilterConfig();
                 for (const row of state.filteredRows) {
                     let account = accountMap.get(row.account);
                     if (!account) {
@@ -6922,9 +7146,21 @@
                                 a.info.name.localeCompare(b.info.name) ||
                                 a.id.localeCompare(b.id),
                         );
+                        const visibleCardEntries =
+                            filterCardEntriesByActiveFilters(
+                                cardEntries,
+                                cardFilterConfig,
+                            );
+                        const visibleCardCount = visibleCardEntries.reduce(
+                            (sum, entry) => sum + entry.count,
+                            0,
+                        );
                         return {
                             ...account,
                             uniqueCards: account.cards.size,
+                            visibleCardCount,
+                            visibleUniqueCards: visibleCardEntries.length,
+                            visibleCardEntries,
                             ageDays: calculateAccountAgeDays(
                                 account.account,
                                 account.firstSeenMs,
@@ -6937,6 +7173,14 @@
                         const dir = asc ? 1 : -1;
                         if (state.accountSort === "account") {
                             return dir * a.account.localeCompare(b.account);
+                        }
+                        if (state.accountSort === "cards") {
+                            if (a.visibleCardCount !== b.visibleCardCount)
+                                return (
+                                    dir *
+                                    (a.visibleCardCount - b.visibleCardCount)
+                                );
+                            return a.account.localeCompare(b.account);
                         }
                         if (state.accountSort === "shinedust") {
                             const fallback = asc
@@ -7012,13 +7256,14 @@
                     : "";
                 // Active card filters narrow displayed cards — compute filtered entries for the badge counts.
                 const visibleEntries = sortCardEntriesByRarity(
-                    getVisibleAccountCardEntries(account.cardEntries),
+                    account.visibleCardEntries ||
+                        getVisibleAccountCardEntries(account.cardEntries),
                 );
-                const visibleCount = visibleEntries.reduce(
-                    (s, e) => s + e.count,
-                    0,
-                );
-                const visibleUnique = visibleEntries.length;
+                const visibleCount =
+                    account.visibleCardCount ??
+                    visibleEntries.reduce((s, e) => s + e.count, 0);
+                const visibleUnique =
+                    account.visibleUniqueCards ?? visibleEntries.length;
                 const cardFiltersActive =
                     visibleEntries.length !== account.cardEntries.length;
                 const countLabel = cardFiltersActive
@@ -7117,9 +7362,6 @@
                 const lastPulledFormatted = formatMetadataTimestamp(
                     metadata.lastPackPulled,
                 );
-                const lastModifiedFormatted = formatMetadataTimestamp(
-                    metadata.lastModified,
-                );
                 detailsSection.innerHTML = `
                     <button type="button" class="account-details-header" aria-expanded="${detailsExpanded ? "true" : "false"}">
                         <span class="account-details-title">Account Details</span>
@@ -7155,14 +7397,6 @@
                                 ? `<div class="account-detail-item">
                             <div class="account-detail-label">Last Pack Pulled</div>
                             <div class="account-detail-value">${escapeHtml(lastPulledFormatted)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            lastModifiedFormatted
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Last Modified</div>
-                            <div class="account-detail-value">${escapeHtml(lastModifiedFormatted)}</div>
                         </div>`
                                 : ""
                         }
@@ -7358,6 +7592,7 @@
             }
 
             function setView(view) {
+                const previousView = state.view;
                 state.view = view;
                 state.displayLimit = INITIAL_LIMIT;
                 el.rowViewTab.classList.toggle("active", view === "rows");
@@ -7377,6 +7612,10 @@
                         view === "shared" ||
                         view === "allcards",
                 );
+                if (view === "allcards" && previousView !== "allcards") {
+                    scheduleCatalogWarmup();
+                    renderCatalogPlaceholder();
+                }
                 // Defer the heavy render until AFTER the browser paints the
                 // updated tab/section state, so the click feels instant.
                 deferRender(renderCurrent);
@@ -7413,6 +7652,9 @@
                 deferRender(applyFiltersAndRender);
             }
             const debouncedFilter = debounce(applyFiltersAndRender, 180);
+            const debouncedCatalogRender = debounce(() => {
+                if (state.view === "allcards") renderAllCardsView();
+            }, 450);
             el.loadRemoteBtn.addEventListener("click", async () => {
                 if (el.loadRemoteBtn.disabled) return;
                 const originalText = el.loadRemoteBtn.textContent;

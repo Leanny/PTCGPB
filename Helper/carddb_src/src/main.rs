@@ -102,6 +102,18 @@ enum Command {
         #[arg(long)]
         cards: String,
     },
+    BuildDashboardCache {
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long)]
+        meta: PathBuf,
+        #[arg(long)]
+        signature: String,
+        #[arg(long)]
+        source_count: usize,
+        #[arg(long)]
+        source_bytes: u64,
+    },
 }
 
 fn main() {
@@ -234,6 +246,20 @@ fn run(cli: Cli) -> Result<()> {
             pack,
             cards,
         } => append_pull(&cli.root, &device_account, &timestamp, &pack, &cards),
+        Command::BuildDashboardCache {
+            output,
+            meta,
+            signature,
+            source_count,
+            source_bytes,
+        } => build_dashboard_cache(
+            &cli.root,
+            &output,
+            &meta,
+            &signature,
+            source_count,
+            source_bytes,
+        ),
     }
 }
 
@@ -301,6 +327,115 @@ fn account_file_path(root: &Path, account_key: &str) -> PathBuf {
 
 fn account_key_from_file(path: &Path) -> Option<String> {
     path.file_stem().map(|s| s.to_string_lossy().to_string())
+}
+
+fn build_dashboard_cache(
+    root: &Path,
+    output: &Path,
+    meta: &Path,
+    signature: &str,
+    source_count: usize,
+    source_bytes: u64,
+) -> Result<()> {
+    let dir = account_files_dir(root);
+    let mut paths = Vec::new();
+    if dir.exists() {
+        for entry in fs::read_dir(&dir).with_context(|| format!("Could not read {:?}", dir))? {
+            let path = entry?.path();
+            if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case("json"))
+            {
+                paths.push(path);
+            }
+        }
+    }
+    paths.sort_by(|a, b| {
+        a.file_name()
+            .map(|s| s.to_string_lossy())
+            .cmp(&b.file_name().map(|s| s.to_string_lossy()))
+    });
+
+    let mut accounts = Vec::with_capacity(paths.len());
+    let mut skipped = Vec::new();
+
+    for path in paths {
+        let file_name = path
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        match load_dashboard_account_document(&path, &file_name) {
+            Ok(doc) => accounts.push(doc),
+            Err(err) => skipped.push(json!({
+                "file": file_name,
+                "error": err.to_string(),
+            })),
+        }
+    }
+
+    let account_count = accounts.len();
+    let skipped_count = skipped.len();
+    let payload = json!({
+        "ok": true,
+        "source": "Accounts/Cards/accounts",
+        "accountCount": account_count,
+        "skippedCount": skipped_count,
+        "skipped": skipped,
+        "accounts": accounts,
+    });
+    let meta_payload = json!({
+        "signature": signature,
+        "sourceCount": source_count,
+        "sourceBytes": source_bytes,
+        "accountCount": account_count,
+        "skippedCount": skipped_count,
+        "generatedAt": Utc::now().to_rfc3339(),
+        "generator": "carddb",
+    });
+
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if let Some(parent) = meta.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    fs::write(output, serde_json::to_vec(&payload)?)?;
+    fs::write(meta, serde_json::to_vec(&meta_payload)?)?;
+    Ok(())
+}
+
+fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value> {
+    let text = fs::read_to_string(path).with_context(|| format!("Could not read {:?}", path))?;
+    let mut value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
+        .with_context(|| format!("Could not parse {:?}", path))?;
+    if !value.is_object() {
+        anyhow::bail!("Account JSON is not an object.");
+    }
+
+    let fallback_account = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let obj = value.as_object_mut().expect("dashboard account object");
+    let device_account_blank = obj
+        .get("deviceAccount")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("")
+        .is_empty();
+    if device_account_blank {
+        obj.insert("deviceAccount".to_owned(), json!(fallback_account));
+    }
+    if obj.get("metadata").map_or(true, Value::is_null) {
+        obj.insert("metadata".to_owned(), json!({}));
+    }
+    if obj.get("pulls").map_or(true, Value::is_null) {
+        obj.insert("pulls".to_owned(), json!([]));
+    }
+    obj.insert("sourceFileName".to_owned(), json!(file_name));
+    Ok(value)
 }
 
 fn merge_card_db(root: &Path) -> Result<()> {
