@@ -1257,11 +1257,6 @@
                 border-color: rgba(142, 180, 255, 0.72);
                 box-shadow: 0 0 0 1px rgba(142, 180, 255, 0.32) inset;
             }
-            .card-tile.shared {
-                opacity: 0.55;
-                filter: grayscale(0.35);
-            }
-
             .traded-btn {
                 position: absolute;
                 width: 30px;
@@ -1296,12 +1291,19 @@
                 font-weight: 900;
             }
 
-            .card-tile.traded .traded-btn,
+            .card-tile.traded .traded-mark-btn,
             .card-tile.shared .shared-remove-btn {
-                background: var(--accent);
-                color: #fff;
-                border-color: var(--accent);
-                box-shadow: none;
+                background: rgba(255, 255, 255, 0.94);
+                color: #c62828;
+                border-color: rgba(198, 40, 40, 0.45);
+                box-shadow: var(--qty-shadow);
+            }
+
+            .card-tile.traded .traded-mark-btn:hover,
+            .card-tile.shared .shared-remove-btn:hover {
+                background: rgba(198, 40, 40, 0.12);
+                color: #b71c1c;
+                border-color: rgba(198, 40, 40, 0.7);
             }
 
             .traded-btn:hover {
@@ -10926,16 +10928,20 @@
                         !disableTrade && account && isTraded(account, id);
                     const tradedClass = isInTraded ? " traded" : "";
                     const sharedClass = isInShared ? " shared" : "";
+                    const tradedMarkGlyph = isInTraded ? "\u2715" : "\u2713";
+                    const tradedMarkTitle = isInTraded
+                        ? "Remove from traded"
+                        : "Toggle traded status";
                     const tradedBtn =
                         !disableTrade &&
                         account &&
                         !noTrade &&
                         !options.sharedView
-                            ? `<button class="traded-btn traded-mark-btn" type="button" data-account="${escapeHtml(account)}" data-card-id="${escapeHtml(id)}" title="Toggle traded status">✓</button>`
+                            ? `<button class="traded-btn traded-mark-btn" type="button" data-account="${escapeHtml(account)}" data-card-id="${escapeHtml(id)}" title="${escapeHtml(tradedMarkTitle)}">${tradedMarkGlyph}</button>`
                             : "";
                     const sharedRemoveBtn =
                         options.sharedView && account
-                            ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="Remove from shared">✓</button>`
+                            ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="Remove from shared">\u2715</button>`
                             : "";
                     parts.push(
                         `<div class="card-tile${tradedClass}${sharedClass}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getRarityIconHtml(getCardRarityFilterKey(id, card))}</span></div></div>`,
