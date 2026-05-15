@@ -28,10 +28,12 @@ ResetStatusMessage() {
 
 CreateStatusMessage(Message, GuiName := "StatusMessage", X := 0, Y := 565, debugOnly := true, Persist := false) {
     global session
-    ; The controller GUI (PTCGPB.ahk) should not spawn floating status overlays.
-    ; Keep overlays enabled for Main.ahk and per-instance scripts.
-    if (A_ScriptName = "PTCGPB.ahk")
-        return
+
+    ; The controller GUI (PTCGPB.ahk) should not show floating status overlays,
+    ; but the GUI window must still be created: SendMetadataToPTCGPB routes
+    ; WM_COPYDATA to the window titled "PTCGPB.ahk" (default Gui title from
+    ; A_ScriptName) and without it ReceiveData never fires.
+    isController := (A_ScriptName = "PTCGPB.ahk")
 
     static hwnds := {}
     static resetStatusFunc := Func("ResetStatusMessage")
@@ -42,8 +44,6 @@ CreateStatusMessage(Message, GuiName := "StatusMessage", X := 0, Y := 565, debug
     if (Debug && Message != DEFAULT_STATUS_MESSAGE)
         LogToFile(GuiName . ": " . Message)
 
-    ; Cockpit reads Packs/Runs via WinGetText on AvgRunsN and transient text on StatusMessageN;
-    ; do not persist live status/pack snapshots in the instance INI (noisy writes, huge files).
     Cockpit_WriteLiveMetrics(Message)
 
     guiWidth := 275
@@ -84,7 +84,13 @@ CreateStatusMessage(Message, GuiName := "StatusMessage", X := 0, Y := 565, debug
 
                 Gui, %GuiName%:Show, NoActivate x%X% y%Y% w%guiWidth% h%guiheight%
             }
-            SetTimer, % timerReposition, 2000
+            if (!isController)
+                SetTimer, % timerReposition, 2000
+        }
+        if (isController) {
+            ; Force the window to exist (hidden) so SendMessage can find it.
+            Gui, %GuiName%:Show, Hide
+            return
         }
         SetTextAndResize(hwnds[GuiName], Message)
         Gui, %GuiName%:Show, NoActivate  w%guiWidth% h%guiheight%
