@@ -45,7 +45,7 @@ global THEME_DANGER := "EF476F"
 global THEME_FONT := "Segoe UI"
 global g_lvHasMainRow := 0
 global g_lastLvRowSigs := []
-global g_lastAvgRunByInstance := {}
+
 global g_rowMetaByRow := []
 global g_contextRow := 0
 global g_lvSortKey := ""
@@ -418,13 +418,12 @@ Cockpit_ShouldAutoCloseOnAllDead(state) {
 ;===============================================================================
 Cockpit_RenderHeader(state, stale := false) {
     global THEME_TEXT, THEME_MUTED, THEME_ACCENT, THEME_SUCCESS, THEME_WARN, THEME_DANGER
-        , g_lastAvgRunByInstance, g_cockpitStartEpoch
+        , g_cockpitStartEpoch
     g := state["Global"]
     e := state["Eta"]
     q := state["Queues"]
     t := state["Throughput"]
     injReady := Cockpit_IsInjectablesReady(state)
-    sessStartEpoch := g.HasKey("sessionStartEpoch") ? (g["sessionStartEpoch"] + 0) : 0
 
     ; ---- Mode (prominent) ----
     mode := g["modeActive"]
@@ -479,7 +478,7 @@ Cockpit_RenderHeader(state, stale := false) {
         avg := 0
         rph := 0
     }
-    GuiControl, Cockpit:, lblPaceVal, % (rph > 0 ? (rph . " injects / hour") : "-")
+    GuiControl, Cockpit:, lblPaceVal, % (rph > 0 ? (rph . " injects/hour") : "-")
     GuiControl, Cockpit:, lblAvgVal,  % (avg > 0 ? Metrics_FormatDurationMS(avg) : "-")
     GuiControl, Cockpit:, lblRunsVal, % runs . " completed this session"
 
@@ -503,16 +502,7 @@ Cockpit_RenderHeader(state, stale := false) {
             }
 
             injN := q.HasKey("injectable_" . instId) ? (q["injectable_" . instId] + 0) : 0
-            ls := inst.HasKey("lastStartEpoch") ? (inst["lastStartEpoch"] + 0) : 0
-            le := inst.HasKey("lastEndEpoch") ? (inst["lastEndEpoch"] + 0) : 0
-            avgRunSec := 0
-            if (ls > 0 && le >= ls && sessStartEpoch > 0 && le >= sessStartEpoch) {
-                avgRunSec := le - ls
-                if (avgRunSec > 0)
-                    g_lastAvgRunByInstance[instId] := avgRunSec
-            } else if (g_lastAvgRunByInstance.HasKey(instId) && (g_lastAvgRunByInstance[instId] + 0) > 0) {
-                avgRunSec := (g_lastAvgRunByInstance[instId] + 0)
-            }
+            avgRunSec := inst.HasKey("avgRunSeconds") ? (inst["avgRunSeconds"] + 0) : 0
 
             candEta := (injN > 0 && avgRunSec > 0) ? (injN * avgRunSec) : 0
             if (candEta > maxInstEta)
@@ -555,10 +545,8 @@ Cockpit_RenderHeader(state, stale := false) {
 ; Instance ListView rendering
 ;===============================================================================
 Cockpit_RenderInstances(state) {
-    global g_lastLvRowSigs, g_lastAvgRunByInstance, g_rowMetaByRow
-        , g_cockpitStartEpoch, g_lvSortKey, g_lvSortDir, g_lvColOrder
+    global g_lastLvRowSigs, g_rowMetaByRow, g_lvSortKey, g_lvSortDir, g_lvColOrder
     g := state["Global"]
-    sessStartEpoch := g.HasKey("sessionStartEpoch") ? (g["sessionStartEpoch"] + 0) : 0
     instances := state["Instances"]
     injReady := Cockpit_IsInjectablesReady(state)
     rows := []
@@ -574,36 +562,17 @@ Cockpit_RenderInstances(state) {
         account := Cockpit_FormatAccountFile(rawAccount)
         account := Cockpit_CapitalizeFirst(account)
         livePacks := (inst.HasKey("livePacks") && inst["livePacks"] != "") ? (inst["livePacks"] + 0) : -1
-        pks := (livePacks >= 0) ? livePacks : Cockpit_ExtractPacks(inst["accountFileName"])
+        pks := (livePacks >= 0) ? livePacks : "-"
         stk := (inst["stuckCountSession"] + 0)
         injN := (inst["injectables"] + 0)
         injTxt := injReady ? injN : "-"
-        if (!g_lastAvgRunByInstance.HasKey(N))
-            g_lastAvgRunByInstance[N] := 0
-        ls := inst.HasKey("lastStartEpoch") ? (inst["lastStartEpoch"] + 0) : 0
-        le := inst.HasKey("lastEndEpoch") ? (inst["lastEndEpoch"] + 0) : 0
         currentRunSec := inst.HasKey("currentRunSeconds") ? (inst["currentRunSeconds"] + 0) : 0
         gpFoundCount := inst.HasKey("gpFoundCount") ? (inst["gpFoundCount"] + 0) : 0
         runsSessionInst := inst.HasKey("runsSession") ? (inst["runsSession"] + 0) : 0
         hasCompletedRun := (runsSessionInst > 0)
         runsTxt := runsSessionInst
-        avgRunSec := 0
-        if (hasCompletedRun && ls > 0 && le >= ls && sessStartEpoch > 0 && le >= sessStartEpoch) {
-            avgRunSec := le - ls
-            if (avgRunSec > 0)
-                g_lastAvgRunByInstance[N] := avgRunSec
-        } else if (hasCompletedRun && g_lastAvgRunByInstance.HasKey(N) && (g_lastAvgRunByInstance[N] + 0) > 0) {
-            avgRunSec := (g_lastAvgRunByInstance[N] + 0)
-        } else if (hasCompletedRun) {
-            avgRunState := inst.HasKey("avgRunSeconds") ? (inst["avgRunSeconds"] + 0) : 0
-            if (avgRunState > 0) {
-                avgRunSec := avgRunState
-                g_lastAvgRunByInstance[N] := avgRunState
-            }
-        } else if (!hasCompletedRun) {
-            g_lastAvgRunByInstance[N] := 0
-        }
-        avgRunTxt := (avgRunSec > 0) ? Metrics_FormatDurationMS(avgRunSec) : "-"
+        avgRunSec := hasCompletedRun ? (inst.HasKey("avgRunSeconds") ? (inst["avgRunSeconds"] + 0) : 0) : 0
+        avgRunTxt := (avgRunSec > 0) ? Metrics_FormatDurationMmSs(avgRunSec) : "-"
         if (isActiveStatus)
             currentRunTxt := Metrics_FormatDurationMS(currentRunSec)
         else
@@ -915,14 +884,6 @@ Cockpit_FormatAccountFile(filename) {
     if (SubStr(filename, -3) = ".xml")
         return SubStr(filename, 1, StrLen(filename) - 4)
     return filename
-}
-
-Cockpit_ExtractPacks(filename) {
-    if (filename = "" || filename = "-")
-        return "-"
-    if (RegExMatch(filename, "^(\d+)P_", m))
-        return m1
-    return "-"
 }
 
 ;===============================================================================
@@ -1642,7 +1603,7 @@ Cockpit_EpochToLocalHMS(epoch) {
 }
 
 Cockpit_RenderStandalone() {
-    global botConfig, g_lastLvRowSigs, g_lastAvgRunByInstance, g_rowMetaByRow
+    global botConfig, g_lastLvRowSigs, g_rowMetaByRow
         , g_lastEventsText
         , THEME_MUTED, THEME_SUCCESS, THEME_WARN
     botConfig.loadSettingsToConfig("ALL")
@@ -1672,7 +1633,6 @@ Cockpit_RenderStandalone() {
     GuiControl, Cockpit:, lblPrgBar,  0
     GuiControl, Cockpit:, lblPrgVal, (bot offline)
     g_lastLvRowSigs := []
-    g_lastAvgRunByInstance := {}
     g_rowMetaByRow := []
     Gui, Cockpit:Default
     GuiControl, -Redraw, InstancesLv
@@ -1692,7 +1652,7 @@ Cockpit_RenderStandalone() {
 }
 
 Cockpit_RenderStartupPlaceholders(state) {
-    global botConfig, g_lastLvRowSigs, g_lastAvgRunByInstance, g_rowMetaByRow
+    global botConfig, g_lastLvRowSigs, g_rowMetaByRow
         , g_lastEventsText
         , THEME_MUTED, THEME_WARN
     g := state["Global"]
@@ -1723,7 +1683,6 @@ Cockpit_RenderStartupPlaceholders(state) {
     g_lastEventsText := "(Waiting for fresh data...)"
 
     g_lastLvRowSigs := []
-    g_lastAvgRunByInstance := {}
     g_rowMetaByRow := []
     Gui, Cockpit:Default
     GuiControl, -Redraw, InstancesLv

@@ -131,16 +131,13 @@ loadAccount() {
 
     getMetaData()
 
-    ; Cockpit hook: expose the currently injected account name to the
-    ; Aggregator via Scripts\<scriptName>.ini -> [Metrics] currentAccount.
-    ; The Aggregator reads this field every 2s with a default of "" so it is
-    ; safe to remove this hook without breaking anything.
+    ; Cockpit: Metrics\currentAccount only (written once on load). Never pack/status text here;
+    ; pack counts come from the instance GUIs/account metadata inside the aggregator.
     try {
         cockpitIni := A_ScriptDir . "\" . session.get("scriptName") . ".ini"
         IniWrite, % session.get("accountFileName"), %cockpitIni%, Metrics, currentAccount
-        IniWrite, % (session.get("accountOpenPacks") + 0), %cockpitIni%, Metrics, currentPacks
     } catch e {
-        ; non-fatal: the cockpit just shows blank for this instance
+        ; non-fatal
     }
 
     return loadFile

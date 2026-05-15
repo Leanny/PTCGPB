@@ -322,6 +322,15 @@ Metrics_FormatDurationMS(seconds) {
     return Format("{:02}", m) . ":" . Format("{:02}", s)
 }
 
+; Instance Average column: padded minutes + seconds with unit suffix, e.g. "05m 07s".
+Metrics_FormatDurationMmSs(seconds) {
+    if (seconds < 0)
+        seconds := 0
+    m := seconds // 60
+    s := seconds - m * 60
+    return Format("{:02}", m) . "m " . Format("{:02}", s) . "s"
+}
+
 Metrics_FormatDurationHMS(seconds) {
     if (seconds < 0)
         seconds := 0

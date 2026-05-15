@@ -59,7 +59,6 @@ Agg_InitEngine() {
 
 Agg_TickBody() {
     global g_aggState, g_aggSessionStartEpoch, g_aggLastShiftEpoch, g_aggLastMode, botConfig
-        , g_aggOverlayPollingEnabled
 
     botConfig.loadSettingsToConfig("ALL")
     instancesConfigured := (botConfig.get("Instances") + 0)
@@ -151,35 +150,33 @@ Agg_TickBody() {
             Agg_EmitEvent("info", "inst", N, "restart", "Instance " . N . " resumed")
         }
 
-        if (info.currentAccount = "") {
-            prev.accountFileName := ""
-            prev.livePacks := -1
-        } else if (info.currentAccount != prev.accountFileName) {
-            prev.accountFileName := info.currentAccount
-            prev.livePacks := -1
-        }
-
-        overlayTxt := ""
-        uiState := ""
-        if (g_aggOverlayPollingEnabled) {
-            overlayTxt := Agg_ReadInstanceOverlayText(N)
-            uiState := Agg_ParseOverlayStatus(overlayTxt)
-            livePacks := Agg_ParseOverlayPacks(overlayTxt)
-            if (livePacks >= 0)
-                prev.livePacks := livePacks
-        } else {
-            statusTxt := info.currentStatusText
-            if (statusTxt = "")
-                statusTxt := Agg_ReadInstanceStatusGuiText(N)
-            if (statusTxt != "") {
-                uiState := Agg_ParseOverlayStatus(statusTxt)
-                packsFromStatus := Agg_ParseOverlayPacks(statusTxt)
-                if (packsFromStatus >= 0)
-                    prev.livePacks := packsFromStatus
+        accountFromIni := Trim(info.currentAccount)
+        if (accountFromIni != "") {
+            if (accountFromIni != prev.accountFileName) {
+                prev.accountFileName := accountFromIni
+                prev.livePacks := -1
             }
         }
-        if (prev.livePacks < 0 && info.currentPacks >= 0)
-            prev.livePacks := info.currentPacks
+
+        ; Overlays/AvgRuns/StatusMessage are AutoHotkeyGUI on the script PID (+Owner MuMu).
+        ; WinGetText title match fails for Gui names reliably; enumerate by PID instead.
+        guiTxt := Agg_ReadInstanceOverlayText(N)
+        if (guiTxt = "")
+            guiTxt := Agg_ReadInstanceStatusGuiText(N)
+        uiState := Agg_ParseOverlayStatus(guiTxt)
+        livePacks := Agg_ParseOverlayPacks(guiTxt)
+        if (livePacks >= 0)
+            prev.livePacks := livePacks
+
+        overlayRuns := Agg_ParseOverlayRuns(guiTxt)
+        ; ListView Runs: prefer AvgRuns "Runs:" (same scrape as packs); else INI Metrics\rerolls; else ring samples.
+        if (overlayRuns >= 0)
+            prev.runsDisplayed := overlayRuns + 0
+        else {
+            prev.runsDisplayed := (info.rerolls + 0)
+            if (prev.runsDisplayed = 0 && prev.ring.Length() > 0)
+                prev.runsDisplayed := prev.ring.Length()
+        }
         if (prev.livePacks < 0 && prev.accountFileName != "") {
             livePacksMeta := Agg_GetAccountPackCount(prev.accountFileName)
             if (livePacksMeta >= 0)
@@ -308,7 +305,7 @@ Agg_TickBody() {
 Agg_ReadInstanceIni(N) {
     path := getScriptBaseFolder() . "\Scripts\" . N . ".ini"
     info := { "lastStartEpoch": 0, "lastEndEpoch": 0, "rerolls": 0
-        , "currentAccount": "", "currentPacks": -1, "currentStatusText": "" }
+        , "currentAccount": "" }
 
     if (!FileExist(path))
         return info
@@ -325,12 +322,6 @@ Agg_ReadInstanceIni(N) {
     IniRead, ca, %path%, Metrics, currentAccount, %A_Space%
     if (ca != "ERROR" && ca != "")
         info.currentAccount := ca
-    IniRead, cp, %path%, Metrics, currentPacks, -1
-    if (cp != "ERROR" && cp != "")
-        info.currentPacks := cp + 0
-    IniRead, cst, %path%, Metrics, currentStatusText, %A_Space%
-    if (cst != "ERROR" && cst != "")
-        info.currentStatusText := cst
 
     return info
 }
@@ -484,17 +475,39 @@ Agg_ReadInstanceStatusGuiText(N) {
     prevHidden := A_DetectHiddenWindows
     DetectHiddenWindows, On
     SetTitleMatchMode, 2
-    txt := ""
-    WinGetText, txt, % "StatusMessage" . N . " ahk_class AutoHotkeyGUI"
+    ; generateStatusText() (Packs:, Runs:, timing) updates AvgRuns<N> with Persist=true.
+    ; Short-lived messages use StatusMessage<N>; read both so packs are not missed.
+    WinGetText, avgTxt, % "AvgRuns" . N . " ahk_class AutoHotkeyGUI"
+    WinGetText, statusTxt, % "StatusMessage" . N . " ahk_class AutoHotkeyGUI"
     SetTitleMatchMode, %prevMode%
     DetectHiddenWindows, %prevHidden%
+    txt := ""
+    if (avgTxt != "") {
+        txt := avgTxt
+    }
+    if (statusTxt != "") {
+        if (txt != "")
+            txt .= "`n" . statusTxt
+        else
+            txt := statusTxt
+    }
     return txt
 }
 
 Agg_ParseOverlayPacks(rawText) {
     if (rawText = "")
         return -1
-    if (RegExMatch(rawText, "i)Packs:\s*(\d+)", m))
+    ; generateStatusText(): "Packs: " N " |" — allow stray spaces / fullwidth colon
+    if (RegExMatch(rawText, "i)Packs\s*[:：]\s*(\d+)", m))
+        return m1 + 0
+    return -1
+}
+
+Agg_ParseOverlayRuns(rawText) {
+    if (rawText = "")
+        return -1
+    ; generateStatusText(): "Runs: " N " |" — same allowances as Agg_ParseOverlayPacks
+    if (RegExMatch(rawText, "i)Runs\s*[:：]\s*(\d+)", m))
         return m1 + 0
     return -1
 }
@@ -611,7 +624,7 @@ Agg_WriteState(instancesConfigured, instancesRunning, instancesStuck
         CockpitState_AddKey(b, "lastSeenEpoch", d.lastSeenEpoch)
         CockpitState_AddKey(b, "lastStartEpoch", d.lastStartEpoch)
         CockpitState_AddKey(b, "lastEndEpoch", d.lastEndEpoch)
-        CockpitState_AddKey(b, "runsSession", d.ring.Length())
+        CockpitState_AddKey(b, "runsSession", d.HasKey("runsDisplayed") ? (d.runsDisplayed + 0) : d.ring.Length())
         CockpitState_AddKey(b, "avgRunSeconds", Round(Metrics_Mean(d.ring)))
         CockpitState_AddKey(b, "rerolls", d.rerolls)
         CockpitState_AddKey(b, "accountFileName", d.accountFileName)
