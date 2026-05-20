@@ -225,6 +225,29 @@ fn make_placeholder(card_id: &str, font: &FontArc, card_w: u32, card_h: u32) -> 
     img
 }
 
+// For multi-pack/gift with n>6, pick the fewest cols (=> biggest cards) that
+// still keeps the square canvas under a sane cap (~1.4x the 6-col baseline
+// width). Iterating from c=2 upward, the first c that fits is the one with the
+// largest possible card_w.
+fn pick_dynamic_cols(total: u32) -> u32 {
+    let base_w = PADDING + BASE_COLS * (CARD_W + PADDING);
+    let max_side = base_w * 7 / 5;
+    for c in 2..=total {
+        let card_w = base_w.saturating_sub((c + 1) * PADDING) / c;
+        if card_w == 0 {
+            continue;
+        }
+        let card_h = card_w * CARD_H / CARD_W;
+        let rows = total.div_ceil(c);
+        let grid_h = (rows + 1) * PADDING + rows * card_h;
+        let side = base_w.max(grid_h);
+        if side <= max_side {
+            return c;
+        }
+    }
+    BASE_COLS
+}
+
 fn composite(
     cards: &[(String, Option<RgbaImage>)],
     max_cols: usize,
@@ -232,11 +255,17 @@ fn composite(
     highlight: &HashSet<String>,
 ) -> RgbaImage {
     let total = cards.len();
-    // Multi-pack (cols=6) with few cards would render a thin strip of tiny
-    // cards inside a mostly-empty square. Fall back to the normal-pack 3-col
-    // layout so cards stay readable and the visual style matches.
-    let max_cols = if max_cols == 6 && total <= 5 {
-        3
+    // Multi-pack/gift mode (cols=6) gets dynamic layout management:
+    //   n<=6: use the normal-pack 3-col layout (same look as standard openings,
+    //         keeps cards readable instead of a thin strip)
+    //   n>6 : pick the column count that minimizes empty padding so cards grow as
+    //         large as possible within a square canvas
+    let max_cols = if max_cols == 6 {
+        if total <= 6 {
+            3
+        } else {
+            pick_dynamic_cols(total as u32) as usize
+        }
     } else {
         max_cols.max(1)
     };
