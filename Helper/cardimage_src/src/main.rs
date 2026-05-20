@@ -160,7 +160,7 @@ const BG: Rgba<u8> = Rgba([26, 26, 46, 255]);
 const PH_FILL: Rgba<u8> = Rgba([37, 37, 69, 255]);
 const PH_BORDER: Rgba<u8> = Rgba([74, 74, 158, 255]);
 const TEXT_COLOR: Rgba<u8> = Rgba([170, 170, 170, 255]);
-// Wishlist badge: red gradient circle (#E8254F) with a white heart, top-left.
+// Wishlist badge: red gradient circle (#E8254F) with a white heart, top-right.
 // Inspired by .wishlist-heart-btn.on in card_database.html.
 const WISHLIST_BADGE_BG: Rgba<u8> = Rgba([232, 37, 79, 255]);
 const WISHLIST_BADGE_RIM: Rgba<u8> = Rgba([255, 200, 210, 255]);
@@ -170,7 +170,7 @@ const WISHLIST_HEART: Rgba<u8> = Rgba([255, 255, 255, 255]);
 // card_w / CARD_W to keep the same visual proportion as on 6 cols.
 const WISHLIST_BADGE_RADIUS_BASE: f32 = 22.0;
 const WISHLIST_HEART_RADIUS_BASE: f32 = 14.0;
-const WISHLIST_BADGE_OFFSET_BASE: f32 = 26.0; // center offset from top-left corner
+const WISHLIST_BADGE_OFFSET_BASE: f32 = 26.0; // center offset from the nearer corner
 
 fn make_placeholder(card_id: &str, font: &FontArc, card_w: u32, card_h: u32) -> RgbaImage {
     let mut img: RgbaImage = ImageBuffer::from_pixel(card_w, card_h, PH_FILL);
@@ -232,18 +232,31 @@ fn composite(
     highlight: &HashSet<String>,
 ) -> RgbaImage {
     let total = cards.len();
-    let max_cols = max_cols.max(1);
+    // Multi-pack (cols=6) with few cards would render a thin strip of tiny
+    // cards inside a mostly-empty square. Fall back to the normal-pack 3-col
+    // layout so cards stay readable and the visual style matches.
+    let max_cols = if max_cols == 6 && total <= 5 {
+        3
+    } else {
+        max_cols.max(1)
+    };
     let cols = max_cols as u32;
     let rows = total.div_ceil(max_cols) as u32;
 
     // Keep the old 6-column canvas width even when fewer columns are requested.
-    let canvas_w = PADDING + BASE_COLS * (CARD_W + PADDING);
-    let card_w = (canvas_w.saturating_sub((cols + 1) * PADDING)) / cols;
+    let grid_w = PADDING + BASE_COLS * (CARD_W + PADDING);
+    let card_w = (grid_w.saturating_sub((cols + 1) * PADDING)) / cols;
     let card_h = card_w * CARD_H / CARD_W;
     // Variable height (based on rows)
-    let canvas_h = PADDING + rows * (card_h + PADDING);
+    let grid_h = PADDING + rows * (card_h + PADDING);
 
-    let mut canvas: RgbaImage = ImageBuffer::from_pixel(canvas_w, canvas_h, BG);
+    // Force a square canvas for consistent Discord gallery previews. The grid
+    // is centered inside; the shorter dimension is padded with BG.
+    let side = grid_w.max(grid_h);
+    let pad_x = (side - grid_w) / 2;
+    let pad_y = (side - grid_h) / 2;
+
+    let mut canvas: RgbaImage = ImageBuffer::from_pixel(side, side, BG);
 
     for (idx, (card_id, img_opt)) in cards.iter().enumerate() {
         let col = (idx % max_cols) as u32;
@@ -267,8 +280,8 @@ fn composite(
         let unused_slots = max_cols - cards_in_row;
         let center_offset = (unused_slots as u32 * (card_w + PADDING)) / 2;
 
-        let x = PADDING + center_offset + col * (card_w + PADDING);
-        let y = PADDING + row * (card_h + PADDING);
+        let x = pad_x + PADDING + center_offset + col * (card_w + PADDING);
+        let y = pad_y + PADDING + row * (card_h + PADDING);
 
         let card_img: RgbaImage = match img_opt {
             Some(src) => {
@@ -291,7 +304,7 @@ fn composite(
             let badge_radius = (WISHLIST_BADGE_RADIUS_BASE * scale).round() as i32;
             let heart_radius = WISHLIST_HEART_RADIUS_BASE * scale;
             let badge_offset = (WISHLIST_BADGE_OFFSET_BASE * scale).round() as i32;
-            let cx = x as i32 + badge_offset;
+            let cx = x as i32 + card_w as i32 - badge_offset;
             let cy = y as i32 + badge_offset;
             draw_filled_circle_mut(&mut canvas, (cx, cy), badge_radius, WISHLIST_BADGE_BG);
             draw_hollow_circle_mut(&mut canvas, (cx, cy), badge_radius, WISHLIST_BADGE_RIM);
@@ -305,10 +318,17 @@ fn composite(
 // Fills pixels inside the implicit heart curve (x² + y² − 1)³ − x²·y³ ≤ 0,
 // scaled to `radius`, centered at (cx, cy). Pixel-rasterised, no AA.
 fn draw_heart(canvas: &mut RgbaImage, cx: i32, cy: i32, radius: f32, color: Rgba<u8>) {
-    let r_int = radius.ceil() as i32;
+    // The curve extends past |x|=1 (up to ~±1.13 at the widest lobe), the
+    // lobes peak slightly above y=1, and the +0.25 vertical shift pushes the
+    // bottom tip down to ~1.25r below center. Iterating only [-r, r] clips
+    // the sides, the lobe tops, and the bottom point. Extra iterations are
+    // free (the curve check filters them out).
+    let r_x = (radius * 1.3).ceil() as i32;
+    let r_y_top = (radius * 1.1).ceil() as i32;
+    let r_y_bot = (radius * 1.4).ceil() as i32;
     let (w, h) = (canvas.width() as i32, canvas.height() as i32);
-    for dy in -r_int..=r_int {
-        for dx in -r_int..=r_int {
+    for dy in -r_y_top..=r_y_bot {
+        for dx in -r_x..=r_x {
             let x = dx as f32 / radius;
             // Flip vertically and shift up so the heart sits visually centered
             // (the curve's bounding box is taller above than below).
