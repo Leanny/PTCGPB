@@ -22,6 +22,7 @@ CoordMode, Pixel, Screen
 #Include AccountMetadata.ahk
 #Include Database.ahk
 #Include Wishlist.ahk
+#Include CardNames.ahk
 #Include CardDetection.ahk
 #Include AccountManager.ahk
 #Include FriendManager.ahk

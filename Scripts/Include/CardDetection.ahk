@@ -629,36 +629,19 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
     LogInfo(logMessage, "S4T.txt")
 
     if (!botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL")) {
-        packDetailsMessage := ""
-        if (found3Dmnd > 0)
-            packDetailsMessage .= "Three Diamond (x" . found3Dmnd . "), "
-        if (found4Dmnd > 0)
-            packDetailsMessage .= "Four Diamond EX (x" . found4Dmnd . "), "
-        if (found1Star > 0)
-            packDetailsMessage .= "One Star (x" . found1Star . "), "
-        if (foundGimmighoul > 0)
-            packDetailsMessage .= "Gimmighoul (x" . foundGimmighoul . "), "
-        if (foundCrown > 0)
-            packDetailsMessage .= "Crown (x" . foundCrown . "), "
-        if (foundImmersive > 0)
-            packDetailsMessage .= "Immersive (x" . foundImmersive . "), "
-        if (foundShiny1Star > 0)
-            packDetailsMessage .= "Shiny 1-Star (x" . foundShiny1Star . "), "
-        if (foundShiny2Star > 0)
-            packDetailsMessage .= "Shiny 2-Star (x" . foundShiny2Star . "), "
-        if (foundTrainer > 0)
-            packDetailsMessage .= "Trainer (x" . foundTrainer . "), "
-        if (foundRainbow > 0)
-            packDetailsMessage .= "Rainbow (x" . foundRainbow . "), "
-        if (foundFullArt > 0)
-            packDetailsMessage .= "Full Art (x" . foundFullArt . "), "
+        ; Legacy path has only count vars (no card IDs/rarity array). Reuse the
+        ; shared builder via count-only fallback: Discord format stays consistent
+        ; with the modern paths, just without per-card names.
+        foundCards := { "3Diamond": found3Dmnd, "4Diamond": found4Dmnd, "1Star": found1Star
+                      , "Crown": foundCrown, "Immersive": foundImmersive
+                      , "Shiny1Star": foundShiny1Star, "Shiny2Star": foundShiny2Star
+                      , "Trainer": foundTrainer, "Rainbow": foundRainbow, "FullArt": foundFullArt }
+        packDetailsMessage := CardName_BuildFoundBlock("", "", foundCards)
 
-        packDetailsMessage := RTrim(packDetailsMessage, ", ")
-
-        discordMessage := statusMessage . " in instance: " . session.get("scriptName")
-        discordMessage .= " (" . session.get("packsInPool") . " packs, " . session.get("openPack") . ")\n"
-        discordMessage .= "Found: " . packDetailsMessage . "\n"
-        discordMessage .= "Screenshot File name: " . session.get("accountFileName") . "\nContinuing..."
+        discordMessage := S4T_BuildDiscordHeader("Pack Opening results", session.get("scriptName"), session.get("packsInPool"), session.get("openPack"), Chr(0x1F4E6)) . "\n"
+        if (packDetailsMessage != "")
+            discordMessage .= "\n" . packDetailsMessage . "\n\n"
+        discordMessage .= "File name: " . session.get("accountFileName")
 
         ; Prepare XML file path for attachment
         xmlFileToSend := ""
@@ -726,6 +709,8 @@ CheckCardsSimple(result) {
 
         scriptName := session.get("scriptName")
         winTitle := session.get("winTitle")
+        packsInPool := session.get("packsInPool")
+        openPack := session.get("openPack")
         loadDir := session.get("loadDir")
         accountFileName := session.get("accountFileName")
 
@@ -752,7 +737,6 @@ CheckCardsSimple(result) {
         foundTradeable := 0
         cardTypes := []
         cardCounts := []
-        packDetailsMessage := ""
 
         for _, type in order {
             count := foundCards.HasKey(type) ? foundCards[type] : 0
@@ -761,15 +745,12 @@ CheckCardsSimple(result) {
             if (count > 0) {
                 cardTypes.Push(type)
                 cardCounts.Push(count)
-
-                ; Wishlist gets its own inline line below, not lumped into "Found: ..."
-                if (type != "Wishlist") {
-                    if (packDetailsMessage != "")
-                        packDetailsMessage .= ", "
-                    packDetailsMessage .= displayNames[type] . " (x" . count . ")"
-                }
             }
         }
+
+        ; Build the Discord rarity summary with per-rarity emoji + card names.
+        ; CardName_BuildFoundBlock handles the cards/rarity-missing case gracefully.
+        packDetailsMessage := CardName_BuildFoundBlock(cards, rarity, foundCards)
         deviceAccount := GetDeviceAccountFromXML()
         savedXmlPath := ""
 
@@ -845,9 +826,10 @@ CheckCardsSimple(result) {
         }
 
         if (!botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL")) {
-            discordMessage := statusMessage . " in instance: " . scriptName . "\n"
+            packName := (openPack != "") ? openPack : pack
+            discordMessage := S4T_BuildDiscordHeader("Gift Pack Opening results", scriptName, packsInPool, packName, Chr(0x1F381)) . "\n"
             if (packDetailsMessage != "")
-                discordMessage .= "Found: " . packDetailsMessage . "\n"
+                discordMessage .= "\n" . packDetailsMessage . "\n\n"
             if (hasWishlist) {
                 sparkle := Chr(0x2728)
                 discordMessage .= sparkle . " WISHLIST: " . Wishlist_FormatNames(wishlistMatches) . " " . sparkle . "\n"
@@ -903,7 +885,6 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     foundTradeable := 0
     cardTypes := []
     cardCounts := []
-    packDetailsMessage := ""
 
     for _, type in order {
         count := foundCards.HasKey(type) ? foundCards[type] : 0
@@ -912,15 +893,12 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
         if (count > 0) {
             cardTypes.Push(type)
             cardCounts.Push(count)
-
-            ; Wishlist gets its own inline line below, not lumped into "Found: ..."
-            if (type != "Wishlist") {
-                if (packDetailsMessage != "")
-                    packDetailsMessage .= ", "
-                packDetailsMessage .= displayNames[type] . " (x" . count . ")"
-            }
         }
     }
+
+    ; Build the Discord rarity summary with per-rarity emoji + card names.
+    ; CardName_BuildFoundBlock handles the cards/rarity-missing case gracefully.
+    packDetailsMessage := CardName_BuildFoundBlock(cards, rarity, foundCards)
 
     if (botConfig.get("s4tWP") && botConfig.get("s4tWPMinCards") = 2 && foundTradeable < 2) {
         CreateStatusMessage("s4t: insufficient cards (" . foundTradeable . "/2)",,,, false)
@@ -989,9 +967,12 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
 
     screenShotFileName := ""
     isSyntheticImage := false
-    ; Try to generate a synthetic image from card IDs (avoids storing real screenshots on disk)
-    syntheticCards := IsObject(rarity) ? FilterCardsByS4T(cards, rarity) : cards
-    if (IsObject(rarity) && (!IsObject(syntheticCards) || syntheticCards.MaxIndex() = "") && hasWishlist)
+    ; Try to generate a synthetic image from card IDs (avoids storing real screenshots on disk).
+    ; Only multi-pull (10-pack) needs s4t filtering on the synth image — single-pull packs
+    ; show all 5 cards regardless of rarity. The rarity array itself is always honored for
+    ; the webhook name lookup (CardName_BuildFoundBlock).
+    syntheticCards := (isTenPackOpening && IsObject(rarity)) ? FilterCardsByS4T(cards, rarity) : cards
+    if (isTenPackOpening && IsObject(rarity) && (!IsObject(syntheticCards) || syntheticCards.MaxIndex() = "") && hasWishlist)
         syntheticCards := FilterCardsByWishlistMatches(cards, wishlistMatches)
     if (IsObject(syntheticCards) && syntheticCards.MaxIndex() > 0) {
         synthPath := ""
@@ -1027,14 +1008,16 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     LogInfo(logMessage, "S4T.txt")
 
     if (!botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL")) {
-        discordMessage := statusMessage . " in instance: " . scriptName . " (" . packsInPool . " packs, " . packName . ")\n"
+        headerTitle := isTenPackOpening ? "10-Packs Opening results" : "Pack Opening results"
+        headerEmoji := Chr(0x1F4E6)
+        discordMessage := S4T_BuildDiscordHeader(headerTitle, scriptName, packsInPool, packName, headerEmoji) . "\n"
         if (packDetailsMessage != "")
-            discordMessage .= "Found: " . packDetailsMessage . "\n"
+            discordMessage .= "\n" . packDetailsMessage . "\n\n"
         if (hasWishlist) {
             sparkle := Chr(0x2728)
             discordMessage .= sparkle . " WISHLIST: " . Wishlist_FormatNames(wishlistMatches) . " " . sparkle . "\n"
         }
-        discordMessage .= "File name: " . accountFileName . "\nContinuing..."
+        discordMessage .= "File name: " . accountFileName
 
         xmlFileToSend := ""
         if (botConfig.get("s4tSendAccountXml") && savedXmlPath && FileExist(savedXmlPath))
@@ -1048,6 +1031,27 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
         FileDelete, %screenShot%
 
     return
+}
+
+S4T_BuildDiscordHeader(title, scriptName, packsInPool := "", packName := "", emoji := "") {
+    separator := " " . Chr(0x00B7) . " "
+    header := ""
+    if (emoji != "")
+        header .= emoji . " "
+    header .= title . separator . "Instance: " . scriptName
+
+    details := ""
+    if (packsInPool != "")
+        details .= packsInPool . " packs"
+    if (packName != "") {
+        if (details != "")
+            details .= separator
+        details .= packName
+    }
+    if (details != "")
+        header .= " (" . details . ")"
+
+    return header
 }
 
 ;-------------------------------------------------------------------------------

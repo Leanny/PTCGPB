@@ -225,13 +225,17 @@ fn make_placeholder(card_id: &str, font: &FontArc, card_w: u32, card_h: u32) -> 
     img
 }
 
-// For multi-pack/gift with n>6, pick the fewest cols (=> biggest cards) that
-// still keeps the square canvas under a sane cap (~1.4x the 6-col baseline
-// width). Iterating from c=2 upward, the first c that fits is the one with the
-// largest possible card_w.
+// For multi-pack/gift with n>6, pick the layout that makes cards largest after
+// Discord scales the square preview. Raw card pixels alone are misleading:
+// 7 cards in 3 columns gives wider source cards than 4 columns, but also creates
+// a much taller square canvas, so the displayed cards can end up smaller.
 fn pick_dynamic_cols(total: u32) -> u32 {
     let base_w = PADDING + BASE_COLS * (CARD_W + PADDING);
     let max_side = base_w * 7 / 5;
+    let mut best_cols = BASE_COLS.min(total).max(1);
+    let mut best_score_num = 0;
+    let mut best_score_den = 1;
+
     for c in 2..=total {
         let card_w = base_w.saturating_sub((c + 1) * PADDING) / c;
         if card_w == 0 {
@@ -241,11 +245,18 @@ fn pick_dynamic_cols(total: u32) -> u32 {
         let rows = total.div_ceil(c);
         let grid_h = (rows + 1) * PADDING + rows * card_h;
         let side = base_w.max(grid_h);
-        if side <= max_side {
-            return c;
+        if side > max_side {
+            continue;
+        }
+
+        if (card_w as u64) * best_score_den > best_score_num * (side as u64) {
+            best_cols = c;
+            best_score_num = card_w as u64;
+            best_score_den = side as u64;
         }
     }
-    BASE_COLS
+
+    best_cols
 }
 
 fn composite(
@@ -381,6 +392,21 @@ fn parse_ids(input: &str) -> Vec<String> {
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty())
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn seven_cards_use_two_rows_for_larger_discord_preview() {
+        assert_eq!(pick_dynamic_cols(7), 4);
+    }
+
+    #[test]
+    fn nine_cards_still_prefer_three_large_columns() {
+        assert_eq!(pick_dynamic_cols(9), 3);
+    }
 }
 
 #[tokio::main]

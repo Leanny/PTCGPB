@@ -22,6 +22,7 @@ pToken := Gdip_Startup()
 #Include AccountMetadata.ahk
 #Include Database.ahk
 #Include Wishlist.ahk
+#Include CardNames.ahk
 #Include CardDetection.ahk
 #Include AccountManager.ahk
 #Include FriendManager.ahk
@@ -2098,7 +2099,7 @@ CheckPack(stopEarly := false) {
         LogDebug(logMessage, "debug_cards.txt")
 
         if (foundTradeable > 0) {
-            FoundTradeableNew(foundCards, pack, cards, multiPullResult ? rarity : "", multiPullResult)
+            FoundTradeableNew(foundCards, pack, cards, rarity, multiPullResult)
             ; Continue with the rest of the run in s4t mode; don't return early.
         }
     }
