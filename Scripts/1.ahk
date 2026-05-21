@@ -126,6 +126,17 @@ if(botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
     session.set("packMethod", 0)
 
 IniRead, DeadCheck, % session.get("scriptIniFile"), UserSettings, DeadCheck, 0
+IniRead, friendCleanupPending, % session.get("scriptIniFile"), UserSettings, friendCleanupPending, 0
+if (friendCleanupPending = 1) {
+    DeadCheck := 1
+    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+    session.set("friended", true)
+    IniRead, friendCleanupReason, % session.get("scriptIniFile"), Recovery, friendCleanupReason,
+    LogInfo("Friend cleanup pending found at startup. Entering cleanup recovery. Reason: " . friendCleanupReason, "GroupReroll.txt")
+}
+if (DeadCheck = 1)
+    RestoreLoadedAccountForRecovery()
+
 IniRead, rerollsValue, % session.get("scriptIniFile"), Metrics, rerolls, 0
 IniRead, rerollStartTimeValue, % session.get("scriptIniFile"), Metrics, rerollStartTime, -1
 
@@ -1329,12 +1340,15 @@ restartGameInstance(reason, RL := true) {
         ; This guarantees startup recovery removes friends before loading a new account.
         if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
             IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+            SetFriendCleanupPending("Stuck recovery: " . reason)
+            LogInfo("Friend cleanup pending set for stuck recovery. Reason: " . reason, "GroupReroll.txt")
         }
     }
 
     if (RL = "GodPack") {
         LogInfo("Restarted game. Reason: " reason)
         IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
+        ClearFriendCleanupPending()
         if (!botConfig.get("groupRerollEnabled"))
             AppendFriendCodeToManualVipIds(session.get("friendCode"))
         SendMetadataToPTCGPB(session.get("packsThisRun"))
