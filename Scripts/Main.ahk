@@ -303,7 +303,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     ;bboxAndPause(X1, Y1, X2, Y2)
 
     ; ImageSearch within the region
-    vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+    vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
     ErrorCheckInScreen(pBitmap)
     Gdip_DisposeImage(pBitmap)
     if(EL = 0)
@@ -380,7 +380,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         Y2 := needleObj.coords.endY
         ;bboxAndPause(X1, Y1, X2, Y2)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
         ErrorCheckInScreen(pBitmap)
         Gdip_DisposeImage(pBitmap)
         if (!confirmed && vRet = 1) {
@@ -402,7 +402,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         Path = %imagePath%Error1.png
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, 15, 155, 270, 420, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [15, 155, 270, 420], [15, 155, 270, 420], searchVariation)
         Gdip_DisposeImage(pBitmap)
         if (vRet = 1) {
             CreateStatusMessage("Error message in " . session.get("scriptName") . ". Clicking retry...")
@@ -431,9 +431,10 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
 
 resetWindows(){
     prof := Prof_Scope(A_ThisFunc)
-    global botConfig
+    global botConfig, session
 
-    scaleParam := 283
+    windowMetrics := GetMumuWindowMetrics()
+    scaleParam := windowMetrics.scaleParam
     CreateStatusMessage("Arranging window positions and sizes")
     RetryCount := 0
     MaxRetries := 10
@@ -448,7 +449,7 @@ resetWindows(){
                 instanceIndex := 1
 
             borderWidth := 4 - 1
-            rowHeight := 40 + 492
+            rowHeight := windowMetrics.rowHeight
             currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
             y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
@@ -946,12 +947,19 @@ bboxAndPause(X1, Y1, X2, Y2, doPause := False) {
 GetNeedle(Path) {
     prof := Prof_Scope(A_ThisFunc)
     static NeedleBitmaps := Object()
+    Path := ResolveNeedlePath(Path)
+
     if (NeedleBitmaps.HasKey(Path)) {
         return NeedleBitmaps[Path]
     } else {
         pNeedle := Gdip_CreateBitmapFromFile(Path)
-        NeedleBitmaps[Path] := pNeedle
-        return pNeedle
+        needleObj := Object()
+        needleObj.Path := Path
+        pathsplit := StrSplit(Path , "\")
+        needleObj.Name := pathsplit[pathsplit.MaxIndex()]
+        needleObj.needle := pNeedle
+        NeedleBitmaps[Path] := needleObj
+        return needleObj
     }
 }
 
@@ -2186,17 +2194,31 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     ; Returns: Result from Gdip_ImageSearch
     ; ------------------------------------------------------------------------------
     global session
-    yBias := 40 - 45
+    windowMetrics := GetMumuWindowMetrics()
+    yBias := windowMetrics.imageSearchYBias
     vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+yBias,OuterX2,OuterY2+yBias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
     if(session.get("dbg_bbox"))
         bboxAndPause_immage(OuterX1, OuterY1+yBias, OuterX2, OuterY2+yBias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
 }
 
+Gdip_ImageSearchProfile_wbb(pBitmapHaystack, pNeedle, ByRef OutputList=""
+    , coords100="", coords125="", Variation=0, Trans=""
+    , SearchDirection=1, Instances=1, LineDelim="`n", CoordDelim=",") {
+    if (!IsObject(coords125))
+        coords125 := coords100
+
+    coords := GetScaleProfileValue(coords100, coords125)
+    return Gdip_ImageSearch_wbb(pBitmapHaystack, pNeedle, OutputList
+        , coords[1], coords[2], coords[3], coords[4], Variation, Trans
+        , SearchDirection, Instances, LineDelim, CoordDelim)
+}
+
 DirectlyPositionWindow() {
     global botConfig, session
 
-    scaleParam := 283
+    windowMetrics := GetMumuWindowMetrics()
+    scaleParam := windowMetrics.scaleParam
     rowGap := botConfig.get("RowGap")
 
     ; Get monitor information
@@ -2210,10 +2232,8 @@ DirectlyPositionWindow() {
     if (instanceIndex = "")
         instanceIndex := 1
 
-    titleHeight := 40
-
     borderWidth := 4 - 1
-    rowHeight := titleHeight + 492
+    rowHeight := windowMetrics.rowHeight
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)

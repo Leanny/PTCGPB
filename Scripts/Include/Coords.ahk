@@ -22,12 +22,15 @@ class Needle{
     needleName := ""
     imageName := ""
     coords := ""
+    coords100 := ""
+    scale125Coords := ""
 
     __New(needleName, imageName, coords)
     {
         this.needleName := needleName
         this.imageName := imageName
         this.coords := coords
+        this.coords100 := coords
     }
 }
 
@@ -40,7 +43,23 @@ class NeedlesDict{
     }
 
     Get(needleName){
-        return this.needles[needleName]
+        needleObj := this.needles[needleName]
+        if (!IsObject(needleObj))
+            return needleObj
+
+        if (GetConfiguredDisplayScale() = 125 && needleObj.scale125Coords)
+            needleObj.coords := needleObj.scale125Coords
+        else
+            needleObj.coords := needleObj.coords100
+
+        return needleObj
+    }
+
+    SetScale125(needleName, coords){
+        if (!this.needles.HasKey(needleName))
+            return
+
+        this.needles[needleName].scale125Coords := coords
     }
 }
 

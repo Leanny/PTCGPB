@@ -184,7 +184,8 @@ Loop {
         sleep, 1000
         OwnerWND := getMuMuHwnd(session.get("winTitle"))
         x4 := x + 4
-        y4 := y + 529
+        windowMetrics := GetMumuWindowMetrics()
+        y4 := y + windowMetrics.rowHeight - 3
         buttonWidth := 50
 
         Gui, New, +Owner%OwnerWND% -AlwaysOnTop +ToolWindow -Caption +LastFound -DPIScale
@@ -1290,9 +1291,10 @@ resetWindows() {
 
 DirectlyPositionWindow() {
     prof := Prof_Scope(A_ThisFunc)
-    global botConfig
+    global botConfig, session
 
-    scaleParam := 283
+    windowMetrics := GetMumuWindowMetrics()
+    scaleParam := windowMetrics.scaleParam
     rowGap := botConfig.get("rowGap")
 
     ; Get monitor information
@@ -1308,10 +1310,8 @@ DirectlyPositionWindow() {
         instanceIndex := Title
     }
 
-    titleHeight := 40
-
     borderWidth := 4 - 1
-    rowHeight := titleHeight + 492
+    rowHeight := windowMetrics.rowHeight
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)
@@ -2776,11 +2776,10 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
         fileName := "packstats_temp.png"
     filePath := fileDir "\" . fileName
 
-    yBias := 40
-    cropX := 18
+    cropX := GetScaleProfileValue(18, 12)
     cropY := 170
-    cropW := 240
-    cropH := 227
+    cropW := GetScaleProfileValue(240, 251)
+    cropH := GetScaleProfileValue(227, 245)
 
     if (fileType = "FRIENDCODE"){
         cropX := 18
@@ -3433,15 +3432,30 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     profNeedle := Prof_Scope(A_ThisFunc . ":" . pNeedle.Name)
     global session
 
-    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1,OuterX2,OuterY2,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
+    windowMetrics := GetMumuWindowMetrics()
+    yBias := windowMetrics.imageSearchYBias
+    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+yBias,OuterX2,OuterY2+yBias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
     if(session.get("dbg_bbox"))
-        bboxAndPause_immage(OuterX1, OuterY1, OuterX2, OuterY2, pNeedle, vret, session.get("dbg_bboxNpause"))
+        bboxAndPause_immage(OuterX1, OuterY1+yBias, OuterX2, OuterY2+yBias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
+}
+
+Gdip_ImageSearchProfile_wbb(pBitmapHaystack, pNeedle, ByRef OutputList=""
+    , coords100="", coords125="", Variation=0, Trans=""
+    , SearchDirection=1, Instances=1, LineDelim="`n", CoordDelim=",") {
+    if (!IsObject(coords125))
+        coords125 := coords100
+
+    coords := GetScaleProfileValue(coords100, coords125)
+    return Gdip_ImageSearch_wbb(pBitmapHaystack, pNeedle, OutputList
+        , coords[1], coords[2], coords[3], coords[4], Variation, Trans
+        , SearchDirection, Instances, LineDelim, CoordDelim)
 }
 
 GetNeedle(Path) {
     prof := Prof_Scope(A_ThisFunc)
     static NeedleBitmaps := Object()
+    Path := ResolveNeedlePath(Path)
 
     if (NeedleBitmaps.HasKey(Path)) {
         return NeedleBitmaps[Path]
