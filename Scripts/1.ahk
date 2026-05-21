@@ -1,4 +1,4 @@
-﻿#SingleInstance on
+﻿#SingleInstance, Force
 SetMouseDelay, -1
 SetDefaultMouseSpeed, 0
 SetBatchLines, -1

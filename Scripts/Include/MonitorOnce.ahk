@@ -74,18 +74,9 @@ killAHK(scriptName := "")
 
     if(scriptName != "") {
         DetectHiddenWindows, On
-        WinGet, IDList, List, ahk_class AutoHotkey
-        Loop %IDList%
-        {
-            ID:=IDList%A_Index%
-            WinGetTitle, ATitle, ahk_id %ID%
-            if InStr(ATitle, "\" . scriptName) {
-                ; MsgBox, Killing: %ATitle%
-                WinKill, ahk_id %ID% ;kill
-                ; WinClose, %fullScriptPath% ahk_class AutoHotkey
-                killed := killed + 1
-            }
-        }
+        killedPIDs := {}
+        killed += killAHKWindowsByClass(scriptName, "AutoHotkey", killedPIDs)
+        killed += killAHKWindowsByClass(scriptName, "#32770", killedPIDs)
     }
 
     return killed
@@ -97,18 +88,58 @@ checkAHK(scriptName := "")
 
     if(scriptName != "") {
         DetectHiddenWindows, On
-        WinGet, IDList, List, ahk_class AutoHotkey
-        Loop %IDList%
-        {
-            ID:=IDList%A_Index%
-            WinGetTitle, ATitle, ahk_id %ID%
-            if InStr(ATitle, "\" . scriptName) {
+        seenPIDs := {}
+        cnt += countAHKWindowsByClass(scriptName, "AutoHotkey", seenPIDs)
+        cnt += countAHKWindowsByClass(scriptName, "#32770", seenPIDs)
+    }
+
+    return cnt
+}
+
+killAHKWindowsByClass(scriptName, winClass, killedPIDs)
+{
+    killed := 0
+    WinGet, IDList, List, ahk_class %winClass%
+    Loop %IDList%
+    {
+        ID:=IDList%A_Index%
+        WinGetTitle, ATitle, ahk_id %ID%
+        if (isAHKScriptWindowTitle(ATitle, scriptName)) {
+            WinGet, ahkPID, PID, ahk_id %ID%
+            if (ahkPID && !killedPIDs.HasKey(ahkPID)) {
+                Process, Close, %ahkPID%
+                killedPIDs[ahkPID] := true
+                killed := killed + 1
+            }
+        }
+    }
+
+    return killed
+}
+
+countAHKWindowsByClass(scriptName, winClass, seenPIDs)
+{
+    cnt := 0
+    WinGet, IDList, List, ahk_class %winClass%
+    Loop %IDList%
+    {
+        ID:=IDList%A_Index%
+        WinGetTitle, ATitle, ahk_id %ID%
+        if (isAHKScriptWindowTitle(ATitle, scriptName)) {
+            WinGet, ahkPID, PID, ahk_id %ID%
+            if (ahkPID && !seenPIDs.HasKey(ahkPID)) {
+                seenPIDs[ahkPID] := true
                 cnt := cnt + 1
             }
         }
     }
 
     return cnt
+}
+
+isAHKScriptWindowTitle(ATitle, scriptName)
+{
+    return (InStr(ATitle, "\" . scriptName) || ATitle = scriptName)
 }
 
 killInstance(instanceNum := "")

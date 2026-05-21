@@ -1,4 +1,4 @@
-﻿#SingleInstance on
+﻿#SingleInstance, Force
 SetMouseDelay, -1
 SetDefaultMouseSpeed, 0
 SetBatchLines, -1
@@ -465,6 +465,9 @@ resetWindows(){
 restartGameInstance(reason, RL := true){
     global botConfig, session
 
+    if (InStr(reason, "Stuck at "))
+        SaveStuckScreenshot(reason)
+
     if(botConfig.get("heartBeatOwnerWebHookURL") != "")
         LogToDiscord(A_ScriptName . " instance has begin restart. Please verify that GodPack has not disappeared upon entering the main screen.\nReasion: " . reason,, true,,, botConfig.get("heartBeatOwnerWebHookURL"))
 
@@ -484,6 +487,30 @@ restartGameInstance(reason, RL := true){
         session.set("isDead", true)
         IniWrite, 1, % session.get("scriptIniFile"), Metrics, isDead
         SafeReload()
+    }
+}
+
+SaveStuckScreenshot(reason) {
+    global session
+
+    fileDir := A_ScriptDir . "\..\Screenshots\Stuck"
+    if !FileExist(fileDir)
+        FileCreateDir, %fileDir%
+
+    safeReason := RegExReplace(reason, "[\\/:*?""<>|]", "_")
+    safeReason := RegExReplace(safeReason, "\s+", "_")
+    safeReason := SubStr(safeReason, 1, 80)
+    filePath := fileDir . "\" . A_Now . "_inst" . session.get("scriptName") . "_" . safeReason . ".png"
+
+    hWnd := getMuMuHwnd(session.get("winTitle"))
+    if (!hWnd)
+        return
+
+    pBitmap := from_window(hWnd)
+    if (pBitmap) {
+        Gdip_SaveBitmapToFile(pBitmap, filePath)
+        Gdip_DisposeImage(pBitmap)
+        LogInfo("Saved stuck screenshot: " . filePath)
     }
 }
 

@@ -317,15 +317,11 @@ CompareIndicesByPacksDesc(packs, a, b) {
 ;-------------------------------------------------------------------------------
 ; SafeReload - Restart the script without race conditions
 ;-------------------------------------------------------------------------------
-; Launches a new instance then immediately kills the current process.
-; Unlike Reload (which keeps the old process alive and relies on the NEW
-; instance to close it via WM_CLOSE), this has the OLD process kill itself.
-; ExitApp terminates in microseconds; the new AHK process takes hundreds of
-; milliseconds to load and reach #SingleInstance - so the old process is
-; long dead before any conflict can occur.
+; Use AutoHotkey's built-in Reload path so the current process coordinates
+; shutdown before the replacement instance reaches #SingleInstance.
+; Launching a new process before ExitApp can race with OnExit/ADB cleanup and
+; trigger previous-instance prompts.
 SafeReload() {
-    ;Run, "%A_AhkPath%" "%A_ScriptFullPath%"
-    ;ExitApp
     Reload
 }
 
