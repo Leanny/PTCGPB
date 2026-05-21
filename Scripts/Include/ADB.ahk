@@ -461,14 +461,13 @@ waitadb(){
 
 adbClick(X, Y) {
     static clickCommands := Object()
-    static convX := 540/283, convY := 960/488, offset := -40
-
-    key := X << 16 | Y
+    metrics := GetAdbClickMetrics()
+    key := X "|" Y "|" metrics.convX "|" metrics.convY "|" metrics.offset
 
     if (!clickCommands.HasKey(key)) {
         clickCommands[key] := Format("input tap {} {}"
-            , Round(X * convX)
-            , Round((Y + offset) * convY))
+            , Round(X * metrics.convX)
+            , Round((Y + metrics.offset) * metrics.convY))
     }
     ADB_LogTrace("adbClick logical=(" . X . "," . Y . ") command=" . clickCommands[key])
     adbWriteRaw(clickCommands[key])

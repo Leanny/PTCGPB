@@ -57,6 +57,7 @@ CreateStatusMessage(Message, GuiName := "StatusMessage", X := 0, Y := 565, debug
 
         if !hwnds.HasKey(GuiName) {
             WinGetPos, xpos, ypos, Width, Height, % session.get("winTitle") . " ahk_class Qt5156QWindowIcon"
+            Y := NormalizeStatusMessageY(Y)
             X := X + xpos + 5 -1
             Y := Y + ypos + 5 - 11
             if (!X)
@@ -124,7 +125,7 @@ SetReposition(){
     if(instanceHwnd){
         WinGetPos, xpos, ypos, Width, Height, % session.get("winTitle") . " ahk_class Qt5156QWindowIcon"
         X := xpos + 5 -1
-        Y := ypos + 5 + 565 - 11
+        Y := ypos + 5 + NormalizeStatusMessageY(565) - 11
 
         if (!X)
             X := 0
@@ -144,6 +145,18 @@ SetReposition(){
         return
 
     Gui, %GuiName%:Show, NoActivate %PosOption%
+}
+
+NormalizeStatusMessageY(Y) {
+    windowMetrics := GetMumuWindowMetrics()
+
+    if (Y = 565)
+        return windowMetrics.rowHeight + 33
+
+    if (Y = 605)
+        return windowMetrics.rowHeight + 73
+
+    return Y
 }
 
 ;Modified from https://stackoverflow.com/a/49354127

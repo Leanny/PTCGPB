@@ -92,10 +92,18 @@ global g_prevDeleteMethod := Trim(botConfig.get("deleteMethod"))
 
 SetTimer, ShowSwipeSpeedToolTip, 50
 
+displayScaleSetting := botConfig.get("DisplayScale")
+if (displayScaleSetting = "")
+    displayScaleSetting := "Auto"
+configuredDisplayScale := GetConfiguredDisplayScale()
+if (displayScaleSetting = "Auto")
+    displayScaleLabel := "Auto (resolved to " . configuredDisplayScale . "%)"
+else
+    displayScaleLabel := displayScaleSetting . "%"
 hasInvalidScale := false
 monitorScaleList := GetAllMonitorScales()
 For idx, scaleValue in monitorScaleList {
-    if(scaleValue != 100){
+    if(scaleValue != configuredDisplayScale){
         hasInvalidScale := true
         break
     }
@@ -104,9 +112,11 @@ For idx, scaleValue in monitorScaleList {
 if (hasInvalidScale) {
     msgTitle := "Display Scale Warning"
     msgText := "WARNING: Display scale issue detected!`n`n"
-        . "To ensure the program works correctly, ALL monitors must be set to 100% scale in Windows settings.`n`n"
-        . "Please change your display scale to 100% and restart the program.`n`n"
-        . "[!] If you are ABSOLUTELY SURE all your monitors are already at 100% (script detection error), you can choose to ignore this warning.`n`n"
+        . "PTCGPB needs one matching display scale for coordinates and image search.`n"
+        . "Set the bot Display Scale and every Windows monitor to the same value (100% or 125%).`n`n"
+        . "Bot Display Scale: " . displayScaleLabel . "`n`n"
+        . "Restart the program after changing scale settings.`n`n"
+        . "[!] If you are ABSOLUTELY SURE your monitors already match the bot Display Scale (script detection error), you can choose to ignore this warning.`n`n"
         . "Do you want to ignore this warning and continue anyway?"
 
     MsgBox, 308, %msgTitle%, %msgText%
@@ -1354,6 +1364,17 @@ ShowToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Add, DropDownList, x%col2X% y%yPos2% w170 vui_SelectedMonitorIndex_Popup Choose%SelectedMonitorIndex% Background2A2A2A cWhite, %MonitorOptions%
     yPos2 += 30
 
+    displayScaleList := "Auto|100|125"
+    displayScaleChoose := 1
+    if (botConfig.get("DisplayScale") = "100")
+        displayScaleChoose := 2
+    else if (botConfig.get("DisplayScale") = "125")
+        displayScaleChoose := 3
+    displayScaleTextY := yPos2 + 2
+    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%displayScaleTextY% %sectionColor%, Display Scale
+    Gui, ToolsAndSystemSelect:Add, DropDownList, x325 y%yPos2% w60 vui_DisplayScale_Popup Choose%displayScaleChoose% Background2A2A2A cWhite, %displayScaleList%
+    yPos2 += 30
+
     rowGapY := yPos2 + 2
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%rowGapY% %sectionColor%, % dict["Txt_RowGap"]
     Gui, ToolsAndSystemSelect:Add, Edit, vui_RowGap_Popup w25 x300 y%rowGapY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("RowGap")
@@ -1470,6 +1491,7 @@ saveToolsAndSystemSettings:
     botConfig.set("wonderpickForEventMissions", ui_wonderpickForEventMissions_Popup, "ToolsAndSystem")
 
     botConfig.set("SelectedMonitorIndex", ui_SelectedMonitorIndex_Popup, "ToolsAndSystem")
+    botConfig.set("DisplayScale", ui_DisplayScale_Popup, "ToolsAndSystem")
     botConfig.set("RowGap", ui_RowGap_Popup, "ToolsAndSystem")
     botConfig.set("folderPath", ui_folderPath_Popup, "ToolsAndSystem")
     botConfig.set("ocrLanguage", ui_ocrLanguage_Popup, "ToolsAndSystem")
@@ -1997,9 +2019,9 @@ ArrangeWindows:
     if (!SaveAllSettings())
         return
 
-    scaleParam := 283
+    windowMetrics := GetMumuWindowMetrics()
+    scaleParam := windowMetrics.scaleParam
     windowsPositioned := 0
-    titleHeight := 40
 
     if(botConfig.get("SelectedMonitorIndex") = "")
         botConfig.set("SelectedMonitorIndex", "1:", "ToolsAndSystem")
@@ -2017,7 +2039,7 @@ ArrangeWindows:
 
                 instanceIndex := A_Index
                 borderWidth := 4 - 1
-                rowHeight := titleHeight + 492
+                rowHeight := windowMetrics.rowHeight
                 currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
                 y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
                 x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
@@ -2048,7 +2070,7 @@ ArrangeWindows:
                     instanceIndex := (botConfig.get("Mains") - 1) + A_Index + 1
 
                 borderWidth := 4 - 1
-                rowHeight := titleHeight + 492
+                rowHeight := windowMetrics.rowHeight
                 currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
                 y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
                 x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
