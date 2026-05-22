@@ -124,7 +124,7 @@ AddFriends(renew := false, getFC := false) {
             adbClick_wbb(clickX, copyY)
             ClipWait, 1
             copiedValue := RegExReplace(Clipboard, "\D", "")
-            if (RegExMatch(copiedValue, "^\d{14,17}$")) {
+            if (RegExMatch(copiedValue, "^\d{16}$")) {
                 friendCode := copiedValue
                 break
             }

@@ -436,6 +436,9 @@ GodPackFound(validity, cards := "") {
     if (packDisplayName = "")
         packDisplayName := (openPack != "" ? openPack : "Unknown Pack")
 
+    session.set("manualVipName", username)
+    session.set("manualVipStarCount", starCount)
+
     CreateStatusMessage(Interjection . (invalid ? " " . invalid : "") . " God Pack found!",,,, false)
 
     logMessage := Interjection . "\n"
