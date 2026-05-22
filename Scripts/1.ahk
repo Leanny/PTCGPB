@@ -2207,7 +2207,7 @@ CheckPack(stopEarly := false) {
     }
 
     if (foundLabel) {
-        FinalizeInjectedGodPackAccount(False)
+        FinalizeInjectedGodPackAccount()
         FoundStars(foundLabel, cards)
         restartGameInstance(foundLabel . " found. Continuing...", "GodPack")
     }
@@ -2414,7 +2414,7 @@ CheckPackFallback() {
     }
 
     if (foundLabel) {
-        FinalizeInjectedGodPackAccount(False)
+        FinalizeInjectedGodPackAccount()
         FoundStars(foundLabel)
         restartGameInstance(foundLabel . " found. Continuing...", "GodPack")
     }
