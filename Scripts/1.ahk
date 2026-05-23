@@ -1143,7 +1143,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             confirmed := vPosXY
         } else {
             ElapsedTime := (A_TickCount - session.get("StartSkipTime")) // 1000
-            if(imageName = "Country")
+            if(imageName = "Country" || imageName = "Social" || imageName = "Points")
                 FSTime := 90
             else if(imageName = "Missions" || imageName = "DailyMissions" || imageName = "DexMissions")
                 FSTime := 60
@@ -3865,6 +3865,7 @@ SelectPack(HG := false) {
 
     packx := getPackCoordXInHome()
     packy := HomeScreenAllPackY
+    enteredPackScreenFromHome := false
 
     ensureMissionUserPrefsExist()
     InitPackOpening()
@@ -3902,9 +3903,11 @@ SelectPack(HG := false) {
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Waiting for Points`n(" . failSafeTime . "/90 seconds)")
         }
+        enteredPackScreenFromHome := true
     }
 
-    FindImageAndClick("Pack_PackPointButton", packx, packy, , 1000)
+    if (!enteredPackScreenFromHome)
+        FindImageAndClick("Pack_PackPointButton", packx, packy, , 1000)
 
     if(!session.get("isSkipSelectExpansion")) {
         FindImageAndClick("Pack_ScrollInSelectExpansion", 248, 459, , 300)

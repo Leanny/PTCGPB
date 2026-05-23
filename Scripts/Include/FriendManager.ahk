@@ -201,10 +201,6 @@ AddFriends(renew := false, getFC := false) {
                 waitSendResult := A_TickCount
                 interceptProc := true
                 Loop{
-                    if(!isSendReqeest && FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime) && (A_TickCount - waitSendResult) > 1000){
-                        adbClick_wbb(243, 258)
-                        isSendReqeest := true
-                    }
                     Delay(0.25)
                     if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime))
                         break
@@ -220,6 +216,14 @@ AddFriends(renew := false, getFC := false) {
                     else if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
                         LogToFile("Skipping friend ID because friend request limit/full state was detected | index=" . friendIDIdx)
                         break
+                    }
+                    if(!isSendReqeest
+                        && (A_TickCount - waitSendResult) > 2500
+                        && FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 40, true)
+                        && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
+                        && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
+                        adbClick_wbb(243, 258)
+                        isSendReqeest := true
                     }
                     if ((A_TickCount - waitSendResult) > 10000)
                         break
@@ -285,9 +289,31 @@ AddFriends(renew := false, getFC := false) {
 
     ; ratelimit, only use this route when number of added ids is 6-10, 16-20, etc
     if (Mod(n - 1, 10) >= 5) {
-        FindImageAndClick("Menu_InventoryIconInMenu", 240, 494)
-        FindImageAndClick("Menu_MiscMenuLeftTop", 105, 435, , 750)
+        inventoryIconPos := FindImageAndClick("Menu_InventoryIconInMenu", 240, 494)
         DelayH(600)
+
+        if(!inventoryIconPos) {
+            restartGameInstance("Stuck at InSubMenu...")
+            return false
+        }
+
+        StringSplit, inventoryIconCoord, inventoryIconPos, `,
+        miscClickX := inventoryIconCoord1 + 8
+        miscClickY := inventoryIconCoord2 + 170
+        adbClick_wbb(miscClickX, miscClickY)
+
+        miscWaitStart := A_TickCount
+        Loop {
+            if(FindOrLoseImage("Menu_GoToTitleButton_Up", 0, , 60, true)
+                || FindOrLoseImage("Menu_GoToTitleButton_Down", 0, , 60, true))
+                break
+
+            if((A_TickCount - miscWaitStart) > 5000) {
+                restartGameInstance("Stuck at InSubMenu...")
+                return false
+            }
+            Delay(0.25)
+        }
 
         clickX := 137
         clickY := 430
@@ -724,6 +750,10 @@ DismissFriendFlowBlockingPopup(context := "") {
     return true
 }
 
+IsSocialHubReadyForFriends() {
+    return FindOrLoseImage("Friend_SocialHubFriendButton", 0, , 20, true)
+}
+
 GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
     global session
 
@@ -735,6 +765,13 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             continue
 
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime, , true)) {
+            if(!IsSocialHubReadyForFriends()) {
+                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+                Delay(0.5)
+                CreateStatusMessage("Waiting for Social hub`n(" . failSafeTime . "/45 seconds)")
+                continue
+            }
+
             ; If main screen(social): Click friends button
             adbClick_wbb(38, 460)
         }
@@ -797,7 +834,6 @@ getFriendCode(alreadyAtHome := false) {
     CreateStatusMessage("Getting friend code...",,,, false)
     if (!alreadyAtHome) {
         Sleep, 2000
-        FindImageAndClick("Pack_SkipButtonAfterOpenPack", 146, 494) ;click on next until skip button appears
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
         Loop {
