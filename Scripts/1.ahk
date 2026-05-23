@@ -141,7 +141,7 @@ if(botConfig.get("heartBeat"))
 SetTimer, RefreshAccountLists, 3600000  ; Refresh Account list every hour
 
 windowCoverHwnd := GetMuMuCoverWindowForMaintenance(session.get("winTitle"))
-DirectlyPositionWindow(windowCoverHwnd)
+DirectlyPositionWindow()
 Sleep, 500
 setADBBaseInfo()
 ConnectAdb()
@@ -150,7 +150,8 @@ Sleep, 500
 CreateStatusMessage("Disabling background services...")
 DisableBackgroundServices()
 
-resetWindows(windowCoverHwnd)
+resetWindows()
+RestoreMuMuCoverWindow(windowCoverHwnd, session.get("winTitle"))
 MaxRetries := 10
 RetryCount := 0
 Loop {
@@ -324,6 +325,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             restartInstance()
             RefreshAdbConnectionAfterInstanceRestart(45000)
             DirectlyPositionWindow()
+            RestoreMuMuCoverWindow(GetMuMuCoverWindowForMaintenance(session.get("winTitle")), session.get("winTitle"))
             CreateStatusMessage("Restart complete!",,,, false)
             LogInfo("[" . A_ScriptName . "] Restart complete!", "Restart.txt")
             session.set("loadedAccount", false)
@@ -1238,14 +1240,14 @@ if(imageName = "CommunityShowcase") {
     return confirmed
 }
 
-resetWindows(coverHwnd := "") {
-    DirectlyPositionWindow(coverHwnd)
+resetWindows() {
+    DirectlyPositionWindow()
 
     return true
 }
 
-DirectlyPositionWindow(coverHwnd := "") {
-    global botConfig, session
+DirectlyPositionWindow() {
+    global botConfig
 
     scaleParam := 283
     rowGap := botConfig.get("rowGap")
@@ -1256,8 +1258,6 @@ DirectlyPositionWindow(coverHwnd := "") {
 
     ; Calculate position based on instance number
     Title := session.get("winTitle")
-    if (!coverHwnd)
-        coverHwnd := GetMuMuCoverWindowForMaintenance(Title)
 
     if (botConfig.get("runMain")) {
         instanceIndex := (botConfig.get("Mains") - 1) + Title + 1
@@ -1282,7 +1282,6 @@ DirectlyPositionWindow(coverHwnd := "") {
     FixInstanceScreen(session.get("winTitle"))
 
     CreateStatusMessage("Positioned window at x:" . x . " y:" . y,,,, false)
-    RestoreMuMuCoverWindow(coverHwnd, Title)
 
     return true
 }
