@@ -320,6 +320,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             LogInfo("[" . A_ScriptName . "] GPU usage exceeds the threshold and restarts. VRAM Usage(" . session.get("VRAMUsage").Mode . "): " . session.get("VRAMUsage").Usage . " GB", "Restart.txt")
             CreateStatusMessage("Restarting Instance...",,,, false)
             restartInstance()
+            RefreshAdbConnectionAfterInstanceRestart(45000)
             DirectlyPositionWindow()
             CreateStatusMessage("Restart complete!",,,, false)
             LogInfo("[" . A_ScriptName . "] Restart complete!", "Restart.txt")
