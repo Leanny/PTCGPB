@@ -85,7 +85,8 @@ session.set("vipListTrimMode", (!botConfig.get("vipListTrimMode")) ? "bottom" : 
 session.set("vipListTrimCount", (!botConfig.get("vipListTrimCount")) ? 60 : botConfig.get("vipListTrimCount"))
 (session.get("vipListTrimCount") = "" || session.get("vipListTrimCount") < 1) ? session.set("vipListTrimCount", 60)
 
-DirectlyPositionWindow()
+windowCoverHwnd := GetMuMuCoverWindowForMaintenance(session.get("winTitle"))
+DirectlyPositionWindow(windowCoverHwnd)
 Sleep, 1000
 
 setADBBaseInfo()
@@ -96,7 +97,7 @@ Sleep, 1000
 CreateStatusMessage("Disabling background services...")
 DisableBackgroundServices()
 
-resetWindows()
+resetWindows(windowCoverHwnd)
 MaxRetries := 10
 RetryCount := 0
 Loop {
@@ -125,6 +126,7 @@ Loop {
                 , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)  ; SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE
         Gui, ToolBar:Show, NoActivate x%x4% y%y4% w275 h30
         UpdateGPTestButtonLabel()
+        RestoreMuMuCoverWindow(windowCoverHwnd, session.get("winTitle"))
         break
     }
     catch {
@@ -418,8 +420,8 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
     return confirmed
 }
 
-resetWindows(){
-    global botConfig
+resetWindows(coverHwnd := ""){
+    global botConfig, session
 
     scaleParam := 283
     CreateStatusMessage("Arranging window positions and sizes")
@@ -430,6 +432,8 @@ resetWindows(){
             SelectedMonitorIndex := RegExReplace(botConfig.get("SelectedMonitorIndex"), ":.*$")
             SysGet, Monitor, Monitor, %SelectedMonitorIndex%
             Title := session.get("winTitle")
+            if (!coverHwnd)
+                coverHwnd := GetMuMuCoverWindowForMaintenance(Title)
 
             instanceIndex := StrReplace(Title, "Main", "")
             if (instanceIndex = "")
@@ -446,6 +450,7 @@ resetWindows(){
             WinMove, %Title%, , %x%, %y%, %scaleParam%, %rowHeight%
             WinSet, Style, +0xC00000, %Title%
             WinSet, Redraw, , %Title%
+            RestoreMuMuCoverWindow(coverHwnd, Title)
             break
         }
         catch {
@@ -2144,7 +2149,7 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     return vret
 }
 
-DirectlyPositionWindow() {
+DirectlyPositionWindow(coverHwnd := "") {
     global botConfig, session
 
     scaleParam := 283
@@ -2156,6 +2161,8 @@ DirectlyPositionWindow() {
 
     ; Calculate position based on instance number
     Title := session.get("winTitle")
+    if (!coverHwnd)
+        coverHwnd := GetMuMuCoverWindowForMaintenance(Title)
 
     instanceIndex := StrReplace(Title, "Main", "")
     if (instanceIndex = "")
@@ -2176,6 +2183,7 @@ DirectlyPositionWindow() {
     WinSet, Redraw, , %Title%
 
     CreateStatusMessage("Positioned window at x:" . x . " y:" . y,,,, false)
+    RestoreMuMuCoverWindow(coverHwnd, Title)
 
     return true
 }

@@ -336,6 +336,140 @@ HideAllocatedConsole() {
     }
 }
 
+GetScriptIniPathByName(scriptName) {
+    scriptName := StrReplace(scriptName, ".ahk")
+    if (RegExMatch(A_ScriptDir, "i)\\Include$"))
+        return A_ScriptDir . "\..\" . scriptName . ".ini"
+    return A_ScriptDir . "\" . scriptName . ".ini"
+}
+
+GetWindowRect(hwnd) {
+    if (!hwnd || !DllCall("IsWindow", "Ptr", hwnd))
+        return ""
+
+    VarSetCapacity(rect, 16, 0)
+    if (!DllCall("GetWindowRect", "Ptr", hwnd, "Ptr", &rect))
+        return ""
+
+    return {left: NumGet(rect, 0, "Int")
+        , top: NumGet(rect, 4, "Int")
+        , right: NumGet(rect, 8, "Int")
+        , bottom: NumGet(rect, 12, "Int")}
+}
+
+RectsOverlap(rectA, rectB, minArea := 1024) {
+    if (!IsObject(rectA) || !IsObject(rectB))
+        return false
+
+    left := (rectA.left > rectB.left) ? rectA.left : rectB.left
+    top := (rectA.top > rectB.top) ? rectA.top : rectB.top
+    right := (rectA.right < rectB.right) ? rectA.right : rectB.right
+    bottom := (rectA.bottom < rectB.bottom) ? rectA.bottom : rectB.bottom
+
+    overlapW := right - left
+    overlapH := bottom - top
+    return (overlapW > 0 && overlapH > 0 && (overlapW * overlapH) >= minArea)
+}
+
+IsIgnoredCoverWindow(hwnd, targetHwnd) {
+    if (!hwnd || hwnd = targetHwnd)
+        return true
+
+    if (!DllCall("IsWindow", "Ptr", hwnd) || !DllCall("IsWindowVisible", "Ptr", hwnd))
+        return true
+
+    if (DllCall("IsIconic", "Ptr", hwnd))
+        return true
+
+    WinGetClass, winClass, ahk_id %hwnd%
+    if (winClass = "Qt5156QWindowIcon" || winClass = "AutoHotkey" || winClass = "AutoHotkeyGUI" || winClass = "#32770")
+        return true
+
+    if (winClass = "Progman" || winClass = "WorkerW" || winClass = "Shell_TrayWnd" || winClass = "Button")
+        return true
+
+    WinGet, style, Style, ahk_id %hwnd%
+    if (!(style & 0x10000000))
+        return true
+
+    WinGet, exStyle, ExStyle, ahk_id %hwnd%
+    if (exStyle & 0x80)
+        return true
+
+    return false
+}
+
+CaptureMuMuCoverWindow(winTitle) {
+    targetHwnd := WinExist(winTitle . " ahk_class Qt5156QWindowIcon")
+    if (!targetHwnd)
+        return ""
+
+    targetRect := GetWindowRect(targetHwnd)
+    if (!IsObject(targetRect))
+        return ""
+
+    WinGet, IDList, List
+    Loop %IDList%
+    {
+        hwnd := IDList%A_Index%
+        if (hwnd = targetHwnd)
+            break
+
+        if (IsIgnoredCoverWindow(hwnd, targetHwnd))
+            continue
+
+        coverRect := GetWindowRect(hwnd)
+        if (RectsOverlap(targetRect, coverRect))
+            return hwnd
+    }
+
+    return ""
+}
+
+StoreMuMuCoverWindow(winTitle, coverHwnd := "") {
+    iniFile := GetScriptIniPathByName(winTitle)
+    if (coverHwnd && DllCall("IsWindow", "Ptr", coverHwnd))
+        IniWrite, %coverHwnd%, %iniFile%, WindowState, coverHwnd
+    else
+        IniDelete, %iniFile%, WindowState, coverHwnd
+}
+
+GetStoredMuMuCoverWindow(winTitle) {
+    iniFile := GetScriptIniPathByName(winTitle)
+    IniRead, coverHwnd, %iniFile%, WindowState, coverHwnd,
+    if (coverHwnd && DllCall("IsWindow", "Ptr", coverHwnd))
+        return coverHwnd
+    return ""
+}
+
+ClearStoredMuMuCoverWindow(winTitle) {
+    iniFile := GetScriptIniPathByName(winTitle)
+    IniDelete, %iniFile%, WindowState, coverHwnd
+}
+
+GetMuMuCoverWindowForMaintenance(winTitle) {
+    coverHwnd := GetStoredMuMuCoverWindow(winTitle)
+    if (coverHwnd)
+        return coverHwnd
+
+    return CaptureMuMuCoverWindow(winTitle)
+}
+
+RestoreMuMuCoverWindow(coverHwnd, winTitle := "") {
+    if (winTitle != "")
+        ClearStoredMuMuCoverWindow(winTitle)
+
+    if (!coverHwnd || !DllCall("IsWindow", "Ptr", coverHwnd) || !DllCall("IsWindowVisible", "Ptr", coverHwnd))
+        return false
+
+    if (DllCall("IsIconic", "Ptr", coverHwnd))
+        return false
+
+    ; Raise the previous covering window back above MuMu without stealing focus.
+    return DllCall("SetWindowPos", "Ptr", coverHwnd, "Ptr", 0
+        , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x53)
+}
+
 ;-------------------------------------------------------------------------------
 ; SafeReload - Restart the script without race conditions
 ;-------------------------------------------------------------------------------
@@ -517,6 +651,8 @@ SerializeArray(arr) {
 restartInstance(){
     global session
 
+    coverHwnd := CaptureMuMuCoverWindow(session.get("scriptName"))
+    StoreMuMuCoverWindow(session.get("scriptName"), coverHwnd)
     killInstance(session.get("scriptName"))
     Sleep, 2000
     launchInstance(session.get("scriptName"))

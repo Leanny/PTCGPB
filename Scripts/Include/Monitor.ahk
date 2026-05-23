@@ -83,6 +83,8 @@ Loop {
             LogInfo(msg, "Monitor.txt")
 
             scriptName := instanceNum . ".ahk"
+            coverHwnd := CaptureMuMuCoverWindow(instanceNum)
+            StoreMuMuCoverWindow(instanceNum, coverHwnd)
 
             killedAHK := killAHK(scriptName)
             killedInstance := killInstance(instanceNum)

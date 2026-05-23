@@ -140,7 +140,8 @@ if(botConfig.get("heartBeat"))
 
 SetTimer, RefreshAccountLists, 3600000  ; Refresh Account list every hour
 
-DirectlyPositionWindow()
+windowCoverHwnd := GetMuMuCoverWindowForMaintenance(session.get("winTitle"))
+DirectlyPositionWindow(windowCoverHwnd)
 Sleep, 500
 setADBBaseInfo()
 ConnectAdb()
@@ -149,7 +150,7 @@ Sleep, 500
 CreateStatusMessage("Disabling background services...")
 DisableBackgroundServices()
 
-resetWindows()
+resetWindows(windowCoverHwnd)
 MaxRetries := 10
 RetryCount := 0
 Loop {
@@ -173,6 +174,7 @@ Loop {
         DllCall("SetWindowPos", "Ptr", WinExist(), "Ptr", 1  ; HWND_BOTTOM
             , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)  ; SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE
         Gui, Show, NoActivate x%x4% y%y4%  w275 h30
+        RestoreMuMuCoverWindow(windowCoverHwnd, session.get("winTitle"))
         break
     }
     catch {
@@ -1236,14 +1238,14 @@ if(imageName = "CommunityShowcase") {
     return confirmed
 }
 
-resetWindows() {
-    DirectlyPositionWindow()
+resetWindows(coverHwnd := "") {
+    DirectlyPositionWindow(coverHwnd)
 
     return true
 }
 
-DirectlyPositionWindow() {
-    global botConfig
+DirectlyPositionWindow(coverHwnd := "") {
+    global botConfig, session
 
     scaleParam := 283
     rowGap := botConfig.get("rowGap")
@@ -1254,6 +1256,8 @@ DirectlyPositionWindow() {
 
     ; Calculate position based on instance number
     Title := session.get("winTitle")
+    if (!coverHwnd)
+        coverHwnd := GetMuMuCoverWindowForMaintenance(Title)
 
     if (botConfig.get("runMain")) {
         instanceIndex := (botConfig.get("Mains") - 1) + Title + 1
@@ -1278,6 +1282,7 @@ DirectlyPositionWindow() {
     FixInstanceScreen(session.get("winTitle"))
 
     CreateStatusMessage("Positioned window at x:" . x . " y:" . y,,,, false)
+    RestoreMuMuCoverWindow(coverHwnd, Title)
 
     return true
 }
