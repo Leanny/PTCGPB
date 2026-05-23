@@ -332,8 +332,9 @@ function Resolve-MumuFolder {
     $candidates = @(
         "MuMu",
         "MuMuPlayerGlobal-12.0",
-        "MuMu Player 12",
+        "MuMuPlayerGlobal",
         "MuMuPlayer-12.0",
+        "MuMu Player 12",
         "MuMuPlayer",
         "MuMuPlayer-12",
         "MuMuPlayer12"
