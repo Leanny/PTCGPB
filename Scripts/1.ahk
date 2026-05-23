@@ -34,9 +34,7 @@ pToken := Gdip_Startup()
 #Include SpecialEvent.ahk
 #Include Crinity_UnofficialPatch.ahk
 
-; Allocate and hide the console window to reduce flashing
-DllCall("AllocConsole")
-WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
+InitializeHiddenConsole()
 
 ; Register OnExit handler to clean up ADB shell properly when script exits
 ; DISABLED - was causing Reload delays due to blocking ADB shell communication
@@ -5179,8 +5177,3 @@ CleanupBeforeExit(){
     allSpecialEventDispose()
     GetGPUMemoryByPDH(-1, true)
 }
-
-^e::
-    pToken := Gdip_Startup()
-    Screenshot_dev()
-return

@@ -35,9 +35,7 @@ CoordMode, Pixel, Screen
 #Include Database.ahk
 #Include Crinity_UnofficialPatch.ahk
 
-; Allocate and hide the console window to reduce flashing
-DllCall("AllocConsole")
-WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
+InitializeHiddenConsole()
 
 pToken := Gdip_Startup()
 
@@ -922,12 +920,6 @@ GetNeedle(Path) {
         return pNeedle
     }
 }
-
-; ^e::
-; msgbox ss
-; pToken := Gdip_Startup()
-; Screenshot()
-; return
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ; ~~~ GP Test Mode Everying Below ~~~

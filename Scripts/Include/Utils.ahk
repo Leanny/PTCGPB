@@ -314,6 +314,28 @@ CompareIndicesByPacksDesc(packs, a, b) {
     return packsB < packsA ? -1 : (packsB > packsA ? 1 : 0)
 }
 
+InitializeHiddenConsole() {
+    previousHwnd := DllCall("GetForegroundWindow", "Ptr")
+
+    if (!DllCall("GetConsoleWindow", "Ptr"))
+        DllCall("AllocConsole")
+
+    DllCall("SetConsoleTitle", "Str", A_ScriptFullPath)
+    HideAllocatedConsole()
+    SetTimer, HideAllocatedConsole, -1000
+
+    if (previousHwnd && WinExist("ahk_id " . previousHwnd))
+        DllCall("SetForegroundWindow", "Ptr", previousHwnd)
+}
+
+HideAllocatedConsole() {
+    consoleHwnd := DllCall("GetConsoleWindow", "Ptr")
+    if (consoleHwnd) {
+        DllCall("ShowWindow", "Ptr", consoleHwnd, "Int", 0)
+        WinHide, ahk_id %consoleHwnd%
+    }
+}
+
 ;-------------------------------------------------------------------------------
 ; SafeReload - Restart the script without race conditions
 ;-------------------------------------------------------------------------------
