@@ -9391,8 +9391,18 @@
                     findAccountPinRow(account)?.getBoundingClientRect() ??
                     null;
                 const action = toggleMultiAccountPin(account);
-                rebuildMultiSelectionUI({ asideAnimate: false });
-                playAccountPinSlideAnimation(account, action, firstRect);
+                refreshMultiBestAccountsPanel({
+                    animate: false,
+                    pinOnly: true,
+                    onComplete: () => {
+                        _attachMultiResultsPanelListeners();
+                        playAccountPinSlideAnimation(
+                            account,
+                            action,
+                            firstRect,
+                        );
+                    },
+                });
             }
 
             function attachAccountPinToggleListeners(root, onToggle) {
@@ -13525,6 +13535,99 @@
                 return `<aside class="multi-search-results"><div class="multi-results-sticky catalog-side panel"><div class="catalog-side-title">Best Accounts</div><div class="catalog-side-update-body"><div class="catalog-side-meta-slot"><div class="catalog-side-meta"><div class="catalog-side-meta-stats"><span>Sorted by selected cards matched, then copies. Pin an account to keep it at the top.</span></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort">${multiFilterTogglesHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderMultiAccountPinHint(accountRows)}</div>${renderMultiResultList(selectedCards, accountRows)}</div></div></div></div></aside>`;
             }
 
+            function applyMultiResultsAsidePatch(
+                liveResultsEl,
+                multiFilterTogglesHtml,
+                selectedCards,
+                accountRows,
+                pinOnly,
+            ) {
+                const listStage = liveResultsEl.querySelector(
+                    ".catalog-side-list-stage",
+                );
+                const listEl = liveResultsEl.querySelector(
+                    ".multi-result-list",
+                );
+                const hintSlot = liveResultsEl.querySelector(
+                    ".account-pin-hint-slot",
+                );
+                const togglesEl = liveResultsEl.querySelector(
+                    ".account-filter-toggles",
+                );
+                if (!listStage || !listEl || !hintSlot) return false;
+
+                if (!pinOnly && togglesEl) {
+                    togglesEl.outerHTML = multiFilterTogglesHtml;
+                    attachMultiAccountFilterToggleListeners(liveResultsEl);
+                }
+
+                const listPatch = document.createElement("div");
+                listPatch.innerHTML = renderMultiResultList(
+                    selectedCards,
+                    accountRows,
+                );
+                const parsedList = listPatch.querySelector(
+                    ".multi-result-list",
+                );
+                const parsedClipped = listPatch.querySelector(
+                    ".multi-results-clipped-note",
+                );
+                if (parsedList) listEl.innerHTML = parsedList.innerHTML;
+                else listEl.innerHTML = listPatch.innerHTML;
+
+                listStage
+                    .querySelector(".multi-results-clipped-note")
+                    ?.remove();
+                if (parsedClipped) {
+                    const anchor = listStage.querySelector(
+                        ".multi-result-list",
+                    );
+                    if (anchor) anchor.after(parsedClipped);
+                }
+
+                hintSlot.innerHTML =
+                    renderMultiAccountPinHint(accountRows);
+                return true;
+            }
+
+            function refreshMultiBestAccountsPanel(options) {
+                if (state.view !== "multisearch") return;
+                const resultsEl = el.rows.querySelector(
+                    ".multi-search-results",
+                );
+                if (!resultsEl) return;
+
+                const model = buildCatalogPickerModel();
+                const selectedCards = getMultiSearchCards();
+                const requiredShinedust =
+                    getTradeShinedustCostForCards(selectedCards);
+                let accountRows = buildMultiCardAccountRows(
+                    selectedCards,
+                    model.cardToAccounts,
+                    model.accountFirstSeenMs,
+                );
+                syncMultiAccountPin(accountRows);
+
+                const multiFilterTogglesHtml = renderAccountFilterToggles({
+                    ageInputId: "multiTradeReadyOnly",
+                    ageChecked: state.multiTradeReadyOnly,
+                    shinedustInputId: "multiRequiredShinedustOnly",
+                    shinedustChecked: state.multiRequiredShinedustOnly,
+                    requiredShinedust,
+                    shinedustLabel: "With enough Shinedust",
+                    shinedustTitle:
+                        "Only show accounts with enough Shinedust for the selected cards they have",
+                });
+
+                patchMultiResultsAsidePanel(
+                    resultsEl,
+                    multiFilterTogglesHtml,
+                    selectedCards,
+                    accountRows,
+                    options || {},
+                );
+            }
+
             function patchMultiResultsAsidePanel(
                 resultsEl,
                 multiFilterTogglesHtml,
@@ -13533,55 +13636,30 @@
                 options,
             ) {
                 const animateDisabled = options && options.animate === false;
+                const pinOnly = options && options.pinOnly === true;
+                const onComplete =
+                    options && typeof options.onComplete === "function"
+                        ? options.onComplete
+                        : null;
                 const applyPatch = () => {
                     const liveResultsEl =
                         el.rows.querySelector(".multi-search-results") ||
                         resultsEl;
-                    const togglesEl = liveResultsEl.querySelector(
-                        ".account-filter-toggles",
-                    );
-                    const listEl = liveResultsEl.querySelector(
-                        ".multi-result-list",
-                    );
-                    const hintSlot = liveResultsEl.querySelector(
-                        ".account-pin-hint-slot",
-                    );
-                    const newResultsListHtml = renderMultiResultList(
-                        selectedCards,
-                        accountRows,
-                    );
-                    if (togglesEl && listEl && hintSlot) {
-                        togglesEl.outerHTML = multiFilterTogglesHtml;
-                        attachMultiAccountFilterToggleListeners(liveResultsEl);
-                        const listPatch = document.createElement("div");
-                        listPatch.innerHTML = newResultsListHtml;
-                        const newListEl = listPatch.querySelector(
-                            ".multi-result-list",
-                        );
-                        const newClippedEl = listPatch.querySelector(
-                            ".multi-results-clipped-note",
-                        );
-                        if (newListEl) listEl.replaceWith(newListEl);
-                        else listEl.outerHTML = newResultsListHtml;
-                        liveResultsEl
-                            .querySelector(".multi-results-clipped-note")
-                            ?.remove();
-                        if (newClippedEl) {
-                            const anchor = liveResultsEl.querySelector(
-                                ".multi-result-list",
-                            );
-                            if (anchor) anchor.after(newClippedEl);
-                        }
-                        hintSlot.innerHTML =
-                            renderMultiAccountPinHint(accountRows);
-                        return true;
-                    }
-                    liveResultsEl.outerHTML = renderMultiResultsAsideHtml(
+                    const patched = applyMultiResultsAsidePatch(
+                        liveResultsEl,
                         multiFilterTogglesHtml,
                         selectedCards,
                         accountRows,
+                        pinOnly,
                     );
-                    return false;
+                    if (!patched) {
+                        liveResultsEl.outerHTML = renderMultiResultsAsideHtml(
+                            multiFilterTogglesHtml,
+                            selectedCards,
+                            accountRows,
+                        );
+                    }
+                    if (onComplete) onComplete();
                 };
                 if (animateDisabled) {
                     applyPatch();
@@ -14286,16 +14364,26 @@
                         multiFilterTogglesHtml,
                         selectedCards,
                         accountRows,
-                        { animate: asideAnimate },
+                        {
+                            animate: asideAnimate,
+                            onComplete: () => {
+                                _attachMultiSelectionPanelListeners();
+                                _attachMultiResultsPanelListeners();
+                                requestAnimationFrame(() => {
+                                    syncMultiSearchStickyLayoutMetrics();
+                                    attachMultiSearchStickyLayoutWatch();
+                                });
+                            },
+                        },
                     );
+                } else {
+                    _attachMultiSelectionPanelListeners();
+                    _attachMultiResultsPanelListeners();
+                    requestAnimationFrame(() => {
+                        syncMultiSearchStickyLayoutMetrics();
+                        attachMultiSearchStickyLayoutWatch();
+                    });
                 }
-
-                _attachMultiSelectionPanelListeners();
-                _attachMultiResultsPanelListeners();
-                requestAnimationFrame(() => {
-                    syncMultiSearchStickyLayoutMetrics();
-                    attachMultiSearchStickyLayoutWatch();
-                });
             }
 
             function renderMultiSearchSectionsFromModel(model) {
