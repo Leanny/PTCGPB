@@ -261,9 +261,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
     }
     RemoveFriends()
-    if(session.get("injectMethod") && session.get("loadedAccount") && !session.get("keepAccount")) {
-        MarkAccountAsUsed()
+    if(session.get("injectMethod") && session.get("loadedAccount")) {
+        LogToFile("Recovery cleanup complete. Keeping recovered account in queue unless its XML was already updated: " . session.get("accountFileName"))
+        ClearLoadedAccountRecovery()
         session.set("loadedAccount", false)
+        session.set("currentLoadedAccountIndex", 0)
     }
     DeadCheck := 0
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
