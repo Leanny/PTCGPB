@@ -32,6 +32,7 @@ CoordMode, Pixel, Screen
 #Include Error.ahk
 
 #Include Utils.ahk
+#Include Database.ahk
 #Include Crinity_UnofficialPatch.ahk
 
 ; Allocate and hide the console window to reduce flashing
@@ -102,12 +103,14 @@ MaxRetries := 10
 RetryCount := 0
 Loop {
     try {
-        WinGetPos, x, y, Width, Height, % session.get("winTitle")
-        sleep, 2000
         OwnerWND := getMuMuHwnd(session.get("winTitle"))
+        if (!OwnerWND)
+            throw Exception("MuMu client window not found")
+        WinGetPos, x, y, Width, Height, % "ahk_id " . OwnerWND
+        sleep, 1000
         x4 := x + 4
-        y4 := y + Height - 4 + 2
-        buttonWidth := 50
+        y4 := y + 529
+        buttonWidth := 45
 
         Gui, ToolBar:New, +Owner%OwnerWND% -AlwaysOnTop +ToolWindow -Caption +LastFound -DPIScale
         Gui, ToolBar:Default
@@ -116,13 +119,14 @@ Loop {
         Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 0) . " y0 w" . buttonWidth . " h25 gReloadScript", Reload  (Shift+F5)
         Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 1) . " y0 w" . buttonWidth . " h25 gPauseScript", Pause (Shift+F6)
         Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 2) . " y0 w" . buttonWidth . " h25 gResumeScript", Resume (Shift+F6)
-        Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 3) . " y0 w" . buttonWidth . " h25 gTestScript hwndhGPTestButton", GP Test (Shift+F9)
-        Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 4) . " y0 w" . buttonWidth . " h25 gStopScript", Stop (Shift+F10)
+        Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 3) . " y0 w" . buttonWidth . " h25 gTestScript vToolbarBtnGpTest hwndhGPTestButton", GP Test (Shift+F9)
+        Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 4) . " y0 w" . buttonWidth . " h25 gImportCollectionScript", Import Collection
+        Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 5) . " y0 w" . buttonWidth . " h25 gStopScript", Stop (Shift+F10)
         gpTestButtonHwnd := hGPTestButton
-        UpdateGPTestButtonLabel()
         DllCall("SetWindowPos", "Ptr", WinExist(), "Ptr", 1  ; HWND_BOTTOM
                 , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)  ; SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE
-        Gui, ToolBar:Show, NoActivate x%x4% y%y4%  w275 h30
+        Gui, ToolBar:Show, NoActivate x%x4% y%y4% w275 h30
+        UpdateGPTestButtonLabel()
         break
     }
     catch {
@@ -263,6 +267,8 @@ if(firstRun) {
     }
 }
 return
+
+#Include HistoryImport.ahk
 
 FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0) {
     global session, needlesDict
@@ -676,6 +682,10 @@ VipTrimGuiEscape:
     session.set("vipTrimDialogDone", true)
 return
 
+ImportCollectionScript:
+    ImportMainCollection(session.get("scriptName"))
+return
+
 ReloadScript:
     SafeReload()
 return
@@ -778,8 +788,8 @@ UpdateGPTestButtonLabel() {
     global gpTestButtonHwnd, session
     if (!gpTestButtonHwnd)
         return
-    buttonText := session.get("GPTest") ? "Stop GP Test (Shift+F9)" : "GP Test (Shift+F9)"
-    DllCall("User32.dll\SetWindowText", "Ptr", gpTestButtonHwnd, "Str", buttonText)
+    buttonText := session.get("GPTest") ? "Stop GPT (Shift+F9)" : "GP Test (Shift+F9)"
+    GuiControl, ToolBar:, ToolbarBtnGpTest, %buttonText%
 }
 
 PromptManualGPTestMode() {

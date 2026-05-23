@@ -301,18 +301,23 @@ AccountMetadata_WriteAccountUnlocked(deviceAccount, account) {
         FileCreateDir, %dir%
 
     pullsJson := "[]"
+    registeredCardsJson := "[]"
     if (FileExist(path)) {
         FileRead, oldJson, %path%
         pullsJson := AccountMetadata_ExtractArrayValue(oldJson, "pulls")
         if (pullsJson = "")
             pullsJson := "[]"
+        registeredCardsJson := AccountMetadata_ExtractArrayValue(oldJson, "registeredCards")
+        if (registeredCardsJson = "")
+            registeredCardsJson := "[]"
     }
 
     tempPath := path . ".tmp"
     jsonText := "{`r`n"
     jsonText .= "  ""deviceAccount"": """ . AccountMetadata_Escape(deviceAccount) . """,`r`n"
     jsonText .= "  ""metadata"": " . AccountMetadata_SerializeAccount(account) . ",`r`n"
-    jsonText .= "  ""pulls"": " . pullsJson . "`r`n"
+    jsonText .= "  ""pulls"": " . pullsJson . ",`r`n"
+    jsonText .= "  ""registeredCards"": " . registeredCardsJson . "`r`n"
     jsonText .= "}`r`n"
 
     if FileExist(tempPath)

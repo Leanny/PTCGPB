@@ -1308,6 +1308,7 @@
 
             #rarityFilters,
             #catalogRarityFilters,
+            #collectionRarityFilters,
             #multiRarityFilters {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -1328,6 +1329,7 @@
 
             #rarityFilters .check-chip,
             #catalogRarityFilters .check-chip,
+            #collectionRarityFilters .check-chip,
             #multiRarityFilters .check-chip {
                 position: relative;
                 width: 100%;
@@ -1769,20 +1771,38 @@
 
             .view-bar {
                 display: grid;
-                grid-template-columns: auto 1fr auto;
+                grid-template-columns: 1fr auto;
+                grid-template-areas:
+                    "tabs tabs"
+                    "actions note";
                 align-items: center;
                 gap: 10px;
                 margin-bottom: 4px;
             }
 
+            .view-bar .tabs {
+                grid-area: tabs;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .view-bar #accountViewActions {
+                grid-area: actions;
+            }
+
             .view-bar .result-note {
-                justify-self: center;
-                text-align: center;
+                grid-area: note;
+                justify-self: end;
+                text-align: right;
             }
 
             @media (max-width: 760px) {
                 .view-bar {
                     grid-template-columns: 1fr;
+                    grid-template-areas:
+                        "tabs"
+                        "actions"
+                        "note";
                 }
                 .view-bar .result-note {
                     justify-self: stretch;
@@ -1821,8 +1841,8 @@
             }
 
             .tabs {
-                display: inline-flex;
-                grid-template-columns: repeat(4, minmax(0, 1fr));
+                display: flex;
+                flex-wrap: wrap;
                 border: 1px solid var(--border);
                 border-radius: 14px;
                 padding: 4px;
@@ -1830,6 +1850,7 @@
                 transition: box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1);
                 position: relative;
                 isolation: isolate;
+                box-sizing: border-box;
             }
 
             .tab {
@@ -1843,6 +1864,8 @@
                 position: relative;
                 z-index: 1;
                 cursor: pointer;
+                flex: 0 0 auto;
+                white-space: nowrap;
                 transition:
                     color 0.32s cubic-bezier(0.22, 1, 0.36, 1);
             }
@@ -1884,7 +1907,8 @@
                         .db-row,
                         .view-skeleton,
                         .empty.panel,
-                        .wishlist-page
+                        .wishlist-page,
+                        .collection-library-main
                     ),
                 #toolbarSection,
                 #statsSection,
@@ -1909,7 +1933,8 @@
                         .db-row,
                         .view-skeleton,
                         .empty.panel,
-                        .wishlist-page
+                        .wishlist-page,
+                        .collection-library-main
                     ),
                 #toolbarSection.view-switch-out,
                 #statsSection.view-switch-out,
@@ -1933,7 +1958,8 @@
                         .db-row,
                         .view-skeleton,
                         .empty.panel,
-                        .wishlist-page
+                        .wishlist-page,
+                        .collection-library-main
                     ),
                 #toolbarSection.view-switch-in,
                 #statsSection.view-switch-in,
@@ -2575,6 +2601,62 @@
                 display: grid;
                 gap: 14px;
             }
+
+            .collection-page {
+                display: grid;
+                gap: var(--page-panel-stack-y);
+                align-content: start;
+                min-width: 0;
+            }
+
+            .collection-page .catalog-controls {
+                position: sticky;
+                top: var(--sticky-below-tabs);
+                z-index: 41;
+                align-self: start;
+                margin-bottom: calc(var(--page-panel-stack-y) + 4px);
+            }
+
+            .collection-page
+                .catalog-controls
+                > .catalog-controls-panel {
+                background: var(--panel);
+                box-shadow:
+                    0 10px 24px rgba(0, 0, 0, 0.28),
+                    0 1px 0 var(--border) inset;
+            }
+
+            [data-theme="light"]
+                .collection-page
+                .catalog-controls
+                > .catalog-controls-panel {
+                box-shadow:
+                    0 8px 20px rgba(20, 40, 80, 0.14),
+                    0 1px 0 rgba(255, 255, 255, 0.85) inset;
+            }
+
+            .collection-page
+                .catalog-controls
+                > .catalog-controls-panel--compact {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px 12px;
+                min-height: 0;
+            }
+
+            .collection-library-main {
+                display: grid;
+                gap: var(--page-panel-stack-y);
+                align-content: start;
+                min-width: 0;
+            }
+
+            .collection-library-main .catalog-section,
+            .collection-library-main .expansion-nav {
+                content-visibility: visible;
+            }
+
             .wishlist-head {
                 display: flex;
                 align-items: center;
@@ -3364,6 +3446,268 @@
                 line-height: 1.15;
             }
 
+            .collection-account-picker {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 0;
+            }
+
+            .collection-account-chip {
+                border: 1px solid var(--border);
+                background: var(--panel);
+                color: var(--text);
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-size: 0.82rem;
+                cursor: pointer;
+            }
+
+            .collection-account-chip.active {
+                border-color: rgba(142, 180, 255, 0.72);
+                background: rgba(142, 180, 255, 0.12);
+            }
+
+            .collection-summary-meta {
+                margin-bottom: 0;
+            }
+
+            .collection-summary-meta > .catalog-account-meta {
+                position: relative;
+                z-index: 1;
+            }
+
+            .collection-rarity-stats {
+                margin: 0;
+                width: 100%;
+            }
+
+            .collection-rarity-grid {
+                display: flex;
+                flex-wrap: nowrap;
+                justify-content: space-between;
+                align-items: stretch;
+                gap: 6px;
+                width: 100%;
+            }
+
+            .collection-rarity-card {
+                --rarity-ring-color: var(--accent);
+                position: relative;
+                display: grid;
+                grid-template-rows: auto auto auto auto;
+                align-content: start;
+                justify-items: center;
+                gap: 6px;
+                flex: 1 1 0;
+                min-width: 0;
+                padding: 10px 6px 8px;
+                border-radius: 14px;
+                border: 1px solid var(--border);
+                background: linear-gradient(
+                    180deg,
+                    rgba(255, 255, 255, 0.045),
+                    rgba(0, 0, 0, 0.1)
+                );
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+                min-height: 132px;
+                text-align: center;
+                overflow: hidden;
+            }
+
+            .collection-rarity-card.is-complete {
+                --rarity-ring-color: var(--accent-2);
+                border-color: rgba(176, 240, 208, 0.42);
+                background: linear-gradient(
+                    180deg,
+                    rgba(176, 240, 208, 0.12),
+                    rgba(0, 0, 0, 0.06)
+                );
+            }
+
+            .collection-rarity-card.is-empty {
+                --rarity-ring-color: rgba(255, 255, 255, 0.14);
+                opacity: 0.82;
+            }
+
+            .collection-rarity-ring {
+                position: relative;
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                display: grid;
+                place-items: center;
+                flex-shrink: 0;
+                background: conic-gradient(
+                    var(--rarity-ring-color) calc(var(--completion) * 1%),
+                    rgba(255, 255, 255, 0.08) 0
+                );
+                box-shadow:
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+                    0 4px 12px rgba(0, 0, 0, 0.22);
+            }
+
+            .collection-rarity-ring::before {
+                content: "";
+                position: absolute;
+                inset: 5px;
+                border-radius: 50%;
+                background: var(--panel);
+                border: 1px solid rgba(255, 255, 255, 0.07);
+            }
+
+            .collection-rarity-pct {
+                position: relative;
+                z-index: 1;
+                font-size: 0.72rem;
+                font-weight: 800;
+                color: var(--text);
+                line-height: 1;
+            }
+
+            .collection-rarity-badge {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-height: 22px;
+                max-height: 24px;
+                overflow: hidden;
+                flex-shrink: 0;
+            }
+
+            .collection-rarity-badge .multi-picker-rarity-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                max-width: 100%;
+            }
+
+            .collection-rarity-badge .multi-picker-rarity-stack {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 1px;
+                flex-wrap: nowrap;
+            }
+
+            .collection-rarity-badge .multi-picker-rarity-stack-img,
+            .collection-rarity-badge
+                .multi-picker-rarity-badge
+                > .rarity-icon,
+            .collection-rarity-badge
+                .multi-picker-rarity-badge
+                .rarity-icon-wrap
+                .rarity-icon {
+                width: 16px !important;
+                height: 16px !important;
+                min-width: 16px !important;
+                min-height: 16px !important;
+                max-width: 16px !important;
+                max-height: 16px !important;
+                object-fit: contain;
+            }
+
+            .collection-rarity-badge .rarity-icon-wrap {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0;
+            }
+
+            .collection-rarity-badge .rarity-tag {
+                display: none;
+            }
+
+            .collection-rarity-counts {
+                display: flex;
+                align-items: baseline;
+                justify-content: center;
+                gap: 2px;
+                width: 100%;
+                font-size: 0.74rem;
+                font-weight: 800;
+                color: var(--text);
+                line-height: 1.2;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .collection-rarity-counts .owned {
+                color: var(--text);
+            }
+
+            .collection-rarity-counts .sep,
+            .collection-rarity-counts .total {
+                color: var(--muted);
+                font-weight: 700;
+            }
+
+            .collection-rarity-sub {
+                font-size: 0.64rem;
+                font-weight: 600;
+                color: var(--muted);
+                line-height: 1.15;
+                width: 100%;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            @media (max-width: 1180px) {
+                .collection-rarity-grid {
+                    flex-wrap: wrap;
+                    justify-content: center;
+                }
+
+                .collection-rarity-card {
+                    flex: 1 1 calc(20% - 6px);
+                    min-width: 96px;
+                    max-width: 140px;
+                }
+            }
+
+            @media (max-width: 720px) {
+                .collection-rarity-card {
+                    flex: 1 1 calc(33.333% - 6px);
+                    min-width: 88px;
+                }
+            }
+
+            .collection-rarity-card.is-complete .collection-rarity-sub {
+                color: rgba(176, 240, 208, 0.92);
+            }
+
+            [data-theme="light"] .collection-rarity-card {
+                background: linear-gradient(
+                    180deg,
+                    rgba(255, 255, 255, 0.92),
+                    rgba(240, 245, 252, 0.92)
+                );
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+                    0 4px 14px rgba(20, 40, 80, 0.08);
+            }
+
+            [data-theme="light"] .collection-rarity-card.is-complete {
+                background: linear-gradient(
+                    180deg,
+                    rgba(176, 240, 208, 0.22),
+                    rgba(255, 255, 255, 0.92)
+                );
+            }
+
+            [data-theme="light"] .collection-rarity-ring::before {
+                background: #f8fafd;
+            }
+
+            [data-theme="light"]
+                .collection-rarity-card.is-complete
+                .collection-rarity-sub {
+                color: rgba(36, 120, 78, 0.92);
+            }
+
             .load-more-wrap {
                 display: flex;
                 justify-content: center;
@@ -3655,6 +3999,7 @@
             }
 
             .catalog-library-main,
+            .collection-library-main,
             .multi-search-picker-main {
                 display: grid;
                 gap: var(--page-panel-stack-y);
@@ -3671,6 +4016,7 @@
 
             @media (prefers-reduced-motion: no-preference) {
                 .catalog-library-main,
+                .collection-library-main,
                 .multi-search-picker-main {
                     transition:
                         opacity var(--expansion-picker-fade-duration)
@@ -3680,12 +4026,14 @@
                 }
 
                 .catalog-library-main.expansion-picker-out,
+                .collection-library-main.expansion-picker-out,
                 .multi-search-picker-main.expansion-picker-out {
                     opacity: var(--expansion-picker-fade-opacity);
                     transform: translateY(6px);
                 }
 
                 .catalog-library-main.expansion-picker-in,
+                .collection-library-main.expansion-picker-in,
                 .multi-search-picker-main.expansion-picker-in {
                     transition: none;
                     opacity: var(--expansion-picker-fade-opacity);
@@ -3755,6 +4103,9 @@
             }
 
             .catalog-library-picker
+                .catalog-controls
+                > .catalog-controls-panel--compact,
+            .collection-page
                 .catalog-controls
                 > .catalog-controls-panel--compact,
             .multi-search-page
@@ -3854,7 +4205,51 @@
                 border-color: rgba(200, 60, 120, 0.42);
                 background: rgba(255, 126, 179, 0.14);
             }
+            .catalog-missing-filter {
+                flex: 0 0 auto;
+                width: 38px;
+                height: 38px;
+                min-height: 0;
+                padding: 0;
+                justify-content: center;
+                gap: 0;
+                line-height: 1;
+            }
+            button.catalog-missing-filter {
+                appearance: none;
+                -webkit-appearance: none;
+                margin: 0;
+                font: inherit;
+            }
+            .catalog-missing-filter.checked {
+                border-color: rgba(126, 179, 255, 0.58);
+                background: rgba(126, 179, 255, 0.12);
+            }
+            .catalog-missing-filter-glyph {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #7eb3ff;
+                line-height: 1;
+            }
+            .catalog-missing-filter-glyph svg {
+                width: 18px;
+                height: 18px;
+                display: block;
+            }
+            [data-theme="light"] .catalog-missing-filter.checked {
+                border-color: rgba(60, 120, 200, 0.42);
+                background: rgba(126, 179, 255, 0.14);
+            }
+            #collectionRarityFilters button.check-chip {
+                appearance: none;
+                -webkit-appearance: none;
+                margin: 0;
+                font: inherit;
+                cursor: pointer;
+            }
             .catalog-library-picker #catalogRarityFilters,
+            .collection-page #collectionRarityFilters,
             .multi-search-page #multiRarityFilters {
                 display: flex;
                 flex-wrap: nowrap;
@@ -3863,6 +4258,7 @@
                 min-width: 0;
             }
             .catalog-library-picker #catalogRarityFilters .check-chip,
+            .collection-page #collectionRarityFilters .check-chip,
             .multi-search-page #multiRarityFilters .check-chip {
                 flex: 1 1 0;
                 min-width: 0;
@@ -3874,6 +4270,7 @@
 
             #rarityFilters .check-chip .multi-picker-rarity-badge,
             #catalogRarityFilters .check-chip .multi-picker-rarity-badge,
+            #collectionRarityFilters .check-chip .multi-picker-rarity-badge,
             #multiRarityFilters .check-chip .multi-picker-rarity-badge {
                 display: inline-flex;
                 align-items: center;
@@ -3882,6 +4279,7 @@
             }
             #rarityFilters .check-chip .multi-picker-rarity-stack,
             #catalogRarityFilters .check-chip .multi-picker-rarity-stack,
+            #collectionRarityFilters .check-chip .multi-picker-rarity-stack,
             #multiRarityFilters .check-chip .multi-picker-rarity-stack {
                 display: inline-flex;
                 align-items: center;
@@ -5938,6 +6336,14 @@
                         Database Workspace
                     </button>
                     <button
+                        id="sectionCollectionBtn"
+                        type="button"
+                        class="section-switcher-btn"
+                        role="tab"
+                    >
+                        My Collection
+                    </button>
+                    <button
                         id="sectionLibraryBtn"
                         type="button"
                         class="section-switcher-btn"
@@ -7228,6 +7634,14 @@
                 theme: "dark",
                 expandedRows: new Set(),
                 expandedAccounts: new Set(),
+                collectionAccounts: [],
+                selectedCollectionAccount: "",
+                collectionExpansionFilter: "__all__",
+                collectionCardSearch: "",
+                collectionSelectedRarities: new Set(),
+                collectionRaritiesInitialized: false,
+                collectionShowMissingOnly: false,
+                collectionWishlistOnly: false,
                 defaultExpanded: false,
                 pageSize: initialPageSize,
                 displayLimit: initialPageSize,
@@ -7275,6 +7689,8 @@
                 showMoreBtn: document.getElementById("showMoreBtn"),
                 themeToggleBtn: document.getElementById("themeToggleBtn"),
                 sectionDbBtn: document.getElementById("sectionDbBtn"),
+                sectionCollectionBtn:
+                    document.getElementById("sectionCollectionBtn"),
                 sectionLibraryBtn: document.getElementById("sectionLibraryBtn"),
                 sectionMultiBtn: document.getElementById("sectionMultiBtn"),
                 sectionWishlistBtn:
@@ -7361,6 +7777,15 @@
             }
 
             const DB_VIEWS = ["rows", "accounts", "traded", "shared"];
+            const STANDALONE_VIEWS = [
+                "allcards",
+                "multisearch",
+                "wishlist",
+                "mycollection",
+            ];
+            function isStandaloneToolView(view) {
+                return STANDALONE_VIEWS.includes(view);
+            }
             let multiSearchStickyResizeObserver = null;
             let multiSearchStickyVvResizeHandler = null;
             let sectionSwitcherStickyResizeObserver = null;
@@ -8382,6 +8807,19 @@
 
             function renderWishlistOnlyFilterChip(buttonId, checked) {
                 return `<button type="button" id="${buttonId}" class="check-chip catalog-wishlist-filter${checked ? " checked" : ""}" title="Only show wishlisted cards" aria-label="Only show wishlisted cards" aria-pressed="${checked ? "true" : "false"}"><span class="catalog-wishlist-filter-glyph" aria-hidden="true">&#9829;</span></button>`;
+            }
+
+            function missingFilterIconSvg() {
+                return (
+                    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+                    `<rect x="5" y="4" width="14" height="16" rx="2" stroke-dasharray="3.5 3"></rect>` +
+                    `<path d="M9 12h6"></path>` +
+                    `</svg>`
+                );
+            }
+
+            function renderMissingOnlyFilterChip(buttonId, checked) {
+                return `<button type="button" id="${buttonId}" class="check-chip catalog-missing-filter${checked ? " checked" : ""}" title="Only show missing cards" aria-label="Missing" aria-pressed="${checked ? "true" : "false"}"><span class="catalog-missing-filter-glyph" aria-hidden="true">${missingFilterIconSvg()}</span></button>`;
             }
             function toggleWishlist(cardId) {
                 const id = String(cardId);
@@ -10194,6 +10632,14 @@
                 state.multiSelectedAccount = "";
                 state.multiTradeReadyOnly = false;
                 state.appliedMultiSearchCardIds.clear();
+                state.collectionAccounts = [];
+                state.selectedCollectionAccount = "";
+                state.collectionExpansionFilter = "__all__";
+                state.collectionCardSearch = "";
+                state.collectionSelectedRarities = new Set();
+                state.collectionRaritiesInitialized = false;
+                state.collectionShowMissingOnly = false;
+                state.collectionWishlistOnly = false;
                 buildFilterCheckboxes();
                 updateStats(0);
                 renderCurrent();
@@ -10210,13 +10656,28 @@
                 const rawShinedustMap = new Map();
                 const rawFileLabelMap = new Map();
                 const rawMetadataMap = new Map();
+                const collectionAccounts = [];
                 let totalCards = 0;
                 let rowNumber = 1;
 
                 for (const doc of documents) {
                     if (!doc || typeof doc !== "object") continue;
 
-                    const account = String(
+                    const sourceType = String(
+                        readObjectValue(doc, ["sourceType", "SourceType"]) ||
+                            "",
+                    ).trim();
+                    const sourceFileName = String(
+                        readObjectValue(doc, [
+                            "sourceFileName",
+                            "SourceFileName",
+                        ]) || "",
+                    ).trim();
+                    const isCollection =
+                        sourceType === "collection" ||
+                        sourceFileName.startsWith("collections/");
+
+                    let account = String(
                         readObjectValue(doc, [
                             "deviceAccount",
                             "DeviceAccount",
@@ -10224,6 +10685,20 @@
                             "Account",
                         ]) || "",
                     ).trim();
+                    if (isCollection) {
+                        account = String(
+                            readObjectValue(doc, [
+                                "collectionId",
+                                "CollectionId",
+                            ]) || "",
+                        ).trim();
+                        if (!account && sourceFileName) {
+                            const leaf = sourceFileName
+                                .split("/")
+                                .pop();
+                            account = leaf.replace(/\.json$/i, "");
+                        }
+                    }
                     if (!account) continue;
 
                     const metadataNode =
@@ -10328,6 +10803,56 @@
                             "AccountName",
                         ]) || "",
                     ).trim();
+
+                    if (isCollection) {
+                        const registeredNode = readObjectValue(doc, [
+                            "registeredCards",
+                            "RegisteredCards",
+                        ]);
+                        const registeredCards = Array.isArray(registeredNode)
+                            ? registeredNode
+                                  .map((value) =>
+                                      String(value ?? "").trim(),
+                                  )
+                                  .filter(Boolean)
+                            : [];
+                        if (!registeredCards.length) continue;
+                        const collectionDisplayName = String(
+                            readObjectValue(doc, [
+                                "displayName",
+                                "DisplayName",
+                            ]) || "",
+                        ).trim();
+                        collectionAccounts.push({
+                            account,
+                            accountLower: normaliseSearch(account),
+                            collectionId: account,
+                            displayName:
+                                collectionDisplayName ||
+                                accountName ||
+                                account,
+                            isCollection: true,
+                            instance,
+                            accountName,
+                            deviceAccount: String(
+                                readObjectValue(doc, [
+                                    "deviceAccount",
+                                    "DeviceAccount",
+                                ]) || "",
+                            ).trim(),
+                            registryImportedAt: String(
+                                readObjectValue(metadata, [
+                                    "registryImportedAt",
+                                    "RegistryImportedAt",
+                                ]) || "",
+                            ).trim(),
+                            registryCardCount: registeredCards.length,
+                            registeredCards,
+                            registeredSet: new Set(registeredCards),
+                        });
+                        continue;
+                    }
+
                     const friendCode = String(
                         readObjectValue(metadata, [
                             "friendCode",
@@ -10510,6 +11035,34 @@
                             });
                         }
                     }
+
+                    const registeredNode = readObjectValue(doc, [
+                        "registeredCards",
+                        "RegisteredCards",
+                    ]);
+                    const registeredCards = Array.isArray(registeredNode)
+                        ? registeredNode
+                              .map((value) => String(value ?? "").trim())
+                              .filter(Boolean)
+                        : [];
+                    if (registeredCards.length && !isCollection) {
+                        collectionAccounts.push({
+                            account,
+                            accountLower,
+                            instance,
+                            accountName,
+                            displayName: accountName || account,
+                            registryImportedAt: String(
+                                readObjectValue(metadata, [
+                                    "registryImportedAt",
+                                    "RegistryImportedAt",
+                                ]) || "",
+                            ).trim(),
+                            registryCardCount: registeredCards.length,
+                            registeredCards,
+                            registeredSet: new Set(registeredCards),
+                        });
+                    }
                 }
 
                 const shinedustMap = new Map();
@@ -10539,6 +11092,23 @@
                     ...shinedustMap.keys(),
                 ]).size;
 
+                collectionAccounts.sort((a, b) => {
+                    const rank = (instance) => {
+                        const match = /^Main(\d*)$/i.exec(
+                            String(instance || "").trim(),
+                        );
+                        if (!match) return 999;
+                        if (match[1] === "") return 0;
+                        const n = Number(match[1]);
+                        return Number.isFinite(n) ? n : 999;
+                    };
+                    const diff = rank(a.instance) - rank(b.instance);
+                    if (diff) return diff;
+                    const nameA = a.accountName || a.account;
+                    const nameB = b.accountName || b.account;
+                    return nameA.localeCompare(nameB);
+                });
+
                 return {
                     error: "",
                     rows,
@@ -10552,6 +11122,7 @@
                     shinedustMap,
                     fileLabelMap,
                     accountMetadataMap,
+                    collectionAccounts,
                     linkedAccountCount: new Set([
                         ...fileLabelMap.keys(),
                         ...accountMetadataMap.keys(),
@@ -10577,7 +11148,8 @@
                 const parseResult = parseAccountDocumentsToDataset(documents);
                 const hasAnyData =
                     parseResult.rowCount > 0 ||
-                    parseResult.linkedAccountCount > 0;
+                    parseResult.linkedAccountCount > 0 ||
+                    parseResult.collectionAccounts.length > 0;
                 if (!hasAnyData) {
                     setStatus(
                         `No account data was found in ${sourceLabel}.`,
@@ -10592,6 +11164,9 @@
                 state.accountShinedustMap = parseResult.shinedustMap;
                 state.accountFileLabelMap = parseResult.fileLabelMap;
                 state.accountMetadataMap = parseResult.accountMetadataMap;
+                state.collectionAccounts = parseResult.collectionAccounts;
+                state.selectedCollectionAccount =
+                    parseResult.collectionAccounts[0]?.account || "";
                 state.accountCount = parseResult.accountCount;
                 state.rowCount = parseResult.rowCount;
                 state.totalCards = parseResult.totalCards;
@@ -11927,6 +12502,7 @@
                 else if (state.view === "wishlist") renderWishlistView();
                 else if (state.view === "traded") renderTradedView();
                 else if (state.view === "shared") renderSharedView();
+                else if (state.view === "mycollection") renderMyCollectionView();
                 else renderAccountOverview();
                 delete el.rows.dataset.viewState;
             }
@@ -13407,11 +13983,15 @@
                 const inLibrary = view === "allcards";
                 const inMultiSearch = view === "multisearch";
                 const inWishlist = view === "wishlist";
-                const inStandaloneTool =
-                    inLibrary || inMultiSearch || inWishlist;
+                const inCollection = view === "mycollection";
+                const inStandaloneTool = isStandaloneToolView(view);
                 el.sectionDbBtn.classList.toggle(
                     "active",
                     !inStandaloneTool,
+                );
+                el.sectionCollectionBtn?.classList.toggle(
+                    "active",
+                    inCollection,
                 );
                 el.sectionLibraryBtn.classList.toggle("active", inLibrary);
                 el.sectionMultiBtn.classList.toggle("active", inMultiSearch);
@@ -16885,6 +17465,719 @@
                 return state.accountRows;
             }
 
+            function formatCollectionAccountLabel(entry) {
+                if (!entry) return "";
+                if (entry.displayName) return entry.displayName;
+                if (entry.accountName)
+                    return `${entry.instance || "Main"} · ${entry.accountName}`;
+                return entry.instance || entry.account || "";
+            }
+
+            function getSelectedCollectionAccountEntry() {
+                const accounts = state.collectionAccounts;
+                if (!accounts.length) return null;
+                if (
+                    state.selectedCollectionAccount &&
+                    accounts.some(
+                        (entry) =>
+                            entry.account === state.selectedCollectionAccount,
+                    )
+                ) {
+                    return accounts.find(
+                        (entry) =>
+                            entry.account === state.selectedCollectionAccount,
+                    );
+                }
+                return accounts[0];
+            }
+
+            function buildCollectionModel(accountEntry) {
+                const registeredSet = accountEntry.registeredSet;
+                const allIds = getAllKnownCardIds();
+                const sections = new Map();
+                const rarityTotals = new Map();
+                const rarityOwned = new Map();
+                let ownedTotal = 0;
+
+                for (const cardId of allIds) {
+                    const info = getCardInfo(cardId);
+                    const owned = registeredSet.has(cardId);
+                    if (owned) ownedTotal++;
+                    const sectionCode =
+                        getCardExpansionId(cardId) || "__unknown__";
+                    const sectionLabel =
+                        sectionCode === "__unknown__"
+                            ? "Unknown section"
+                            : getPackLabel(sectionCode);
+                    const rarityKey = getCardRarityFilterKey(cardId, info);
+                    if (rarityKey) {
+                        rarityTotals.set(
+                            rarityKey,
+                            (rarityTotals.get(rarityKey) || 0) + 1,
+                        );
+                        if (owned)
+                            rarityOwned.set(
+                                rarityKey,
+                                (rarityOwned.get(rarityKey) || 0) + 1,
+                            );
+                    }
+                    const item = {
+                        id: cardId,
+                        info,
+                        sectionCode,
+                        sectionLabel,
+                        expansionNo: getCardExpansionNumber(cardId, info),
+                        owned,
+                        totalCopies: owned ? 1 : 0,
+                    };
+                    if (!sections.has(sectionCode))
+                        sections.set(sectionCode, {
+                            code: sectionCode,
+                            label: sectionLabel,
+                            cards: [],
+                        });
+                    sections.get(sectionCode).cards.push(item);
+                }
+
+                const sectionListAll = [...sections.values()].sort((a, b) =>
+                    a.code.localeCompare(b.code),
+                );
+                for (const section of sectionListAll)
+                    section.cards.sort((a, b) => {
+                        const an = Number.isFinite(a.expansionNo)
+                            ? a.expansionNo
+                            : Number.POSITIVE_INFINITY;
+                        const bn = Number.isFinite(b.expansionNo)
+                            ? b.expansionNo
+                            : Number.POSITIVE_INFINITY;
+                        if (an !== bn) return an - bn;
+                        return a.id.localeCompare(b.id);
+                    });
+
+                const catalogRarityKeys = getCatalogRarityKeys(allIds);
+                return {
+                    allIds,
+                    sectionListAll,
+                    catalogRarityKeys,
+                    ownedTotal,
+                    totalCards: allIds.length,
+                    globalPct: allIds.length
+                        ? Math.round((ownedTotal / allIds.length) * 100)
+                        : 0,
+                    rarityTotals,
+                    rarityOwned,
+                };
+            }
+
+            function buildFilteredCollectionSections(model) {
+                const searchTerm = normaliseSearch(state.collectionCardSearch);
+                const allRaritiesSelected =
+                    model.catalogRarityKeys.size > 0 &&
+                    state.collectionSelectedRarities.size ===
+                        model.catalogRarityKeys.size;
+                const filtered = model.sectionListAll
+                    .map((section) => {
+                        const cards = section.cards.filter((card) => {
+                            if (
+                                state.collectionShowMissingOnly &&
+                                card.owned
+                            )
+                                return false;
+                            if (
+                                state.collectionWishlistOnly &&
+                                !isWishlisted(card.id)
+                            )
+                                return false;
+                            if (
+                                searchTerm &&
+                                !card.info.searchBlob.includes(searchTerm)
+                            )
+                                return false;
+                            if (!allRaritiesSelected) {
+                                const key = getCardRarityFilterKey(
+                                    card.id,
+                                    card.info,
+                                );
+                                if (
+                                    !key ||
+                                    !state.collectionSelectedRarities.has(key)
+                                )
+                                    return false;
+                            }
+                            return true;
+                        });
+                        return { ...section, cards };
+                    })
+                    .filter((section) => section.cards.length > 0);
+                if (state.collectionExpansionFilter === "__all__")
+                    return filtered;
+                return filtered.filter(
+                    (section) =>
+                        section.code === state.collectionExpansionFilter,
+                );
+            }
+
+            function renderCollectionCardButton(card) {
+                const unavailable = !card.owned;
+                const imgPart = card.info.imageUrl
+                    ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="${escapeHtml(card.info.name)}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');">`
+                    : "";
+                const fallbackClass = card.info.imageUrl
+                    ? "hidden empty"
+                    : "empty";
+                const wishOn = isWishlisted(card.id);
+                const wishClass = wishOn ? " wishlisted" : "";
+                const wishBtn = `<span class="wishlist-heart-btn${wishOn ? " on" : ""}" role="button" tabindex="-1" data-wishlist-card="${escapeHtml(card.id)}" aria-pressed="${wishOn ? "true" : "false"}" title="${wishOn ? "Remove from wishlist" : "Add to wishlist"}" aria-label="${wishOn ? "Remove from wishlist" : "Add to wishlist"}">${wishOn ? "♥" : "♡"}</span>`;
+                return `<button type="button" class="catalog-card-btn" data-catalog-card-id="${escapeHtml(card.id)}"><div class="card-tile${unavailable ? " unavailable" : ""}${wishClass}"><div class="card-media">${wishBtn}${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div></div><div class="card-name">${escapeHtml(card.info.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(card.id, card.info))}</span></div></div></button>`;
+            }
+
+            function buildCollectionGridParts() {
+                const selected = getSelectedCollectionAccountEntry();
+                if (!selected) return null;
+                const model = buildCollectionModel(selected);
+                const filteredSections =
+                    buildFilteredCollectionSections(model);
+                const isAllExpansions =
+                    state.collectionExpansionFilter === "__all__";
+                const hasCardSearch =
+                    String(state.collectionCardSearch || "").trim() !== "";
+                const hasWishlistFilter = state.collectionWishlistOnly;
+                const hasMissingOnlyFilter = state.collectionShowMissingOnly;
+                const allRaritiesSelected =
+                    model.catalogRarityKeys.size > 0 &&
+                    state.collectionSelectedRarities.size ===
+                        model.catalogRarityKeys.size;
+                const hasRaritySelection =
+                    !allRaritiesSelected &&
+                    state.collectionSelectedRarities.size > 0;
+                const showingAllExpansions =
+                    isAllExpansions &&
+                    !hasCardSearch &&
+                    !hasWishlistFilter &&
+                    !hasMissingOnlyFilter &&
+                    !hasRaritySelection;
+                const hasVisibleCards =
+                    showingAllExpansions ||
+                    filteredSections.some((section) => section.cards.length > 0);
+
+                let mainHtml = "";
+                if (showingAllExpansions) {
+                    mainHtml = `<div class="expansions-grid">${model.sectionListAll
+                        .map((section) => {
+                            const total = section.cards.length;
+                            const avail = section.cards.filter(
+                                (card) => card.owned,
+                            ).length;
+                            const completion = total
+                                ? Math.round((avail / total) * 100)
+                                : 0;
+                            const iconUrl = getPackIconUrl(section.code);
+                            return `<button type="button" class="expansion-nav" data-collection-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
+                                iconUrl
+                                    ? `<img class="ex-icon" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'ex-icon-empty\\'></div>'">`
+                                    : `<div class="ex-icon-empty"></div>`
+                            }</div><div class="ex-title">${escapeHtml(section.label)}</div><div class="ex-meta">${formatNumber(avail)}/${formatNumber(total)} cards</div><div class="ex-go">Open →</div></button>`;
+                        })
+                        .join("")}</div>`;
+                } else if (!hasVisibleCards) {
+                    mainHtml = `<div class="empty panel">No cards match the selected filters.</div>`;
+                } else if (isAllExpansions) {
+                    mainHtml = filteredSections
+                        .map((section) => {
+                            const cardsHtml = section.cards
+                                .map((card) => renderCollectionCardButton(card))
+                                .join("");
+                            const ownedInSection = section.cards.filter(
+                                (card) => card.owned,
+                            ).length;
+                            const sectionIconUrl = getPackIconUrl(
+                                section.code,
+                            );
+                            const sectionLogoHtml = sectionIconUrl
+                                ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(section.label)}" title="${escapeHtml(section.label)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(section.label).replace(/'/g, "\\'")}</div>'">`
+                                : `<div class="catalog-section-title">${escapeHtml(section.label)}</div>`;
+                            return `<article class="catalog-section panel"><div class="catalog-section-head"><span></span><div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${formatNumber(ownedInSection)}/${formatNumber(section.cards.length)} registered</div></div><div class="cards-grid">${cardsHtml}</div></article>`;
+                        })
+                        .join("");
+                } else {
+                    const section = filteredSections[0];
+                    const sectionLabel = section
+                        ? section.label
+                        : getPackLabel(state.collectionExpansionFilter);
+                    const sectionCode =
+                        section?.code || state.collectionExpansionFilter;
+                    const sectionIconUrl = getPackIconUrl(sectionCode);
+                    const sectionLogoHtml = sectionIconUrl
+                        ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(sectionLabel)}" title="${escapeHtml(sectionLabel)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(sectionLabel).replace(/'/g, "\\'")}</div>'">`
+                        : `<div class="catalog-section-title">${escapeHtml(sectionLabel)}</div>`;
+                    const cardsHtml = section
+                        ? section.cards
+                              .map((card) => renderCollectionCardButton(card))
+                              .join("")
+                        : "";
+                    const ownedInSection = section
+                        ? section.cards.filter((card) => card.owned).length
+                        : 0;
+                    const totalInSection = section ? section.cards.length : 0;
+                    mainHtml = section
+                        ? `<article class="catalog-section panel"><div class="catalog-section-head"><button type="button" class="catalog-back-btn" data-collection-back title="Back to All Expansions" aria-label="Back to All Expansions">←</button><div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${formatNumber(ownedInSection)}/${formatNumber(totalInSection)} registered</div></div><div class="cards-grid">${cardsHtml || `<div class="empty panel">No cards match the current filters.</div>`}</div></article>`
+                        : `<div class="empty panel">No cards match the current filters.</div>`;
+                }
+
+                return {
+                    mainHtml,
+                    hasVisibleCards,
+                    model,
+                    selected,
+                    catalogRarityKeys: model.catalogRarityKeys,
+                };
+            }
+
+            function renderCollectionRarityStatsHtml(model) {
+                const cards = [...model.catalogRarityKeys]
+                    .sort(
+                        (a, b) =>
+                            getRarityFilterSortValue(a) -
+                            getRarityFilterSortValue(b),
+                    )
+                    .map((rarityKey) => {
+                        const owned =
+                            model.rarityOwned.get(rarityKey) || 0;
+                        const total =
+                            model.rarityTotals.get(rarityKey) || 0;
+                        const pct = total
+                            ? Math.round((owned / total) * 100)
+                            : 0;
+                        const missing = Math.max(0, total - owned);
+                        const label = getRarityFilterLabel(rarityKey);
+                        const stateClass =
+                            pct >= 100
+                                ? "is-complete"
+                                : pct <= 0
+                                  ? "is-empty"
+                                  : "is-progress";
+                        const subLabel =
+                            pct >= 100
+                                ? "Complete"
+                                : pct <= 0
+                                  ? "Not started"
+                                  : `${formatNumber(missing)} missing`;
+                        return `<article class="collection-rarity-card ${stateClass}" style="--completion:${pct}" title="${escapeHtml(label)}: ${formatNumber(owned)} of ${formatNumber(total)} (${formatNumber(pct)}%)"><div class="collection-rarity-ring" aria-hidden="true"><span class="collection-rarity-pct">${formatNumber(pct)}%</span></div><div class="collection-rarity-badge" aria-hidden="true">${getMultiPickerRarityBadgeHtml(rarityKey)}</div><div class="collection-rarity-counts"><span class="owned">${formatNumber(owned)}</span><span class="sep">/</span><span class="total">${formatNumber(total)}</span></div><div class="collection-rarity-sub">${escapeHtml(subLabel)}</div></article>`;
+                    })
+                    .join("");
+                return `<div class="collection-rarity-stats"><div class="collection-rarity-grid">${cards}</div></div>`;
+            }
+
+            function buildCollectionControlsHtml(model, selected) {
+                const accountPickerHtml =
+                    state.collectionAccounts.length > 1
+                        ? `<div class="catalog-controls-row collection-account-row"><div class="catalog-control-field"><label class="field-label">Account</label><div class="collection-account-picker">${state.collectionAccounts
+                              .map((entry) => {
+                                  const label =
+                                      formatCollectionAccountLabel(entry);
+                                  const active =
+                                      entry.account === selected.account
+                                          ? " active"
+                                          : "";
+                                  return `<button type="button" class="collection-account-chip${active}" data-collection-account="${escapeHtml(entry.account)}">${escapeHtml(label)}</button>`;
+                              })
+                              .join("")}</div></div></div>`
+                        : "";
+
+                const importedLabel = selected.registryImportedAt
+                    ? formatMetadataTimestamp(selected.registryImportedAt) ||
+                      selected.registryImportedAt
+                    : "—";
+
+                const summaryHtml = renderMetaBarHtml([
+                    {
+                        label: "Registered",
+                        value: formatNumber(model.ownedTotal),
+                        className: "meta-collection-registered",
+                    },
+                    {
+                        label: "Pool",
+                        value: formatNumber(model.totalCards),
+                        className: "meta-collection-pool",
+                    },
+                    {
+                        label: "Complete",
+                        value: `${formatNumber(model.globalPct)}%`,
+                        className: "meta-collection-complete",
+                    },
+                    {
+                        label: "Imported",
+                        value: importedLabel,
+                        className: "meta-collection-imported",
+                    },
+                ]);
+
+                const rarityStatsHtml = renderCollectionRarityStatsHtml(model);
+
+                const currentSearch = state.collectionCardSearch || "";
+
+                if (!state.collectionRaritiesInitialized) {
+                    state.collectionSelectedRarities = new Set(
+                        model.catalogRarityKeys,
+                    );
+                    state.collectionRaritiesInitialized = true;
+                }
+
+                const rarityControls = [...model.catalogRarityKeys]
+                    .sort(
+                        (a, b) =>
+                            getRarityFilterSortValue(a) -
+                            getRarityFilterSortValue(b),
+                    )
+                    .map((rarityKey) => {
+                        const checked =
+                            state.collectionSelectedRarities.has(rarityKey);
+                        return `<button type="button" class="check-chip${checked ? " checked" : ""}" data-collection-rarity="${escapeHtml(rarityKey)}" aria-pressed="${checked ? "true" : "false"}" title="${escapeHtml(getRarityFilterLabel(rarityKey))}">${getMultiPickerRarityBadgeHtml(rarityKey)}</button>`;
+                    })
+                    .join("");
+
+                return `<div class="catalog-controls"><div class="catalog-controls-panel catalog-controls-panel--compact panel">${accountPickerHtml}<div class="account-overview-meta-wrap collection-summary-meta">${summaryHtml}</div>${rarityStatsHtml}<div class="catalog-controls-row catalog-controls-row--filters"><div class="catalog-control-field"><label class="field-label" for="collectionCardSearch">Card</label><input id="collectionCardSearch" type="search" value="${escapeHtml(currentSearch)}" placeholder="Card name or ID" autocomplete="off" spellcheck="false"></div><div class="catalog-control-field catalog-control-field--wishlist"><label class="field-label">Missing</label>${renderMissingOnlyFilterChip("collectionMissingOnly", state.collectionShowMissingOnly)}</div><div class="catalog-control-field catalog-control-field--wishlist"><label class="field-label">Wishlist</label>${renderWishlistOnlyFilterChip("collectionWishlistOnly", state.collectionWishlistOnly)}</div></div><div class="catalog-controls-row catalog-controls-row--rarity"><div class="checkbox-list" id="collectionRarityFilters">${rarityControls}</div><div class="small-actions catalog-rarity-actions"><button type="button" data-collection-rarity-action="all">All</button><button type="button" data-collection-rarity-action="none">Clear</button></div></div></div></div>`;
+            }
+
+            function syncCollectionControlsFromState() {
+                const searchInput =
+                    document.getElementById("collectionCardSearch");
+                if (searchInput) {
+                    const v = state.collectionCardSearch || "";
+                    if (searchInput.value !== v) searchInput.value = v;
+                }
+
+                const missingToggle =
+                    document.getElementById("collectionMissingOnly");
+                if (missingToggle) {
+                    missingToggle.classList.toggle(
+                        "checked",
+                        state.collectionShowMissingOnly,
+                    );
+                    missingToggle.setAttribute(
+                        "aria-pressed",
+                        state.collectionShowMissingOnly ? "true" : "false",
+                    );
+                }
+
+                const wishlistOnly = document.getElementById(
+                    "collectionWishlistOnly",
+                );
+                if (wishlistOnly) {
+                    wishlistOnly.classList.toggle(
+                        "checked",
+                        state.collectionWishlistOnly,
+                    );
+                    wishlistOnly.setAttribute(
+                        "aria-pressed",
+                        state.collectionWishlistOnly ? "true" : "false",
+                    );
+                }
+
+                const rarityBox = document.getElementById(
+                    "collectionRarityFilters",
+                );
+                if (rarityBox)
+                    rarityBox
+                        .querySelectorAll("[data-collection-rarity]")
+                        .forEach((btn) => {
+                            const rarity =
+                                btn.getAttribute("data-collection-rarity") ||
+                                "";
+                            const on =
+                                rarity &&
+                                state.collectionSelectedRarities.has(rarity);
+                            btn.classList.toggle("checked", on);
+                            btn.setAttribute(
+                                "aria-pressed",
+                                on ? "true" : "false",
+                            );
+                        });
+            }
+
+            function refreshCollectionMainOnly() {
+                if (state.view !== "mycollection") return;
+                const page = el.rows.querySelector(".collection-page");
+                const mainEl = el.rows.querySelector(".collection-library-main");
+                if (!page || !mainEl) {
+                    renderMyCollectionView();
+                    return;
+                }
+
+                const scrollContainer =
+                    document.scrollingElement ||
+                    document.documentElement ||
+                    document.body;
+                const savedScrollY =
+                    window.scrollY ||
+                    scrollContainer.scrollTop ||
+                    document.documentElement.scrollTop ||
+                    document.body.scrollTop ||
+                    0;
+
+                const activeElement = document.activeElement;
+                const preserveSearchFocus =
+                    activeElement &&
+                    activeElement.id === "collectionCardSearch";
+                const searchSelectionStart = preserveSearchFocus
+                    ? activeElement.selectionStart
+                    : null;
+                const searchSelectionEnd = preserveSearchFocus
+                    ? activeElement.selectionEnd
+                    : null;
+
+                const parts = buildCollectionGridParts();
+                if (!parts) {
+                    renderMyCollectionView();
+                    return;
+                }
+
+                const prevMainH = mainEl.getBoundingClientRect().height;
+                if (prevMainH > 2)
+                    mainEl.style.minHeight = `${Math.ceil(prevMainH)}px`;
+                mainEl.innerHTML = parts.mainHtml;
+                syncCollectionControlsFromState();
+                _attachCollectionMainListeners();
+
+                const accountLabel = formatCollectionAccountLabel(
+                    parts.selected,
+                );
+                const importedLabel = parts.selected.registryImportedAt
+                    ? formatMetadataTimestamp(
+                          parts.selected.registryImportedAt,
+                      ) || parts.selected.registryImportedAt
+                    : "—";
+                el.resultNote.textContent = `${formatNumber(parts.model.ownedTotal)} of ${formatNumber(parts.model.totalCards)} cards registered (${formatNumber(parts.model.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
+
+                const restoreScroll = () => {
+                    const maxY = Math.max(
+                        0,
+                        document.documentElement.scrollHeight -
+                            window.innerHeight,
+                    );
+                    const ty = Math.min(savedScrollY, maxY);
+                    window.scrollTo(0, ty);
+                    document.documentElement.scrollTop = ty;
+                    document.body.scrollTop = ty;
+                    if (scrollContainer !== document.documentElement)
+                        scrollContainer.scrollTop = ty;
+                };
+
+                requestAnimationFrame(() => {
+                    mainEl.style.minHeight = "";
+                    restoreScroll();
+                    if (preserveSearchFocus) {
+                        const focusEl =
+                            document.getElementById("collectionCardSearch");
+                        if (!focusEl) return;
+                        try {
+                            focusEl.focus({ preventScroll: true });
+                        } catch (_) {}
+                        if (
+                            searchSelectionStart != null &&
+                            searchSelectionEnd != null
+                        ) {
+                            focusEl.setSelectionRange(
+                                searchSelectionStart,
+                                searchSelectionEnd,
+                            );
+                        }
+                    }
+                    restoreScroll();
+                });
+            }
+
+            function _attachCollectionMainListeners() {
+                el.rows
+                    .querySelectorAll("[data-collection-expansion]")
+                    .forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                            const code =
+                                btn.getAttribute("data-collection-expansion") ||
+                                "";
+                            if (!code) return;
+                            state.collectionExpansionFilter = code;
+                            withCollectionExpansionTransition(
+                                refreshCollectionMainOnly,
+                            );
+                        });
+                    });
+                const backBtn = el.rows.querySelector(
+                    "[data-collection-back]",
+                );
+                if (backBtn)
+                    backBtn.addEventListener("click", () => {
+                        state.collectionExpansionFilter = "__all__";
+                        withCollectionExpansionTransition(
+                            refreshCollectionMainOnly,
+                        );
+                    });
+                el.rows
+                    .querySelectorAll("[data-wishlist-card]")
+                    .forEach((btn) => {
+                        btn.addEventListener("click", (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            btn.blur();
+                            const cardId =
+                                btn.getAttribute("data-wishlist-card") || "";
+                            if (!cardId) return;
+                            const nowOn = toggleWishlist(cardId);
+                            btn.classList.toggle("on", nowOn);
+                            btn.setAttribute(
+                                "aria-pressed",
+                                nowOn ? "true" : "false",
+                            );
+                            btn.title = nowOn
+                                ? "Remove from wishlist"
+                                : "Add to wishlist";
+                            btn.setAttribute(
+                                "aria-label",
+                                nowOn
+                                    ? "Remove from wishlist"
+                                    : "Add to wishlist",
+                            );
+                            btn.textContent = nowOn ? "♥" : "♡";
+                            const tile = btn.closest(".card-tile");
+                            if (tile)
+                                tile.classList.toggle("wishlisted", nowOn);
+                            if (state.collectionWishlistOnly)
+                                deferRender(refreshCollectionMainOnly);
+                        });
+                    });
+            }
+
+            function _attachCollectionControlListeners(catalogRarityKeys) {
+                el.rows
+                    .querySelectorAll("[data-collection-account]")
+                    .forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                            const account =
+                                btn.getAttribute("data-collection-account") ||
+                                "";
+                            if (!account) return;
+                            state.selectedCollectionAccount = account;
+                            state.collectionExpansionFilter = "__all__";
+                            renderMyCollectionView();
+                        });
+                    });
+
+                const searchInput =
+                    document.getElementById("collectionCardSearch");
+                if (searchInput) {
+                    searchInput.addEventListener("input", () => {
+                        state.collectionCardSearch = searchInput.value;
+                        debouncedCollectionRender();
+                    });
+                    searchInput.addEventListener("change", () => {
+                        state.collectionCardSearch = searchInput.value;
+                        debouncedCollectionRender.cancel();
+                        refreshCollectionMainOnly();
+                    });
+                }
+
+                const missingToggle =
+                    document.getElementById("collectionMissingOnly");
+                if (missingToggle)
+                    missingToggle.addEventListener("click", () => {
+                        state.collectionShowMissingOnly =
+                            !state.collectionShowMissingOnly;
+                        deferRender(refreshCollectionMainOnly);
+                    });
+
+                const wishlistBtn = document.getElementById(
+                    "collectionWishlistOnly",
+                );
+                if (wishlistBtn)
+                    wishlistBtn.addEventListener("click", () => {
+                        state.collectionWishlistOnly =
+                            !state.collectionWishlistOnly;
+                        deferRender(refreshCollectionMainOnly);
+                    });
+
+                const rarityBox = document.getElementById(
+                    "collectionRarityFilters",
+                );
+                if (rarityBox)
+                    rarityBox
+                        .querySelectorAll("[data-collection-rarity]")
+                        .forEach((btn) => {
+                            btn.addEventListener("click", () => {
+                                const rarity =
+                                    btn.getAttribute(
+                                        "data-collection-rarity",
+                                    ) || "";
+                                if (!rarity) return;
+                                if (state.collectionSelectedRarities.has(rarity))
+                                    state.collectionSelectedRarities.delete(
+                                        rarity,
+                                    );
+                                else
+                                    state.collectionSelectedRarities.add(rarity);
+                                deferRender(refreshCollectionMainOnly);
+                            });
+                        });
+
+                el.rows
+                    .querySelectorAll("[data-collection-rarity-action]")
+                    .forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                            if (btn.dataset.collectionRarityAction === "all")
+                                state.collectionSelectedRarities = new Set(
+                                    catalogRarityKeys,
+                                );
+                            else state.collectionSelectedRarities = new Set();
+                            deferRender(refreshCollectionMainOnly);
+                        });
+                    });
+            }
+
+            function attachMyCollectionListeners() {
+                const parts = buildCollectionGridParts();
+                if (!parts) return;
+                _attachCollectionControlListeners(parts.catalogRarityKeys);
+                _attachCollectionMainListeners();
+            }
+
+            function renderMyCollectionView() {
+                el.rows.innerHTML = "";
+                el.showMoreBtn.classList.add("hidden");
+                el.resultNote.textContent = "";
+                if (!state.csvLoaded) {
+                    el.rows.innerHTML = `<section class="collection-page"><div class="empty panel">Account data is loaded automatically by the local dashboard launcher.</div></section>`;
+                    return;
+                }
+                if (!state.collectionAccounts.length) {
+                    el.rows.innerHTML = `<section class="collection-page"><div class="empty panel"><div style="font-size:1.1rem;font-weight:800;margin-bottom:6px">No collection imported yet</div><div style="color:var(--muted)">Use the <strong>Import</strong> button on the Main toolbar to export your in-game pull registry, then reload this page.</div></div></section>`;
+                    return;
+                }
+
+                const selected = getSelectedCollectionAccountEntry();
+                if (!selected) return;
+                state.selectedCollectionAccount = selected.account;
+                const parts = buildCollectionGridParts();
+                if (!parts) return;
+
+                const accountLabel = formatCollectionAccountLabel(
+                    parts.selected,
+                );
+                const importedLabel = parts.selected.registryImportedAt
+                    ? formatMetadataTimestamp(
+                          parts.selected.registryImportedAt,
+                      ) || parts.selected.registryImportedAt
+                    : "—";
+
+                el.resultNote.textContent = `${formatNumber(parts.model.ownedTotal)} of ${formatNumber(parts.model.totalCards)} cards registered (${formatNumber(parts.model.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
+
+                const controlsHtml = buildCollectionControlsHtml(
+                    parts.model,
+                    parts.selected,
+                );
+
+                el.rows.innerHTML = `<section class="collection-page">${controlsHtml}<div class="collection-library-main">${parts.mainHtml}</div></section>`;
+                attachMyCollectionListeners();
+            }
+
             function renderAccountOverview() {
                 el.rows.innerHTML = "";
                 el.showMoreBtn.classList.add("hidden");
@@ -17431,6 +18724,13 @@
                 runWithExpansionPickerCrossfade(mainEl, refreshFn);
             }
 
+            function withCollectionExpansionTransition(refreshFn) {
+                const mainEl = el.rows.querySelector(
+                    ".collection-library-main",
+                );
+                runWithExpansionPickerCrossfade(mainEl, refreshFn);
+            }
+
             function eachViewSwitchShell(fn) {
                 [
                     el.toolbarSection,
@@ -17620,8 +18920,7 @@
                 const inLibrary = view === "allcards";
                 const inMultiSearch = view === "multisearch";
                 const inWishlist = view === "wishlist";
-                const inStandaloneTool =
-                    inLibrary || inMultiSearch || inWishlist;
+                const inStandaloneTool = isStandaloneToolView(view);
                 syncSectionTabActiveState(view);
                 setLibraryModeLayout(inStandaloneTool);
                 el.accountViewActions.classList.toggle(
@@ -17631,9 +18930,15 @@
                 const isMarkedView = view === "traded" || view === "shared";
                 el.markedSortControl.classList.toggle("hidden", !isMarkedView);
                 el.markedSortDir.classList.toggle("hidden", !isMarkedView);
-                const hideExpandCompact = inStandaloneTool || isMarkedView;
+                const hideExpandCompact =
+                    inStandaloneTool || isMarkedView;
                 el.expandAllBtn.classList.toggle("hidden", hideExpandCompact);
                 el.compactAllBtn.classList.toggle("hidden", hideExpandCompact);
+                if (el.dbWorkspaceControlsSticky)
+                    el.dbWorkspaceControlsSticky.classList.toggle(
+                        "hidden",
+                        inStandaloneTool,
+                    );
                 if ((inLibrary || inMultiSearch) && previousView !== view) {
                     scheduleCatalogWarmup();
                     renderCatalogPlaceholder();
@@ -17692,6 +18997,10 @@
                 if (state.view === "allcards") refreshCatalogLibraryMainOnly();
                 else if (state.view === "multisearch")
                     refreshMultiSearchPickerOnly();
+            }, 450);
+            const debouncedCollectionRender = debounce(() => {
+                if (state.view === "mycollection")
+                    refreshCollectionMainOnly();
             }, 450);
             el.loadRemoteBtn.addEventListener("click", async () => {
                 if (el.loadRemoteBtn.disabled) return;
@@ -17794,6 +19103,9 @@
             el.tradedViewTab.addEventListener("click", () => setView("traded"));
             el.sharedViewTab.addEventListener("click", () => setView("shared"));
             el.sectionDbBtn.addEventListener("click", () => setView("rows"));
+            el.sectionCollectionBtn?.addEventListener("click", () =>
+                setView("mycollection"),
+            );
             el.sectionLibraryBtn.addEventListener("click", () =>
                 setView("allcards"),
             );
