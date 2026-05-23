@@ -76,6 +76,10 @@ AddFriends(renew := false, getFC := false) {
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)) {
             break
         }
+        else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
+            adbClick_wbb(137, 480)
+            Delay(1)
+        }
         else if(TryHandleTradeTutorial(failSafeTime))
             continue
         else if(TryDismissSocialFirstTutorial(failSafeTime))
@@ -319,6 +323,10 @@ RemoveFriends() {
         adbClick_wbb(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
+        else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
+            adbClick_wbb(137, 480)
+            Delay(1)
+        }
         else if(TryHandleTradeTutorial(failSafeTime))
             continue
         else if(TryDismissSocialFirstTutorial(failSafeTime))
