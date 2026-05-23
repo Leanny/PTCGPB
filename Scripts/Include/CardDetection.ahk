@@ -194,6 +194,7 @@ FindGodPack(invalidPack := false, cards := "") {
     global botConfig, session
 
     currentPackInfo := session.get("currentPackInfo")
+
     ; Check for normal borders.
     normalBorders := currentPackInfo["TypeCount"]["normal"]
     if (normalBorders) {
@@ -239,6 +240,38 @@ FindGodPack(invalidPack := false, cards := "") {
 }
 
 ;-------------------------------------------------------------------------------
+; CardDetection_UseSavedAccountFriendInfo - Reuse metadata before opening Social
+;-------------------------------------------------------------------------------
+CardDetection_UseSavedAccountFriendInfo(ByRef username, ByRef friendCode) {
+    global botConfig, session
+
+    username := ""
+    friendCode := ""
+
+    if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
+        return false
+    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+        return false
+
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+    savedFriendCode := RegExReplace(accountMeta["friendCode"], "\D", "")
+    if (!RegExMatch(savedFriendCode, "^\d{16}$"))
+        return false
+
+    savedName := Trim(accountMeta["accountName"])
+    if (savedName != "" && savedName != "Unknown")
+        username := savedName
+
+    friendCode := savedFriendCode
+    session.set("friendCode", friendCode)
+    if (username != "")
+        session.set("accountName", username)
+
+    CreateStatusMessage("Card notification`nUsing saved account info...",,,, false)
+    return true
+}
+
+;-------------------------------------------------------------------------------
 ; FoundStars - Process found star/special cards
 ;-------------------------------------------------------------------------------
 FoundStars(star, cards := "") {
@@ -277,41 +310,21 @@ FoundStars(star, cards := "") {
     username := ""
 
     accountFile := saveAccount(star, accountFullPath, "")
-    friendCode := getFriendCode()
-    session.set("friendCode", friendCode)
+    fcScreenshot := ""
+    usedSavedFriendInfo := CardDetection_UseSavedAccountFriendInfo(username, friendCode)
+    if (!usedSavedFriendInfo) {
+        friendCode := getFriendCode()
+        session.set("friendCode", friendCode)
 
-    Sleep, 5000
-    fcScreenshot := Screenshot("FRIENDCODE")
+        Sleep, 5000
+        fcScreenshot := Screenshot("FRIENDCODE")
 
-    tempDir := A_ScriptDir . "\..\Screenshots\temp"
-    if !FileExist(tempDir)
-        FileCreateDir, %tempDir%
-
-    usernameScreenshotFile := tempDir . "\" . session.get("scriptName") . "_Username.png"
-    adbTakeScreenshot(usernameScreenshotFile)
-    Sleep, 100
-
-    if(star = "Crown" || star = "Immersive" || star = "Shiny")
+        if(star = "Crown" || star = "Immersive" || star = "Shiny")
+            RemoveFriends()
+        else
+            username := AccountFriendInfo_ReadNameFromFriendProfile("Card notification", 0)
+    } else if(star = "Crown" || star = "Immersive" || star = "Shiny") {
         RemoveFriends()
-    else {
-        ; OCR username
-        try {
-            if (IsFunc("ocr")) {
-                playerName := ""
-                allowedUsernameChars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+_"
-                usernamePattern := "[\w-_]+"
-
-                if(RefinedOCRText(usernameScreenshotFile, 145, 235, 250, 35, allowedUsernameChars, usernamePattern, playerName)) {
-                    username := playerName
-                }
-            }
-        } catch e {
-            LogWarn("Failed to OCR username: " . e.message, "OCR.txt")
-        }
-    }
-
-    if (FileExist(usernameScreenshotFile)) {
-        FileDelete, %usernameScreenshotFile%
     }
 
     ; Validate before saving metadata
@@ -392,36 +405,15 @@ GodPackFound(validity, cards := "") {
 
     accountFile := saveAccount(validity, accountFullPath, "")
 
-    friendCode := getFriendCode()
-    session.set("friendCode", friendCode)
+    fcScreenshot := ""
+    if (!CardDetection_UseSavedAccountFriendInfo(username, friendCode)) {
+        friendCode := getFriendCode()
+        session.set("friendCode", friendCode)
 
-    Sleep, 5000
-    fcScreenshot := Screenshot("FRIENDCODE")
+        Sleep, 5000
+        fcScreenshot := Screenshot("FRIENDCODE")
 
-    tempDir := A_ScriptDir . "\..\Screenshots\temp"
-    if !FileExist(tempDir)
-        FileCreateDir, %tempDir%
-
-    usernameScreenshotFile := tempDir . "\" . session.get("scriptName") . "_Username.png"
-    adbTakeScreenshot(usernameScreenshotFile)
-    Sleep, 100
-
-    try {
-        if (IsFunc("ocr")) {
-            playerName := ""
-            allowedUsernameChars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+_"
-            usernamePattern := "[\w-_]+"
-
-            if(RefinedOCRText(usernameScreenshotFile, 145, 235, 250, 35, allowedUsernameChars, usernamePattern, playerName)) {
-                username := playerName
-            }
-        }
-    } catch e {
-        LogWarn("Failed to OCR username: " . e.message, "OCR.txt")
-    }
-
-    if (FileExist(usernameScreenshotFile)) {
-        FileDelete, %usernameScreenshotFile%
+        username := AccountFriendInfo_ReadNameFromFriendProfile("Card notification", 0)
     }
 
     ; Validate before saving

@@ -408,6 +408,15 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartEpoch
 
         startPreProcess(botConfig.get("deleteMethod"))
+
+        methodType := botConfig.get("deleteMethod")
+        if ((methodType = "Inject 13P+" || methodType = "Inject Rewards") && IsFunc("EnsureAccountFriendInfo")) {
+            session.set("accountFriendInfoReturnedHome", false)
+            EnsureAccountFriendInfo(methodType)
+            if (session.get("accountFriendInfoReturnedHome"))
+                GoToMain()
+        }
+
         if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
             AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
             SetSpendHourglassMetadataFlag()
@@ -781,6 +790,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                         session.set("accountFileName", xmlFileName)
                     }
                 }
+
+                if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo"))
+                    EnsureAccountFriendInfo("Create Bots (13P)", false, true)
 
                 ; if Create Bots + FoundTradeable, log to database and push discord webhook message(s)
                 if (!session.get("loadDir") && session.get("s4tPendingTradeables").Length() > 0) {
