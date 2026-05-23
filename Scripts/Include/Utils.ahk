@@ -353,12 +353,13 @@ LogReloadMessage(message) {
     }
 
     logDir := ""
-    if (IsFunc("getScriptBaseFolder"))
+    if (IsFunc("getScriptBaseFolder")) {
         logDir := getScriptBaseFolder() . "\Logs"
-    if (!FileExist(logDir))
+    } else {
         logDir := A_ScriptDir . "\..\Logs"
-    if (!FileExist(logDir) && FileExist(A_ScriptDir . "\..\..\Logs"))
-        logDir := A_ScriptDir . "\..\..\Logs"
+        if (!FileExist(logDir) && FileExist(A_ScriptDir . "\..\..\Logs"))
+            logDir := A_ScriptDir . "\..\..\Logs"
+    }
     if (!FileExist(logDir))
         FileCreateDir, %logDir%
 
