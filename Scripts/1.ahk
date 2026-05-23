@@ -1050,7 +1050,7 @@ if(imageName = "CommunityShowcase") {
             }
             LogInfo("Restarted game. Reason: No save data found")
             CleanupBeforeExit()
-            SafeReload()
+            SafeReload("No save data found")
         }
     }
 
@@ -1185,7 +1185,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
                 }
                 LogInfo("Restarted game. Reason: No save data found")
                 CleanupBeforeExit()
-                SafeReload()
+                SafeReload("No save data found")
             }
         }
 
@@ -1341,7 +1341,7 @@ restartGameInstance(reason, RL := true) {
 
         PersistStopAfterRunIfNeeded()
         CleanupBeforeExit()
-        Reload
+        SafeReload("GodPack restart")
     } else if (isStuck) {
         if(!checkInstance(session.get("scriptName"))){
             LogInfo(" Found " . session.get("scriptName") . " instance down! start Instance")
@@ -1364,7 +1364,7 @@ restartGameInstance(reason, RL := true) {
 
         PersistStopAfterRunIfNeeded()
         CleanupBeforeExit()
-        SafeReload()
+        SafeReload("Stuck restart: " . reason)
     } else {
         ; Non-stuck restart: just restart the Pokemon app, not the whole MuMu instance
         closePTCGPApp()
@@ -1384,7 +1384,7 @@ restartGameInstance(reason, RL := true) {
 
             PersistStopAfterRunIfNeeded()
             CleanupBeforeExit()
-            SafeReload()
+            SafeReload("Restart game: " . reason)
         }
 
         if (session.get("stopToggle")) {
@@ -2708,7 +2708,7 @@ return
 
 ReloadScript:
     CleanupBeforeExit()
-    SafeReload()
+    SafeReload("Toolbar reload")
 return
 
 TestScript:
@@ -2967,7 +2967,7 @@ Return
 ; ===== HOTKEYS =====
 ~+F5::
     CleanupBeforeExit()
-    SafeReload()
+    SafeReload("Shift+F5")
 return
 ~+F6::Pause
 ~+F7::
