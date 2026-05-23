@@ -251,13 +251,6 @@
                 background: rgba(220, 232, 248, 0.95);
                 border-color: var(--accent);
             }
-            [data-theme="light"] .account-details-header:hover {
-                background: rgba(220, 232, 248, 0.85);
-                border-color: rgba(26, 79, 184, 0.4);
-            }
-            [data-theme="light"] .account-details-body {
-                background: rgba(218, 230, 246, 0.55);
-            }
             [data-theme="light"] .catalog-control-section:hover {
                 border-color: rgba(26, 79, 184, 0.4);
                 box-shadow: inset 0 0 0 1px rgba(26, 79, 184, 0.1);
@@ -1361,20 +1354,24 @@
             }
 
             @media (max-width: 640px) {
-                .control-section--rarity .control-head {
+                .control-section--rarity .control-head,
+                .control-section--packs .control-head {
                     flex-direction: column;
                     align-items: stretch;
                 }
 
-                .control-section--rarity .control-head-tools {
+                .control-section--rarity .control-head-tools,
+                .control-section--packs .control-head-tools {
                     justify-content: center;
                 }
 
-                .control-section--rarity .control-head-spacer {
+                .control-section--rarity .control-head-spacer,
+                .control-section--packs .control-head-spacer {
                     display: none;
                 }
 
-                .control-section--rarity .small-actions {
+                .control-section--rarity .small-actions,
+                .control-section--packs .small-actions {
                     justify-content: center;
                 }
             }
@@ -1493,22 +1490,67 @@
             }
 
             #filtersSection.controls {
-                padding: 12px 12px;
-                gap: 12px;
+                padding: 8px 10px;
+                gap: 8px;
                 margin-bottom: 0;
-
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+                align-items: stretch;
+            }
+            #filtersSection .control-section--query {
+                grid-column: 1 / -1;
+            }
+            #filtersSection .control-section--packs {
+                grid-column: auto;
             }
             #filtersSection .control-section {
-                padding: 11px 12px 12px;
-                border-radius: 12px;
+                padding: 8px 10px 9px;
+                border-radius: 10px;
+            }
+            #filtersSection .control-section--rarity,
+            #filtersSection .control-section--packs {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+            #filtersSection .control-section--rarity .control-head,
+            #filtersSection .control-section--packs .control-head {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 8px;
+                flex-wrap: wrap;
+                min-height: 32px;
+                box-sizing: border-box;
+            }
+            #filtersSection .control-section--rarity .control-head-spacer,
+            #filtersSection .control-section--packs .control-head-spacer {
+                flex: 1 1 8px;
+                min-width: 8px;
+            }
+            #filtersSection .control-section--rarity .control-head-tools,
+            #filtersSection .control-section--packs .control-head-tools {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 6px;
+                min-width: 0;
+                flex: 0 0 auto;
+            }
+            #filtersSection .control-section--rarity .control-title,
+            #filtersSection .control-section--packs .control-title {
+                flex: 0 0 auto;
             }
             #filtersSection .control-head {
-                margin-bottom: 8px;
-                padding-bottom: 7px;
+                margin-bottom: 6px;
+                padding-bottom: 5px;
             }
             #filtersSection .control-title {
                 font-size: 0.84rem;
+            }
+            #filtersSection .control-section--rarity .control-head-tools .small-actions,
+            #filtersSection .control-section--packs .control-head-tools .small-actions {
+                margin-left: 0;
             }
             #filtersSection label.field-label {
                 margin: 0 0 6px;
@@ -1521,15 +1563,17 @@
             }
             #filtersSection #rarityFilters {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-                gap: 8px;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 6px;
                 width: 100%;
                 min-width: 0;
+                max-height: none;
+                overflow: visible;
             }
             #filtersSection #rarityFilters .check-chip {
                 width: 100%;
-                min-height: 38px;
-                padding: 7px 10px;
+                min-height: 34px;
+                padding: 5px 8px;
                 font-size: 0.8rem;
                 gap: 0;
                 overflow: hidden;
@@ -1544,63 +1588,82 @@
                 #rarityFilters
                 .check-chip
                 .multi-picker-rarity-stack-img {
-                width: 20px;
-                height: 20px;
-                min-width: 20px;
-                min-height: 20px;
-                max-width: 20px;
-                max-height: 20px;
+                width: 18px;
+                height: 18px;
+                min-width: 18px;
+                min-height: 18px;
+                max-width: 18px;
+                max-height: 18px;
             }
             #filtersSection
                 #rarityFilters
                 .check-chip
                 .multi-picker-rarity-badge
                 > .rarity-icon {
-                height: 22px;
-                max-height: 22px;
+                height: 20px;
+                max-height: 20px;
             }
             #filtersSection #cardTypeFilters {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 6px;
+                gap: 5px;
                 justify-content: flex-start;
             }
             #filtersSection #cardTypeFilters .check-chip {
                 width: auto;
                 flex: 0 0 auto;
-                min-width: 92px;
-                min-height: 32px;
-                padding: 5px 10px;
+                min-width: 82px;
+                min-height: 28px;
+                padding: 4px 8px;
                 font-size: 0.74rem;
             }
             #filtersSection #packFilters {
-                --pack-filter-chip: 6.875rem;
+                --pack-filter-chip: 6rem;
+                --pack-logo-max-h: 2rem;
                 display: grid;
                 grid-template-columns: repeat(
-                    auto-fill,
+                    auto-fit,
                     minmax(var(--pack-filter-chip), 1fr)
                 );
-                gap: 8px;
+                gap: 6px 7px;
                 width: 100%;
-                max-height: 220px;
-                padding: 8px 0 4px;
+                max-height: none;
+                overflow: visible;
+                padding: 6px 0 3px;
                 scrollbar-gutter: stable;
             }
             #filtersSection #packFilters .check-chip.pack-filter-chip {
                 width: 100%;
+                min-height: 42px;
+                padding: 5px 6px;
+                gap: 2px;
             }
             #filtersSection .rows-wishlist-filter {
                 flex: 0 0 auto;
+                width: 30px;
+                height: 30px;
+                font-size: 0.95rem;
             }
             #filtersSection .small-actions button {
-                padding: 3px 9px;
-                font-size: 0.78rem;
+                padding: 2px 7px;
+                font-size: 0.74rem;
             }
             #filtersSection .control-section--query .control-head {
                 margin-bottom: 10px;
             }
             #filtersSection .control-section--query .field-grid {
                 gap: 10px;
+            }
+            @media (max-width: 920px) {
+                #filtersSection.controls {
+                    grid-template-columns: 1fr;
+                }
+                #filtersSection .control-section--packs {
+                    grid-column: 1 / -1;
+                }
+                #filtersSection #rarityFilters {
+                    grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+                }
             }
 
             .control-head {
@@ -2308,6 +2371,59 @@
             }
             .db-row--account .cards-grid {
                 gap: 8px;
+            }
+
+            .db-row--expandable {
+                content-visibility: visible;
+            }
+
+            .db-row--expandable .row-body {
+                overflow: hidden;
+                padding: 0 16px;
+                max-height: 0;
+                border-top: 1px solid transparent;
+            }
+
+            .db-row--expandable .row-body.is-expanded {
+                max-height: none;
+                padding: 16px;
+                border-top-color: var(--row-sep);
+            }
+
+            .db-row--expandable .row-body.is-opening {
+                animation: row-expand-open 320ms cubic-bezier(0.16, 1, 0.3, 1)
+                    both;
+            }
+
+            .db-row--expandable .row-body.is-closing {
+                animation: row-expand-close 240ms cubic-bezier(0.4, 0, 0.85, 0.45)
+                    both;
+            }
+
+            @keyframes row-expand-open {
+                from {
+                    opacity: 0;
+                    clip-path: inset(0 0 100% 0);
+                    transform: translate3d(0, -12px, 0) scale(0.992);
+                }
+                to {
+                    opacity: 1;
+                    clip-path: inset(0 0 0 0);
+                    transform: translate3d(0, 0, 0) scale(1);
+                }
+            }
+
+            @keyframes row-expand-close {
+                from {
+                    opacity: 1;
+                    clip-path: inset(0 0 0 0);
+                    transform: translate3d(0, 0, 0) scale(1);
+                }
+                to {
+                    opacity: 0;
+                    clip-path: inset(0 0 100% 0);
+                    transform: translate3d(0, -8px, 0) scale(0.992);
+                }
             }
 
             .card-tile.traded {
@@ -3189,98 +3305,63 @@
                 }
             }
 
-            .account-details-section {
-                margin-top: 10px;
-                background: var(--section-bg);
-                border: 1px solid var(--row-sep);
-                border-radius: 10px;
-                overflow: hidden;
-                transition: border-color 160ms ease;
+            .db-row--account .row-head {
+                border-bottom: none;
             }
 
-            .account-details-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                width: 100%;
-                padding: 7px 12px;
-                cursor: pointer;
-                user-select: none;
-                border: 0;
-                background: transparent;
-                color: inherit;
-                text-align: left;
-                font: inherit;
-                transition: background 140ms ease;
-            }
-
-            .account-details-header:hover {
-                background: rgba(255, 255, 255, 0.04);
-                border-color: rgba(142, 180, 255, 0.28);
-            }
-
-            .account-details-title {
-                font-size: 0.82rem;
-                font-weight: 700;
-                color: var(--text);
-                letter-spacing: 0.01em;
-            }
-
-            .account-details-toggle {
-                width: 18px;
-                height: 18px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: var(--muted);
-                transition:
-                    transform 180ms ease,
-                    color 180ms ease;
-                font-size: 0.78rem;
-            }
-
-            .account-details-section.expanded .account-details-toggle {
-                transform: rotate(180deg);
-                color: var(--accent);
-            }
-
-            .account-details-body {
-                padding: 8px 12px;
-                border-top: 1px solid var(--row-sep);
-                display: flex;
-                flex-wrap: wrap;
-                align-items: stretch;
-                gap: 8px 14px;
-                overflow: hidden;
-                background: rgba(0, 0, 0, 0.08);
-            }
-            .account-details-body[hidden] {
-                display: none !important;
-            }
-
-            .account-detail-item {
+            .account-overview-meta-wrap {
                 display: flex;
                 flex-direction: column;
-                gap: 1px;
-                flex: 1 1 0;
-                min-width: 0;
+                gap: 0;
+                margin-top: 0;
             }
 
-            .account-detail-label {
-                font-size: 0.66rem;
-                font-weight: 700;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
-                color: var(--muted);
-                white-space: nowrap;
+            .account-overview-meta-wrap .catalog-account-meta + .catalog-account-meta {
+                margin-top: -1px;
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
             }
 
-            .account-detail-value {
-                font-size: 0.82rem;
-                font-weight: 600;
-                color: var(--text);
-                white-space: pre-line;
-                line-height: 1.25;
+            .account-overview-meta-wrap .catalog-account-meta:not(:last-child) {
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+
+            .account-overview-meta-wrap .catalog-account-meta {
+                border-radius: 6px;
+            }
+
+            .account-overview-meta-wrap .catalog-account-meta:first-child {
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+            }
+
+            .account-overview-meta-wrap .catalog-account-meta-cell {
+                gap: 2px;
+                padding: 6px 4px;
+            }
+
+            .account-overview-meta-wrap .catalog-account-meta-label {
+                font-size: 0.58rem;
+                line-height: 1.1;
+            }
+
+            .account-overview-meta-wrap .catalog-account-meta-value {
+                font-size: 0.76rem;
+                line-height: 1.15;
+            }
+
+            .account-overview-meta-wrap .account-overview-meta-identity .catalog-account-meta-value {
+                white-space: normal;
+                word-break: break-word;
+                line-height: 1.2;
+            }
+
+            .account-overview-meta-wrap .account-overview-meta-extra .catalog-account-meta-value {
+                font-size: 0.68rem;
+                white-space: normal;
+                word-break: break-word;
+                line-height: 1.15;
             }
 
             .load-more-wrap {
@@ -6093,13 +6174,19 @@
                     <div class="control-section control-section--packs">
                         <div class="control-head">
                             <div class="control-title">Packs</div>
-                            <div class="small-actions">
-                                <button type="button" data-pack-action="all">
-                                    All
-                                </button>
-                                <button type="button" data-pack-action="none">
-                                    Clear
-                                </button>
+                            <div
+                                class="control-head-spacer"
+                                aria-hidden="true"
+                            ></div>
+                            <div class="control-head-tools">
+                                <div class="small-actions">
+                                    <button type="button" data-pack-action="all">
+                                        All
+                                    </button>
+                                    <button type="button" data-pack-action="none">
+                                        Clear
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="checkbox-list" id="packFilters"></div>
@@ -8891,6 +8978,31 @@
                 return `<div class="catalog-account-item-row-head">${accountPinToggleButtonHtml(account, isPinned)}<div class="catalog-account-name${isPinned ? " selected" : ""}">${accountNameLabel}</div></div>`;
             }
 
+            function renderMetaBarHtml(cells, extraClass = "") {
+                if (!cells || !cells.length) return "";
+                const cols = cells.length;
+                const metaCell = (label, value, className = "", title = "") => {
+                    const titleAttr = title
+                        ? ` title="${escapeHtml(title)}"`
+                        : "";
+                    return `<div class="catalog-account-meta-cell ${className}"${titleAttr}><span class="catalog-account-meta-label">${escapeHtml(label)}</span><span class="catalog-account-meta-value">${escapeHtml(String(value))}</span></div>`;
+                };
+                const cellsHtml = cells
+                    .map((cell) =>
+                        metaCell(
+                            cell.label,
+                            cell.value,
+                            cell.className || "",
+                            cell.title || "",
+                        ),
+                    )
+                    .join("");
+                const className = extraClass
+                    ? `catalog-account-meta ${extraClass}`
+                    : "catalog-account-meta";
+                return `<div class="${className}" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));">${cellsHtml}</div>`;
+            }
+
             function renderCatalogAccountMetaHtml({
                 copies,
                 shinedust,
@@ -8906,13 +9018,32 @@
                 const ageValue = Number.isFinite(ageDays)
                     ? `${formatNumber(ageDays)}d`
                     : "—";
-                const metaCell = (label, value, className, title = "") => {
-                    const titleAttr = title
-                        ? ` title="${escapeHtml(title)}"`
-                        : "";
-                    return `<div class="catalog-account-meta-cell ${className}"${titleAttr}><span class="catalog-account-meta-label">${escapeHtml(label)}</span><span class="catalog-account-meta-value">${escapeHtml(value)}</span></div>`;
-                };
-                return `<div class="catalog-account-meta">${metaCell("Copies", copiesValue, "meta-copies")}${metaCell("Shinedust", shinedustValue, "meta-shinedust", shinedustTitle)}${metaCell("Instance", instanceValue, "meta-instance")}${metaCell("Age", ageValue, "meta-age")}</div>`;
+                return renderMetaBarHtml([
+                    {
+                        label: "Copies",
+                        value: copiesValue,
+                        className: "meta-copies",
+                    },
+                    {
+                        label: "Shinedust",
+                        value: shinedustValue,
+                        className: "meta-shinedust",
+                        title: shinedustTitle,
+                    },
+                    {
+                        label: "Instance",
+                        value: instanceValue,
+                        className: "meta-instance",
+                    },
+                    { label: "Age", value: ageValue, className: "meta-age" },
+                ]);
+            }
+
+            function chunkMetaBarCells(cells, size = 4) {
+                const rows = [];
+                for (let i = 0; i < cells.length; i += size)
+                    rows.push(cells.slice(i, i + size));
+                return rows;
             }
 
             function renderAccountFilterToggles(options) {
@@ -16222,6 +16353,106 @@
                 }
             }
 
+            const ROW_EXPAND_OPEN_MS = 320;
+            const ROW_EXPAND_CLOSE_MS = 240;
+
+            function rowExpandMotionReduced() {
+                return window.matchMedia("(prefers-reduced-motion: reduce)")
+                    .matches;
+            }
+
+            function setExpandableRowBodyExpanded(body, expanded, renderGrid) {
+                if (!body || body.dataset.animating === "1") return;
+
+                const article = body.closest(".db-row--expandable");
+                const instant = rowExpandMotionReduced();
+
+                const clearBody = () => {
+                    body.classList.remove(
+                        "is-expanded",
+                        "is-opening",
+                        "is-closing",
+                    );
+                    body.textContent = "";
+                    delete body.dataset.rendered;
+                    body.dataset.animating = "0";
+                    article?.classList.remove("is-row-expanded");
+                };
+
+                if (expanded) {
+                    if (body.classList.contains("is-expanded")) return;
+
+                    if (
+                        !body.dataset.rendered &&
+                        typeof renderGrid === "function"
+                    ) {
+                        body.appendChild(renderGrid());
+                        body.dataset.rendered = "1";
+                    }
+
+                    article?.classList.add("is-row-expanded");
+                    body.classList.add("is-expanded");
+
+                    if (instant) return;
+
+                    body.dataset.animating = "1";
+                    body.classList.remove("is-closing");
+                    body.classList.add("is-opening");
+
+                    let done = false;
+                    const finish = () => {
+                        if (done) return;
+                        done = true;
+                        body.classList.remove("is-opening");
+                        body.dataset.animating = "0";
+                    };
+                    const onEnd = (event) => {
+                        if (
+                            event.target !== body ||
+                            event.animationName !== "row-expand-open"
+                        )
+                            return;
+                        body.removeEventListener("animationend", onEnd);
+                        finish();
+                    };
+                    body.addEventListener("animationend", onEnd);
+                    window.setTimeout(finish, ROW_EXPAND_OPEN_MS + 40);
+                    return;
+                }
+
+                if (!body.classList.contains("is-expanded")) {
+                    clearBody();
+                    return;
+                }
+
+                if (instant) {
+                    clearBody();
+                    return;
+                }
+
+                body.dataset.animating = "1";
+                body.classList.remove("is-opening");
+                body.classList.add("is-closing");
+
+                let done = false;
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    body.removeEventListener("animationend", onEnd);
+                    clearBody();
+                };
+                const onEnd = (event) => {
+                    if (
+                        event.target !== body ||
+                        event.animationName !== "row-expand-close"
+                    )
+                        return;
+                    finish();
+                };
+                body.addEventListener("animationend", onEnd);
+                window.setTimeout(finish, ROW_EXPAND_CLOSE_MS + 40);
+            }
+
             function renderRows() {
                 el.rows.innerHTML = "";
                 el.showMoreBtn.classList.add("hidden");
@@ -16249,7 +16480,7 @@
             function createRowElement(row) {
                 const expanded = rowIsExpanded(row);
                 const article = document.createElement("article");
-                article.className = "db-row panel";
+                article.className = "db-row db-row--expandable panel";
                 const visibleCardIds = sortCardIdsByRarity(row.cardIds);
                 const rarityCountMap = new Map();
                 for (const cardId of visibleCardIds) {
@@ -16274,11 +16505,12 @@
                 const rrMeta = rarityCountMap.size
                     ? getRarityCountListHtml(rarityCountMap)
                     : "";
-                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${escapeHtml(row.account)} · ${escapeHtml(row.packLabel)}</strong><div class="meta"><span>${countMeta}</span>${tsMeta}${rrMeta}</div></div><div class="row-actions"><button class="toggle-btn" type="button">${expanded ? "Compact" : "Expand"}</button></div></div><div class="row-body"${expanded ? "" : " hidden"}></div>`;
+                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${escapeHtml(row.account)} · ${escapeHtml(row.packLabel)}</strong><div class="meta"><span>${countMeta}</span>${tsMeta}${rrMeta}</div></div><div class="row-actions"><button class="toggle-btn" type="button">${expanded ? "Compact" : "Expand"}</button></div></div><div class="row-body${expanded ? " is-expanded" : ""}"></div>`;
                 const rowHead = article.firstElementChild;
                 const body = article.lastElementChild;
                 const btn = rowHead.lastElementChild.firstElementChild;
                 if (expanded) {
+                    article.classList.add("is-row-expanded");
                     body.appendChild(
                         renderCardGrid(visibleCardIds, {
                             showQuantity: false,
@@ -16292,23 +16524,13 @@
                     const willExpand = !rowIsExpanded(row);
                     setRowExpanded(row.index, willExpand);
                     btn.textContent = willExpand ? "Compact" : "Expand";
-                    if (willExpand) {
-                        body.hidden = false;
-                        if (!body.dataset.rendered) {
-                            body.appendChild(
-                                renderCardGrid(visibleCardIds, {
-                                    showQuantity: false,
-                                    account: row.account,
-                                    disableTrade: true,
-                                }),
-                            );
-                            body.dataset.rendered = "1";
-                        }
-                    } else {
-                        body.hidden = true;
-                        body.textContent = "";
-                        delete body.dataset.rendered;
-                    }
+                    setExpandableRowBodyExpanded(body, willExpand, () =>
+                        renderCardGrid(visibleCardIds, {
+                            showQuantity: false,
+                            account: row.account,
+                            disableTrade: true,
+                        }),
+                    );
                 });
                 return article;
             }
@@ -16705,7 +16927,7 @@
             ) {
                 const expanded = accountIsExpanded(account.key);
                 const article = document.createElement("article");
-                article.className = "db-row db-row--account panel";
+                article.className = "db-row db-row--account db-row--expandable panel";
                 const cardFiltersActive = !!cardFilterConfig.active;
                 const visibleCount =
                     account.visibleCardCount ?? account.totalCards;
@@ -16723,10 +16945,6 @@
                     ? state.accountShinedustMap.get(account.account)
                     : null;
                 const ageDays = account.ageDays;
-                const ageLabel =
-                    ageDays == null
-                        ? "Age N/A"
-                        : `${formatNumber(ageDays)} ${pluralWord(ageDays, "day", "days")}`;
                 const rawFileLabel =
                     state.accountFileLabelMap.get(account.account) || "";
                 const fileLabelShort = buildFileLabelMeta(rawFileLabel);
@@ -16734,7 +16952,7 @@
                     ? `<span title="${escapeHtml(rawFileLabel)}">${escapeHtml(fileLabelShort)}</span><button type="button" class="copy-btn" data-copy-file="${escapeHtml(rawFileLabel)}">Copy</button>`
                     : escapeHtml(account.account);
                 const accountMeta = `<span>Account ${escapeHtml(account.account)}</span>`;
-                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${titleMain}</strong><div class="meta">${accountMeta}<span>${countLabel}</span><span>${uniqueLabel}</span></div></div><div class="row-actions"><button class="toggle-btn" type="button">${expanded ? "Compact" : "Expand"}</button></div></div><div class="row-body"${expanded ? "" : " hidden"}></div>`;
+                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${titleMain}</strong><div class="meta">${accountMeta}<span>${countLabel}</span><span>${uniqueLabel}</span></div></div><div class="row-actions"><button class="toggle-btn" type="button">${expanded ? "Compact" : "Expand"}</button></div></div><div class="row-body${expanded ? " is-expanded" : ""}"></div>`;
                 const rowHead = article.firstElementChild;
                 const body = article.lastElementChild;
                 const btn = rowHead.lastElementChild.firstElementChild;
@@ -16747,6 +16965,7 @@
                         ),
                     );
                 if (expanded) {
+                    article.classList.add("is-row-expanded");
                     body.appendChild(
                         renderCardGrid(getVisibleEntriesForGrid(), {
                             showQuantity: true,
@@ -16790,39 +17009,21 @@
                     const willExpand = !accountIsExpanded(account.key);
                     setAccountExpanded(account.key, willExpand);
                     btn.textContent = willExpand ? "Compact" : "Expand";
-                    if (willExpand) {
-                        body.hidden = false;
-                        if (!body.dataset.rendered) {
-                            body.appendChild(
-                                renderCardGrid(getVisibleEntriesForGrid(), {
-                                    showQuantity: true,
-                                    entries: true,
-                                    account: account.account,
-                                    disableTrade: true,
-                                }),
-                            );
-                            body.dataset.rendered = "1";
-                        }
-                    } else {
-                        body.hidden = true;
-                        body.textContent = "";
-                        delete body.dataset.rendered;
-                    }
+                    setExpandableRowBodyExpanded(body, willExpand, () =>
+                        renderCardGrid(getVisibleEntriesForGrid(), {
+                            showQuantity: true,
+                            entries: true,
+                            account: account.account,
+                            disableTrade: true,
+                        }),
+                    );
                 });
 
-                const accountDetailsKey = `account-details-expanded:${account.account}`;
-                let detailsExpanded = true;
-                try {
-                    detailsExpanded =
-                        localStorage.getItem(accountDetailsKey) !== "false";
-                } catch {
-                    detailsExpanded = true;
-                }
                 const metadata =
                     state.accountMetadataMap.get(account.account) || {};
-
-                const detailsSection = document.createElement("div");
-                detailsSection.className = `account-details-section${detailsExpanded ? " expanded" : ""}`;
+                const copiesForMeta = cardFiltersActive
+                    ? (account.visibleCardCount ?? account.totalCards)
+                    : account.totalCards;
                 const createdFormatted = formatMetadataTimestamp(
                     metadata.createdAt,
                 );
@@ -16832,109 +17033,70 @@
                 const lastPulledFormatted = formatMetadataTimestamp(
                     metadata.lastPackPulled,
                 );
-                detailsSection.innerHTML = `
-                    <button type="button" class="account-details-header" aria-expanded="${detailsExpanded ? "true" : "false"}">
-                        <span class="account-details-title">Account Details</span>
-                        <span class="account-details-toggle">▼</span>
-                    </button>
-                    <div class="account-details-body"${detailsExpanded ? "" : " hidden"}>
-                        ${
-                            metadata.instance
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Instance</div>
-                            <div class="account-detail-value">${escapeHtml(metadata.instance)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            metadata.accountName
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Account Name</div>
-                            <div class="account-detail-value">${escapeHtml(metadata.accountName)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            metadata.friendCode
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Friend Code</div>
-                            <div class="account-detail-value">${escapeHtml(metadata.friendCode)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            createdFormatted
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Created</div>
-                            <div class="account-detail-value">${escapeHtml(createdFormatted)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            ageDays != null
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Age</div>
-                            <div class="account-detail-value">${escapeHtml(ageLabel)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            lastLoggedFormatted
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Last Logged</div>
-                            <div class="account-detail-value">${escapeHtml(lastLoggedFormatted)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            lastPulledFormatted
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Last Pack Pulled</div>
-                            <div class="account-detail-value">${escapeHtml(lastPulledFormatted)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            metadata.packCount
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Packs</div>
-                            <div class="account-detail-value">${formatNumber(metadata.packCount)}</div>
-                        </div>`
-                                : ""
-                        }
-                        ${
-                            latestShinedust != null
-                                ? `<div class="account-detail-item">
-                            <div class="account-detail-label">Shinedust</div>
-                            <div class="account-detail-value">${formatNumber(latestShinedust)}</div>
-                        </div>`
-                                : ""
-                        }
-                    </div>
-                `;
-                article.insertBefore(detailsSection, body);
+                const identityRowHtml =
+                    metadata.accountName || metadata.friendCode
+                        ? renderMetaBarHtml(
+                              [
+                                  {
+                                      label: "Account Name",
+                                      value: metadata.accountName || "—",
+                                      className: "meta-account-name",
+                                  },
+                                  {
+                                      label: "Friend Code",
+                                      value: metadata.friendCode || "—",
+                                      className: "meta-friend-code",
+                                  },
+                              ],
+                              "account-overview-meta-identity",
+                          )
+                        : "";
+                const extraCells = [];
+                if (createdFormatted) {
+                    extraCells.push({
+                        label: "Created",
+                        value: createdFormatted,
+                        className: "meta-created",
+                    });
+                }
+                if (lastLoggedFormatted) {
+                    extraCells.push({
+                        label: "Last Logged",
+                        value: lastLoggedFormatted,
+                        className: "meta-last-logged",
+                    });
+                }
+                if (lastPulledFormatted) {
+                    extraCells.push({
+                        label: "Last Pack Pulled",
+                        value: lastPulledFormatted,
+                        className: "meta-last-pack",
+                    });
+                }
+                if (metadata.packCount) {
+                    extraCells.push({
+                        label: "Packs Opened",
+                        value: formatNumber(metadata.packCount),
+                        className: "meta-packs-opened",
+                    });
+                }
 
-                const detailsHeader = detailsSection.querySelector(
-                    ".account-details-header",
-                );
-                const detailsBody = detailsSection.querySelector(
-                    ".account-details-body",
-                );
-                detailsHeader.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    const willExpand = detailsBody.hasAttribute("hidden");
-                    if (willExpand) {
-                        detailsBody.removeAttribute("hidden");
-                        detailsSection.classList.add("expanded");
-                        detailsHeader.setAttribute("aria-expanded", "true");
-                        localStorage.setItem(accountDetailsKey, "true");
-                    } else {
-                        detailsBody.setAttribute("hidden", "");
-                        detailsSection.classList.remove("expanded");
-                        detailsHeader.setAttribute("aria-expanded", "false");
-                        localStorage.setItem(accountDetailsKey, "false");
-                    }
-                });
+                const metaWrap = document.createElement("div");
+                metaWrap.className = "account-overview-meta-wrap";
+                metaWrap.innerHTML =
+                    identityRowHtml +
+                    renderCatalogAccountMetaHtml({
+                        copies: copiesForMeta,
+                        shinedust: latestShinedust,
+                        instance: metadata.instance,
+                        ageDays,
+                    }) +
+                    chunkMetaBarCells(extraCells)
+                        .map((row) =>
+                            renderMetaBarHtml(row, "account-overview-meta-extra"),
+                        )
+                        .join("");
+                article.insertBefore(metaWrap, body);
 
                 return article;
             }

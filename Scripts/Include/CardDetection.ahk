@@ -361,11 +361,12 @@ FoundStars(star, cards := "") {
 ;-------------------------------------------------------------------------------
 ; GodPackFound - Process found god pack
 ;-------------------------------------------------------------------------------
-GodPackFound(validity, cards := "") {
+GodPackFound(validity, cards := "", alreadyAtHome := false) {
     global botConfig, session, DeadCheck, dictionaryData
 
     currentPackInfo := session.get("currentPackInfo")
     username := ""
+    session.set("manualVipValidity", validity)
 
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
 
@@ -407,7 +408,7 @@ GodPackFound(validity, cards := "") {
 
     fcScreenshot := ""
     if (!CardDetection_UseSavedAccountFriendInfo(username, friendCode)) {
-        friendCode := getFriendCode()
+        friendCode := getFriendCode(alreadyAtHome)
         session.set("friendCode", friendCode)
 
         Sleep, 5000

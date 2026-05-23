@@ -773,6 +773,10 @@ AppendFriendCodeToManualVipIds(friendCodeRaw) {
     name := ""
     starCount := ""
     if (IsObject(session)) {
+        if (session.get("manualVipValidity") = "Invalid") {
+            AppendGPlog("Solo reroll: skipped manual_vip_ids.txt append for invalid GP: " . clean)
+            return
+        }
         name := Trim(session.get("manualVipName"))
         starCount := Trim(session.get("manualVipStarCount"))
     }

@@ -1976,8 +1976,89 @@ RecoverPack() {
     return ParsePackResultOutput(output)
 }
 
+CardDetection_QueueGodPack(validity, cards := "", finalizeAccount := false) {
+    global session
+
+    session.set("keepAccount", true)
+    session.set("foundGP", true)
+    session.set("pendingGodPack", true)
+    session.set("pendingGodPackValidity", validity)
+    session.set("pendingGodPackCards", cards)
+    session.set("pendingGodPackFinalize", finalizeAccount)
+    session.set("manualVipValidity", validity)
+
+    LogInfo("Queued " . validity . " God Pack notification until pack cleanup finishes", "GPlog.txt")
+    return true
+}
+
+CardDetection_HasPendingGodPack() {
+    global session
+    return session.get("pendingGodPack")
+}
+
+CardDetection_CheckGodPackDeferred(invalidPack := false, cards := "", finalizeAccount := false) {
+    global botConfig, session
+
+    currentPackInfo := session.get("currentPackInfo")
+
+    normalBorders := currentPackInfo["TypeCount"]["normal"]
+    if (normalBorders) {
+        logMessage := "Instance: " . session.get("scriptName") " | Not a GP"
+        LogDebug(logMessage, "debug_cards.txt")
+        CreateStatusMessage("Not a God Pack...",,,, false)
+        return false
+    }
+
+    session.set("keepAccount", true)
+
+    if (!invalidPack) {
+        tempStarCount := currentPackInfo["TypeCount"]["fullart"] + currentPackInfo["TypeCount"]["rainbow"] + currentPackInfo["TypeCount"]["trainer"]
+
+        logMessage := "Instance: " . session.get("scriptName") " | tempStarCount " . tempStarCount
+        LogDebug(logMessage, "debug_cards.txt")
+
+        requiredStars := botConfig.get("minStars")
+        if (requiredStars > 0 && tempStarCount < requiredStars) {
+            CreateStatusMessage("Pack doesn't contain enough 2 stars...",,,, false)
+            invalidPack := true
+        }
+    }
+
+    return CardDetection_QueueGodPack(invalidPack ? "Invalid" : "Valid", cards, finalizeAccount)
+}
+
+CardDetection_FlushPendingGodPack() {
+    global session
+
+    if (!CardDetection_HasPendingGodPack())
+        return false
+
+    validity := session.get("pendingGodPackValidity")
+    cards := session.get("pendingGodPackCards")
+    finalizeAccount := session.get("pendingGodPackFinalize")
+
+    session.set("pendingGodPack", false)
+    session.set("pendingGodPackValidity", "")
+    session.set("pendingGodPackCards", "")
+    session.set("pendingGodPackFinalize", false)
+
+    GodPackFound(validity, cards, true)
+
+    if (validity = "Invalid")
+        RemoveFriends()
+    IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
+
+    if (finalizeAccount)
+        FinalizeInjectedGodPackAccount()
+
+    reason := (validity = "Invalid") ? "Invalid God Pack Found." : "God Pack found. Continuing..."
+    restartGameInstance(reason, "GodPack")
+    return true
+}
+
 CheckPack(stopEarly := false) {
     expectedOpenedPacks := session.get("expectedPackOpenCount") + 0
+
     result := EvaluatePack()
     if (!result) {
         result := RecoverPack()
@@ -2162,10 +2243,10 @@ CheckPack(stopEarly := false) {
         logMessage := "Instance: " . session.get("scriptName") " | Doing Invalid Check"
         LogDebug(logMessage, "debug_cards.txt")
         ; Pack is invalid...
-        foundInvalidGP := FindGodPack(true, cards) ; GP is never ignored
+        foundInvalidGP := CardDetection_CheckGodPackDeferred(true, cards, false) ; GP is never ignored
 
         if (foundInvalidGP){
-            restartGameInstance("Invalid God Pack Found.", "GodPack")
+            return
         }
         if (!foundInvalidGP) {
             ; If not a GP and not "ignore invalid packs", check what cards the current pack contains which make it invalid
@@ -2188,12 +2269,9 @@ CheckPack(stopEarly := false) {
     }
 
     ; Check for god pack. if found we know its not invalid
-    session.set("foundGP", FindGodPack(false, cards))
+    session.set("foundGP", CardDetection_CheckGodPackDeferred(false, cards, true))
 
     if (session.get("foundGP")) {
-        FinalizeInjectedGodPackAccount()
-
-        restartGameInstance("God Pack found. Continuing...", "GodPack")
         return
     }
 
@@ -2358,10 +2436,10 @@ CheckPackFallback() {
 
     if (foundInvalid) {
         ; Pack is invalid...
-        foundInvalidGP := FindGodPack(true) ; GP is never ignored
+        foundInvalidGP := CardDetection_CheckGodPackDeferred(true, "", false) ; GP is never ignored
 
         if (foundInvalidGP){
-            restartGameInstance("Invalid God Pack Found.", "GodPack")
+            return
         }
         if (!foundInvalidGP && !botConfig.get("InvalidCheck")) {
             ; If not a GP and not "ignore invalid packs", check what cards the current pack contains which make it invalid
@@ -2384,11 +2462,9 @@ CheckPackFallback() {
     }
 
     ; Check for god pack. if found we know its not invalid
-    session.set("foundGP", FindGodPack())
+    session.set("foundGP", CardDetection_CheckGodPackDeferred(false, "", true))
 
     if (session.get("foundGP")) {
-        FinalizeInjectedGodPackAccount()
-        restartGameInstance("God Pack found. Continuing...", "GodPack")
         return
     }
 
@@ -4039,7 +4115,7 @@ PackOpening(tenPackOpening := false) {
     CheckPack()
     SetLastPackPulledNow()
 
-    if(!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
+    if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
 
     ;FindImageAndClick("Pack_SkipButtonAfterOpenPack", 146, 494) ;click on next until skip button appears
@@ -4048,7 +4124,12 @@ PackOpening(tenPackOpening := false) {
     failSafeTime := 0
     Loop {
         Delay(1)
-        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
+        if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
+            HandleGiftPackDexRegistration()
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
+        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
@@ -4066,6 +4147,8 @@ PackOpening(tenPackOpening := false) {
         if(failSafeTime > 45)
             restartGameInstance("Stuck at Home")
     }
+
+    CardDetection_FlushPendingGodPack()
 }
 
 HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
@@ -4233,7 +4316,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     CheckPack()
     SetLastPackPulledNow()
 
-    if(!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
+    if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
 
     ;FindImageAndClick("Pack_SkipButtonAfterOpenPack", 146, 494) ;click on next until skip button appears
@@ -4242,7 +4325,12 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     failSafeTime := 0
     Loop {
         Delay(1)
-        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
+        if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
+            HandleGiftPackDexRegistration()
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
+        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 494) ;146, 494
@@ -4258,6 +4346,8 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         if(failSafeTime > 45)
             restartGameInstance("Stuck at ConfirmPack")
     }
+
+    CardDetection_FlushPendingGodPack()
 }
 
 ReceiveGiftExtended() {

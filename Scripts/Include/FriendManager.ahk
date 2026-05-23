@@ -608,33 +608,35 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
 ;-------------------------------------------------------------------------------
 ; getFriendCode - Get friend code from current account
 ;-------------------------------------------------------------------------------
-getFriendCode() {
+getFriendCode(alreadyAtHome := false) {
     global session
 
     CreateStatusMessage("Getting friend code...",,,, false)
-    Sleep, 2000
-    FindImageAndClick("Pack_SkipButtonAfterOpenPack", 146, 494) ;click on next until skip button appears
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        Delay(1)
-        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
-            adbClick_wbb(239, 497)
-        } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
-            adbClick_wbb(146, 494) ;146, 494
-        } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
-            adbClick_wbb(146, 494) ;146, 494
-        } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
-            break
-        } else if(FindOrLoseImage("Friend_BottomDarkHomeIcon", 0, failSafeTime)) {
-            break
-        } else {
-            adbclick_wbb(146, 494)
+    if (!alreadyAtHome) {
+        Sleep, 2000
+        FindImageAndClick("Pack_SkipButtonAfterOpenPack", 146, 494) ;click on next until skip button appears
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop {
+            Delay(1)
+            if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
+                adbClick_wbb(239, 497)
+            } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
+                adbClick_wbb(146, 494) ;146, 494
+            } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
+                adbClick_wbb(146, 494) ;146, 494
+            } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
+                break
+            } else if(FindOrLoseImage("Friend_BottomDarkHomeIcon", 0, failSafeTime)) {
+                break
+            } else {
+                adbclick_wbb(146, 494)
+            }
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
+            if(failSafeTime > 45)
+                restartGameInstance("Stuck at Home")
         }
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
-        if(failSafeTime > 45)
-            restartGameInstance("Stuck at Home")
     }
     session.set("friendCode", AddFriends(false, true))
 
