@@ -1294,10 +1294,11 @@ FavoriteVipFriends() {
                     session.get("gptest_nonFriends")["_" . vipCode] := {Name: vip.Friend.Name, Time: checkedAt}
                 }
                 SaveGPTestedCache()
-                if (index < n)
+                if (index < n) {
                     FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 143, 518, , 1000)
                     FindImageAndClick("Friend_FriendIDInputReady", 138, 265, , 1000)
                     EraseInput(index, n)
+                }
                 continue 2 ; already back at search input ? skip the nav block below
             }
             ; Pending friend request from the account: either VIP that we weren't able to befriend in time,
