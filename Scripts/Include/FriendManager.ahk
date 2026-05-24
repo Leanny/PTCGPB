@@ -14,6 +14,28 @@
 ; Used by: Main bot loop for friend management and trading setup
 ;===============================================================================
 
+; Windows clipboard is global, lock only around clear/click/read (per attempt, ~0.5s).
+AccountFriendInfo_AcquireClipboardLock(timeoutMs := 800) {
+    lockName := "Global\PTCGPB_FriendCodeClipboard"
+    hMutex := DllCall("CreateMutex", "Ptr", 0, "Int", false, "Str", lockName, "Ptr")
+    if (!hMutex)
+        return 0
+
+    waitResult := DllCall("WaitForSingleObject", "Ptr", hMutex, "UInt", timeoutMs, "UInt")
+    if (waitResult != 0 && waitResult != 0x80) {
+        DllCall("CloseHandle", "Ptr", hMutex)
+        return 0
+    }
+    return hMutex
+}
+
+AccountFriendInfo_ReleaseClipboardLock(hMutex) {
+    if (!hMutex)
+        return
+    DllCall("ReleaseMutex", "Ptr", hMutex)
+    DllCall("CloseHandle", "Ptr", hMutex)
+}
+
 TryDismissSocialFirstTutorial(failSafeTime := 0) {
     if (failSafeTime < 5 || Mod(failSafeTime, 2) != 0)
         return false
@@ -649,7 +671,6 @@ AccountFriendInfo_CopyFriendCodeFromCurrentScreen() {
     CreateStatusMessage("Retrieving account info`nCopying Friend Code...",,,, false)
     Delay(3)
 
-    Clipboard := ""
     friendCode := ""
     copyStartX := 214
     copyY := 202
@@ -660,14 +681,24 @@ AccountFriendInfo_CopyFriendCodeFromCurrentScreen() {
     Loop, %maxCopyAttempts% {
         CreateStatusMessage("Retrieving account info`nCopying Friend Code (" . A_Index . "/" . maxCopyAttempts . ")")
         clickX := copyStartX + ((A_Index - 1) * copyStepX)
+
+        hLock := AccountFriendInfo_AcquireClipboardLock(800)
+        if (!hLock) {
+            Sleep, 40
+            continue
+        }
+
+        Clipboard := ""
         adbClick_wbb(clickX, copyY)
-        ClipWait, 1
+        ClipWait, 0.5
         copiedValue := RegExReplace(Clipboard, "\D", "")
+        Clipboard := ""
+        AccountFriendInfo_ReleaseClipboardLock(hLock)
+
         if (RegExMatch(copiedValue, "^\d{16}$")) {
             friendCode := copiedValue
             break
         }
-        Clipboard := ""
         Sleep, 120
     }
     Delay(1)
