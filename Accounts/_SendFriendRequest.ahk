@@ -34,6 +34,7 @@ SetWorkingDir, %A_ScriptDir%\..\Scripts
 
 #Include %A_ScriptDir%\..\Scripts\Include\Config.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Session.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Profiler.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_All.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_Imagesearch.ahk
 

@@ -72,6 +72,7 @@ TryHandleTradeTutorial(failSafeTime := 0) {
 ; AddFriends - Add friends from friend code list
 ;-------------------------------------------------------------------------------
 AddFriends(renew := false, getFC := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, interceptProc
 
     ; Friend adding is Inject Wonderpick-only; own friend-code lookup is allowed wherever the caller explicitly asks for it.
@@ -355,6 +356,7 @@ AddFriends(renew := false, getFC := false) {
 ; RemoveFriends - Remove all friends from account
 ;-------------------------------------------------------------------------------
 RemoveFriends() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, interceptProc, DeadCheck
 
     cleanupAccount := session.get("accountFileName")
@@ -765,6 +767,9 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             continue
 
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime, , true)) {
+            if(FindOrLoseImage("Common_ColorChangeButton2", 0, , 80)) {
+                adbClick_wbb(30, 80)
+            }
             if(!IsSocialHubReadyForFriends()) {
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
                 Delay(0.5)
@@ -810,9 +815,9 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
         else{
             if(!skipTutorialProc) {
                 if(TryHandleTradeTutorial(failSafeTime))
-                continue
+                    continue
                 else if(!TryDismissSocialFirstTutorial(failSafeTime))
-                adbClick_wbb(155, 425)
+                    adbClick_wbb(155, 425)
             }
         }
         Delay(0.25)
@@ -829,6 +834,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
 ; getFriendCode - Get friend code from current account
 ;-------------------------------------------------------------------------------
 getFriendCode(alreadyAtHome := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     CreateStatusMessage("Getting friend code...",,,, false)
@@ -910,6 +916,7 @@ AccountFriendInfo_CopyFriendCodeFromCurrentScreen() {
 ; EnsureAccountFriendInfo - Persist own account name + friend code once per account
 ;-------------------------------------------------------------------------------
 EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck
 
     if (!force && !botConfig.get("saveAccountFriendInfo"))

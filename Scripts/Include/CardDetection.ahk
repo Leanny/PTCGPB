@@ -17,6 +17,7 @@
 ; DetectSixCardPack - Detect if current pack is a 6-card pack
 ;-------------------------------------------------------------------------------
 DetectSixCardPack() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     searchVariation := 5 ; needed to tighten from 20 to avoid false positives
@@ -46,6 +47,7 @@ DetectSixCardPack() {
 ; DetectFourCardPack - Detect if current pack is a 4-card Deluxe pack
 ;-------------------------------------------------------------------------------
 DetectFourCardPack() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
     if (session.get("openPack") = "Deluxe") {
         return true
@@ -54,6 +56,7 @@ DetectFourCardPack() {
 }
 
 CheckCardLoading(totalCardsInPack){
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     count := 0
@@ -102,6 +105,7 @@ CheckCardLoading(totalCardsInPack){
 ; AnalysisBorder - Find card borders of specific type in pack
 ;-------------------------------------------------------------------------------
 AnalysisBorder(totalCardsInPack) {
+    prof := Prof_Scope(A_ThisFunc)
     global session, isDevelopment, rarityCheckers
 
     currentPackInfo := {"isVerified": false, "CardSlot": [], "TypeCount": {}}
@@ -162,6 +166,7 @@ AnalysisBorder(totalCardsInPack) {
 ; FindCard - Find specific card in opened pack
 ;-------------------------------------------------------------------------------
 FindCard(prefix) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     count := 0
@@ -191,6 +196,7 @@ FindCard(prefix) {
 ; FindGodPack - Detect if current pack is a god pack
 ;-------------------------------------------------------------------------------
 FindGodPack(invalidPack := false, cards := "") {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     currentPackInfo := session.get("currentPackInfo")
@@ -363,6 +369,7 @@ FoundStars(star, cards := "") {
 ; GodPackFound - Process found god pack
 ;-------------------------------------------------------------------------------
 GodPackFound(validity, cards := "", alreadyAtHome := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck, dictionaryData
 
     currentPackInfo := session.get("currentPackInfo")
@@ -538,6 +545,7 @@ CardDetection_ResolveSavedXml(saveDir, ByRef accountFileName, expectedDeviceAcco
 ; FoundTradeable - Process found tradeable cards
 ;-------------------------------------------------------------------------------
 FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighoul := 0, foundCrown := 0, foundImmersive := 0, foundShiny1Star := 0, foundShiny2Star := 0, foundTrainer := 0, foundRainbow := 0, foundFullArt := 0) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, dictionaryData
     global screenShotFileName
 
@@ -688,6 +696,7 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
 }
 
 CheckCardsSimple(result) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     cards := result.cards
@@ -867,6 +876,7 @@ CheckCardsSimple(result) {
 }
 
 FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOpening := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
     global screenShotFileName
 
@@ -1160,6 +1170,7 @@ FilterCardsByWishlistMatches(cards, wishlistMatches) {
 ; ProcessPendingTradeables - Update all pending tradeable XMLs
 ;-------------------------------------------------------------------------------
 ProcessPendingTradeables() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     if (session.get("s4tPendingTradeables").Length() = 0)
@@ -1224,6 +1235,7 @@ ReleaseCardImageLock(hMutex) {
 }
 
 GenerateSyntheticPackImage(cards, ByRef outputPath, highlightIds := "", maxCols := 3) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     outputPath := ""

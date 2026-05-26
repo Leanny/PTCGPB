@@ -1,6 +1,7 @@
 ﻿; SOURCE: https://www.autohotkey.com/boards/viewtopic.php?f=6&t=72674
 
 HBitmapToRandomAccessStream(hBitmap) {
+    prof := Prof_Scope(A_ThisFunc)
     static IID_IRandomAccessStream := "{905A0FE1-BC53-11DF-8C49-001E4FC686DA}"
         , IID_IPicture            := "{7BF80980-BF32-101A-8BBB-00AA00300CAB}"
         , PICTYPE_BITMAP := 1
@@ -32,6 +33,7 @@ CLSIDFromString(IID, ByRef CLSID) {
 
 ocr(fileOrStream, lang := "FirstFromAvailableLanguages")
 {
+    prof := Prof_Scope(A_ThisFunc)
     static OcrEngineStatics, OcrEngine, MaxDimension, LanguageFactory, Language, CurrentLanguage, BitmapDecoderStatics, GlobalizationPreferencesStatics
     if (OcrEngineStatics = "")
     {
@@ -176,6 +178,7 @@ DeleteHString(hString)
 
 WaitForAsync(ByRef Object)
 {
+    prof := Prof_Scope(A_ThisFunc)
     AsyncInfo := ComObjQuery(Object, IAsyncInfo := "{00000036-0000-0000-C000-000000000046}")
     loop
     {
@@ -215,6 +218,7 @@ WaitForAsync(ByRef Object)
 ; FindPackStats - Navigate to profile and OCR pack count
 ;-------------------------------------------------------------------------------
 FindPackStats() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     session.set("failSafe", A_TickCount)
@@ -307,6 +311,7 @@ FindPackStats() {
 ; RefinedOCRText - Attempts to extract and validate text from screenshot
 ;-------------------------------------------------------------------------------
 RefinedOCRText(screenshotFile, x, y, w, h, allowedChars, validPattern, ByRef output) {
+    prof := Prof_Scope(A_ThisFunc)
     success := False
     ; Pack count gets bigger blowup
     if(output = "trophyOCR"){
@@ -333,6 +338,7 @@ RefinedOCRText(screenshotFile, x, y, w, h, allowedChars, validPattern, ByRef out
 ; CropAndFormatForOcr - Crops, scales, grayscales and enhances image for OCR
 ;-------------------------------------------------------------------------------
 CropAndFormatForOcr(inputFile, x := 0, y := 0, width := 200, height := 200, scaleUpPercent := 200) {
+    prof := Prof_Scope(A_ThisFunc)
     ;global session
     ; Get bitmap from file
     pBitmapOrignal := Gdip_CreateBitmapFromFile(inputFile)
@@ -352,6 +358,7 @@ CropAndFormatForOcr(inputFile, x := 0, y := 0, width := 200, height := 200, scal
 ; GetTextFromBitmap - Extracts text from bitmap using OCR
 ;-------------------------------------------------------------------------------
 GetTextFromBitmap(pBitmap, charAllowList := "") {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig
 
     ocrText := ""
@@ -381,6 +388,7 @@ RegExEscape(str) {
 ; CountShinedust - Navigate to items and OCR shinedust value
 ;-------------------------------------------------------------------------------
 CountShinedust() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     FindImageAndClick("Shinedust_CopySupportIDButtonInSettings", 244, 518, , 2000)

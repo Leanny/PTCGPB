@@ -1,4 +1,4 @@
-﻿;===============================================================================
+;===============================================================================
 ; Cockpit.ahk - Dashboard + in-process aggregator writer
 ;===============================================================================
 ; Runtime:
@@ -20,6 +20,7 @@ SetWorkingDir %A_ScriptDir%\..\..
 
 #Include %A_ScriptDir%\..\
 #Include Config.ahk
+#Include Profiler.ahk
 #Include Logging.ahk
 #Include Utils.ahk
 #Include AccountMetadata.ahk

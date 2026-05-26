@@ -1,10 +1,11 @@
-﻿#NoEnv
+#NoEnv
 #SingleInstance Force
 SetBatchLines, -1
 SetTitleMatchMode, 3
 CoordMode, Mouse, Client
 
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_ALL.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Profiler.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Utils.ahk
 
 If !pToken := Gdip_Startup()
@@ -104,7 +105,7 @@ BtnSave:
         return
     }
 
-    ; 2. 최종 확인 창 (Yes/No)
+    ; 2. ?? ?? ? (Yes/No)
     ConfirmMsg := "Are you sure you want to save the following details?`n`n"
         . "Event Name: " . InputName . "`n"
         . "Expiry Date: " . InputExpDate . "`n"

@@ -25,6 +25,7 @@ DllCall("ntdll\ZwDelayExecution","Int",0,"Int64*",-5000)
 #Include Session.ahk
 #Include Data.ahk
 #Include ExtraConfig.ahk
+#Include Profiler.ahk
 #Include Gdip_All.ahk
 #Include Gdip_Imagesearch.ahk
 #Include ADB.ahk
@@ -1944,6 +1945,7 @@ XMLBalanceResultMessage(instances, eligibleCount) {
 }
 
 BalanceXMLs_RunWithProgress(command) {
+    prof := Prof_Scope(A_ThisFunc)
     resultPath := A_ScriptDir . "\Accounts\Saved\balance_result.txt"
     errorPath := A_ScriptDir . "\Accounts\Saved\carddb_error.txt"
     progressPath := A_ScriptDir . "\Accounts\Saved\balance_progress.txt"
@@ -2307,6 +2309,7 @@ ConfirmDiagnosticLogLevelForRun() {
 }
 
 StartBot() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, dict, localVersion, githubUser, modVersion, modRepoUser, rerollTime, PackGuiBuild, botMetadata, typeMsg
         , g_botStarted
 
@@ -2614,6 +2617,7 @@ SendAllInstancesOfflineStatus() {
 }
 
 ReceiveData(wParam, lParam) {
+    prof := Prof_Scope(A_ThisFunc)
     global ProcessedIDs, botMetadata
 
     StringAddress := NumGet(lParam + 2*A_PtrSize)
