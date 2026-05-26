@@ -20,12 +20,14 @@
 ; Delay - Configurable delay based on global Delay setting
 ;-------------------------------------------------------------------------------
 Delay(n) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig
     msTime := botConfig.get("Delay") * n
     Sleep, msTime
 }
 
 DelayH(ms) {
+    prof := Prof_Scope(A_ThisFunc)
     StartTime := A_TickCount
     
     while (A_TickCount - StartTime < ms) {
@@ -57,6 +59,7 @@ IsLeapYear(year) {
 ; DownloadFile - Download file from URL to local path
 ;-------------------------------------------------------------------------------
 DownloadFile(url, filename) {
+    prof := Prof_Scope(A_ThisFunc)
     url := url  ; Change to your hosted .txt URL "https://pastebin.com/raw/vYxsiqSs"
     RegRead, proxyEnabled, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyEnable
 	RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
@@ -85,6 +88,7 @@ DownloadFile(url, filename) {
 ; ReadFile - Read text file and return cleaned array of values
 ;-------------------------------------------------------------------------------
 ReadFile(filename, numbers := false) {
+    prof := Prof_Scope(A_ThisFunc)
     FileRead, content, %A_ScriptDir%\..\%filename%.txt
 
     if (!content)
@@ -175,6 +179,7 @@ checkShouldDoMissions() {
 ; SortArraysByProperty - Sort multiple parallel arrays by a property
 ;-------------------------------------------------------------------------------
 SortArraysByProperty(fileNames, fileTimes, packCounts, property, ascending) {
+    prof := Prof_Scope(A_ThisFunc)
     n := fileNames.MaxIndex()
 
     ; Create an array of indices for sorting
@@ -227,6 +232,7 @@ SortArraysByProperty(fileNames, fileTimes, packCounts, property, ascending) {
 ; Sort - Helper function to sort an array using a custom comparison function
 ;-------------------------------------------------------------------------------
 Sort(array, compareFunc) {
+    prof := Prof_Scope(A_ThisFunc)
     QuickSort(array, 1, array.MaxIndex(), compareFunc)
     return array
 }
@@ -235,6 +241,7 @@ Sort(array, compareFunc) {
 ; QuickSort - Iterative quicksort implementation
 ;-------------------------------------------------------------------------------
 QuickSort(array, left, right, compareFunc) {
+    prof := Prof_Scope(A_ThisFunc)
     ; Create a manual stack to avoid deep recursion
     stack := []
     stack.Push([left, right])
@@ -604,6 +611,7 @@ ShellRun(prms*) {
 }
 
 CmdRet(sCmd, callBackFuncObj := "", encoding := "") {
+    prof := Prof_Scope(A_ThisFunc)
     static HANDLE_FLAG_INHERIT := 0x00000001, flags := HANDLE_FLAG_INHERIT
         , STARTF_USESTDHANDLES := 0x100, CREATE_NO_WINDOW := 0x08000000
 
@@ -658,6 +666,7 @@ SerializeArray(arr) {
 }
 
 restartInstance(){
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     coverHwnd := CaptureMuMuCoverWindow(session.get("scriptName"))
@@ -669,6 +678,7 @@ restartInstance(){
 }
 
 GetVRAMByScriptName(scriptName) {
+    prof := Prof_Scope(A_ThisFunc)
     mumuFolder := getMuMuFolder()
 
     mumuInstanceNo := getMumuInstanceNum(scriptName, mumuFolder)
@@ -1044,6 +1054,7 @@ HasVal(haystack, needle) {
 }
 
 from_window(ByRef image) {
+    prof := Prof_Scope(A_ThisFunc)
     ; Thanks tic - https://www.autohotkey.com/boards/viewtopic.php?t=6517
 
     ; Get the handle to the window.

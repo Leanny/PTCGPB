@@ -11,6 +11,7 @@ CoordMode, Pixel, Screen
 #Include Session.ahk
 #Include Data.ahk
 #Include ExtraConfig.ahk
+#Include Profiler.ahk
 #Include Gdip_All.ahk
 #Include Gdip_Imagesearch.ahk
 pToken := Gdip_Startup()
@@ -976,6 +977,8 @@ HomeAndMission(homeonly := 0, completeSecondMisson=false) {
 }
 
 FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0, coordImageName := "", coordEL := "", coordSafeTime := "") {
+    prof := Prof_Scope(A_ThisFunc)
+    profNeedle := Prof_Scope(A_ThisFunc . ":" . needleName)
     global botConfig, session, needlesDict
     static lastStatusTime := 0
 
@@ -1041,7 +1044,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
 
     stateResult := isTerminatePTCGPAppByADBShell()
     if(stateResult){
-        restartGameInstance("Stuck at " . imageName . "... (found App3.png)")
+        restartGameInstance("Stuck at " . imageName . "... (App terminated)")
     }
 
     if(imageName = "Missions") { ; may input extra ESC and stuck at exit game
@@ -1100,6 +1103,8 @@ if(imageName = "CommunityShowcase") {
 }
 
 FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVariation := 20, sleepTime := "", skip := false, safeTime := 0) {
+    prof := Prof_Scope(A_ThisFunc)
+    profNeedle := Prof_Scope(A_ThisFunc . ":" . needleName)
     global botConfig, session, needlesDict
 
     needleObj := needlesDict.Get(needleName)
@@ -1265,12 +1270,14 @@ if(imageName = "CommunityShowcase") {
 }
 
 resetWindows() {
+    prof := Prof_Scope(A_ThisFunc)
     DirectlyPositionWindow()
 
     return true
 }
 
 DirectlyPositionWindow() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig
 
     scaleParam := 283
@@ -1335,6 +1342,7 @@ FinalizeInjectedGodPackAccount(testing := True) {
 }
 
 restartGameInstance(reason, RL := true) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck
     isStuck := InStr(reason, "Stuck")
 
@@ -1426,6 +1434,7 @@ restartGameInstance(reason, RL := true) {
 }
 
 SaveStuckScreenshot(reason) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     fileDir := A_ScriptDir . "\..\Screenshots\Stuck"
@@ -1458,6 +1467,7 @@ SaveStuckScreenshot(reason) {
 }
 
 menuDelete() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     Delay(1)
@@ -1519,6 +1529,7 @@ menuDelete() {
 }
 
 menuDeleteStart() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     if(session.get("keepAccount")) {
@@ -1674,6 +1685,7 @@ AccountCreationDate_ToUnix(creationDate) {
 }
 
 GetHistoryOfAccount() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
@@ -1750,6 +1762,7 @@ GetHistoryOfAccount() {
 }
 
 InitPackOpening(full := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
@@ -1838,6 +1851,7 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
 }
 
 GetStdout(cmd) {
+    prof := Prof_Scope(A_ThisFunc)
     shell := ComObjCreate("WScript.Shell")
     exec := shell.Exec(cmd)
     return exec.StdOut.ReadAll()
@@ -1955,6 +1969,7 @@ UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
 }
 
 EvaluatePack() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
     expectedOpenedPacks := session.get("expectedPackOpenCount") + 0
@@ -1983,6 +1998,7 @@ EvaluatePack() {
 }
 
 EvaluatePackCount() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
@@ -2002,6 +2018,7 @@ EvaluatePackCount() {
 }
 
 RecoverPack() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
 
@@ -2096,6 +2113,7 @@ CardDetection_FlushPendingGodPack() {
 }
 
 CheckPack(stopEarly := false) {
+    prof := Prof_Scope(A_ThisFunc)
     expectedOpenedPacks := session.get("expectedPackOpenCount") + 0
 
     result := EvaluatePack()
@@ -2344,6 +2362,7 @@ CheckPack(stopEarly := false) {
 }
 
 CheckPackFallback() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     currentPackIs6Card := false ; reset before each pack check
@@ -2553,6 +2572,7 @@ ControlClick(X, Y) {
 }
 
 Screenshot_dev(fileType := "Dev", subDir := "", srcPath := "") {
+    prof := Prof_Scope(A_ThisFunc)
     global session, rec_Active
     SetWorkingDir %A_ScriptDir%  ; Ensures the working directory is the script's directory
 
@@ -2670,6 +2690,7 @@ return filePath
 }
 
 Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
+    prof := Prof_Scope(A_ThisFunc)
     SetWorkingDir %A_ScriptDir%  ; Ensures the working directory is the script's directory
 
     ; Define folder and file paths
@@ -3234,6 +3255,7 @@ bboxDraw2(X1, Y1, X2, Y2, color) {
 }
 
 adbSwipe_wbb(params) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     if(session.get("dbg_bbox"))
@@ -3271,6 +3293,7 @@ bboxAndPause_swipe(params, doPause := False) {
 }
 
 adbClick_wbb(X,Y)  {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     if(session.get("dbg_bbox"))
@@ -3325,6 +3348,8 @@ bboxAndPause_immage(X1, Y1, X2, Y2, pNeedleObj, vret := False, doPause := False)
 Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     ,OuterX1=0,OuterY1=0,OuterX2=0,OuterY2=0,Variation=0,Trans=""
     ,SearchDirection=1,Instances=1,LineDelim="`n",CoordDelim=",") {
+    prof := Prof_Scope(A_ThisFunc)
+    profNeedle := Prof_Scope(A_ThisFunc . ":" . pNeedle.Name)
     global session
 
     vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1,OuterX2,OuterY2,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
@@ -3334,6 +3359,7 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
 }
 
 GetNeedle(Path) {
+    prof := Prof_Scope(A_ThisFunc)
     static NeedleBitmaps := Object()
 
     if (NeedleBitmaps.HasKey(Path)) {
@@ -3351,6 +3377,7 @@ GetNeedle(Path) {
 }
 
 DoTutorial() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     FindImageAndClick("Create_CountryComboBoxButton", 143, 370) ;select month and year and click

@@ -19,6 +19,7 @@
 ; GetDeviceAccountFromXML - Extract device account ID from XML
 ;-------------------------------------------------------------------------------
 GetDeviceAccountFromXML() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     deviceAccount := ""
@@ -85,6 +86,7 @@ GetDeviceAccountFromXML() {
 ; LogToTradesDatabase - Compatibility no-op
 ;-------------------------------------------------------------------------------
 LogToTradesDatabase(deviceAccount, cardTypes, cardCounts, screenShotFileName := "", shinedustValue := "") {
+    prof := Prof_Scope(A_ThisFunc)
     return true
 }
 
@@ -100,6 +102,7 @@ CloseCardDatabase(deviceAccount := "") {
 }
 
 MergeCardDatabase() {
+    prof := Prof_Scope(A_ThisFunc)
     helperPath := CardDatabase_HelperPath()
     if (!FileExist(helperPath))
         return false
@@ -110,6 +113,7 @@ MergeCardDatabase() {
 }
 
 LogToCardDatabase(result) {
+    prof := Prof_Scope(A_ThisFunc)
     deviceAccount := GetDeviceAccountFromXML()
     if (deviceAccount = "")
         return false
@@ -136,6 +140,7 @@ LogToCardDatabase(result) {
 }
 
 LogSinglePullToCardDatabase(helperPath, root, deviceAccount, timestamp, pack, cards) {
+    prof := Prof_Scope(A_ThisFunc)
     cardStr := ""
 
     if (IsObject(cards)) {
@@ -217,6 +222,7 @@ CsvEscape(value) {
 }
 
 AppendTextWithRetry(path, text, retries := 50, sleepMs := 10) {
+    prof := Prof_Scope(A_ThisFunc)
     Loop, %retries% {
         FileAppend, %text%, %path%, UTF-8
         if (!ErrorLevel)
@@ -254,6 +260,7 @@ GetTradesDatabaseStats() {
 ; SaveCroppedImage - Crop and save a portion of an image
 ;-------------------------------------------------------------------------------
 SaveCroppedImage(sourceFile, destFile, x, y, w, h) {
+    prof := Prof_Scope(A_ThisFunc)
     if (!FileExist(sourceFile)) {
         LogWarn("SaveCroppedImage: Source file not found: " . sourceFile, "OCR.txt")
         return false
@@ -298,6 +305,7 @@ SaveCroppedImage(sourceFile, destFile, x, y, w, h) {
 ; LogShinedustToDatabase - Persist shinedust to account metadata
 ;-------------------------------------------------------------------------------
 LogShinedustToDatabase(shinedustValue) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     shinedustValueClean := StrReplace(shinedustValue, ",", "")

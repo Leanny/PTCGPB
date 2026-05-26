@@ -122,6 +122,7 @@ needlesDict.Add(new Needle("Common_ActivatedHomeInMainMenu", "FogHomeIcon", new 
 needlesDict.Add(new Needle("Common_PopupXButtonInMain", "Privacy", new Coordinate(130, 473, 145, 488)))
 needlesDict.Add(new Needle("Common_ShopButtonInMain", "Shop", new Coordinate(190, 390, 215, 404)))
 needlesDict.Add(new Needle("Common_ColorChangeButton", "Button", new Coordinate(95, 350, 195, 530)))
+needlesDict.Add(new Needle("Common_ColorChangeButton2", "Button3", new Coordinate(123, 466, 139, 471)))
 needlesDict.Add(new Needle("Common_LevelUpBackground", "LevelUp", new Coordinate(100, 86, 167, 116)))
 needlesDict.Add(new Needle("Common_UnknownButton2", "Button2", new Coordinate(95, 350, 195, 530)))
 needlesDict.Add(new Needle("StartupErrorX", "StartupErrorX", new Coordinate(124, 423, 155, 455))) ; ------------------------------ Finding

@@ -19,6 +19,7 @@
 ; loadAccount - Load an account XML file into the game
 ;-------------------------------------------------------------------------------
 loadAccount() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     session.get("missionDoneList")["beginnerMissionsDone"] := 0
@@ -175,6 +176,7 @@ DestoryAccountInfoUI(){
 ; MarkAccountAsUsed - Mark account as successfully used and remove from queue
 ;-------------------------------------------------------------------------------
 MarkAccountAsUsed() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     if (!session.get("currentLoadedAccountIndex") || !session.get("accountFileName")) {
@@ -325,6 +327,7 @@ ClearFriendCleanupPending() {
 ; saveAccount - Save current account from game to XML file
 ;-------------------------------------------------------------------------------
 saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag := false) {
+    prof := Prof_Scope(A_ThisFunc)
     global session, Debug
 
     filePath := ""
@@ -454,6 +457,7 @@ TrackUsedAccount(fileName) {
 ; CleanupUsedAccounts - Remove stale used account tracking data
 ;-------------------------------------------------------------------------------
 CleanupUsedAccounts() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName")
     usedAccountsLog := saveDir . "\used_accounts.txt"
@@ -523,6 +527,7 @@ CleanupUsedAccounts() {
 ; UpdateAccount - Update account metadata with pack count
 ;-------------------------------------------------------------------------------
 UpdateAccount() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     if (session.get("accountFileName") != "" && session.get("accountOpenPacks") > 0) {
@@ -543,6 +548,7 @@ UpdateAccount() {
 ; getMetaData - Read metadata flags
 ;-------------------------------------------------------------------------------
 getMetaData() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     session.get("missionDoneList")["beginnerMissionsDone"] := 0
@@ -583,6 +589,7 @@ getMetaData() {
 ; setMetaData - Write metadata flags
 ;-------------------------------------------------------------------------------
 setMetaData() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName")
@@ -857,6 +864,7 @@ UpdateSavedXml(xmlPath) {
 ; Note: This is a large function (300+ lines) included in full for completeness
 ;-------------------------------------------------------------------------------
 CreateAccountList(instance) {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig
 
     ; Clean up stale used accounts first
