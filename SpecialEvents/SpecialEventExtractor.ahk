@@ -105,7 +105,7 @@ BtnSave:
         return
     }
 
-    ; 2. ?? ?? ? (Yes/No)
+    ; 2. 최종 확인 창 (Yes/No)
     ConfirmMsg := "Are you sure you want to save the following details?`n`n"
         . "Event Name: " . InputName . "`n"
         . "Expiry Date: " . InputExpDate . "`n"
