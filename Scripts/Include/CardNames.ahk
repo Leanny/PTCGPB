@@ -293,7 +293,7 @@ CardName_BuildFoundBlock(cards, rarity, foundCards) {
     separator := " " . Chr(0x203A) . "  "
     For _, t in activeTypes {
         emoji := CardName_TypeEmoji(t)
-        label := CardName_TypeLabel(t)
+        label := CardName_TypeLabel(t) . " (x" . foundCards[t] . ")"
 
         rightSide := ""
         if (hasCards && buckets.HasKey(t)) {
@@ -314,15 +314,13 @@ CardName_BuildFoundBlock(cards, rarity, foundCards) {
                     cardText .= " (x" . counts[id] . ")"
                 rightSide .= cardText
             }
-        } else {
-            rightSide := "(x" . foundCards[t] . ")"
         }
-        if (rightSide = "")
-            rightSide := "(x" . foundCards[t] . ")"
 
         if (lines != "")
             lines .= "\n\n"
-        lines .= emoji . separator . "**" . label . "**\n" . rightSide
+        lines .= emoji . separator . "**" . label . "**"
+        if (rightSide != "")
+            lines .= "\n" . rightSide
     }
 
     return lines
