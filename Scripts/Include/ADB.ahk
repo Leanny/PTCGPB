@@ -329,9 +329,11 @@ doesMissionUserPrefsExist() {
 
 startPTCGPApp(){
     prof := Prof_Scope(A_ThisFunc)
-    adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-    adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-    DelayH(100)
+    if(isTerminatePTCGPApp()) {
+        adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+        adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
+        DelayH(100)
+    }
 }
 
 closePTCGPApp(){
@@ -356,7 +358,7 @@ isCurrentScreenHome(){
         return false
 }
 
-isTerminatePTCGPAppByADBShell(){
+isTerminatePTCGPAppByADBShell() {
     prof := Prof_Scope(A_ThisFunc)
     static cachedResult := ""
     static cachedAt := 0
@@ -393,7 +395,7 @@ isTerminatePTCGPHelperApp(){
         return true
 }
 
-isTerminatePTCGPApp(){
+isTerminatePTCGPApp() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
