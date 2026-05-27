@@ -210,13 +210,8 @@ AddFriends(renew := false, getFC := false) {
                         LogToFile("Skipping friend ID after ADD error | index=" . friendIDIdx)
                         break
                     }
-                    else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime))
-                        break
-                    else if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
-                        LogToFile("Friend request limit/full state detected. Re-entering Social | index=" . friendIDIdx)
-                        interceptProc := false
-                        ReEnterSocial("ADD")
-                        isContinue := true
+                    else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+                        LogToFile("Skipping friend ID because cannot send friend request to this user | index=" . friendIDIdx)
                         break
                     }
                     if(!isSendReqeest
@@ -238,13 +233,8 @@ AddFriends(renew := false, getFC := false) {
                 MarkFriendCleanupPending("Friend request pending")
                 break
             }
-            else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime))
-                break
-            else if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
-                LogToFile("Friend request limit/full state detected. Re-entering Social | index=" . friendIDIdx)
-                interceptProc := false
-                ReEnterSocial("ADD")
-                isContinue := true
+            else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+                LogToFile("Skipping friend ID because cannot send friend request to this user | index=" . friendIDIdx)
                 break
             }
             else if(interceptErrorCheck("ADD")) {
@@ -686,7 +676,6 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
                 || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
                 || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
                 || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
-                || FindOrLoseImage("FriendLimit", 0, , , true)
                 || FindOrLoseImage("Common_Error", 0, , , true))
                 return true
 
