@@ -329,59 +329,15 @@ doesMissionUserPrefsExist() {
 
 startPTCGPApp(){
     prof := Prof_Scope(A_ThisFunc)
-    maxRetry := 5
-    retryCount := 0
-
-    ADB_LogTrace("startPTCGPApp started")
-    ; stateResult := isCurrentScreenHome()
-    ; if(stateResult) {
-    ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
     adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
     adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-    ; }
-    ; Loop, {
-    ;     stateResult := waitUntilActivatePTCGPApp()
-    ;     if(!stateResult)
-    ;         retryCount++
-    ;     else
-    ;         break
-
-    ;     if(retryCount > maxRetry)
-    ;         break
-
-    ;     Sleep, 50
-    ; }
-    ; ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
-    ; DelayH(100)
+    DelayH(100)
 }
 
 closePTCGPApp(){
     prof := Prof_Scope(A_ThisFunc)
-    maxRetry := 5
-    retryCount := 0
-    stateResult := false
-
-    ADB_LogTrace("closePTCGPApp started")
     adbWriteRaw("am force-stop jp.pokemon.pokemontcgp")
-    ; stateResult := isCurrentScreenHome()
-    ; if(!stateResult) {
-    ADB_LogTrace("closePTCGPApp app active; returning to launcher/home state")
     adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-    ; adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-    ; }
-    ; Loop, {
-    ;     stateResult := isCurrentScreenHome()
-    ;     if(!stateResult)
-    ;         retryCount++
-    ;     else
-    ;         break
-
-    ;     if(retryCount > maxRetry)
-    ;         break
-
-    ;     Sleep, 50
-    ; }
-    ADB_LogTrace("closePTCGPApp finished retryCount=" . retryCount)
     DelayH(100)
 }
 
