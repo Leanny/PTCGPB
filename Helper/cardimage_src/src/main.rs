@@ -10,9 +10,12 @@ use imageproc::rect::Rect;
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use std::fs as stdfs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant, SystemTime};
 use tokio::fs;
 
 #[derive(Parser)]
@@ -44,8 +47,97 @@ struct CardMapEntry {
 type CardMap = HashMap<String, CardMapEntry>;
 
 const CARDMAP_URL: &str = "https://leanny.github.io/pocket_tcg_resources/data/cardmap.json";
+const CARDMAP_REFRESH_AFTER: Duration = Duration::from_secs(60 * 60);
 
-async fn load_cardmaster(path: &Path) -> anyhow::Result<CardMap> {
+struct DownloadLock {
+    path: PathBuf,
+}
+
+impl Drop for DownloadLock {
+    fn drop(&mut self) {
+        let _ = stdfs::remove_file(&self.path);
+    }
+}
+
+fn acquire_download_lock(path: &Path) -> anyhow::Result<DownloadLock> {
+    let lock_path = path.with_extension("json.download.lock");
+    let started = Instant::now();
+    loop {
+        match stdfs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock_path)
+        {
+            Ok(_) => return Ok(DownloadLock { path: lock_path }),
+            Err(err) if err.kind() == ErrorKind::AlreadyExists => {
+                if started.elapsed() >= Duration::from_secs(60) {
+                    stdfs::remove_file(&lock_path).ok();
+                    continue;
+                }
+                thread::sleep(Duration::from_millis(250));
+            }
+            Err(err) => {
+                return Err(err)
+                    .with_context(|| format!("Could not create download lock {:?}", lock_path));
+            }
+        }
+    }
+}
+
+fn cardmap_is_fresh(path: &Path) -> bool {
+    stdfs::metadata(path)
+        .and_then(|meta| meta.modified())
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .is_some_and(|age| age < CARDMAP_REFRESH_AFTER)
+}
+
+async fn download_cardmap(path: &Path, force: bool) -> anyhow::Result<String> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).await?;
+        }
+    }
+
+    let _lock = acquire_download_lock(path)?;
+    if !force {
+        if let Ok(data) = fs::read_to_string(path).await {
+            if !data.is_empty() {
+                return Ok(data);
+            }
+        }
+    } else {
+        fs::remove_file(path).await.ok();
+    }
+
+    let data = Client::new()
+        .get(CARDMAP_URL)
+        .send()
+        .await
+        .context("Could not download cardmap.json")?
+        .error_for_status()
+        .context("cardmap.json download returned an error status")?
+        .text()
+        .await
+        .context("Could not read downloaded cardmap.json")?;
+
+    // Validate before saving, so we do not cache a bad file.
+    serde_json::from_str::<CardMap>(&data).context("Downloaded cardmap.json was not valid JSON")?;
+
+    fs::write(path, &data)
+        .await
+        .with_context(|| format!("Could not save downloaded cardmap.json to {:?}", path))?;
+
+    Ok(data)
+}
+
+fn parse_cardmaster(path: &Path, data: &str) -> anyhow::Result<CardMap> {
+    serde_json::from_str(data)
+        .with_context(|| format!("Could not parse cardmap JSON at {:?}", path))
+}
+
+#[allow(dead_code)]
+async fn load_cardmaster(path: &Path, _required_cards: &[String]) -> anyhow::Result<CardMap> {
     let data = match fs::read_to_string(path).await {
         Ok(data) => data,
         Err(err) if err.kind() == ErrorKind::NotFound => {
@@ -89,6 +181,30 @@ async fn load_cardmaster(path: &Path) -> anyhow::Result<CardMap> {
 
 fn get_ill_id<'a>(card_id: &str, cm: &'a CardMap) -> Option<&'a str> {
     cm.get(card_id)?.illustration_id.as_deref()
+}
+
+async fn load_cardmaster_with_refresh(
+    path: &Path,
+    required_cards: &[String],
+) -> anyhow::Result<CardMap> {
+    let data = match fs::read_to_string(path).await {
+        Ok(data) => data,
+        Err(err) if err.kind() == ErrorKind::NotFound => download_cardmap(path, false).await?,
+        Err(err) => {
+            return Err(err).with_context(|| format!("Could not read cardmap file at {:?}", path));
+        }
+    };
+
+    let mut cardmap = parse_cardmaster(path, &data)?;
+    if required_cards
+        .iter()
+        .any(|card| !cardmap.contains_key(card))
+        && !cardmap_is_fresh(path)
+    {
+        let data = download_cardmap(path, true).await?;
+        cardmap = parse_cardmaster(path, &data)?;
+    }
+    Ok(cardmap)
 }
 
 fn card_sort_key(card_id: &str, cm: &CardMap) -> (String, u32) {
@@ -420,7 +536,7 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
-    let cardmaster = load_cardmaster(&cli.cardmaster).await?;
+    let cardmaster = load_cardmaster_with_refresh(&cli.cardmaster, &card_ids).await?;
     // cardmaster here is actually cardmap.json (has ExpansionID + CollectionNumber + IllustrationID)
     fs::create_dir_all(&cli.cache_dir).await?;
 

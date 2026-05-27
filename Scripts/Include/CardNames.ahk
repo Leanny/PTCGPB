@@ -28,9 +28,41 @@ CardName_DownloadIfMissing(localPath, url) {
     if (FileExist(localPath))
         return true
 
+    return CardName_DownloadJson(localPath, url, false)
+}
+
+CardName_DownloadJson(localPath, url, force := false) {
+    if (!force && FileExist(localPath))
+        return true
+
     SplitPath, localPath, , destDir
     if (destDir != "" && !FileExist(destDir))
         FileCreateDir, %destDir%
+
+    lockDir := localPath . ".download.lock"
+    gotLock := false
+    Loop, 241 {
+        FileCreateDir, %lockDir%
+        if (!ErrorLevel) {
+            gotLock := true
+            break
+        }
+        if (A_Index = 240) {
+            FileRemoveDir, %lockDir%, 1
+            Sleep, 250
+            continue
+        }
+        Sleep, 250
+    }
+    if (!gotLock)
+        return false
+
+    if (!force && FileExist(localPath)) {
+        FileRemoveDir, %lockDir%, 1
+        return true
+    }
+    if (force)
+        FileDelete, %localPath%
 
     text := ""
     whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
@@ -41,21 +73,44 @@ CardName_DownloadIfMissing(localPath, url) {
     whr.Open("GET", url, true)
     whr.Send()
     whr.WaitForResponse()
-    if (whr.Status != 200)
+    if (whr.Status != 200) {
+        FileRemoveDir, %lockDir%, 1
         return false
+    }
     text := whr.ResponseText
 
-    if (text = "" || SubStr(LTrim(text, " `t`r`n"), 1, 1) != "{")
+    if (text = "" || SubStr(LTrim(text, " `t`r`n"), 1, 1) != "{") {
+        FileRemoveDir, %lockDir%, 1
         return false
+    }
 
     FileDelete, %localPath%
     FileAppend, %text%, %localPath%, UTF-8
-    return FileExist(localPath)
+    ok := FileExist(localPath)
+    FileRemoveDir, %lockDir%, 1
+    return ok
 }
 
-CardName_EnsureLoaded() {
+CardName_FileIsFresh(localPath) {
+    if (!FileExist(localPath))
+        return false
+    FileGetTime, modified, %localPath%, M
+    if (modified = "")
+        return false
+    now := A_Now
+    EnvSub, now, %modified%, Seconds
+    return (now < 3600)
+}
+
+CardName_RefreshIfStale(localPath, url) {
+    if (CardName_FileIsFresh(localPath))
+        return false
+    return CardName_DownloadJson(localPath, url, true)
+}
+
+CardName_EnsureLoaded(forceReload := false) {
     global session
-    if (IsObject(session.get("cardNameMap")))
+    if (!forceReload && IsObject(session.get("cardNameMap")))
         return
     nameMap := {}
     cardmasterPath := CardName_CardmasterPath()
@@ -84,6 +139,15 @@ CardName_Get(cardId) {
         n := nameMap[cardId]
         if (n != "")
             return n
+    }
+    if (CardName_RefreshIfStale(CardName_CardmasterPath(), CardName_CardmasterUrl())) {
+        CardName_EnsureLoaded(true)
+        nameMap := session.get("cardNameMap")
+        if (IsObject(nameMap) && nameMap.HasKey(cardId)) {
+            n := nameMap[cardId]
+            if (n != "")
+                return n
+        }
     }
     return cardId
 }

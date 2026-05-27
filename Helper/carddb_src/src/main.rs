@@ -9,6 +9,8 @@ use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
+use std::thread;
+use std::time::{Duration as StdDuration, Instant, SystemTime};
 
 #[derive(Parser)]
 #[command(
@@ -662,23 +664,29 @@ fn pulls_from_fields(
 
 fn import_card_rows(root: &Path, csv_text: &str) -> Result<()> {
     let mut imported = 0usize;
-    let mut cardmap = None;
+    let mut cardmap: Option<HashMap<String, String>> = None;
     for line in csv_text.lines() {
         let line = line.trim_end_matches('\r');
         if line.trim().is_empty() {
             continue;
         }
         let fields = parse_csv_line(line);
-        if fields
+        let multi_pack_row = fields
             .get(2)
-            .is_some_and(|pack| pack.split(',').filter(|s| !s.trim().is_empty()).count() > 1)
-            && cardmap.is_none()
-        {
-            append_carddb_log(
-                root,
-                "import_card_rows loading cardmap for multi-pack CSV rows",
-            );
-            cardmap = Some(load_cardmap(root)?);
+            .is_some_and(|pack| pack.split(',').filter(|s| !s.trim().is_empty()).count() > 1);
+        if multi_pack_row {
+            let cards = card_ids_from_csv_fields(&fields);
+            let needs_cardmap = cardmap
+                .as_ref()
+                .map(|map| cards.iter().any(|card| !map.contains_key(card)))
+                .unwrap_or(true);
+            if needs_cardmap {
+                append_carddb_log(
+                    root,
+                    "import_card_rows loading cardmap for multi-pack CSV rows",
+                );
+                cardmap = Some(load_cardmap_for_cards(root, &cards)?);
+            }
         }
 
         if let Some((device_account, pulls)) = pulls_from_fields(&fields, cardmap.as_ref()) {
@@ -2634,20 +2642,71 @@ fn cardmap_path(root: &Path) -> PathBuf {
     root.join("Helper").join("cardmap.json")
 }
 
-fn ensure_cardmap(root: &Path) -> Result<PathBuf> {
-    let path = cardmap_path(root);
-    if path.exists() && fs::metadata(&path)?.len() > 0 {
-        return Ok(path);
-    }
+const CARDMAP_URL: &str = "https://leanny.github.io/pocket_tcg_resources/data/cardmap.json";
+const CARDMAP_REFRESH_AFTER: StdDuration = StdDuration::from_secs(60 * 60);
 
+struct CardmapDownloadLock {
+    path: PathBuf,
+}
+
+impl Drop for CardmapDownloadLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
+fn acquire_cardmap_download_lock(path: &Path) -> Result<CardmapDownloadLock> {
+    let lock_path = path.with_extension("json.download.lock");
+    let started = Instant::now();
+    loop {
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock_path)
+        {
+            Ok(mut file) => {
+                let _ = writeln!(file, "pid={}", std::process::id());
+                return Ok(CardmapDownloadLock { path: lock_path });
+            }
+            Err(err) if err.kind() == ErrorKind::AlreadyExists => {
+                if started.elapsed() >= StdDuration::from_secs(60) {
+                    fs::remove_file(&lock_path).ok();
+                    continue;
+                }
+                thread::sleep(StdDuration::from_millis(250));
+            }
+            Err(err) => {
+                return Err(err).with_context(|| format!("Could not create {:?}", lock_path))
+            }
+        }
+    }
+}
+
+fn cardmap_is_fresh(path: &Path) -> bool {
+    fs::metadata(path)
+        .and_then(|meta| meta.modified())
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .is_some_and(|age| age < CARDMAP_REFRESH_AFTER)
+}
+
+fn download_cardmap(root: &Path, path: &Path, force: bool) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
 
-    let url = "https://leanny.github.io/pocket_tcg_resources/data/cardmap.json";
+    let _lock = acquire_cardmap_download_lock(path)?;
+    if !force && path.exists() && fs::metadata(path)?.len() > 0 {
+        return Ok(());
+    }
+
+    if force {
+        fs::remove_file(path).ok();
+    }
+
     let script = format!(
         "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '{}' -OutFile '{}'",
-        url,
+        CARDMAP_URL,
         path.to_string_lossy().replace('\'', "''")
     );
     let status = ProcessCommand::new("powershell")
@@ -2662,9 +2721,20 @@ fn ensure_cardmap(root: &Path) -> Result<PathBuf> {
         .with_context(|| format!("Could not download cardmap.json to {:?}", path))?;
 
     if !status.success() || !path.exists() || fs::metadata(&path)?.len() == 0 {
-        anyhow::bail!("Could not download cardmap.json from {}", url);
+        anyhow::bail!("Could not download cardmap.json from {}", CARDMAP_URL);
     }
 
+    append_carddb_log(root, &format!("downloaded cardmap.json to {:?}", path));
+    Ok(())
+}
+
+fn ensure_cardmap(root: &Path) -> Result<PathBuf> {
+    let path = cardmap_path(root);
+    if path.exists() && fs::metadata(&path)?.len() > 0 {
+        return Ok(path);
+    }
+
+    download_cardmap(root, &path, false)?;
     Ok(path)
 }
 
@@ -2741,14 +2811,57 @@ fn collect_cardmap_entries(map: &mut HashMap<String, String>, value: &Value) {
     }
 }
 
+#[allow(dead_code)]
 fn load_cardmap(root: &Path) -> Result<HashMap<String, String>> {
     let path = ensure_cardmap(root)?;
+    parse_cardmap(&path)
+}
+
+fn parse_cardmap(path: &Path) -> Result<HashMap<String, String>> {
     let text = fs::read_to_string(&path).with_context(|| format!("Could not read {:?}", path))?;
     let value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
         .with_context(|| format!("Could not parse cardmap.json at {:?}", path))?;
     let mut map = HashMap::new();
     collect_cardmap_entries(&mut map, &value);
     Ok(map)
+}
+
+fn load_cardmap_for_cards(root: &Path, cards: &[String]) -> Result<HashMap<String, String>> {
+    let path = ensure_cardmap(root)?;
+    let mut map = parse_cardmap(&path)?;
+    if cards.iter().any(|card| !map.contains_key(card)) && !cardmap_is_fresh(&path) {
+        append_carddb_log(
+            root,
+            "cardmap missing requested card id; refreshing stale cardmap.json",
+        );
+        download_cardmap(root, &path, true)?;
+        map = parse_cardmap(&path)?;
+    }
+    Ok(map)
+}
+
+fn card_ids_from_csv_fields(fields: &[String]) -> Vec<String> {
+    fields
+        .get(3)
+        .map(|cards| {
+            cards
+                .split('|')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn card_ids_from_history(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|line| line.trim().trim_start_matches('\u{feff}').split_once('|'))
+        .flat_map(|(_, cards)| cards.split(','))
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 fn history_pulls_from_line(
@@ -2822,11 +2935,10 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
     }
     let oldest_existing = oldest_pull_timestamp(&doc);
     let history_cutoff = oldest_existing.map(|timestamp| timestamp - Duration::hours(24));
-    let cardmap = load_cardmap(root)?;
-
     if input.exists() {
         let text = fs::read_to_string(input)
             .with_context(|| format!("Could not read history file {:?}", input))?;
+        let cardmap = load_cardmap_for_cards(root, &card_ids_from_history(&text))?;
         for line in text.lines() {
             if let Some((timestamp, pulls)) = history_pulls_from_line(line, &cardmap) {
                 if history_cutoff
