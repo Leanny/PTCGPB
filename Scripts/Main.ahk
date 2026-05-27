@@ -10,6 +10,7 @@ CoordMode, Pixel, Screen
 #Include Session.ahk
 #Include Data.ahk
 #Include ExtraConfig.ahk
+#Include Profiler.ahk
 
 #Include Logging.ahk
 #Include ADB.ahk
@@ -275,6 +276,8 @@ return
 #Include HistoryImport.ahk
 
 FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0) {
+    prof := Prof_Scope(A_ThisFunc)
+    profNeedle := Prof_Scope(A_ThisFunc . ":" . needleName)
     global session, needlesDict
     static lastStatusTime := 0
 
@@ -327,6 +330,8 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
 }
 
 FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVariation := 20, sleepTime := "", skip := false, safeTime := 0) {
+    prof := Prof_Scope(A_ThisFunc)
+    profNeedle := Prof_Scope(A_ThisFunc . ":" . needleName)
     global botConfig, session, needlesDict
 
     needleObj := needlesDict.Get(needleName)
@@ -425,6 +430,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
 }
 
 resetWindows(){
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig
 
     scaleParam := 283
@@ -467,6 +473,7 @@ resetWindows(){
 }
 
 restartGameInstance(reason, RL := true){
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
     if (InStr(reason, "Stuck at "))
@@ -495,6 +502,7 @@ restartGameInstance(reason, RL := true){
 }
 
 SaveStuckScreenshot(reason) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     fileDir := A_ScriptDir . "\..\Screenshots\Stuck"
@@ -537,6 +545,7 @@ RandomUsername() {
 }
 
 Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
+    prof := Prof_Scope(A_ThisFunc)
     global session
     SetWorkingDir %A_ScriptDir%  ; Ensures the working directory is the script's directory
 
@@ -917,6 +926,7 @@ bboxAndPause(X1, Y1, X2, Y2, doPause := False) {
 }
 
 GetNeedle(Path) {
+    prof := Prof_Scope(A_ThisFunc)
     static NeedleBitmaps := Object()
     if (NeedleBitmaps.HasKey(Path)) {
         return NeedleBitmaps[Path]
@@ -932,6 +942,7 @@ GetNeedle(Path) {
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 GPTestScript() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
     session.set("triggerTestNeeded", false)
     session.set("rateLimitAction", "")

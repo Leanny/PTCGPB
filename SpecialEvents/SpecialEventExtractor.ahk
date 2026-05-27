@@ -1,10 +1,11 @@
-﻿#NoEnv
+#NoEnv
 #SingleInstance Force
 SetBatchLines, -1
 SetTitleMatchMode, 3
 CoordMode, Mouse, Client
 
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_ALL.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Profiler.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Utils.ahk
 
 If !pToken := Gdip_Startup()

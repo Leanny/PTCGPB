@@ -11,6 +11,7 @@ ADB_LogTrace(message) {
 }
 
 setADBBaseInfo(){
+    prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("setADBBaseInfo started")
     mumuFolder := getMuMuFolder()
     if(mumuFolder == ""){
@@ -35,6 +36,7 @@ setADBBaseInfo(){
 }
 
 KillADBProcesses() {
+    prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("Killing adb.exe processes")
     ; Use AHK's Process command to close adb.exe
     Process, Close, adb.exe
@@ -43,6 +45,7 @@ KillADBProcesses() {
 }
 
 findAdbPorts() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     ADB_LogTrace("findAdbPorts scanning MuMu configs for scriptName=" . session.get("scriptName"))
@@ -95,6 +98,7 @@ findAdbPorts() {
 }
 
 RefreshAdbConnectionAfterInstanceRestart(timeoutMs = 30000) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     startTick := A_TickCount
@@ -140,6 +144,7 @@ RefreshAdbConnectionAfterInstanceRestart(timeoutMs = 30000) {
 }
 
 ConnectAdb() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     MaxRetries := 5
@@ -187,6 +192,7 @@ ConnectAdb() {
 }
 
 DisableBackgroundServices() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     deviceAddress := "127.0.0.1:" . session.get("adbPort")
@@ -209,6 +215,7 @@ DisableBackgroundServices() {
 }
 
 initializeAdbShell() {
+    prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, Debug
 
     RetryCount := 1
@@ -287,6 +294,7 @@ initializeAdbShell() {
 }
 
 waitUntilActivatePTCGPApp(){
+    prof := Prof_Scope(A_ThisFunc)
     global session, Debug
 
     session.set("baseTime", A_TickCount)
@@ -310,6 +318,7 @@ waitUntilActivatePTCGPApp(){
 }
 
 doesMissionUserPrefsExist() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
@@ -319,61 +328,21 @@ doesMissionUserPrefsExist() {
 }
 
 startPTCGPApp(){
-    maxRetry := 5
-    retryCount := 0
-
-    ADB_LogTrace("startPTCGPApp started")
-    stateResult := isCurrentScreenHome()
-    if(stateResult) {
-        ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
-        adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-        adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-    }
-    Loop, {
-        stateResult := waitUntilActivatePTCGPApp()
-        if(!stateResult)
-            retryCount++
-        else
-            break
-
-        if(retryCount > maxRetry)
-            break
-
-        Sleep, 50
-    }
-    ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
+    prof := Prof_Scope(A_ThisFunc)
+    adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+    adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
     DelayH(100)
 }
 
 closePTCGPApp(){
-    maxRetry := 5
-    retryCount := 0
-    stateResult := false
-
-    ADB_LogTrace("closePTCGPApp started")
-    stateResult := isCurrentScreenHome()
-    if(!stateResult) {
-        ADB_LogTrace("closePTCGPApp app active; returning to launcher/home state")
-        adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-        adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-    }
-    Loop, {
-        stateResult := isCurrentScreenHome()
-        if(!stateResult)
-            retryCount++
-        else
-            break
-
-        if(retryCount > maxRetry)
-            break
-
-        Sleep, 50
-    }
-    ADB_LogTrace("closePTCGPApp finished retryCount=" . retryCount)
+    prof := Prof_Scope(A_ThisFunc)
+    adbWriteRaw("am force-stop jp.pokemon.pokemontcgp")
+    adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
     DelayH(100)
 }
 
 isCurrentScreenHome(){
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
@@ -388,16 +357,30 @@ isCurrentScreenHome(){
 }
 
 isTerminatePTCGPAppByADBShell(){
+    prof := Prof_Scope(A_ThisFunc)
+    static cachedResult := ""
+    static cachedAt := 0
+    cacheTtlMs := 5000
+
+    if (cachedResult != "" && (A_TickCount - cachedAt) < cacheTtlMs) {
+        ADB_LogTrace("isTerminatePTCGPAppByADBShell cachedResult=" . cachedResult)
+        return cachedResult
+    }
+
     result := adbWriteRaw("pidof jp.pokemon.pokemontcgp", true)
     ADB_LogTrace("isTerminatePTCGPAppByADBShell pidResult=" . Trim(result))
     if (RegExMatch(result, "\d+")) {
-        return false
+        cachedResult := false
     }
     else
-        return true
+        cachedResult := true
+
+    cachedAt := A_TickCount
+    return cachedResult
 }
 
 isTerminatePTCGPHelperApp(){
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
@@ -411,6 +394,7 @@ isTerminatePTCGPHelperApp(){
 }
 
 isTerminatePTCGPApp(){
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
@@ -424,12 +408,14 @@ isTerminatePTCGPApp(){
 }
 
 clearMissionCache() {
+    prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("clearMissionCache")
     adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
     Sleep, 250
 }
 
 adbEnsureShell() {
+    prof := Prof_Scope(A_ThisFunc)
     global session
 
     pid := session.get("adbShell").ProcessID
@@ -442,6 +428,7 @@ adbEnsureShell() {
 }
 
 adbWriteRaw(command, isReturnning := false, timeoutMs := 60000) {
+    prof := Prof_Scope(A_ThisFunc)
     global session
     retries := 0
     MaxRetries := 3
@@ -533,6 +520,7 @@ waitadb(){
 }
 
 adbClick(X, Y) {
+    prof := Prof_Scope(A_ThisFunc)
     static clickCommands := Object()
     static convX := 540/283, convY := 960/488, offset := -40
 
@@ -548,12 +536,14 @@ adbClick(X, Y) {
 }
 
 adbInput(name) {
+    prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("adbInput chars=" . StrLen(name))
     adbWriteRaw("input text " . name)
     waitadb()
 }
 
 adbInputEvent(event) {
+    prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("adbInputEvent event=" . event)
     if InStr(event, " ") {
         ; If the event uses a space, we use keycombination
@@ -567,6 +557,7 @@ adbInputEvent(event) {
 
 ; Simulates a swipe gesture on an Android device, swiping from one X/Y-coordinate to another.
 adbSwipe(params) {
+    prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("adbSwipe params=" . params)
     adbWriteRaw("input swipe " . params)
     waitadb()
@@ -575,6 +566,7 @@ adbSwipe(params) {
 ; Simulates a touch gesture on an Android device to scroll in a controlled way.
 ; Not currently supported.
 adbGesture(params) {
+    prof := Prof_Scope(A_ThisFunc)
     ; Example params (a 2-second hold-drag from a lower to an upper Y-coordinate): 0 2000 138 380 138 90 138 90
     ADB_LogTrace("adbGesture params=" . params)
     adbWriteRaw("input touchscreen gesture " . params)
@@ -583,6 +575,7 @@ adbGesture(params) {
 
 ; Takes a screenshot of an Android device using ADB and saves it to a file.
 adbTakeScreenshot(outputFile) {
+    prof := Prof_Scope(A_ThisFunc)
     ; Percroy Optimization
     global session
 
