@@ -126,14 +126,23 @@ if(botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
 
 IniRead, DeadCheck, % session.get("scriptIniFile"), UserSettings, DeadCheck, 0
 IniRead, friendCleanupPending, % session.get("scriptIniFile"), UserSettings, friendCleanupPending, 0
+friendCleanupRestored := false
 if (friendCleanupPending = 1) {
-    DeadCheck := 1
-    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
-    session.set("friended", true)
     IniRead, friendCleanupReason, % session.get("scriptIniFile"), Recovery, friendCleanupReason,
-    LogInfo("Friend cleanup pending found at startup. Entering cleanup recovery. Reason: " . friendCleanupReason, "GroupReroll.txt")
+    friendCleanupRestored := RestoreLoadedAccountForRecovery()
+    if (session.get("loadedAccount")) {
+        DeadCheck := 1
+        IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+        session.set("friended", true)
+        LogInfo("Friend cleanup pending found at startup. Entering cleanup recovery. Reason: " . friendCleanupReason, "GroupReroll.txt")
+    } else {
+        DeadCheck := 0
+        IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
+        ClearFriendCleanupPending()
+        LogInfo("Friend cleanup pending ignored at startup because no recovery account was saved. Reason: " . friendCleanupReason, "GroupReroll.txt")
+    }
 }
-if (DeadCheck = 1)
+if (DeadCheck = 1 && !friendCleanupRestored)
     RestoreLoadedAccountForRecovery()
 
 IniRead, rerollsValue, % session.get("scriptIniFile"), Metrics, rerolls, 0

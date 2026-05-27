@@ -93,11 +93,6 @@ AddFriends(renew := false, getFC := false) {
     if(!getFC && !friendIDsAvailable && botConfig.get("FriendID") = "")
         return false
 
-    if (!getFC) {
-        session.set("friended", true)
-        SetFriendCleanupPending("AddFriends started")
-    }
-
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
@@ -153,7 +148,6 @@ AddFriends(renew := false, getFC := false) {
         return AccountFriendInfo_CopyFriendCodeFromCurrentScreen()
 
     EnsureAccountFriendInfo("Inject Wonderpick 96P+", true)
-    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
 
     ; start adding friends
     if(!session.get("friendIDs")){
@@ -196,16 +190,21 @@ AddFriends(renew := false, getFC := false) {
             Delay(1)
             if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 80)) {
                 adbClick_wbb(243, 258)
+                MarkFriendCleanupPending("Friend request submitted")
                 Delay(1)
 
                 waitSendResult := A_TickCount
                 interceptProc := true
                 Loop{
                     Delay(0.25)
-                    if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime))
+                    if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
+                        MarkFriendCleanupPending("Friend request pending")
                         break
-                    else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime))
+                    }
+                    else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
+                        MarkFriendCleanupPending("Friend accepted")
                         break
+                    }
                     else if(interceptErrorCheck("ADD")){
                         skipCurrentID := true
                         LogToFile("Skipping friend ID after ADD error | index=" . friendIDIdx)
@@ -223,6 +222,7 @@ AddFriends(renew := false, getFC := false) {
                         && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
                         && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
                         adbClick_wbb(243, 258)
+                        MarkFriendCleanupPending("Friend request resubmitted")
                         isSendReqeest := true
                     }
                     if ((A_TickCount - waitSendResult) > 10000)
@@ -231,8 +231,10 @@ AddFriends(renew := false, getFC := false) {
                 interceptProc := false
                 break
             }
-            else if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime))
+            else if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
+                MarkFriendCleanupPending("Friend request pending")
                 break
+            }
             else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime))
                 break
             else if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
@@ -245,11 +247,13 @@ AddFriends(renew := false, getFC := false) {
                 break
             }
             else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
+                MarkFriendCleanupPending("Friend accepted")
                 if(renew){
                     FindImageAndClick("Friend_RemoveConfirmButtonInSearchResult", 193, 258)
                     FindImageAndClick("Friend_RequestButtonInSearchResult", 200, 372)
                     Delay(1) ; otherwise it will sometimes click before UI finishes loading
                     adbClick_wbb(243, 258)
+                    MarkFriendCleanupPending("Friend request renewed")
                     ; adbClick_wbb(243, 258)
                     ; adbClick_wbb(243, 258)
                 }
@@ -364,6 +368,9 @@ RemoveFriends() {
     ; Only allow RemoveFriends in Inject Wonderpick 96P+ mode
     if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+" && !botConfig.get("useSoloIdsFile")) {
         LogInfo("RemoveFriends skipped: unsupported delete method | account=" . cleanupAccount . " | deleteMethod=" . botConfig.get("deleteMethod") . " | useSoloIdsFile=" . botConfig.get("useSoloIdsFile"))
+        DeadCheck := 0
+        IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
+        ClearFriendCleanupPending()
         session.set("friended", false)
         return false
     }
@@ -441,11 +448,15 @@ RemoveFriends() {
         if (DismissFriendFlowBlockingPopup("Waiting for clearAll"))
             continue
 
-        if (FindOrLoseImage("Friend_ActivatedClearAllButton", 0, failSafeTime))
+        if (FindOrLoseImage("Friend_ActivatedClearAllButton", 0))
             break
+        if (FindOrLoseImage("Friend_DisabledDenyAllRequestButtonInApproveSubmenu", 0, , , true)) {
+            LogInfo("No pending friend requests found during cleanup | account=" . cleanupAccount . " | DeadCheck=" . DeadCheck, "GroupReroll.txt")
+            break
+        }
         adbClick(205, 510)
         Delay(1)
-        if (FindOrLoseImage("Friend_RemoveConfirmButtonInFriendDetails", 0, failSafeTime))
+        if (FindOrLoseImage("Friend_RemoveConfirmButtonInFriendDetails", 0))
             adbClick(210, 372)
 
         Delay(1)
@@ -455,6 +466,10 @@ RemoveFriends() {
             continue
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime >= 45) {
+            LogInfo("Friend request cleanup timed out; continuing friend list cleanup | account=" . cleanupAccount . " | DeadCheck=" . DeadCheck, "GroupReroll.txt")
+            break
+        }
         CreateStatusMessage("Waiting for clearAll`n(" . failSafeTime . "/45 seconds)")
     }
     interceptProc := false
