@@ -303,6 +303,17 @@ SetFriendCleanupPending(reason := "") {
         IniWrite, %reason%, % session.get("scriptIniFile"), Recovery, friendCleanupReason
 }
 
+MarkFriendCleanupPending(reason := "") {
+    global session, DeadCheck
+
+    if (!session.get("friended"))
+        LogInfo("Friend cleanup marked pending | account=" . session.get("accountFileName") . " | reason=" . reason, "GroupReroll.txt")
+    DeadCheck := 1
+    session.set("friended", true)
+    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+    SetFriendCleanupPending(reason)
+}
+
 ClearFriendCleanupPending() {
     global session
 
