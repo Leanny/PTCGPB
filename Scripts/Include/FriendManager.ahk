@@ -214,7 +214,10 @@ AddFriends(renew := false, getFC := false) {
                     else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime))
                         break
                     else if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
-                        LogToFile("Skipping friend ID because friend request limit/full state was detected | index=" . friendIDIdx)
+                        LogToFile("Friend request limit/full state detected. Re-entering Social | index=" . friendIDIdx)
+                        interceptProc := false
+                        ReEnterSocial("ADD")
+                        isContinue := true
                         break
                     }
                     if(!isSendReqeest
@@ -239,7 +242,10 @@ AddFriends(renew := false, getFC := false) {
             else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime))
                 break
             else if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
-                LogToFile("Skipping friend ID because friend request limit/full state was detected | index=" . friendIDIdx)
+                LogToFile("Friend request limit/full state detected. Re-entering Social | index=" . friendIDIdx)
+                interceptProc := false
+                ReEnterSocial("ADD")
+                isContinue := true
                 break
             }
             else if(interceptErrorCheck("ADD")) {
