@@ -1,4 +1,4 @@
-﻿;===============================================================================
+;===============================================================================
 ; CardDetection.ahk - Card Detection Functions
 ;===============================================================================
 ; This file contains functions for detecting and processing cards in packs.
@@ -368,7 +368,7 @@ FoundStars(star, cards := "") {
 ;-------------------------------------------------------------------------------
 ; GodPackFound - Process found god pack
 ;-------------------------------------------------------------------------------
-GodPackFound(validity, cards := "", alreadyAtHome := false) {
+GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreenshot := "") {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck, dictionaryData
 
@@ -413,8 +413,16 @@ GodPackFound(validity, cards := "", alreadyAtHome := false) {
             isSyntheticGP := true
         }
     }
-    if (!isSyntheticGP)
-        screenShot := Screenshot(validity)
+    if (!isSyntheticGP) {
+        ; Prefer a screenshot captured while the cards were still on-screen (deferred GP flow).
+        ; Falls back to a live capture for non-deferred callers.
+        if (preCapturedScreenshot != "" && FileExist(preCapturedScreenshot))
+            screenShot := preCapturedScreenshot
+        else
+            screenShot := Screenshot(validity)
+    } else if (preCapturedScreenshot != "" && FileExist(preCapturedScreenshot)) {
+        FileDelete, %preCapturedScreenshot%
+    }
     accountFullPath := ""
 
     accountFile := saveAccount(validity, accountFullPath, "")
