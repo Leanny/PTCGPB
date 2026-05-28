@@ -263,6 +263,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
         SetSpendHourglassMetadataFlag()
         GetHistoryOfAccount()
+        EnsureAccountLanguageMetadata()
         GetAccountCreationDate()
         new_packcount := EvaluatePackCount()
         if (new_packcount != 0) {
@@ -448,6 +449,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
             SetSpendHourglassMetadataFlag()
             GetHistoryOfAccount()
+            EnsureAccountLanguageMetadata()
             GetAccountCreationDate()
             new_packcount := EvaluatePackCount()
             if (new_packcount != 0) {
@@ -1682,6 +1684,50 @@ AccountCreationDate_ToUnix(creationDate) {
     unixTimestamp := creationDate
     EnvSub, unixTimestamp, 19700101000000, Seconds
     return unixTimestamp + 0
+}
+
+EnsureAccountLanguageMetadata() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+        return false
+
+    deviceAccount := GetCurrentDeviceAccountForMetadata()
+    if (deviceAccount = "") {
+        LogWarn("EnsureAccountLanguageMetadata skipped because device account could not be resolved for " . session.get("accountFileName"))
+        return false
+    }
+
+    if (AccountMetadata_HasLanguage(deviceAccount, session.get("scriptName"), session.get("accountFileName"))) {
+        LogTrace("Account language already set for " . session.get("accountFileName"), "ADB.txt")
+        return true
+    }
+
+    LogTrace("Ensuring ptcgpb helper exists before language lookup", "ADB.txt")
+    if (!EnsurePTCGPBHelperInstalled())
+        return false
+
+    LogTrace("Running ptcgpb language lookup", "ADB.txt")
+    language := adbWriteRaw("/data/ptcgp/ptcgpb lang", true)
+    language := Trim(StrReplace(language, "`r"), "`n`t ")
+    if (language = "") {
+        LogWarn("EnsureAccountLanguageMetadata failed because ptcgpb lang returned no language")
+        return false
+    }
+
+    if (!RegExMatch(language, "i)^[a-z][a-z0-9_-]{0,15}$")) {
+        LogWarn("EnsureAccountLanguageMetadata ignored unexpected language value: " . language)
+        return false
+    }
+
+    if (!AccountMetadata_SetLanguageIfUnset(deviceAccount, language, session.get("scriptName"), session.get("accountFileName"))) {
+        LogWarn("EnsureAccountLanguageMetadata failed to save language for " . session.get("accountFileName"))
+        return false
+    }
+
+    LogInfo("Saved account language " . language . " for " . session.get("accountFileName"))
+    return true
 }
 
 GetHistoryOfAccount() {

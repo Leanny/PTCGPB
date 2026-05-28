@@ -128,7 +128,6 @@ loadAccount() {
     adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
     Sleep, 100
     ; Reliably restart the app: Wait for launch, and start in a clean, new task without animation.
-    startPTCGPApp()
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName")
     loadedAccountPath := saveDir . "\" . session.get("accountFileName")
     loadedAccountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), loadedAccountPath)
@@ -144,6 +143,8 @@ loadAccount() {
     }
 
     session.set("deviceAccount", GetDeviceAccountFromXML())
+    startPTCGPApp_ApplyMetadataLanguage(loadFile)
+    startPTCGPApp()
     currentAccountInfo .= "Account: " . session.get("accountFileName") . "`nDeviceAccount: " . session.get("deviceAccount")
     CreateStatusMessage(currentAccountInfo, "AccountInfo", 0, 46, false)
     SetTimer, DestoryAccountInfoUI, -15000

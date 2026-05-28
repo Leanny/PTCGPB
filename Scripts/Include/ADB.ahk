@@ -327,13 +327,43 @@ doesMissionUserPrefsExist() {
     return (result = "1")
 }
 
-startPTCGPApp(){
+startPTCGPApp() {
     prof := Prof_Scope(A_ThisFunc)
     if(isTerminatePTCGPApp()) {
         adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
         adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
         DelayH(100)
     }
+}
+
+startPTCGPApp_ApplyMetadataLanguage(loadFile) {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    if (!IsObject(session) || !session.get("injectMethod") || session.get("accountFileName") = "")
+        return false
+
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), loadFile)
+    language := Trim(accountMeta["language"])
+    if (language = "")
+        return true
+
+    if (!RegExMatch(language, "i)^[a-z][a-z0-9_-]{0,15}$")) {
+        LogWarn("startPTCGPApp ignored unexpected metadata language value: " . language)
+        return false
+    }
+
+    if (IsFunc("EnsurePTCGPBHelperInstalled")) {
+        ensureHelper := Func("EnsurePTCGPBHelperInstalled")
+        if (!ensureHelper.Call()) {
+            LogWarn("startPTCGPApp could not install ptcgpb helper before setting language")
+            return false
+        }
+    }
+
+    LogTrace("Setting in-game language from metadata: " . language, "ADB.txt")
+    adbWriteRaw("/data/ptcgp/ptcgpb lang " . language)
+    return true
 }
 
 closePTCGPApp(){

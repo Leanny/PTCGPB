@@ -214,6 +214,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["fileName"] := fileName
     account["accountName"] := ""
     account["friendCode"] := ""
+    account["language"] := ""
     account["packCount"] := 0
     account["createdAt"] := "0"
     account["lastPackPulled"] := 0
@@ -496,6 +497,7 @@ AccountMetadata_ParseAccount(accountJson) {
     if (account["accountName"] = "")
         account["accountName"] := AccountMetadata_ParseString(accountJson, "name")
     account["friendCode"] := AccountMetadata_ParseString(accountJson, "friendCode")
+    account["language"] := AccountMetadata_ParseString(accountJson, "language")
     account["packCount"] := AccountMetadata_ParseNumber(accountJson, "packCount", account["packCount"])
     account["createdAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "createdAt", AccountMetadata_ParseNumber(accountJson, "createdAt", account["createdAt"])))
     account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastPackPulled", AccountMetadata_ParseNumber(accountJson, "lastPackPulled", 0))
@@ -567,6 +569,8 @@ AccountMetadata_SerializeAccount(account, indent := "") {
         AccountMetadata_AppendJsonString(json, firstField, "accountName", account["accountName"], "      ")
     if (account["friendCode"] != "")
         AccountMetadata_AppendJsonString(json, firstField, "friendCode", account["friendCode"], "      ")
+    if (account["language"] != "")
+        AccountMetadata_AppendJsonString(json, firstField, "language", account["language"], "      ")
 
     if (account["packCount"] != "" && (account["packCount"] + 0) != 0)
         AccountMetadata_AppendJsonNumber(json, firstField, "packCount", account["packCount"] + 0, "      ")
@@ -725,6 +729,8 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
         if (RegExMatch(cleanFriendCode, "^\d{16}$"))
             baseAccount["friendCode"] := cleanFriendCode
     }
+    if (patchAccount["language"] != "")
+        baseAccount["language"] := patchAccount["language"]
 
     if (patchAccount["packCount"] != "" && (patchAccount["packCount"] + 0) > 0)
         baseAccount["packCount"] := patchAccount["packCount"] + 0
@@ -1309,6 +1315,74 @@ AccountMetadata_SetLastLoggedInNow(deviceAccount, instance := "", fileName := ""
     AccountMetadata_WriteStoreUnlocked(store)
     AccountMetadata_ReleaseLock(hMutex)
     return true
+}
+
+AccountMetadata_SetLanguageIfUnset(deviceAccount, language, instance := "", fileName := "") {
+    if (deviceAccount = "" || language = "")
+        return false
+
+    language := Trim(language)
+    if (language = "")
+        return false
+
+    if (AccountMetadata_UseTempWrites()) {
+        existing := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
+        if (existing["language"] != "")
+            return true
+
+        account := AccountMetadata_NewAccount(instance, fileName)
+        account["deviceAccount"] := deviceAccount
+        if (instance != "")
+            account["instance"] := instance
+        if (fileName != "")
+            account["fileName"] := fileName
+        account["language"] := language
+        return AccountMetadata_SaveTempAccount(instance, fileName, account)
+    }
+
+    hMutex := AccountMetadata_AcquireLock()
+    if (!hMutex)
+        return false
+
+    store := AccountMetadata_ReadStoreUnlocked()
+    key := AccountMetadata_FindKey(store, instance, fileName, "", deviceAccount)
+    if (store["accounts"].HasKey(key)) {
+        account := store["accounts"][key]
+    } else {
+        account := AccountMetadata_NewAccount(instance, fileName)
+        account["deviceAccount"] := deviceAccount
+    }
+
+    if (account["language"] != "") {
+        AccountMetadata_ReleaseLock(hMutex)
+        return true
+    }
+
+    account["deviceAccount"] := deviceAccount
+    if (instance != "")
+        account["instance"] := instance
+    if (fileName != "") {
+        account["fileName"] := fileName
+        if (account["createdAt"] = "" || account["createdAt"] = "0")
+            account["createdAt"] := AccountMetadata_ExtractCreatedAt(fileName)
+    }
+    account["language"] := language
+
+    newKey := AccountMetadata_DeviceKey(deviceAccount)
+    if (key != newKey && store["accounts"].HasKey(key))
+        store["accounts"].Delete(key)
+    store["accounts"][newKey] := account
+    AccountMetadata_WriteStoreUnlocked(store)
+    AccountMetadata_ReleaseLock(hMutex)
+    return true
+}
+
+AccountMetadata_HasLanguage(deviceAccount, instance := "", fileName := "") {
+    if (deviceAccount = "")
+        return false
+
+    account := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
+    return account["language"] != ""
 }
 
 AccountMetadata_HasFlag(instance, fileName, flag) {
