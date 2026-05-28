@@ -2042,7 +2042,7 @@ CardDetection_QueueGodPack(validity, cards := "", finalizeAccount := false) {
     session.set("pendingGodPackCards", cards)
     session.set("pendingGodPackFinalize", finalizeAccount)
     session.set("manualVipValidity", validity)
-
+    session.set("pendingGodPackScreenshot", Screenshot(validity))
     LogInfo("Queued " . validity . " God Pack notification until pack cleanup finishes", "GPlog.txt")
     return true
 }
@@ -2092,13 +2092,14 @@ CardDetection_FlushPendingGodPack() {
     validity := session.get("pendingGodPackValidity")
     cards := session.get("pendingGodPackCards")
     finalizeAccount := session.get("pendingGodPackFinalize")
-
+    preCapturedScreenshot := session.get("pendingGodPackScreenshot")
     session.set("pendingGodPack", false)
     session.set("pendingGodPackValidity", "")
     session.set("pendingGodPackCards", "")
     session.set("pendingGodPackFinalize", false)
+    session.set("pendingGodPackScreenshot", "")
 
-    GodPackFound(validity, cards, true)
+    GodPackFound(validity, cards, true, preCapturedScreenshot)
 
     if (validity = "Invalid")
         RemoveFriends()
