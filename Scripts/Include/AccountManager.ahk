@@ -800,7 +800,8 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (method = "Inject Rewards")
         return AccountEligibility_InjectRewardsEligible(accountMeta)
 
-    if (method = "Inject Wonderpick 96P+" && accountMeta["packCount"] != "" && (accountMeta["packCount"] + 0) < (botConfig.get("injectWonderpickMinPacks") + 0))
+    packCount := accountMeta["packCount"] + 0
+    if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
         return false
 
     if (method = "Inject 13P+" || method = "Inject Wonderpick 96P+")
