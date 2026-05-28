@@ -135,21 +135,34 @@ CardName_Get(cardId) {
     CardName_EnsureLoaded()
     global session
     nameMap := session.get("cardNameMap")
+    cached := ""
     if (IsObject(nameMap) && nameMap.HasKey(cardId)) {
-        n := nameMap[cardId]
-        if (n != "")
-            return n
+        cached := nameMap[cardId]
+        if (cached != "" && !CardName_IsPlaceholder(cached))
+            return cached
     }
-    if (CardName_RefreshIfStale(CardName_CardmasterPath(), CardName_CardmasterUrl())) {
+    ; A miss can mean stale cardmaster (new card) OR stale en_US (card known
+    ; but only the CARD_NAME_NNNN placeholder is cached). Refresh both before
+    ; giving up.
+    refreshed := CardName_RefreshIfStale(CardName_CardmasterPath(), CardName_CardmasterUrl())
+    if (CardName_RefreshIfStale(CardName_LocalisationPath(), CardName_LocalisationUrl()))
+        refreshed := true
+    if (refreshed) {
         CardName_EnsureLoaded(true)
         nameMap := session.get("cardNameMap")
         if (IsObject(nameMap) && nameMap.HasKey(cardId)) {
             n := nameMap[cardId]
-            if (n != "")
+            if (n != "" && !CardName_IsPlaceholder(n))
                 return n
         }
     }
+    if (cached != "")
+        return cached
     return cardId
+}
+
+CardName_IsPlaceholder(name) {
+    return RegExMatch(name, "^CARD_NAME_\d+$") > 0
 }
 
 CardName_ParseLocale(ByRef jsonText) {
