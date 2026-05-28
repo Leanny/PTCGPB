@@ -97,6 +97,17 @@ function Read-RequestBody {
     try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
 }
 
+function Get-JsonPayloadProperty {
+    param(
+        $Payload,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+    if ($null -eq $Payload) { return $null }
+    $prop = $Payload.PSObject.Properties[$Name]
+    if ($prop) { return $prop.Value }
+    return $null
+}
+
 function Get-XmlDeviceAccount {
     param([Parameter(Mandatory = $true)][string]$XmlPath)
 
@@ -1005,6 +1016,378 @@ function Resolve-RequestedPath {
     return $candidate
 }
 
+$script:CardImageBaseUrl = "https://leanny.github.io/pocket_tcg_resources/img/S/US"
+$script:CardImageCacheDir = Join-Path $resolvedRoot "Helper\CardImageCache"
+$script:CardImagePrefetchPowerShell = $null
+$script:CardImagePrefetchHandle = $null
+$script:CardImagePrefetch = [hashtable]::Synchronized(@{
+    Running = $false
+    CancelRequested = $false
+    Total = 0
+    Done = 0
+    Downloaded = 0
+    Skipped = 0
+    Failed = 0
+    Current = ""
+    StartedAt = $null
+    FinishedAt = $null
+    LastError = ""
+})
+
+function Get-SafeIllustrationFileName {
+    param([Parameter(Mandatory = $true)][string]$IllustrationId)
+    $bad = [char[]]@('\', '/', ':', '<', '>', '"', '*', '?', '|')
+    $chars = $IllustrationId.ToCharArray() | ForEach-Object {
+        if ($bad -contains $_) { '_' } else { $_ }
+    }
+    return -join $chars
+}
+
+function Test-ValidCachedCardImage {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    try {
+        return ([System.IO.FileInfo]$Path).Length -gt 1000
+    } catch {
+        return $false
+    }
+}
+
+function Get-UniqueIllustrationIdsFromCardmap {
+    $cardmapPath = Join-Path $resolvedRoot "Helper\cardmap.json"
+    if (-not (Test-Path -LiteralPath $cardmapPath -PathType Leaf)) {
+        throw "Helper\cardmap.json was not found."
+    }
+    try {
+        $raw = [System.IO.File]::ReadAllText($cardmapPath)
+        $map = $raw | ConvertFrom-Json
+    } catch {
+        throw "Could not parse Helper\cardmap.json: $($_.Exception.Message)"
+    }
+
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+    foreach ($prop in $map.PSObject.Properties) {
+        $ill = $prop.Value.IllustrationID
+        if (-not [string]::IsNullOrWhiteSpace($ill)) {
+            [void]$seen.Add([string]$ill)
+        }
+    }
+    return @($seen)
+}
+
+function Get-CardImagePrefetchSnapshot {
+    return @{
+        ok = $true
+        running = [bool]$script:CardImagePrefetch.Running
+        cacheDir = "Helper/CardImageCache"
+        total = [int]$script:CardImagePrefetch.Total
+        done = [int]$script:CardImagePrefetch.Done
+        downloaded = [int]$script:CardImagePrefetch.Downloaded
+        skipped = [int]$script:CardImagePrefetch.Skipped
+        failed = [int]$script:CardImagePrefetch.Failed
+        current = [string]$script:CardImagePrefetch.Current
+        startedAt = $script:CardImagePrefetch.StartedAt
+        finishedAt = $script:CardImagePrefetch.FinishedAt
+        lastError = [string]$script:CardImagePrefetch.LastError
+    }
+}
+
+$script:CardImagePrefetchWorkerScript = {
+    param(
+        [string]$Root,
+        [hashtable]$State,
+        [string[]]$IllustrationIds,
+        [int]$Concurrency,
+        [bool]$Force,
+        [string]$BaseUrl
+    )
+
+    function Get-SafeIllustrationFileNameLocal {
+        param([string]$IllustrationId)
+        $bad = [char[]]@('\', '/', ':', '<', '>', '"', '*', '?', '|')
+        $chars = $IllustrationId.ToCharArray() | ForEach-Object {
+            if ($bad -contains $_) { '_' } else { $_ }
+        }
+        return -join $chars
+    }
+
+    function Test-ValidCachedCardImageLocal {
+        param([string]$Path)
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+        try { return ([System.IO.FileInfo]$Path).Length -gt 1000 } catch { return $false }
+    }
+
+    function Sync-CardImagePrefetchProgress {
+        param(
+            [hashtable]$ProgressState,
+            [int]$Done,
+            [int]$Downloaded,
+            [int]$Skipped,
+            [int]$Failed,
+            [string]$Current = ""
+        )
+        $ProgressState.Done = $Done
+        $ProgressState.Downloaded = $Downloaded
+        $ProgressState.Skipped = $Skipped
+        $ProgressState.Failed = $Failed
+        if ($Current) { $ProgressState.Current = $Current }
+    }
+
+    if ($Concurrency -lt 1) { $Concurrency = 1 }
+    if ($Concurrency -gt 32) { $Concurrency = 32 }
+
+    $cacheDir = Join-Path $Root "Helper\CardImageCache"
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+
+    $toDownload = New-Object System.Collections.Generic.List[object]
+    $skippedCount = 0
+    $downloadedCount = 0
+    $failedCount = 0
+
+    try {
+        foreach ($illId in $IllustrationIds) {
+            if ([bool]$State.CancelRequested) { break }
+
+            $safe = Get-SafeIllustrationFileNameLocal -IllustrationId $illId
+            $dest = Join-Path $cacheDir "$safe.png"
+
+            if (-not $Force -and (Test-ValidCachedCardImageLocal -Path $dest)) {
+                $skippedCount++
+                continue
+            }
+
+            $toDownload.Add([pscustomobject]@{
+                IllustrationId = $illId
+                Url = "$BaseUrl/$illId.png"
+                Destination = $dest
+            }) | Out-Null
+        }
+
+        $doneCount = $skippedCount
+        $downloadedCount = 0
+        $failedCount = 0
+        Sync-CardImagePrefetchProgress -ProgressState $State -Done $doneCount -Downloaded 0 -Skipped $skippedCount -Failed 0
+
+        if ($toDownload.Count -gt 0 -and -not [bool]$State.CancelRequested) {
+            Add-Type -AssemblyName System.Net.Http
+            [System.Net.ServicePointManager]::DefaultConnectionLimit = [Math]::Max(
+                $Concurrency,
+                [System.Net.ServicePointManager]::DefaultConnectionLimit
+            )
+
+            $handler = New-Object System.Net.Http.HttpClientHandler
+            $handler.MaxConnectionsPerServer = $Concurrency
+            $httpClient = New-Object System.Net.Http.HttpClient($handler)
+            $httpClient.Timeout = [TimeSpan]::FromSeconds(120)
+            $null = $httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "PTCGPB-CardDashboard/1.0")
+
+            try {
+                for ($offset = 0; $offset -lt $toDownload.Count; $offset += $Concurrency) {
+                    if ([bool]$State.CancelRequested) { break }
+
+                    $batch = @(
+                        for ($i = $offset; $i -lt [Math]::Min($offset + $Concurrency, $toDownload.Count); $i++) {
+                            $toDownload[$i]
+                        }
+                    )
+
+                    $tasks = New-Object System.Collections.Generic.List[System.Threading.Tasks.Task[byte[]]]
+                    foreach ($item in $batch) {
+                        $tasks.Add($httpClient.GetByteArrayAsync($item.Url)) | Out-Null
+                    }
+
+                    try {
+                        [void][System.Threading.Tasks.Task]::WaitAll($tasks.ToArray())
+                    } catch {
+                        # Individual task failures are handled per item below.
+                    }
+
+                    for ($ti = 0; $ti -lt $batch.Count; $ti++) {
+                        $item = $batch[$ti]
+                        $task = $tasks[$ti]
+                        $ok = $false
+                        try {
+                            if ($task.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) {
+                                $bytes = $task.Result
+                                if ($bytes.Length -gt 1000) {
+                                    [System.IO.File]::WriteAllBytes($item.Destination, $bytes)
+                                    $ok = $true
+                                }
+                            }
+                        } catch {
+                            $ok = $false
+                        }
+
+                        $doneCount++
+                        if ($ok) { $downloadedCount++ } else { $failedCount++ }
+
+                        if (($doneCount % 25) -eq 0) {
+                            Sync-CardImagePrefetchProgress `
+                                -ProgressState $State `
+                                -Done $doneCount `
+                                -Downloaded $downloadedCount `
+                                -Skipped $skippedCount `
+                                -Failed $failedCount `
+                                -Current $item.IllustrationId
+                        }
+                    }
+                }
+            } finally {
+                $httpClient.Dispose()
+                $handler.Dispose()
+            }
+        }
+
+        Sync-CardImagePrefetchProgress `
+            -ProgressState $State `
+            -Done ($skippedCount + $downloadedCount + $failedCount) `
+            -Downloaded $downloadedCount `
+            -Skipped $skippedCount `
+            -Failed $failedCount
+    } catch {
+        $State.LastError = $_.Exception.Message
+        Sync-CardImagePrefetchProgress `
+            -ProgressState $State `
+            -Done ($skippedCount + $downloadedCount + $failedCount) `
+            -Downloaded $downloadedCount `
+            -Skipped $skippedCount `
+            -Failed $failedCount
+    } finally {
+        $State.Running = $false
+        $State.Current = ""
+        $State.FinishedAt = (Get-Date).ToUniversalTime().ToString("o")
+    }
+}
+
+function Start-CardImagePrefetchJob {
+    param(
+        [bool]$Force = $false,
+        [int]$Concurrency = 20
+    )
+
+    if ([bool]$script:CardImagePrefetch.Running) {
+        return $false
+    }
+
+    $script:CardImagePrefetch.Running = $true
+    $script:CardImagePrefetch.CancelRequested = $false
+    $script:CardImagePrefetch.Total = 0
+    $script:CardImagePrefetch.Done = 0
+    $script:CardImagePrefetch.Downloaded = 0
+    $script:CardImagePrefetch.Skipped = 0
+    $script:CardImagePrefetch.Failed = 0
+    $script:CardImagePrefetch.Current = ""
+    $script:CardImagePrefetch.StartedAt = (Get-Date).ToUniversalTime().ToString("o")
+    $script:CardImagePrefetch.FinishedAt = $null
+    $script:CardImagePrefetch.LastError = ""
+
+    try {
+        $ids = Get-UniqueIllustrationIdsFromCardmap
+    } catch {
+        $script:CardImagePrefetch.Running = $false
+        $script:CardImagePrefetch.LastError = $_.Exception.Message
+        $script:CardImagePrefetch.FinishedAt = (Get-Date).ToUniversalTime().ToString("o")
+        throw
+    }
+
+    $script:CardImagePrefetch.Total = $ids.Count
+
+    if ($script:CardImagePrefetchPowerShell) {
+        try {
+            if ($script:CardImagePrefetchHandle -and $script:CardImagePrefetchHandle.IsCompleted) {
+                $script:CardImagePrefetchPowerShell.EndInvoke($script:CardImagePrefetchHandle) | Out-Null
+                $script:CardImagePrefetchPowerShell.Dispose()
+                $script:CardImagePrefetchPowerShell = $null
+                $script:CardImagePrefetchHandle = $null
+            }
+        } catch {
+            $script:CardImagePrefetchPowerShell = $null
+            $script:CardImagePrefetchHandle = $null
+        }
+    }
+
+    $script:CardImagePrefetchPowerShell = [powershell]::Create()
+    [void]$script:CardImagePrefetchPowerShell.AddScript($script:CardImagePrefetchWorkerScript)
+    [void]$script:CardImagePrefetchPowerShell.AddArgument($resolvedRoot)
+    [void]$script:CardImagePrefetchPowerShell.AddArgument($script:CardImagePrefetch)
+    [void]$script:CardImagePrefetchPowerShell.AddArgument($ids)
+    [void]$script:CardImagePrefetchPowerShell.AddArgument($Concurrency)
+    [void]$script:CardImagePrefetchPowerShell.AddArgument($Force)
+    [void]$script:CardImagePrefetchPowerShell.AddArgument($script:CardImageBaseUrl)
+    $script:CardImagePrefetchHandle = $script:CardImagePrefetchPowerShell.BeginInvoke()
+    return $true
+}
+
+function Invoke-GetCardImagePrefetchStatus {
+    param([Parameter(Mandatory = $true)]$Context)
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload (Get-CardImagePrefetchSnapshot)
+}
+
+function Invoke-StartCardImagePrefetch {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $force = $false
+    $concurrency = 20
+    $bodyText = Read-RequestBody -Context $Context
+    if (-not [string]::IsNullOrWhiteSpace($bodyText)) {
+        try {
+            $payload = $bodyText | ConvertFrom-Json
+        } catch {
+            Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid JSON body." }
+            return
+        }
+        $forceValue = Get-JsonPayloadProperty -Payload $payload -Name "force"
+        if ($null -ne $forceValue) {
+            try { $force = [bool]$forceValue } catch { $force = $false }
+        }
+        $concurrencyValue = Get-JsonPayloadProperty -Payload $payload -Name "concurrency"
+        if ($null -ne $concurrencyValue) {
+            try { $concurrency = [int]$concurrencyValue } catch { $concurrency = 20 }
+        }
+        $modeValue = Get-JsonPayloadProperty -Payload $payload -Name "mode"
+        if ($null -ne $modeValue -and [string]$modeValue -eq "all") {
+            $force = $true
+        }
+    }
+
+    if ([bool]$script:CardImagePrefetch.Running) {
+        Write-JsonResponse -Context $Context -StatusCode 409 -Payload @{
+            ok = $false
+            error = "Card image download is already running."
+            status = (Get-CardImagePrefetchSnapshot)
+        }
+        return
+    }
+
+    try {
+        if (-not (Start-CardImagePrefetchJob -Force:$force -Concurrency $concurrency)) {
+            Write-JsonResponse -Context $Context -StatusCode 409 -Payload @{
+                ok = $false
+                error = "Card image download is already running."
+            }
+            return
+        }
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = $_.Exception.Message
+        }
+        return
+    }
+
+    $snapshot = Get-CardImagePrefetchSnapshot
+    $snapshot.ok = $true
+    Write-JsonResponse -Context $Context -StatusCode 202 -Payload $snapshot
+}
+
+function Invoke-StopCardImagePrefetch {
+    param([Parameter(Mandatory = $true)]$Context)
+    $script:CardImagePrefetch.CancelRequested = $true
+    $snapshot = Get-CardImagePrefetchSnapshot
+    $snapshot.ok = $true
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload $snapshot
+}
+
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Prefixes.Add("http://127.0.0.1:$Port/")
@@ -1142,6 +1525,45 @@ try {
             }
             try {
                 Invoke-LaunchInstance -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/card-images/status" -and $request.HttpMethod -eq "GET") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-GetCardImagePrefetchStatus -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/card-images/prefetch" -and $request.HttpMethod -eq "POST") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-StartCardImagePrefetch -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/card-images/prefetch/stop" -and $request.HttpMethod -eq "POST") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-StopCardImagePrefetch -Context $context
             } catch {
                 Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
             }

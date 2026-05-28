@@ -62,6 +62,12 @@
                 --side-panel-fade-opacity: 0.42;
                 --theme-switch-fade-duration: 220ms;
                 --theme-switch-fade-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+                --scrollbar-size: 8px;
+                --scrollbar-track: rgba(0, 0, 0, 0.22);
+                --scrollbar-thumb: rgba(142, 180, 255, 0.34);
+                --scrollbar-thumb-hover: rgba(142, 180, 255, 0.52);
+                color-scheme: dark;
             }
 
             [data-theme="light"] {
@@ -99,6 +105,11 @@
                 --copy-ok-bg: rgba(19, 122, 85, 0.18);
                 --copy-ok-border: rgba(19, 122, 85, 0.55);
                 --copy-ok-text: #0a4d34;
+
+                --scrollbar-track: rgba(26, 79, 184, 0.1);
+                --scrollbar-thumb: rgba(26, 79, 184, 0.28);
+                --scrollbar-thumb-hover: rgba(26, 79, 184, 0.42);
+                color-scheme: light;
             }
 
             [data-theme="light"] .panel {
@@ -240,8 +251,7 @@
                 background: none;
                 color: var(--text);
             }
-            [data-theme="light"] .card-tile > img,
-            [data-theme="light"] .card-media > img {
+            [data-theme="light"] .card-media > .empty {
                 background: rgba(218, 230, 246, 0.6);
             }
             [data-theme="light"] .received-pair .pair-thumb img {
@@ -833,6 +843,54 @@
                 }
             }
 
+            .card-image-download-loader .card-image-download-panel {
+                grid-template-columns: 78px minmax(0, 1fr);
+            }
+
+            .card-image-download-loader .dashboard-boot-copy {
+                display: grid;
+                gap: 12px;
+            }
+
+            .card-image-download-meter {
+                height: 10px;
+                border-radius: 999px;
+                overflow: hidden;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(142, 180, 255, 0.22);
+            }
+
+            [data-theme="light"] .card-image-download-meter {
+                background: rgba(26, 79, 184, 0.08);
+                border-color: rgba(26, 79, 184, 0.18);
+            }
+
+            .card-image-download-meter-fill {
+                display: block;
+                height: 100%;
+                width: 0%;
+                border-radius: inherit;
+                background: linear-gradient(
+                    90deg,
+                    rgba(142, 180, 255, 0.95),
+                    rgba(176, 240, 208, 0.92)
+                );
+                transition: width 280ms ease;
+            }
+
+            .card-image-download-stats {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px 14px;
+                font-size: 0.84rem;
+                color: var(--muted);
+            }
+
+            .card-image-download-stat strong {
+                color: var(--text);
+                font-weight: 600;
+            }
+
             .status {
                 position: relative;
                 padding: 12px 14px 12px 18px;
@@ -1193,6 +1251,10 @@
 
             .stat-card {
                 position: relative;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
                 padding: 12px 13px;
                 overflow: hidden;
                 transition:
@@ -1233,6 +1295,32 @@
                 color: var(--muted);
                 font-size: 0.82rem;
                 margin-top: 4px;
+            }
+
+            .stat-accounts-breakdown {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                gap: 4px 6px;
+                margin-top: 6px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                line-height: 1.25;
+                color: var(--muted);
+            }
+
+            .stat-accounts-breakdown-sep {
+                opacity: 0.55;
+                user-select: none;
+            }
+
+            .stat-accounts-breakdown-collection {
+                color: rgba(255, 220, 150, 0.92);
+            }
+
+            [data-theme="light"] .stat-accounts-breakdown-collection {
+                color: rgba(120, 80, 10, 0.88);
             }
 
             .controls {
@@ -1771,40 +1859,85 @@
 
             .view-bar {
                 display: grid;
-                grid-template-columns: 1fr auto;
-                grid-template-areas:
-                    "tabs tabs"
-                    "actions note";
+                grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
                 align-items: center;
-                gap: 10px;
+                gap: 10px 12px;
                 margin-bottom: 4px;
+                min-width: 0;
             }
 
             .view-bar .tabs {
-                grid-area: tabs;
-                width: 100%;
+                grid-column: 1;
+                justify-self: start;
+                width: auto;
                 max-width: 100%;
+                flex-wrap: nowrap;
+            }
+
+            .view-bar .tabs .tab {
+                padding: 8px 12px;
+                font-size: 0.88rem;
             }
 
             .view-bar #accountViewActions {
-                grid-area: actions;
+                grid-column: 2;
+                justify-self: center;
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: center;
+                gap: 6px;
+                margin: 0;
+            }
+
+            .view-bar #accountViewActions button {
+                padding: 6px 10px;
+                font-size: 0.82rem;
+                white-space: nowrap;
+            }
+
+            .view-bar #accountViewActions .page-size-control {
+                font-size: 0.78rem;
+                gap: 5px;
+            }
+
+            .view-bar #accountViewActions .page-size-control select {
+                width: 68px;
+                min-height: 32px;
+                padding: 5px 6px;
             }
 
             .view-bar .result-note {
-                grid-area: note;
+                grid-column: 3;
                 justify-self: end;
+                min-width: 0;
                 text-align: right;
+                font-size: 0.82rem;
+                line-height: 1.25;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
-            @media (max-width: 760px) {
+            @media (max-width: 720px) {
                 .view-bar {
                     grid-template-columns: 1fr;
-                    grid-template-areas:
-                        "tabs"
-                        "actions"
-                        "note";
+                    row-gap: 8px;
                 }
+
+                .view-bar .tabs {
+                    grid-column: 1;
+                    justify-self: stretch;
+                    overflow-x: auto;
+                    scrollbar-width: thin;
+                }
+
+                .view-bar #accountViewActions {
+                    grid-column: 1;
+                    justify-self: center;
+                }
+
                 .view-bar .result-note {
+                    grid-column: 1;
                     justify-self: stretch;
                     text-align: left;
                 }
@@ -1836,7 +1969,7 @@
 
             .db-workspace-controls-sticky #viewBarSection.view-bar {
                 margin: 0;
-                padding: 10px 12px 11px;
+                padding: 8px 12px 9px;
                 border-top: 1px solid var(--row-sep);
             }
 
@@ -1898,12 +2031,7 @@
                         .multi-search-picker-main,
                         .multi-card-search,
                         .multi-search-results,
-                        .catalog-library-picker
-                            > .catalog-controls
-                            .catalog-controls-panel,
-                        .multi-search-page
-                            > .catalog-controls
-                            .catalog-controls-panel,
+                        .catalog-controls-panel,
                         .db-row,
                         .view-skeleton,
                         .empty.panel,
@@ -1924,12 +2052,7 @@
                         .multi-search-picker-main,
                         .multi-card-search,
                         .multi-search-results,
-                        .catalog-library-picker
-                            > .catalog-controls
-                            .catalog-controls-panel,
-                        .multi-search-page
-                            > .catalog-controls
-                            .catalog-controls-panel,
+                        .catalog-controls-panel,
                         .db-row,
                         .view-skeleton,
                         .empty.panel,
@@ -1949,12 +2072,7 @@
                         .multi-search-picker-main,
                         .multi-card-search,
                         .multi-search-results,
-                        .catalog-library-picker
-                            > .catalog-controls
-                            .catalog-controls-panel,
-                        .multi-search-page
-                            > .catalog-controls
-                            .catalog-controls-panel,
+                        .catalog-controls-panel,
                         .db-row,
                         .view-skeleton,
                         .empty.panel,
@@ -2657,6 +2775,101 @@
                 content-visibility: visible;
             }
 
+            .collection-library-main .expansion-nav.is-complete {
+                --expansion-ring-color: #e8b84a;
+                border-color: rgba(255, 200, 90, 0.48);
+                background: linear-gradient(
+                    180deg,
+                    rgba(255, 210, 120, 0.2),
+                    rgba(0, 0, 0, 0.08)
+                );
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 230, 170, 0.22),
+                    0 6px 18px rgba(0, 0, 0, 0.22);
+            }
+
+            .collection-library-main
+                .expansion-nav.is-complete
+                .ex-progress-ring {
+                background: conic-gradient(
+                    var(--expansion-ring-color) calc(var(--completion) * 1%),
+                    rgba(255, 255, 255, 0.09) 0
+                );
+                box-shadow:
+                    inset 0 0 0 1px rgba(255, 210, 120, 0.35),
+                    0 6px 16px rgba(0, 0, 0, 0.24);
+            }
+
+            .collection-library-main
+                .expansion-nav.is-complete
+                .ex-progress-ring::before {
+                border-color: rgba(255, 210, 120, 0.28);
+            }
+
+            .collection-library-main .expansion-nav.is-complete .ex-meta {
+                color: rgba(255, 220, 150, 0.95);
+            }
+
+            .collection-library-main .expansion-nav.is-complete .ex-go {
+                color: #f0c96a;
+            }
+
+            .collection-library-main .expansion-nav.is-complete:hover {
+                border-color: rgba(255, 210, 120, 0.72);
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 230, 170, 0.28),
+                    0 8px 22px rgba(0, 0, 0, 0.28);
+            }
+
+            [data-theme="light"]
+                .collection-library-main
+                .expansion-nav.is-complete {
+                background: linear-gradient(
+                    180deg,
+                    rgba(255, 220, 140, 0.38),
+                    rgba(255, 255, 255, 0.96)
+                );
+                border-color: rgba(176, 128, 24, 0.42);
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                    0 6px 16px rgba(120, 80, 10, 0.12);
+            }
+
+            [data-theme="light"]
+                .collection-library-main
+                .expansion-nav.is-complete
+                .ex-progress-ring {
+                --expansion-ring-color: #c9920f;
+                background: conic-gradient(
+                    var(--expansion-ring-color) calc(var(--completion) * 1%),
+                    rgba(122, 152, 196, 0.35) 0
+                );
+                box-shadow:
+                    inset 0 0 0 1px rgba(176, 128, 24, 0.35),
+                    0 4px 12px rgba(20, 40, 80, 0.14);
+            }
+
+            [data-theme="light"]
+                .collection-library-main
+                .expansion-nav.is-complete
+                .ex-progress-ring::before {
+                border-color: rgba(176, 128, 24, 0.32);
+            }
+
+            [data-theme="light"]
+                .collection-library-main
+                .expansion-nav.is-complete
+                .ex-meta {
+                color: rgba(120, 80, 10, 0.82);
+            }
+
+            [data-theme="light"]
+                .collection-library-main
+                .expansion-nav.is-complete
+                .ex-go {
+                color: #a87408;
+            }
+
             .wishlist-head {
                 display: flex;
                 align-items: center;
@@ -2842,7 +3055,6 @@
             }
 
             .card-tile {
-                contain: layout paint style;
                 min-width: 0;
                 display: flex;
                 flex-direction: column;
@@ -2864,28 +3076,35 @@
                 position: relative;
                 overflow: hidden;
                 transition:
-                    transform 170ms ease,
                     border-color 170ms ease,
                     box-shadow 170ms ease;
             }
 
-            .card-tile::before {
+            .card-media {
+                position: relative;
+                overflow: hidden;
+                border-radius: 10px;
+                background: var(--card-bg);
+            }
+
+            .card-media::after {
                 content: "";
                 position: absolute;
-                inset: -1px;
+                inset: 0;
+                z-index: 2;
                 background: linear-gradient(
                     120deg,
                     transparent 35%,
-                    rgba(255, 255, 255, 0.25) 50%,
+                    rgba(255, 255, 255, 0.42) 50%,
                     transparent 65%
                 );
                 transform: translateX(-140%);
+                opacity: 0;
+                pointer-events: none;
+                mix-blend-mode: soft-light;
                 transition:
                     transform 620ms ease,
                     opacity 220ms ease;
-                pointer-events: none;
-                opacity: 0.55;
-                z-index: 0;
             }
 
             .card-tile > * {
@@ -2893,8 +3112,11 @@
                 z-index: 1;
             }
 
+            .cards-grid > .card-tile:hover {
+                transform: translateY(-4px);
+            }
+
             .card-tile:hover {
-                transform: translateY(-4px) scale(1.012);
                 border-color: var(--accent);
                 box-shadow:
                     0 16px 34px rgba(0, 0, 0, 0.34),
@@ -2902,12 +3124,22 @@
                     0 0 26px rgba(142, 180, 255, 0.18);
             }
 
-            .card-tile:hover::before {
-                transform: translateX(140%);
+            .catalog-card-btn .card-tile {
+                transition:
+                    border-color 170ms ease,
+                    box-shadow 170ms ease;
+            }
+
+            .cards-grid > .card-tile {
+                transition:
+                    transform 170ms ease,
+                    border-color 170ms ease,
+                    box-shadow 170ms ease;
             }
 
             [data-theme="light"] .card-tile {
-                background: var(--card-bg);
+                background-color: var(--card-bg);
+                background-image: none;
                 box-shadow:
                     0 1px 2px rgba(20, 40, 80, 0.06),
                     0 4px 12px rgba(20, 40, 80, 0.06);
@@ -2921,41 +3153,50 @@
                     0 0 18px rgba(26, 79, 184, 0.16);
             }
 
-            [data-theme="light"] .card-tile::before {
+            [data-theme="light"] .card-media::after {
                 background: linear-gradient(
                     120deg,
-                    transparent 30%,
-                    rgba(26, 79, 184, 0.18) 45%,
-                    rgba(26, 79, 184, 0.12) 54%,
-                    transparent 70%
+                    transparent 28%,
+                    rgba(255, 255, 255, 0.82) 46%,
+                    rgba(255, 255, 255, 0.38) 56%,
+                    transparent 74%
                 );
-                opacity: 0.55;
+                mix-blend-mode: overlay;
             }
 
-            [data-theme="light"] .card-tile:hover::before {
-                opacity: 0.7;
-            }
-
-            .card-tile > img {
-                width: 100%;
-                aspect-ratio: 5 / 7;
-                object-fit: contain;
-                display: block;
-                border-radius: 10px;
-                background: rgba(255, 255, 255, 0.03);
-            }
-
-            .card-media {
-                position: relative;
-            }
-
+            .card-tile > img,
             .card-media > img {
+                position: relative;
+                z-index: 1;
                 width: 100%;
                 aspect-ratio: 5 / 7;
                 object-fit: contain;
                 display: block;
                 border-radius: 10px;
-                background: rgba(255, 255, 255, 0.03);
+                background-color: var(--card-bg);
+                transition: filter 170ms ease;
+            }
+
+            .card-tile:hover .card-media::after,
+            .catalog-card-btn:hover .card-media::after {
+                transform: translateX(140%);
+                opacity: 0.72;
+            }
+
+            [data-theme="light"] .card-tile:hover .card-media::after,
+            [data-theme="light"] .catalog-card-btn:hover .card-media::after {
+                opacity: 0.88;
+            }
+
+            .card-tile:hover .card-media > img,
+            .catalog-card-btn:hover .card-tile .card-media > img,
+            .card-tile:hover > img {
+                filter: brightness(1.04);
+            }
+
+            .card-tile.unavailable:hover .card-media > img,
+            .catalog-card-btn:hover .card-tile.unavailable .card-media > img {
+                filter: grayscale(1);
             }
 
             .card-media > .empty {
@@ -2964,8 +3205,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                border-radius: 10px;
-                background: rgba(255, 255, 255, 0.03);
+                background: transparent;
                 padding: 0 !important;
                 font-size: 0.72rem;
             }
@@ -3516,13 +3756,26 @@
             }
 
             .collection-rarity-card.is-complete {
-                --rarity-ring-color: var(--accent-2);
-                border-color: rgba(176, 240, 208, 0.42);
+                --rarity-ring-color: #e8b84a;
+                border-color: rgba(255, 200, 90, 0.48);
                 background: linear-gradient(
                     180deg,
-                    rgba(176, 240, 208, 0.12),
-                    rgba(0, 0, 0, 0.06)
+                    rgba(255, 210, 120, 0.2),
+                    rgba(0, 0, 0, 0.08)
                 );
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 230, 170, 0.22),
+                    0 6px 18px rgba(0, 0, 0, 0.22);
+            }
+
+            .collection-rarity-card.is-complete .collection-rarity-ring {
+                box-shadow:
+                    inset 0 0 0 1px rgba(255, 210, 120, 0.35),
+                    0 6px 16px rgba(0, 0, 0, 0.24);
+            }
+
+            .collection-rarity-card.is-complete .collection-rarity-ring::before {
+                border-color: rgba(255, 210, 120, 0.28);
             }
 
             .collection-rarity-card.is-empty {
@@ -3676,7 +3929,7 @@
             }
 
             .collection-rarity-card.is-complete .collection-rarity-sub {
-                color: rgba(176, 240, 208, 0.92);
+                color: rgba(255, 220, 150, 0.95);
             }
 
             [data-theme="light"] .collection-rarity-card {
@@ -3691,11 +3944,30 @@
             }
 
             [data-theme="light"] .collection-rarity-card.is-complete {
+                --rarity-ring-color: #c9920f;
                 background: linear-gradient(
                     180deg,
-                    rgba(176, 240, 208, 0.22),
-                    rgba(255, 255, 255, 0.92)
+                    rgba(255, 220, 140, 0.38),
+                    rgba(255, 255, 255, 0.96)
                 );
+                border-color: rgba(176, 128, 24, 0.42);
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                    0 6px 16px rgba(120, 80, 10, 0.12);
+            }
+
+            [data-theme="light"]
+                .collection-rarity-card.is-complete
+                .collection-rarity-ring {
+                box-shadow:
+                    inset 0 0 0 1px rgba(176, 128, 24, 0.35),
+                    0 4px 12px rgba(20, 40, 80, 0.14);
+            }
+
+            [data-theme="light"]
+                .collection-rarity-card.is-complete
+                .collection-rarity-ring::before {
+                border-color: rgba(176, 128, 24, 0.32);
             }
 
             [data-theme="light"] .collection-rarity-ring::before {
@@ -3705,7 +3977,7 @@
             [data-theme="light"]
                 .collection-rarity-card.is-complete
                 .collection-rarity-sub {
-                color: rgba(36, 120, 78, 0.92);
+                color: rgba(120, 80, 10, 0.82);
             }
 
             .load-more-wrap {
@@ -4539,6 +4811,32 @@
                 all: unset;
                 display: block;
                 cursor: pointer;
+                border-radius: 14px;
+                overflow: hidden;
+                background: var(--card-bg);
+                transition:
+                    transform 170ms ease,
+                    box-shadow 170ms ease;
+            }
+
+            .catalog-card-btn:hover {
+                transform: translateY(-4px);
+            }
+
+            .catalog-card-btn:hover .card-tile {
+                border-color: var(--accent);
+                box-shadow:
+                    0 16px 34px rgba(0, 0, 0, 0.34),
+                    0 0 0 1px rgba(142, 180, 255, 0.22),
+                    0 0 26px rgba(142, 180, 255, 0.18);
+            }
+
+            [data-theme="light"] .catalog-card-btn:hover .card-tile {
+                border-color: rgba(26, 79, 184, 0.6);
+                box-shadow:
+                    0 10px 22px rgba(20, 40, 80, 0.16),
+                    0 0 0 1px rgba(26, 79, 184, 0.28),
+                    0 0 18px rgba(26, 79, 184, 0.16);
             }
 
             .catalog-card-btn:focus-visible .card-tile {
@@ -5932,6 +6230,73 @@
                 font-size: 0.84rem;
             }
 
+            .catalog-pull-history-section {
+                margin-top: 2px;
+                padding: 8px;
+                border: 1px solid var(--row-sep);
+                border-radius: 10px;
+                background: rgba(0, 0, 0, 0.1);
+            }
+
+            .catalog-pull-history-list {
+                display: grid;
+                gap: 3px;
+            }
+
+            .catalog-pull-history-item {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 8px;
+                border: 1px solid var(--row-sep);
+                border-radius: 7px;
+                background: rgba(0, 0, 0, 0.12);
+                content-visibility: auto;
+                contain-intrinsic-size: 0 26px;
+            }
+
+            [data-theme="light"] .catalog-pull-history-item {
+                background: rgba(255, 255, 255, 0.55);
+            }
+
+            [data-theme="light"] .catalog-pull-history-section {
+                background: rgba(255, 255, 255, 0.48);
+            }
+
+            .catalog-pull-history-time {
+                font-variant-numeric: tabular-nums;
+                color: var(--accent-2);
+                font-weight: 700;
+                font-size: 0.74rem;
+                white-space: nowrap;
+            }
+
+            .catalog-pull-history-count {
+                min-width: 26px;
+                padding: 1px 6px;
+                border-radius: 999px;
+                border: 1px solid var(--badge-border);
+                background: var(--badge-bg);
+                color: var(--text);
+                font-size: 0.7rem;
+                font-weight: 800;
+                text-align: center;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .catalog-pull-history-empty,
+            .catalog-pull-history-more {
+                color: var(--muted);
+                font-size: 0.78rem;
+                line-height: 1.35;
+            }
+
+            .catalog-pull-history-more {
+                padding-top: 2px;
+                text-align: center;
+            }
+
             .catalog-account-sort {
                 margin-bottom: 10px;
             }
@@ -5941,6 +6306,37 @@
                 font-size: 0.74rem;
             }
 
+            .catalog-account-list,
+            .multi-result-list {
+                scrollbar-width: thin;
+                scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+            }
+
+            .catalog-account-list::-webkit-scrollbar,
+            .multi-result-list::-webkit-scrollbar {
+                width: var(--scrollbar-size);
+                height: var(--scrollbar-size);
+            }
+
+            .catalog-account-list::-webkit-scrollbar-track,
+            .multi-result-list::-webkit-scrollbar-track {
+                background: var(--scrollbar-track);
+                border-radius: 999px;
+            }
+
+            .catalog-account-list::-webkit-scrollbar-thumb,
+            .multi-result-list::-webkit-scrollbar-thumb {
+                background-color: var(--scrollbar-thumb);
+                border-radius: 999px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+
+            .catalog-account-list::-webkit-scrollbar-thumb:hover,
+            .multi-result-list::-webkit-scrollbar-thumb:hover {
+                background-color: var(--scrollbar-thumb-hover);
+            }
+
             .catalog-account-list {
                 display: grid;
                 gap: 8px;
@@ -5948,6 +6344,8 @@
                 overflow-x: hidden;
                 overflow-y: auto;
                 padding-right: 2px;
+                scrollbar-gutter: stable;
+                overscroll-behavior: contain;
             }
 
             .catalog-account-item {
@@ -5962,6 +6360,8 @@
                     border-color 150ms ease,
                     box-shadow 150ms ease,
                     background 150ms ease;
+                content-visibility: auto;
+                contain-intrinsic-size: 0 140px;
             }
 
             .catalog-account-item:hover {
@@ -6039,9 +6439,9 @@
             }
 
             .catalog-account-item-row-head {
-                display: flex;
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr) auto;
                 align-items: flex-start;
-                justify-content: flex-start;
                 gap: 8px;
                 min-width: 0;
             }
@@ -6049,6 +6449,41 @@
             .catalog-account-item-row-head .catalog-account-name {
                 flex: 1 1 auto;
                 min-width: 0;
+            }
+
+            .catalog-account-head-actions {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                justify-self: end;
+            }
+
+            .catalog-pull-history-toggle {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                padding: 0;
+                border-radius: 10px;
+            }
+
+            .catalog-pull-history-toggle svg {
+                display: block;
+            }
+
+            .catalog-pull-history-toggle.is-open {
+                border-color: rgba(142, 180, 255, 0.72);
+                background: var(--chip-active-bg);
+                color: var(--accent-2);
+                box-shadow: 0 0 0 2px rgba(142, 180, 255, 0.14);
+            }
+
+            [data-theme="light"] .catalog-pull-history-toggle.is-open {
+                border-color: rgba(26, 79, 184, 0.55);
+                background: rgba(26, 79, 184, 0.14);
+                color: var(--accent);
             }
 
             .account-pin-toggle {
@@ -6297,6 +6732,50 @@
                 </div>
             </div>
         </div>
+        <div
+            id="cardImageDownloadLoader"
+            class="dashboard-boot-loader card-image-download-loader is-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cardImageDownloadTitle"
+            aria-hidden="true"
+        >
+            <div class="dashboard-boot-panel card-image-download-panel">
+                <div class="dashboard-boot-mark" aria-hidden="true">
+                    <span class="boot-card"></span>
+                    <span class="boot-card"></span>
+                    <span class="boot-card"></span>
+                </div>
+                <div class="dashboard-boot-copy">
+                    <div class="dashboard-boot-title" id="cardImageDownloadTitle">
+                        Downloading card images
+                    </div>
+                    <div
+                        id="cardImageDownloadMessage"
+                        class="dashboard-boot-message"
+                    >
+                        Preparing download...
+                    </div>
+                    <div
+                        class="card-image-download-meter"
+                        role="progressbar"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="0"
+                        id="cardImageDownloadMeter"
+                    >
+                        <span
+                            class="card-image-download-meter-fill"
+                            id="cardImageDownloadMeterFill"
+                        ></span>
+                    </div>
+                    <div
+                        class="card-image-download-stats"
+                        id="cardImageDownloadStats"
+                    ></div>
+                </div>
+            </div>
+        </div>
         <main class="page">
             <header>
                 <div class="header-left">
@@ -6405,6 +6884,16 @@
                                 >
                                     Clear cached data
                                 </button>
+                                <button
+                                    type="button"
+                                    id="useLocalCardImagesBtn"
+                                    class="ghost metadata-load-btn"
+                                    hidden
+                                    aria-pressed="false"
+                                    title="Download missing images to Helper\CardImageCache and load them from disk (GitHub fallback)."
+                                >
+                                    Local card images
+                                </button>
                             </div>
                         </div>
                         <div class="toolbar-size-cell">
@@ -6438,6 +6927,10 @@
                 <div class="stat-card panel">
                     <div class="value" id="statAccounts">0</div>
                     <div class="label">Unique accounts</div>
+                    <div
+                        class="stat-accounts-breakdown"
+                        id="statAccountsBreakdown"
+                    ></div>
                 </div>
                 <div class="stat-card panel">
                     <div class="value" id="statRows">0</div>
@@ -6657,7 +7150,7 @@
                             ↓
                         </button>
                         <button id="expandAllBtn" type="button">
-                            Expand all shown
+                            Expand all
                         </button>
                         <button id="compactAllBtn" type="button">
                             Compact all
@@ -7290,6 +7783,13 @@
             const DASHBOARD_PING_PATH = "/__dashboard/ping";
             const DASHBOARD_SHUTDOWN_PATH = "/__dashboard/shutdown";
             const DASHBOARD_WISHLIST_PATH = "/__dashboard/wishlist";
+            const DASHBOARD_CARD_IMAGES_STATUS_PATH =
+                "/__dashboard/card-images/status";
+            const DASHBOARD_CARD_IMAGES_PREFETCH_PATH =
+                "/__dashboard/card-images/prefetch";
+            const LS_USE_LOCAL_CARD_IMAGES =
+                "ptcgp-card-db-use-local-card-images-v1";
+            const LOCAL_CARD_IMAGE_PREFIX = "/Helper/CardImageCache/";
             const ONE_HOUR = 60 * 60 * 1000;
             const AUTOLOAD_RETRIES = 4;
             const AUTOLOAD_RETRY_BASE_MS = 220;
@@ -7580,6 +8080,8 @@
                 accountFileLabelMap: new Map(),
                 accountMetadataMap: new Map(),
                 accountCount: 0,
+                tradeAccountCount: 0,
+                collectionRegistryCount: 0,
                 rowCount: 0,
                 totalCards: 0,
                 uniqueCardCount: 0,
@@ -7619,9 +8121,13 @@
                 catalogAccountCountsCache: null,
                 catalogAccountCountsRowsRef: null,
                 catalogAccountCountsTradeMetaVersion: -1,
+                catalogPullHistorySummaryCache: new Map(),
+                catalogPullHistoryRowsRef: null,
+                catalogPullHistoryRowIndex: null,
                 catalogTradeMetaVersion: 0,
                 catalogWarmupHandle: 0,
                 selectedCatalogAccount: "",
+                catalogPullHistoryAccount: "",
                 cardCollectionNumberMap: new Map(),
                 tradedSet: new Set(),
                 tradedMeta: new Map(),
@@ -7646,6 +8152,11 @@
                 pageSize: initialPageSize,
                 displayLimit: initialPageSize,
                 csvLoaded: false,
+                useLocalCardImages: readUseLocalCardImages(),
+                cardImagePrefetchPollTimer: null,
+                cardImageDownloadWasRunning: false,
+                cardImageDownloadFinishHandled: false,
+                suppressLocalCardImagesBtnEvent: false,
             };
 
             const el = {
@@ -7653,7 +8164,28 @@
                 status: document.getElementById("status"),
                 loadRemoteBtn: document.getElementById("loadRemoteBtn"),
                 clearCacheBtn: document.getElementById("clearCacheBtn"),
+                useLocalCardImagesBtn: document.getElementById(
+                    "useLocalCardImagesBtn",
+                ),
+                cardImageDownloadLoader: document.getElementById(
+                    "cardImageDownloadLoader",
+                ),
+                cardImageDownloadMessage: document.getElementById(
+                    "cardImageDownloadMessage",
+                ),
+                cardImageDownloadMeter: document.getElementById(
+                    "cardImageDownloadMeter",
+                ),
+                cardImageDownloadMeterFill: document.getElementById(
+                    "cardImageDownloadMeterFill",
+                ),
+                cardImageDownloadStats: document.getElementById(
+                    "cardImageDownloadStats",
+                ),
                 statAccounts: document.getElementById("statAccounts"),
+                statAccountsBreakdown: document.getElementById(
+                    "statAccountsBreakdown",
+                ),
                 statRows: document.getElementById("statRows"),
                 statCards: document.getElementById("statCards"),
                 statUniqueCards: document.getElementById("statUniqueCards"),
@@ -8058,7 +8590,7 @@
                         const html = shown
                             .map((info) => {
                                 const img = info.imageUrl
-                                    ? `<img src="${escapeHtml(info.imageUrl)}" loading="lazy" alt="${escapeHtml(info.name)}" onerror="this.style.visibility='hidden'">`
+                                    ? `<img src="${escapeHtml(info.imageUrl)}" loading="lazy" alt="${escapeHtml(info.name)}" ${cardImageOnErrorAttr(info, "visibility")}>`
                                     : `<div class="rp-noimg">No image</div>`;
                                 const expLine = formatTradePickerExpansionLine(
                                     info.id,
@@ -9209,6 +9741,16 @@
                 );
             }
 
+            function historyIconSvg() {
+                return (
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+                    `<path d="M3 12a9 9 0 1 0 3-6.7"></path>` +
+                    `<path d="M3 4v5h5"></path>` +
+                    `<path d="M12 7v5l3 2"></path>` +
+                    `</svg>`
+                );
+            }
+
             function pinnedAccountBadgeHtml() {
                 return (
                     `<span class="account-pin-badge" aria-hidden="true" title="Pinned account">` +
@@ -9222,6 +9764,21 @@
                     ? "Unpin account. Returns to normal sort order"
                     : "Pin account. Keeps it at the top";
                 return `<button type="button" class="account-pin-toggle${isPinned ? " is-pinned" : ""}" data-pin-account="${escapeHtml(account)}" aria-pressed="${isPinned ? "true" : "false"}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${accountPinIconSvg()}</button>`;
+            }
+
+            function catalogPullHistoryToggleButtonHtml(
+                account,
+                isOpen,
+                pullRowCount,
+            ) {
+                const count = Number(pullRowCount) || 0;
+                const disabledAttr = count ? "" : " disabled";
+                const label = !count
+                    ? "No pull history found for this account"
+                    : isOpen
+                      ? "Hide pull history for this account"
+                      : `Show pull history for this account${count ? ` (${formatNumber(count)} ${pluralWord(count, "row", "rows")})` : ""}`;
+                return `<button type="button" class="catalog-pull-history-toggle${isOpen ? " is-open" : ""}" data-toggle-catalog-pull-history="${escapeHtml(account)}" aria-expanded="${isOpen ? "true" : "false"}"${disabledAttr} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${historyIconSvg()}</button>`;
             }
 
             function renderCatalogAccountPinHint(accountRows) {
@@ -9251,6 +9808,16 @@
                     state.selectedCatalogAccount = "";
                 }
                 if (!accountRows.length) state.selectedCatalogAccount = "";
+                if (
+                    state.catalogPullHistoryAccount &&
+                    accountRows.length &&
+                    !accountRows.some(
+                        (row) => row.account === state.catalogPullHistoryAccount,
+                    )
+                ) {
+                    state.catalogPullHistoryAccount = "";
+                }
+                if (!accountRows.length) state.catalogPullHistoryAccount = "";
             }
 
             function toggleCatalogAccountPin(account) {
@@ -9422,8 +9989,12 @@
                 account,
                 accountNameLabel,
                 isPinned,
+                trailingHtml = "",
             ) {
-                return `<div class="catalog-account-item-row-head">${accountPinToggleButtonHtml(account, isPinned)}<div class="catalog-account-name${isPinned ? " selected" : ""}">${accountNameLabel}</div></div>`;
+                const actionsHtml = trailingHtml
+                    ? `<div class="catalog-account-head-actions">${trailingHtml}</div>`
+                    : "";
+                return `<div class="catalog-account-item-row-head">${accountPinToggleButtonHtml(account, isPinned)}<div class="catalog-account-name${isPinned ? " selected" : ""}">${accountNameLabel}</div>${actionsHtml}</div>`;
             }
 
             function renderMetaBarHtml(cells, extraClass = "") {
@@ -9869,6 +10440,365 @@
                     (location.hostname === "localhost" ||
                         location.hostname === "127.0.0.1")
                 );
+            }
+
+            function readUseLocalCardImages() {
+                return (
+                    localStorage.getItem(LS_USE_LOCAL_CARD_IMAGES) === "1"
+                );
+            }
+
+            function sanitizeIllustrationFileName(illustrationId) {
+                return String(illustrationId || "").replace(
+                    /[\\/:*?"<>|]/g,
+                    "_",
+                );
+            }
+
+            function getRemoteCardImageUrl(illustrationId) {
+                return illustrationId
+                    ? `${IMAGE_PREFIX}${encodeURIComponent(illustrationId)}.png`
+                    : "";
+            }
+
+            function getLocalCardImageUrl(illustrationId) {
+                if (!illustrationId) return "";
+                return `${LOCAL_CARD_IMAGE_PREFIX}${sanitizeIllustrationFileName(illustrationId)}.png`;
+            }
+
+            function buildCardImageUrls(illustrationId) {
+                const remote = getRemoteCardImageUrl(illustrationId);
+                if (!state.useLocalCardImages || !illustrationId) {
+                    return { imageUrl: remote, imageUrlFallback: "" };
+                }
+                return {
+                    imageUrl: getLocalCardImageUrl(illustrationId),
+                    imageUrlFallback: remote,
+                };
+            }
+
+            function cardImageOnErrorAttr(info, variant = "catalog") {
+                if (!info || !info.imageUrl) return "";
+                if (!info.imageUrlFallback) {
+                    if (variant === "visibility") {
+                        return `onerror="this.style.visibility='hidden'"`;
+                    }
+                    if (variant === "simple") {
+                        return `onerror="this.style.display='none'"`;
+                    }
+                    return `onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');"`;
+                }
+                const fb = escapeHtml(info.imageUrlFallback);
+                if (variant === "visibility") {
+                    return `onerror="if(!this.dataset.cardImgFb){this.dataset.cardImgFb='1';this.src='${fb}';}else{this.style.visibility='hidden';}"`;
+                }
+                if (variant === "simple") {
+                    return `onerror="if(!this.dataset.cardImgFb){this.dataset.cardImgFb='1';this.src='${fb}';}else{this.style.display='none';}"`;
+                }
+                return `onerror="if(!this.dataset.cardImgFb){this.dataset.cardImgFb='1';this.src='${fb}';}else{this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');}"`;
+            }
+
+            function invalidateCardImageInfoCache() {
+                state.cardInfoCache.clear();
+            }
+
+            function syncUseLocalCardImagesBtn() {
+                const btn = el.useLocalCardImagesBtn;
+                if (!btn) return;
+                btn.classList.toggle("primary", state.useLocalCardImages);
+                btn.classList.toggle("ghost", !state.useLocalCardImages);
+                btn.setAttribute(
+                    "aria-pressed",
+                    state.useLocalCardImages ? "true" : "false",
+                );
+            }
+
+            function applyUseLocalCardImagesPreference(enabled, options = {}) {
+                const { silent = false, syncBtn = true } = options;
+                state.useLocalCardImages = !!enabled;
+                localStorage.setItem(
+                    LS_USE_LOCAL_CARD_IMAGES,
+                    state.useLocalCardImages ? "1" : "0",
+                );
+                if (syncBtn) syncUseLocalCardImagesBtn();
+                invalidateCardImageInfoCache();
+                invalidateViewDomCache();
+                renderCurrent();
+                if (!silent) {
+                    setStatus(
+                        state.useLocalCardImages
+                            ? "Using locally cached card images when available (GitHub fallback)."
+                            : "Using GitHub for card images.",
+                    );
+                }
+            }
+
+            let cardImageDownloadHideTimer = 0;
+            let cardImageDownloadHiddenTimer = 0;
+
+            function showCardImageDownloadPanel() {
+                const loader = el.cardImageDownloadLoader;
+                if (!loader) return;
+                clearTimeout(cardImageDownloadHideTimer);
+                clearTimeout(cardImageDownloadHiddenTimer);
+                loader.classList.remove("is-hidden", "is-hiding");
+                loader.removeAttribute("aria-hidden");
+                updateCardImageDownloadPanel({
+                    running: true,
+                    total: 0,
+                    done: 0,
+                    downloaded: 0,
+                    skipped: 0,
+                    failed: 0,
+                });
+            }
+
+            function hideCardImageDownloadPanel(delayMs = 480) {
+                const loader = el.cardImageDownloadLoader;
+                if (!loader) return;
+                clearTimeout(cardImageDownloadHideTimer);
+                clearTimeout(cardImageDownloadHiddenTimer);
+                cardImageDownloadHideTimer = setTimeout(() => {
+                    loader.classList.add("is-hiding");
+                    loader.setAttribute("aria-hidden", "true");
+                    cardImageDownloadHiddenTimer = setTimeout(() => {
+                        loader.classList.add("is-hidden");
+                    }, 380);
+                }, Math.max(0, delayMs));
+            }
+
+            function updateCardImageDownloadPanel(data) {
+                if (!data) return;
+                const total = Number(data.total) || 0;
+                const done = Number(data.done) || 0;
+                const downloaded = Number(data.downloaded) || 0;
+                const skipped = Number(data.skipped) || 0;
+                const failed = Number(data.failed) || 0;
+                const pct =
+                    total > 0
+                        ? Math.min(100, Math.round((done / total) * 100))
+                        : 0;
+
+                if (el.cardImageDownloadMessage) {
+                    if (data.lastError && !data.running) {
+                        el.cardImageDownloadMessage.textContent =
+                            String(data.lastError);
+                    } else if (data.running) {
+                        el.cardImageDownloadMessage.textContent =
+                            total > 0
+                                ? `${done.toLocaleString()} / ${total.toLocaleString()} images`
+                                : "Preparing download...";
+                    } else {
+                        el.cardImageDownloadMessage.textContent =
+                            "Card images are ready for offline use.";
+                    }
+                }
+
+                if (el.cardImageDownloadMeterFill) {
+                    el.cardImageDownloadMeterFill.style.width = `${pct}%`;
+                }
+                if (el.cardImageDownloadMeter) {
+                    el.cardImageDownloadMeter.setAttribute(
+                        "aria-valuenow",
+                        String(pct),
+                    );
+                }
+
+                if (el.cardImageDownloadStats) {
+                    el.cardImageDownloadStats.innerHTML = [
+                        `<span class="card-image-download-stat"><strong>${downloaded.toLocaleString()}</strong> new</span>`,
+                        `<span class="card-image-download-stat"><strong>${skipped.toLocaleString()}</strong> cached</span>`,
+                        `<span class="card-image-download-stat"><strong>${failed.toLocaleString()}</strong> failed</span>`,
+                    ].join("");
+                }
+
+                const title = document.getElementById("cardImageDownloadTitle");
+                if (title) {
+                    if (data.lastError && !data.running) {
+                        title.textContent = "Download interrupted";
+                    } else if (data.running) {
+                        title.textContent = "Downloading card images";
+                    } else {
+                        title.textContent = "Download complete";
+                    }
+                }
+            }
+
+            function finishCardImageDownload(data) {
+                if (state.cardImageDownloadFinishHandled) return;
+                state.cardImageDownloadFinishHandled = true;
+                state.cardImageDownloadWasRunning = false;
+                if (!data) {
+                    hideCardImageDownloadPanel(0);
+                    return;
+                }
+                updateCardImageDownloadPanel(data);
+                if (!data.lastError) {
+                    if (state.useLocalCardImages) {
+                        applyUseLocalCardImagesPreference(true, {
+                            silent: true,
+                            syncBtn: false,
+                        });
+                    }
+                } else {
+                    applyUseLocalCardImagesPreference(false, {
+                        silent: true,
+                        syncBtn: true,
+                    });
+                }
+                hideCardImageDownloadPanel(data.lastError ? 2200 : 700);
+            }
+
+            function syncCardImagePrefetchUi(data) {
+                const running = !!(data && data.running);
+                if (el.useLocalCardImagesBtn) {
+                    el.useLocalCardImagesBtn.disabled = running;
+                }
+                if (running) {
+                    state.cardImageDownloadWasRunning = true;
+                    const loader = el.cardImageDownloadLoader;
+                    if (loader && loader.classList.contains("is-hidden")) {
+                        showCardImageDownloadPanel();
+                    }
+                    updateCardImageDownloadPanel(data);
+                    return;
+                }
+                if (
+                    state.cardImageDownloadWasRunning &&
+                    data &&
+                    data.finishedAt
+                ) {
+                    finishCardImageDownload(data);
+                }
+            }
+
+            function stopCardImagePrefetchPolling() {
+                if (state.cardImagePrefetchPollTimer) {
+                    clearInterval(state.cardImagePrefetchPollTimer);
+                    state.cardImagePrefetchPollTimer = null;
+                }
+            }
+
+            async function fetchCardImagePrefetchStatus() {
+                if (!canControlLocalDashboardServer()) return null;
+                const res = await fetch(DASHBOARD_CARD_IMAGES_STATUS_PATH, {
+                    cache: "no-store",
+                });
+                if (!res.ok) return null;
+                return res.json();
+            }
+
+            async function pollCardImagePrefetchStatus() {
+                try {
+                    const data = await fetchCardImagePrefetchStatus();
+                    if (!data) {
+                        stopCardImagePrefetchPolling();
+                        return null;
+                    }
+                    syncCardImagePrefetchUi(data);
+                    if (!data.running) stopCardImagePrefetchPolling();
+                    return data;
+                } catch {
+                    stopCardImagePrefetchPolling();
+                    return null;
+                }
+            }
+
+            function startCardImagePrefetchPolling() {
+                stopCardImagePrefetchPolling();
+                pollCardImagePrefetchStatus();
+                state.cardImagePrefetchPollTimer = setInterval(
+                    pollCardImagePrefetchStatus,
+                    1000,
+                );
+            }
+
+            async function handleUseLocalCardImagesBtnClick() {
+                if (state.useLocalCardImages) {
+                    applyUseLocalCardImagesPreference(false, {
+                        silent: true,
+                        syncBtn: true,
+                    });
+                    return;
+                }
+                if (!canControlLocalDashboardServer()) {
+                    showToast(
+                        "Local card images require the dashboard started from start_card_dashboard.bat or PTCGPB.ahk.",
+                        "warn",
+                    );
+                    return;
+                }
+                applyUseLocalCardImagesPreference(true, {
+                    silent: true,
+                    syncBtn: true,
+                });
+                await startCardImageDownload();
+            }
+
+            async function startCardImageDownload() {
+                if (!canControlLocalDashboardServer()) return;
+                if (el.useLocalCardImagesBtn?.disabled) return;
+                state.cardImageDownloadWasRunning = true;
+                state.cardImageDownloadFinishHandled = false;
+                showCardImageDownloadPanel();
+                try {
+                    const res = await fetch(
+                        DASHBOARD_CARD_IMAGES_PREFETCH_PATH,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ mode: "missing" }),
+                        },
+                    );
+                    const data = await res.json().catch(() => ({}));
+                    if (res.status === 409) {
+                        startCardImagePrefetchPolling();
+                        return;
+                    }
+                    if (!res.ok && res.status !== 202) {
+                        throw new Error(
+                            data.error ||
+                                `Download request failed (${res.status}).`,
+                        );
+                    }
+                    if (data && typeof data === "object") {
+                        updateCardImageDownloadPanel(data);
+                    }
+                    startCardImagePrefetchPolling();
+                } catch (err) {
+                    hideCardImageDownloadPanel(0);
+                    applyUseLocalCardImagesPreference(false, {
+                        silent: true,
+                        syncBtn: true,
+                    });
+                    showToast(
+                        `Card image download failed (${err && err.message ? err.message : "unknown error"}).`,
+                        "warn",
+                    );
+                }
+            }
+
+            async function initCardImageCacheControls() {
+                if (!canControlLocalDashboardServer()) return;
+                if (el.useLocalCardImagesBtn) {
+                    el.useLocalCardImagesBtn.hidden = false;
+                }
+                syncUseLocalCardImagesBtn();
+                const data = await fetchCardImagePrefetchStatus().catch(
+                    () => null,
+                );
+                if (data && data.running) {
+                    state.cardImageDownloadWasRunning = true;
+                    state.cardImageDownloadFinishHandled = false;
+                    applyUseLocalCardImagesPreference(true, {
+                        silent: true,
+                        syncBtn: true,
+                    });
+                    syncCardImagePrefetchUi(data);
+                    startCardImagePrefetchPolling();
+                }
             }
 
             function notifyDashboardActive() {
@@ -10607,6 +11537,8 @@
                 state.accountFileLabelMap = new Map();
                 state.accountMetadataMap = new Map();
                 state.accountCount = 0;
+                state.tradeAccountCount = 0;
+                state.collectionRegistryCount = 0;
                 state.rowCount = 0;
                 state.totalCards = 0;
                 state.uniqueCardCount = 0;
@@ -10631,8 +11563,12 @@
                 state.catalogBaseModelTradeMetaVersion = -1;
                 state.catalogAccountCountsCache = null;
                 state.catalogAccountCountsRowsRef = null;
+                state.catalogPullHistorySummaryCache = new Map();
+                state.catalogPullHistoryRowsRef = null;
+                state.catalogPullHistoryRowIndex = null;
                 state.selectedCatalogCardId = "";
                 state.selectedCatalogAccount = "";
+                state.catalogPullHistoryAccount = "";
                 state.catalogTradeReadyOnly = false;
                 state.multiExpansionFilter = "__all__";
                 state.multiCardSearch = "";
@@ -10658,6 +11594,8 @@
             function parseAccountDocumentsToDataset(documents) {
                 const rows = [];
                 const rowAccounts = new Set();
+                const tradeAccountIds = new Set();
+                const collectionRegistryIds = new Set();
                 const metadataAccounts = new Set();
                 const uniqueCards = new Set();
                 const packs = new Map();
@@ -10710,6 +11648,9 @@
                         }
                     }
                     if (!account) continue;
+
+                    if (isCollection) collectionRegistryIds.add(account);
+                    else tradeAccountIds.add(account);
 
                     const metadataNode =
                         readObjectValue(doc, ["metadata", "Metadata"]) || {};
@@ -11094,13 +12035,9 @@
                         friendCode: info.friendCode,
                     });
 
-                const accountCount = new Set([
-                    ...rowAccounts,
-                    ...metadataAccounts,
-                    ...fileLabelMap.keys(),
-                    ...accountMetadataMap.keys(),
-                    ...shinedustMap.keys(),
-                ]).size;
+                const tradeAccountCount = tradeAccountIds.size;
+                const collectionRegistryCount = collectionRegistryIds.size;
+                const accountCount = tradeAccountCount + collectionRegistryCount;
 
                 collectionAccounts.sort((a, b) => {
                     const rank = (instance) => {
@@ -11123,6 +12060,8 @@
                     error: "",
                     rows,
                     accountCount,
+                    tradeAccountCount,
+                    collectionRegistryCount,
                     rowCount: rows.length,
                     totalCards,
                     uniqueCardCount: uniqueCards.size,
@@ -11178,6 +12117,9 @@
                 state.selectedCollectionAccount =
                     parseResult.collectionAccounts[0]?.account || "";
                 state.accountCount = parseResult.accountCount;
+                state.tradeAccountCount = parseResult.tradeAccountCount;
+                state.collectionRegistryCount =
+                    parseResult.collectionRegistryCount;
                 state.rowCount = parseResult.rowCount;
                 state.totalCards = parseResult.totalCards;
                 state.uniqueCardCount = parseResult.uniqueCardCount;
@@ -11196,11 +12138,14 @@
                 scheduleCatalogWarmup();
                 const linkedNote =
                     parseResult.linkedAccountCount &&
-                    parseResult.linkedAccountCount !== state.accountCount
+                    parseResult.linkedAccountCount !== state.tradeAccountCount
                         ? ` (${formatNumber(parseResult.linkedAccountCount)} with metadata)`
                         : "";
+                const collectionNote = state.collectionRegistryCount
+                    ? ` · ${formatNumber(state.collectionRegistryCount)} ${pluralWord(state.collectionRegistryCount, "collection import", "collection imports")}`
+                    : "";
                 setStatus(
-                    `Loaded ${formatNumber(state.accountCount)} ${pluralWord(state.accountCount, "account", "accounts")} · ${formatNumber(state.rowCount)} ${pluralWord(state.rowCount, "entry", "entries")} · ${formatNumber(state.totalCards)} ${pluralWord(state.totalCards, "card", "cards")}${linkedNote}.`,
+                    `Loaded ${formatNumber(state.tradeAccountCount)} ${pluralWord(state.tradeAccountCount, "trade account", "trade accounts")}${collectionNote} · ${formatNumber(state.rowCount)} ${pluralWord(state.rowCount, "entry", "entries")} · ${formatNumber(state.totalCards)} ${pluralWord(state.totalCards, "card", "cards")}${linkedNote}.`,
                 );
                 hideDashboardBootLoader(520);
                 if (skippedCount) {
@@ -11335,6 +12280,7 @@
                         : "Unknown";
                 const illustrationId =
                     raw && raw.IllustrationID ? raw.IllustrationID : "";
+                const urls = buildCardImageUrls(illustrationId);
                 const info = {
                     id: cardId,
                     raw,
@@ -11343,9 +12289,8 @@
                     rarityValue,
                     rarityName,
                     illustrationId,
-                    imageUrl: illustrationId
-                        ? `${IMAGE_PREFIX}${encodeURIComponent(illustrationId)}.png`
-                        : "",
+                    imageUrl: urls.imageUrl,
+                    imageUrlFallback: urls.imageUrlFallback,
                 };
                 state.cardInfoCache.set(cardId, info);
                 return info;
@@ -11557,6 +12502,8 @@
                 state.csvLoaded = true;
                 state.rows = parseResult.rows;
                 state.accountCount = parseResult.accountCount;
+                state.tradeAccountCount = parseResult.tradeAccountCount;
+                state.collectionRegistryCount = 0;
                 state.rowCount = parseResult.rowCount;
                 state.totalCards = parseResult.totalCards;
                 state.uniqueCardCount = parseResult.uniqueCardCount;
@@ -11574,7 +12521,7 @@
                 applyFiltersAndRender();
                 scheduleCatalogWarmup();
                 setStatus(
-                    `Loaded ${formatNumber(state.rowCount)} rows, ${formatNumber(state.totalCards)} cards, and ${formatNumber(state.accountCount)} accounts from ${sourceLabel}.`,
+                    `Loaded ${formatNumber(state.rowCount)} rows, ${formatNumber(state.totalCards)} cards, and ${formatNumber(state.tradeAccountCount)} trade accounts from ${sourceLabel}.`,
                 );
                 hideDashboardBootLoader(520);
                 await maybeRefreshForMissingCardIds([
@@ -11686,6 +12633,8 @@
                     error,
                     rows,
                     accountCount: accounts.size,
+                    tradeAccountCount: accounts.size,
+                    collectionRegistryCount: 0,
                     rowCount: rows.length,
                     totalCards,
                     uniqueCardCount: uniqueCards.size,
@@ -12495,8 +13444,20 @@
                 scheduleAccountOverviewWarmup();
             }
 
+            function formatAccountsStatBreakdownHtml() {
+                const trade = state.tradeAccountCount || 0;
+                const coll = state.collectionRegistryCount || 0;
+                const tradeLabel = `${formatNumber(trade)} trade ${pluralWord(trade, "account", "accounts")}`;
+                if (!coll) return escapeHtml(tradeLabel);
+                const collLabel = `${formatNumber(coll)} collection ${pluralWord(coll, "import", "imports")}`;
+                return `${escapeHtml(tradeLabel)}<span class="stat-accounts-breakdown-sep" aria-hidden="true">·</span><span class="stat-accounts-breakdown-collection">${escapeHtml(collLabel)}</span>`;
+            }
+
             function updateStats(visibleCount) {
                 el.statAccounts.textContent = formatNumber(state.accountCount);
+                if (el.statAccountsBreakdown)
+                    el.statAccountsBreakdown.innerHTML =
+                        formatAccountsStatBreakdownHtml();
                 el.statRows.textContent = formatNumber(state.rowCount);
                 el.statCards.textContent = formatNumber(state.totalCards);
                 el.statUniqueCards.textContent = formatNumber(
@@ -12683,7 +13644,7 @@
                         .map((p) => {
                             const g = getCardInfo(p.gave);
                             const gThumb = g.imageUrl
-                                ? `<span class="pair-thumb"><img src="${escapeHtml(g.imageUrl)}" alt="" loading="lazy" decoding="async"></span>`
+                                ? `<span class="pair-thumb"><img src="${escapeHtml(g.imageUrl)}" alt="" loading="lazy" decoding="async" ${cardImageOnErrorAttr(g, "simple")}></span>`
                                 : `<span class="pair-thumb pair-thumb--empty" aria-hidden="true"></span>`;
                             if (p.kind === "unpaired") {
                                 const tip = `${g.name}: no pairing recorded`;
@@ -12700,7 +13661,7 @@
                             }
                             const r = getCardInfo(p.received);
                             const rThumb = r.imageUrl
-                                ? `<span class="pair-thumb"><img src="${escapeHtml(r.imageUrl)}" alt="" loading="lazy" decoding="async"></span>`
+                                ? `<span class="pair-thumb"><img src="${escapeHtml(r.imageUrl)}" alt="" loading="lazy" decoding="async" ${cardImageOnErrorAttr(r, "simple")}></span>`
                                 : `<span class="pair-thumb pair-thumb--empty" aria-hidden="true"></span>`;
                             const tip = `Gave ${g.name}\u2192\u00a0${r.name}`;
                             const aria = `Trade: gave ${g.name}, received ${r.name}`;
@@ -13035,15 +13996,29 @@
                 accountFirstSeenMs,
             ) {
                 const accountRows = [];
+                const pullHistory = getCatalogPullHistorySummary(cardId);
+                const accountPullStats =
+                    pullHistory && pullHistory.accountStats
+                        ? pullHistory.accountStats
+                        : new Map();
                 for (const [account, count] of accountCounts) {
                     const remaining =
                         count -
                         getTradedCount(account, cardId) -
                         getSharedCount(account, cardId);
                     if (remaining <= 0) continue;
+                    const pullStats = accountPullStats.get(account) || {};
                     accountRows.push({
                         account,
                         count: remaining,
+                        firstPulledMs: Number.isFinite(pullStats.firstMs)
+                            ? pullStats.firstMs
+                            : Number.NaN,
+                        lastPulledMs: Number.isFinite(pullStats.lastMs)
+                            ? pullStats.lastMs
+                            : Number.NaN,
+                        pullRowCount: Number(pullStats.rowCount) || 0,
+                        pulledCopies: Number(pullStats.totalCopies) || 0,
                         instance: String(
                             state.accountMetadataMap.get(account)?.instance ||
                                 "",
@@ -13212,7 +14187,7 @@
                     ? cards
                           .map((card) => {
                               const thumb = card.info.imageUrl
-                                  ? `<img src="${escapeHtml(card.info.imageUrl)}" alt="" loading="lazy">`
+                                  ? `<img src="${escapeHtml(card.info.imageUrl)}" alt="" loading="lazy" ${cardImageOnErrorAttr(card.info, "simple")}>`
                                   : `<span class="multi-card-chip-thumb-fallback" aria-hidden="true"></span>`;
                               const rarityKey = getCardRarityFilterKey(
                                   card.id,
@@ -13247,7 +14222,7 @@
                     return `<span class="multi-card-chip-thumb-wrap multi-result-mini-thumb multi-result-mini-thumb--ghost" aria-hidden="true"><span class="multi-card-chip-thumb-fallback"></span></span>`;
                 }
                 const thumb = card.info.imageUrl
-                    ? `<img src="${escapeHtml(card.info.imageUrl)}" alt="" loading="lazy" decoding="async">`
+                    ? `<img src="${escapeHtml(card.info.imageUrl)}" alt="" loading="lazy" decoding="async" ${cardImageOnErrorAttr(card.info, "simple")}>`
                     : `<span class="multi-card-chip-thumb-fallback" aria-hidden="true"></span>`;
                 const qtyBadge =
                     quantity != null && Number(quantity) > 0
@@ -14386,6 +15361,20 @@
                 }
             }
 
+            function renderMultiSearchPickerCardButton(card) {
+                const unavailable = card.totalCopies === 0;
+                const selected = state.multiSearchCardIds.has(card.id);
+                const unavailableClass = unavailable ? " unavailable" : "";
+                const selectedClass = selected ? " selected" : "";
+                const imgPart = card.info.imageUrl
+                    ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="" ${cardImageOnErrorAttr(card.info, "simple")}>`
+                    : "";
+                const thumbHtml = imgPart
+                    ? imgPart
+                    : `<span style="font-size:0.64rem;color:var(--muted)">No image</span>`;
+                return `<button type="button" class="multi-picker-row${unavailableClass}${selectedClass}" data-multi-picker-card-id="${escapeHtml(card.id)}" aria-pressed="${selected ? "true" : "false"}"><span class="multi-picker-thumb">${thumbHtml}</span><span class="multi-picker-main"><span class="multi-picker-name">${escapeHtml(card.info.name)}</span>${renderMultiChipExpansionCueHtml(card.id, card.info, "picker")}</span><span class="multi-picker-rarity">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(card.id, card.info))}</span></button>`;
+            }
+
             function renderMultiSearchSectionsFromModel(model) {
                 const isAllExpansions =
                     state.multiExpansionFilter === "__all__";
@@ -14402,74 +15391,96 @@
                     !hasWishlistFilter;
                 const renderedSections = model.filteredSections;
                 const hasVisibleCards = renderedSections.length > 0;
-                return hasVisibleCards
-                    ? showingExpansionList
-                        ? `<article class="multi-picker-section panel"><div class="multi-picker-section-head"><div class="multi-picker-section-title">Expansions</div><div class="catalog-section-meta">${formatNumber(renderedSections.length)} ${pluralWord(renderedSections.length, "set", "sets")}</div></div><div class="multi-expansion-list">${renderedSections
-                              .map((section) => {
-                                  const total = section.cards.length;
-                                  const available = section.cards.filter(
-                                      (card) => card.totalCopies > 0,
-                                  ).length;
-                                  const selectedInSection =
-                                      section.cards.filter((card) =>
-                                          state.multiSearchCardIds.has(card.id),
-                                      ).length;
-                                  const iconUrl = getPackIconUrl(section.code);
-                                  const logoHtml = iconUrl
-                                      ? `<img class="multi-expansion-logo" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'multi-expansion-logo-empty\\'></div>'">`
-                                      : `<div class="multi-expansion-logo-empty"></div>`;
-                                  const badge = selectedInSection
-                                      ? `<span class="multi-expansion-selected-badge" title="${formatNumber(selectedInSection)} selected ${pluralWord(selectedInSection, "card", "cards")}">${formatNumber(selectedInSection)}</span>`
-                                      : "";
-                                  const selectedClass = selectedInSection
-                                      ? " has-selected"
-                                      : "";
-                                  const title = `${section.label} · ${formatNumber(available)}/${formatNumber(total)} available${selectedInSection ? ` · ${formatNumber(selectedInSection)} selected` : ""}`;
-                                  return `<button type="button" class="multi-expansion-row${selectedClass}" data-multi-jump-expansion="${escapeHtml(section.code)}" title="${escapeHtml(title)}">${badge}<div class="multi-expansion-logo-wrap">${logoHtml}</div><span class="multi-expansion-meta">${formatNumber(available)}/${formatNumber(total)}</span></button>`;
-                              })
-                              .join("")}</div></article>`
-                        : renderedSections
-                              .map((section) => {
-                                  const cardsHtml = section.cards
-                                      .map((card) => {
-                                          const unavailable =
-                                              card.totalCopies === 0;
-                                          const selected =
-                                              state.multiSearchCardIds.has(
-                                                  card.id,
-                                              );
-                                          const unavailableClass = unavailable
-                                              ? " unavailable"
-                                              : "";
-                                          const selectedClass = selected
-                                              ? " selected"
-                                              : "";
-                                          const imgPart = card.info.imageUrl
-                                              ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="" onerror="this.style.display='none';">`
-                                              : "";
-                                          const thumbHtml = imgPart
-                                              ? imgPart
-                                              : `<span style="font-size:0.64rem;color:var(--muted)">No image</span>`;
-                                          return `<button type="button" class="multi-picker-row${unavailableClass}${selectedClass}" data-multi-picker-card-id="${escapeHtml(card.id)}" aria-pressed="${selected ? "true" : "false"}"><span class="multi-picker-thumb">${thumbHtml}</span><span class="multi-picker-main"><span class="multi-picker-name">${escapeHtml(card.info.name)}</span>${renderMultiChipExpansionCueHtml(card.id, card.info, "picker")}</span><span class="multi-picker-rarity">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(card.id, card.info))}</span></button>`;
-                                      })
-                                      .join("");
-                                  const availableInSection =
-                                      section.cards.filter(
-                                          (card) => card.totalCopies > 0,
-                                      ).length;
-                                  const backBtnHtml = isAllExpansions
-                                      ? `<span></span>`
-                                      : `<button type="button" class="catalog-back-btn" data-multi-back title="Back to All Expansions" aria-label="Back to All Expansions">&larr;</button>`;
-                                  const sectionIconUrl = getPackIconUrl(
-                                      section.code,
-                                  );
-                                  const sectionLogoHtml = sectionIconUrl
-                                      ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(section.label)}" title="${escapeHtml(section.label)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(section.label).replace(/'/g, "\\'")}</div>'">`
-                                      : `<div class="catalog-section-title">${escapeHtml(section.label)}</div>`;
-                                  return `<article class="multi-picker-section panel"><div class="catalog-section-head">${backBtnHtml}<div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${formatNumber(availableInSection)}/${formatNumber(section.cards.length)} available</div></div><div class="multi-picker-list">${cardsHtml}</div></article>`;
-                              })
-                              .join("")
-                    : `<div class="empty panel">No cards match the selected filters.</div>`;
+
+                if (showingExpansionList) {
+                    return `<article class="multi-picker-section panel"><div class="multi-picker-section-head"><div class="multi-picker-section-title">Expansions</div><div class="catalog-section-meta">${formatNumber(renderedSections.length)} ${pluralWord(renderedSections.length, "set", "sets")}</div></div><div class="multi-expansion-list">${renderedSections
+                        .map((section) => {
+                            const total = section.cards.length;
+                            const available = section.cards.filter(
+                                (card) => card.totalCopies > 0,
+                            ).length;
+                            const selectedInSection = section.cards.filter(
+                                (card) =>
+                                    state.multiSearchCardIds.has(card.id),
+                            ).length;
+                            const iconUrl = getPackIconUrl(section.code);
+                            const logoHtml = iconUrl
+                                ? `<img class="multi-expansion-logo" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'multi-expansion-logo-empty\\'></div>'">`
+                                : `<div class="multi-expansion-logo-empty"></div>`;
+                            const badge = selectedInSection
+                                ? `<span class="multi-expansion-selected-badge" title="${formatNumber(selectedInSection)} selected ${pluralWord(selectedInSection, "card", "cards")}">${formatNumber(selectedInSection)}</span>`
+                                : "";
+                            const selectedClass = selectedInSection
+                                ? " has-selected"
+                                : "";
+                            const title = `${section.label} · ${formatNumber(available)}/${formatNumber(total)} available${selectedInSection ? ` · ${formatNumber(selectedInSection)} selected` : ""}`;
+                            return `<button type="button" class="multi-expansion-row${selectedClass}" data-multi-jump-expansion="${escapeHtml(section.code)}" title="${escapeHtml(title)}">${badge}<div class="multi-expansion-logo-wrap">${logoHtml}</div><span class="multi-expansion-meta">${formatNumber(available)}/${formatNumber(total)}</span></button>`;
+                        })
+                        .join("")}</div></article>`;
+                }
+
+                if (!isAllExpansions) {
+                    const expansionSection = model.sectionListAll.find(
+                        (entry) =>
+                            entry.code === state.multiExpansionFilter,
+                    );
+                    const sectionLabel =
+                        expansionSection?.label ||
+                        getPackLabel(state.multiExpansionFilter);
+                    const sectionCode =
+                        expansionSection?.code ||
+                        state.multiExpansionFilter;
+                    const filteredCards = renderedSections[0]?.cards || [];
+                    const cardsHtml = filteredCards
+                        .map((card) => renderMultiSearchPickerCardButton(card))
+                        .join("");
+                    const availableInSection = expansionSection
+                        ? expansionSection.cards.filter(
+                              (card) => card.totalCopies > 0,
+                          ).length
+                        : 0;
+                    const totalInSection = expansionSection
+                        ? expansionSection.cards.length
+                        : 0;
+                    return renderCatalogExpansionSectionHtml(
+                        sectionCode,
+                        sectionLabel,
+                        `${formatNumber(availableInSection)}/${formatNumber(totalInSection)} available`,
+                        cardsHtml,
+                        {
+                            backAttr: "data-multi-back",
+                            listClass: "multi-picker-list",
+                            articleClass: "multi-picker-section",
+                        },
+                    );
+                }
+
+                if (!hasVisibleCards) {
+                    return `<div class="empty panel">No cards match the selected filters.</div>`;
+                }
+
+                return renderedSections
+                    .map((section) => {
+                        const cardsHtml = section.cards
+                            .map((card) =>
+                                renderMultiSearchPickerCardButton(card),
+                            )
+                            .join("");
+                        const availableInSection = section.cards.filter(
+                            (card) => card.totalCopies > 0,
+                        ).length;
+                        return renderCatalogExpansionSectionHtml(
+                            section.code,
+                            section.label,
+                            `${formatNumber(availableInSection)}/${formatNumber(section.cards.length)} available`,
+                            cardsHtml,
+                            {
+                                listClass: "multi-picker-list",
+                                articleClass: "multi-picker-section",
+                            },
+                        );
+                    })
+                    .join("");
             }
 
             function syncMultiPickerControlsFromState() {
@@ -14983,69 +15994,191 @@
                 scheduleRestore();
             }
 
-            function attachCatalogSideDynamicListeners(sideRoot) {
-                sideRoot
-                    .querySelectorAll("[data-select-catalog-account]")
-                    .forEach((btn) => {
-                        const selectAccount = () => {
-                            const account =
-                                btn.getAttribute(
-                                    "data-select-catalog-account",
-                                ) || "";
-                            applyCatalogAccountPinToggle(account);
-                        };
-                        btn.addEventListener("click", (event) => {
-                            if (
-                                event.target.closest(".catalog-account-actions")
-                            )
-                                return;
-                            if (event.target.closest("[data-pin-account]"))
-                                return;
-                            selectAccount();
-                        });
-                        btn.addEventListener("keydown", (event) => {
-                            if (
-                                event.key !== "Enter" &&
-                                event.key !== " " &&
-                                event.key !== "Spacebar"
-                            )
-                                return;
-                            event.preventDefault();
-                            selectAccount();
-                        });
-                    });
+            function setPullHistoryToggleVisualState(btn, isOpen) {
+                if (!btn) return;
+                btn.classList.toggle("is-open", isOpen);
+                btn.setAttribute(
+                    "aria-expanded",
+                    isOpen ? "true" : "false",
+                );
+            }
 
-                attachAccountPinToggleListeners(sideRoot, (account) => {
-                    applyCatalogAccountPinToggle(account);
+            function applyCatalogPullHistoryToggleInPlace(
+                sideRoot,
+                btn,
+                account,
+            ) {
+                const previousAccount = state.catalogPullHistoryAccount;
+                const wasSameOpen = previousAccount === account;
+                const cardId = state.selectedCatalogCardId;
+
+                if (previousAccount) {
+                    const prevSelector = `[data-toggle-catalog-pull-history="${cssAttrEscape(previousAccount)}"]`;
+                    const prevBtn = sideRoot.querySelector(prevSelector);
+                    const prevRow = prevBtn
+                        ? prevBtn.closest(".catalog-account-item")
+                        : null;
+                    if (prevRow) {
+                        const prevSection = prevRow.querySelector(
+                            ".catalog-pull-history-section",
+                        );
+                        if (prevSection) prevSection.remove();
+                    }
+                    if (prevBtn) {
+                        setPullHistoryToggleVisualState(prevBtn, false);
+                    }
+                    catalogPullHistoryActiveFill = null;
+                    catalogPullHistoryPendingFill = null;
+                }
+
+                if (wasSameOpen) {
+                    state.catalogPullHistoryAccount = "";
+                    return;
+                }
+
+                state.catalogPullHistoryAccount = account;
+
+                if (!cardId) return;
+
+                const row = btn.closest(".catalog-account-item");
+                if (!row) {
+                    renderCatalogSidePanel({ animate: "list" });
+                    return;
+                }
+
+                const historyHtml = renderCatalogPullHistoryHtml(
+                    cardId,
+                    account,
+                );
+                const actionsEl = row.querySelector(
+                    ".catalog-account-actions",
+                );
+                if (actionsEl) {
+                    actionsEl.insertAdjacentHTML("beforebegin", historyHtml);
+                } else {
+                    row.insertAdjacentHTML("beforeend", historyHtml);
+                }
+                setPullHistoryToggleVisualState(btn, true);
+                activateCatalogPullHistoryFill(row);
+            }
+
+            function cssAttrEscape(value) {
+                return String(value || "").replace(
+                    /["\\]/g,
+                    (match) => `\\${match}`,
+                );
+            }
+
+            function attachCatalogSideDynamicListeners(sideRoot, scopeEl) {
+                if (!scopeEl) {
+                    activateCatalogPullHistoryFill(sideRoot);
+                    activateCatalogAccountListFill(sideRoot);
+                }
+                const scope = scopeEl || sideRoot;
+
+                const visit = (sel, fn) => {
+                    const apply = (el) => {
+                        if (__catalogSideAttachedElements.has(el)) return;
+                        __catalogSideAttachedElements.add(el);
+                        fn(el);
+                    };
+                    if (scope.matches && scope.matches(sel)) apply(scope);
+                    scope.querySelectorAll(sel).forEach(apply);
+                };
+
+                visit("[data-select-catalog-account]", (btn) => {
+                    const selectAccount = () => {
+                        const account =
+                            btn.getAttribute(
+                                "data-select-catalog-account",
+                            ) || "";
+                        applyCatalogAccountPinToggle(account);
+                    };
+                    btn.addEventListener("click", (event) => {
+                        if (event.target.closest(".catalog-account-actions"))
+                            return;
+                        if (event.target.closest("[data-pin-account]"))
+                            return;
+                        if (
+                            event.target.closest(
+                                "[data-toggle-catalog-pull-history]",
+                            )
+                        )
+                            return;
+                        selectAccount();
+                    });
+                    btn.addEventListener("keydown", (event) => {
+                        if (
+                            event.target.closest(
+                                "[data-toggle-catalog-pull-history]",
+                            ) ||
+                            event.target.closest("[data-pin-account]")
+                        )
+                            return;
+                        if (
+                            event.key !== "Enter" &&
+                            event.key !== " " &&
+                            event.key !== "Spacebar"
+                        )
+                            return;
+                        event.preventDefault();
+                        selectAccount();
+                    });
                 });
 
-                sideRoot
-                    .querySelectorAll("[data-copy-account]")
-                    .forEach((btn) => {
-                        btn.addEventListener("click", async () => {
-                            const account =
-                                btn.getAttribute("data-copy-account") || "";
-                            if (!account) return;
-                            const ok = await copyToClipboard(account);
-                            const old = btn.textContent;
-                            btn.textContent = ok ? "Copied" : "Retry";
-                            setTimeout(() => {
-                                btn.textContent = old;
-                            }, 900);
-                        });
+                visit("[data-pin-account]", (btn) => {
+                    btn.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const account =
+                            btn.getAttribute("data-pin-account") || "";
+                        if (!account) return;
+                        applyCatalogAccountPinToggle(account);
                     });
+                });
 
-                sideRoot
-                    .querySelectorAll(
-                        "[data-mark-traded-account][data-mark-traded-card]",
-                    )
-                    .forEach((btn) => {
+                visit("[data-toggle-catalog-pull-history]", (btn) => {
+                    btn.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const account =
+                            btn.getAttribute(
+                                "data-toggle-catalog-pull-history",
+                            ) || "";
+                        if (!account) return;
+                        applyCatalogPullHistoryToggleInPlace(
+                            sideRoot,
+                            btn,
+                            account,
+                        );
+                    });
+                });
+
+                visit("[data-copy-account]", (btn) => {
+                    btn.addEventListener("click", async () => {
+                        const account =
+                            btn.getAttribute("data-copy-account") || "";
+                        if (!account) return;
+                        const ok = await copyToClipboard(account);
+                        const old = btn.textContent;
+                        btn.textContent = ok ? "Copied" : "Retry";
+                        setTimeout(() => {
+                            btn.textContent = old;
+                        }, 900);
+                    });
+                });
+
+                visit(
+                    "[data-mark-traded-account][data-mark-traded-card]",
+                    (btn) => {
                         btn.addEventListener("click", async () => {
                             const account =
-                                btn.getAttribute("data-mark-traded-account") ||
-                                "";
+                                btn.getAttribute(
+                                    "data-mark-traded-account",
+                                ) || "";
                             const cardId =
-                                btn.getAttribute("data-mark-traded-card") || "";
+                                btn.getAttribute("data-mark-traded-card") ||
+                                "";
                             if (!account || !cardId) return;
                             await markSelectedCardTraded(
                                 account,
@@ -15059,19 +16192,20 @@
                                     ),
                             );
                         });
-                    });
+                    },
+                );
 
-                sideRoot
-                    .querySelectorAll(
-                        "[data-mark-shared-account][data-mark-shared-card]",
-                    )
-                    .forEach((btn) => {
+                visit(
+                    "[data-mark-shared-account][data-mark-shared-card]",
+                    (btn) => {
                         btn.addEventListener("click", () => {
                             const account =
-                                btn.getAttribute("data-mark-shared-account") ||
-                                "";
+                                btn.getAttribute(
+                                    "data-mark-shared-account",
+                                ) || "";
                             const cardId =
-                                btn.getAttribute("data-mark-shared-card") || "";
+                                btn.getAttribute("data-mark-shared-card") ||
+                                "";
                             if (!account || !cardId) return;
                             const preferredAccountName =
                                 state.accountFileLabelMap.get(account) ||
@@ -15090,20 +16224,21 @@
                                 );
                             });
                         });
-                    });
+                    },
+                );
 
-                sideRoot
-                    .querySelectorAll(
-                        "[data-start-trade-account][data-start-trade-card]",
-                    )
-                    .forEach((btn) => {
+                visit(
+                    "[data-start-trade-account][data-start-trade-card]",
+                    (btn) => {
                         btn.addEventListener("click", async () => {
                             if (btn.disabled) return;
                             const account =
-                                btn.getAttribute("data-start-trade-account") ||
-                                "";
+                                btn.getAttribute(
+                                    "data-start-trade-account",
+                                ) || "";
                             const cardId =
-                                btn.getAttribute("data-start-trade-card") || "";
+                                btn.getAttribute("data-start-trade-card") ||
+                                "";
                             const fileName =
                                 btn.getAttribute("data-start-trade-file") ||
                                 state.accountFileLabelMap.get(account) ||
@@ -15122,7 +16257,89 @@
                                 [cardId],
                             );
                         });
-                    });
+                    },
+                );
+            }
+
+            function activateCatalogAccountListFill(sideRoot) {
+                const pending = catalogAccountListPendingFill;
+                if (!pending || !sideRoot) return;
+                const listEl = sideRoot.querySelector(
+                    `[data-account-list-fill="${pending.token}"]`,
+                );
+                if (!listEl) return;
+                catalogAccountListPendingFill = null;
+                listEl.removeAttribute("data-account-list-fill");
+                scheduleCatalogAccountListFill(
+                    sideRoot,
+                    listEl,
+                    pending.htmls,
+                    pending.fromIdx,
+                );
+            }
+
+            function scheduleCatalogAccountListFill(
+                sideRoot,
+                listEl,
+                htmls,
+                fromIdx,
+            ) {
+                const fill = { sideRoot, listEl, htmls, idx: fromIdx };
+                catalogAccountListActiveFill = fill;
+                const scheduleNext = (fn) => {
+                    if (typeof window.requestIdleCallback === "function") {
+                        window.requestIdleCallback(fn, { timeout: 200 });
+                    } else {
+                        window.requestAnimationFrame(fn);
+                    }
+                };
+                const step = (deadline) => {
+                    if (catalogAccountListActiveFill !== fill) return;
+                    if (!fill.listEl.isConnected) {
+                        catalogAccountListActiveFill = null;
+                        return;
+                    }
+                    const hasDeadline =
+                        deadline &&
+                        typeof deadline.timeRemaining === "function";
+                    let html = "";
+                    let cnt = 0;
+                    while (
+                        fill.idx < fill.htmls.length &&
+                        cnt < CATALOG_ACCOUNT_LIST_ASYNC_MAX_CHUNK
+                    ) {
+                        html += fill.htmls[fill.idx++];
+                        cnt++;
+                        if (
+                            cnt >=
+                                CATALOG_ACCOUNT_LIST_ASYNC_MIN_CHUNK &&
+                            hasDeadline &&
+                            deadline.timeRemaining() < 3
+                        )
+                            break;
+                    }
+                    if (html) {
+                        const before = fill.listEl.children.length;
+                        fill.listEl.insertAdjacentHTML("beforeend", html);
+                        const total = fill.listEl.children.length;
+                        for (let i = before; i < total; i++) {
+                            const child = fill.listEl.children[i];
+                            attachCatalogSideDynamicListeners(
+                                fill.sideRoot,
+                                child,
+                            );
+                        }
+                        if (catalogPullHistoryPendingFill) {
+                            activateCatalogPullHistoryFill(fill.sideRoot);
+                        }
+                    }
+                    if (fill.idx < fill.htmls.length) {
+                        scheduleNext(step);
+                    } else {
+                        catalogAccountListActiveFill = null;
+                    }
+                };
+                scheduleNext(step);
             }
 
             function attachCatalogSidePanelChromeListeners(sideEl) {
@@ -15131,6 +16348,10 @@
                 if (sortSelect)
                     sortSelect.addEventListener("change", () => {
                         state.catalogAccountSort = sortSelect.value;
+                        if (state.catalogAccountSort === "lastPulled")
+                            state.catalogAccountSortAsc = false;
+                        else if (state.catalogAccountSort === "firstPulled")
+                            state.catalogAccountSortAsc = true;
                         renderCatalogSidePanel({ animate: "list" });
                     });
 
@@ -15161,6 +16382,14 @@
                 if (!metaSlot || !listEl) return false;
                 metaSlot.innerHTML = selectedMeta || "";
                 listEl.innerHTML = accountItemsHtml;
+                if (catalogAccountListPendingFill) {
+                    listEl.setAttribute(
+                        "data-account-list-fill",
+                        catalogAccountListPendingFill.token,
+                    );
+                } else {
+                    listEl.removeAttribute("data-account-list-fill");
+                }
                 if (togglesEl) {
                     togglesEl.outerHTML = catalogTradeReadyToggleHtml;
                     attachCatalogAccountFilterToggleListeners(sideEl);
@@ -15174,6 +16403,8 @@
             }
 
             function renderCatalogSidePanel(options) {
+                catalogPullHistoryPendingFill = null;
+                catalogAccountListPendingFill = null;
                 const patchOnly = options && options.patchOnly;
                 const prefetchedCounts = options && options.prefetchedCounts;
                 const skipBaseModel =
@@ -15231,77 +16462,106 @@
                 syncCatalogAccountPin(accountRows);
                 if (!selected) state.selectedCatalogAccount = "";
 
-                const accountItemsHtml = selected
-                    ? accountRows.length
-                        ? accountRows
-                              .map((row) => {
-                                  const noTrade =
-                                      selected.info.rarityValue === 800 ||
-                                      selected.info.rarityValue === 900 ||
-                                      isPromoCard(selected.id);
-                                  const mappedFileName =
-                                      state.accountFileLabelMap.get(
-                                          row.account,
-                                      ) || "";
-                                  const preferredRaw =
-                                      mappedFileName || row.account;
-                                  const preferredShort =
-                                      buildFileLabelMeta(preferredRaw);
-                                  const accountNameLabel =
-                                      preferredRaw !== row.account
-                                          ? `<span title="${escapeHtml(
-                                                preferredRaw,
-                                            )}">${escapeHtml(
-                                                preferredShort || preferredRaw,
-                                            )}</span>`
-                                          : escapeHtml(row.account);
-                                  const accountTradeBlocked =
-                                      isKnownTradeBlocked(row);
-                                  const tradeBtn = noTrade
-                                      ? ""
-                                      : accountTradeBlocked
-                                        ? ""
-                                        : `<button type="button" data-mark-traded-account="${escapeHtml(
-                                              row.account,
-                                          )}" data-mark-traded-card="${escapeHtml(
-                                              selected.id,
-                                          )}">Mark traded</button>`;
-                                  const isLowRarity =
-                                      !noTrade &&
-                                      (selected.info.rarityValue === 100 ||
-                                          selected.info.rarityValue === 200 ||
-                                          selected.info.rarityValue === 300 ||
-                                          selected.info.rarityValue === 400);
-                                  const sharedBtn = isLowRarity
-                                      ? `<button type="button" data-mark-shared-account="${escapeHtml(
-                                            row.account,
-                                        )}" data-mark-shared-card="${escapeHtml(
-                                            selected.id,
-                                        )}" title="Mark this card as shared">Mark shared</button>`
-                                      : "";
-                                  const startTradeBtn = noTrade
-                                      ? ""
-                                      : accountTradeBlocked
-                                        ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
-                                        : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(
-                                              row.account,
-                                          )}" data-start-trade-card="${escapeHtml(
-                                              selected.id,
-                                          )}" data-start-trade-file="${escapeHtml(
-                                              mappedFileName,
-                                          )}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
-                                  const isPinned =
-                                      row.account ===
-                                      state.selectedCatalogAccount;
-                                  return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(
+                const accountItemHtmls = selected
+                    ? accountRows.map((row) => {
+                          const noTrade =
+                              selected.info.rarityValue === 800 ||
+                              selected.info.rarityValue === 900 ||
+                              isPromoCard(selected.id);
+                          const mappedFileName =
+                              state.accountFileLabelMap.get(row.account) || "";
+                          const preferredRaw = mappedFileName || row.account;
+                          const preferredShort =
+                              buildFileLabelMeta(preferredRaw);
+                          const accountNameLabel =
+                              preferredRaw !== row.account
+                                  ? `<span title="${escapeHtml(
+                                        preferredRaw,
+                                    )}">${escapeHtml(
+                                        preferredShort || preferredRaw,
+                                    )}</span>`
+                                  : escapeHtml(row.account);
+                          const accountTradeBlocked = isKnownTradeBlocked(row);
+                          const tradeBtn = noTrade
+                              ? ""
+                              : accountTradeBlocked
+                                ? ""
+                                : `<button type="button" data-mark-traded-account="${escapeHtml(
                                       row.account,
-                                  )}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}<div class="catalog-account-actions"><button type="button" data-copy-account="${escapeHtml(
-                                      preferredRaw,
-                                  )}">Copy account</button>${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
-                              })
-                              .join("")
-                        : `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`
-                    : `<div class="empty panel" style="padding:14px">Select a card to view account availability.</div>`;
+                                  )}" data-mark-traded-card="${escapeHtml(
+                                      selected.id,
+                                  )}">Mark traded</button>`;
+                          const isLowRarity =
+                              !noTrade &&
+                              (selected.info.rarityValue === 100 ||
+                                  selected.info.rarityValue === 200 ||
+                                  selected.info.rarityValue === 300 ||
+                                  selected.info.rarityValue === 400);
+                          const sharedBtn = isLowRarity
+                              ? `<button type="button" data-mark-shared-account="${escapeHtml(
+                                    row.account,
+                                )}" data-mark-shared-card="${escapeHtml(
+                                    selected.id,
+                                )}" title="Mark this card as shared">Mark shared</button>`
+                              : "";
+                          const startTradeBtn = noTrade
+                              ? ""
+                              : accountTradeBlocked
+                                ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
+                                : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(
+                                      row.account,
+                                  )}" data-start-trade-card="${escapeHtml(
+                                      selected.id,
+                                  )}" data-start-trade-file="${escapeHtml(
+                                      mappedFileName,
+                                  )}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
+                          const isPinned =
+                              row.account === state.selectedCatalogAccount;
+                          const isHistoryOpen =
+                              row.account === state.catalogPullHistoryAccount;
+                          const historyButton =
+                              catalogPullHistoryToggleButtonHtml(
+                                  row.account,
+                                  isHistoryOpen,
+                                  row.pullRowCount,
+                              );
+                          const historyHtml = isHistoryOpen
+                              ? renderCatalogPullHistoryHtml(
+                                    selected.id,
+                                    row.account,
+                                )
+                              : "";
+                          return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(
+                              row.account,
+                          )}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned, historyButton)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}${historyHtml}<div class="catalog-account-actions"><button type="button" data-copy-account="${escapeHtml(
+                              preferredRaw,
+                          )}">Copy account</button>${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
+                      })
+                    : null;
+
+                let accountListFillAttr = "";
+                let accountItemsHtml;
+                if (!selected) {
+                    accountItemsHtml = `<div class="empty panel" style="padding:14px">Select a card to view account availability.</div>`;
+                } else if (!accountItemHtmls.length) {
+                    accountItemsHtml = `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`;
+                } else if (
+                    accountItemHtmls.length >
+                    CATALOG_ACCOUNT_LIST_INITIAL_CHUNK
+                ) {
+                    accountItemsHtml = accountItemHtmls
+                        .slice(0, CATALOG_ACCOUNT_LIST_INITIAL_CHUNK)
+                        .join("");
+                    const token = String(++catalogAccountListFillCounter);
+                    catalogAccountListPendingFill = {
+                        token,
+                        htmls: accountItemHtmls,
+                        fromIdx: CATALOG_ACCOUNT_LIST_INITIAL_CHUNK,
+                    };
+                    accountListFillAttr = ` data-account-list-fill="${token}"`;
+                } else {
+                    accountItemsHtml = accountItemHtmls.join("");
+                }
 
                 let selectedMeta = "";
                 if (selected) {
@@ -15328,7 +16588,7 @@
                     shinedustChecked: state.catalogRequiredShinedustOnly,
                     requiredShinedust,
                 });
-                const sideHtml = `<aside class="catalog-side panel"><div class="catalog-side-title">Card Availability</div><div class="catalog-side-update-body"><div class="catalog-side-meta-slot">${selectedMeta}</div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort Accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div>${catalogTradeReadyToggleHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderCatalogAccountPinHint(accountRows)}</div><div class="catalog-account-list">${accountItemsHtml}</div></div></div></div></aside>`;
+                const sideHtml = `<aside class="catalog-side panel"><div class="catalog-side-title">Card Availability</div><div class="catalog-side-update-body"><div class="catalog-side-meta-slot">${selectedMeta}</div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort Accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="lastPulled" ${state.catalogAccountSort === "lastPulled" ? "selected" : ""}>Last pulled</option><option value="firstPulled" ${state.catalogAccountSort === "firstPulled" ? "selected" : ""}>First pulled</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div>${catalogTradeReadyToggleHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderCatalogAccountPinHint(accountRows)}</div><div class="catalog-account-list"${accountListFillAttr}>${accountItemsHtml}</div></div></div></div></aside>`;
 
                 const sideEl = el.rows.querySelector(".catalog-side");
                 if (!sideEl) {
@@ -15347,7 +16607,7 @@
                         ".catalog-account-list",
                     );
                     if (metaSlot && listEl) {
-                        const runPatch = () =>
+                        const runPatch = () => {
                             applyCatalogSidePanelPatch(
                                 sideEl,
                                 selectedMeta,
@@ -15355,6 +16615,7 @@
                                 catalogTradeReadyToggleHtml,
                                 accountRows,
                             );
+                        };
                         if (swapMode) {
                             runWithSidePanelSwap(
                                 getSideRoot,
@@ -15393,6 +16654,7 @@
                     )
                         return;
                     buildCatalogBaseModel();
+                    ensureCatalogPullHistoryIndex();
                 };
 
                 if ("requestIdleCallback" in window) {
@@ -15426,7 +16688,7 @@
                     .map((id) => {
                         const info = getCardInfo(id);
                         const imgPart = info.imageUrl
-                            ? `<img src="${escapeHtml(info.imageUrl)}" loading="lazy" alt="${escapeHtml(info.name)}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');">`
+                            ? `<img src="${escapeHtml(info.imageUrl)}" loading="lazy" alt="${escapeHtml(info.name)}" ${cardImageOnErrorAttr(info, "catalog")}>`
                             : "";
                         const fallbackClass = info.imageUrl
                             ? "hidden empty"
@@ -15555,6 +16817,7 @@
                     String(info.name || "").trim() || cardId;
                 state.selectedCatalogCardId = cardId;
                 state.selectedCatalogAccount = "";
+                state.catalogPullHistoryAccount = "";
                 setView("allcards");
             }
 
@@ -15674,6 +16937,310 @@
                 return cache;
             }
 
+            const CATALOG_PULL_HISTORY_INITIAL_CHUNK = 60;
+            const CATALOG_PULL_HISTORY_ASYNC_MIN_CHUNK = 40;
+            const CATALOG_PULL_HISTORY_ASYNC_MAX_CHUNK = 160;
+            let catalogPullHistoryActiveFill = null;
+            let catalogPullHistoryPendingFill = null;
+            let catalogPullHistoryFillCounter = 0;
+
+            const CATALOG_ACCOUNT_LIST_INITIAL_CHUNK = 60;
+            const CATALOG_ACCOUNT_LIST_ASYNC_MIN_CHUNK = 30;
+            const CATALOG_ACCOUNT_LIST_ASYNC_MAX_CHUNK = 80;
+            let catalogAccountListActiveFill = null;
+            let catalogAccountListPendingFill = null;
+            let catalogAccountListFillCounter = 0;
+            const __catalogSideAttachedElements = new WeakSet();
+
+            function ensureCatalogPullHistoryIndex() {
+                if (state.catalogPullHistoryRowsRef !== state.rows) {
+                    state.catalogPullHistorySummaryCache = new Map();
+                    state.catalogPullHistoryRowIndex = null;
+                    state.catalogPullHistoryRowsRef = state.rows;
+                }
+                if (state.catalogPullHistoryRowIndex) return;
+                const index = new Map();
+                for (const row of state.rows) {
+                    if (!row || !Array.isArray(row.cardIds)) continue;
+                    const perRowCounts = new Map();
+                    for (const rowCardId of row.cardIds) {
+                        const rid = String(rowCardId || "").trim();
+                        if (!rid) continue;
+                        perRowCounts.set(
+                            rid,
+                            (perRowCounts.get(rid) || 0) + 1,
+                        );
+                    }
+                    for (const [rid, c] of perRowCounts) {
+                        let bucket = index.get(rid);
+                        if (!bucket) {
+                            bucket = [];
+                            index.set(rid, bucket);
+                        }
+                        bucket.push({ row, count: c });
+                    }
+                }
+                state.catalogPullHistoryRowIndex = index;
+            }
+
+            function getCatalogPullHistorySummary(cardId) {
+                const id = String(cardId || "").trim();
+                const empty = {
+                    totalCopies: 0,
+                    firstMs: Number.NaN,
+                    lastMs: Number.NaN,
+                    accountStats: new Map(),
+                };
+                if (!id) return empty;
+                ensureCatalogPullHistoryIndex();
+                if (state.catalogPullHistorySummaryCache.has(id))
+                    return state.catalogPullHistorySummaryCache.get(id);
+
+                const accountStats = new Map();
+                let totalCopies = 0;
+                let firstMs = Number.NaN;
+                let lastMs = Number.NaN;
+
+                const matches =
+                    state.catalogPullHistoryRowIndex.get(id) || [];
+                for (const { row, count } of matches) {
+                    totalCopies += count;
+                    const timestampMs = Number.isFinite(row.timestampMs)
+                        ? row.timestampMs
+                        : Number.NaN;
+                    if (Number.isFinite(timestampMs)) {
+                        if (
+                            !Number.isFinite(firstMs) ||
+                            timestampMs < firstMs
+                        )
+                            firstMs = timestampMs;
+                        if (!Number.isFinite(lastMs) || timestampMs > lastMs)
+                            lastMs = timestampMs;
+                    }
+                    let stat = accountStats.get(row.account);
+                    if (!stat) {
+                        stat = {
+                            firstMs: Number.NaN,
+                            lastMs: Number.NaN,
+                            rowCount: 0,
+                            totalCopies: 0,
+                        };
+                        accountStats.set(row.account, stat);
+                    }
+                    stat.rowCount++;
+                    stat.totalCopies += count;
+                    if (Number.isFinite(timestampMs)) {
+                        if (
+                            !Number.isFinite(stat.firstMs) ||
+                            timestampMs < stat.firstMs
+                        )
+                            stat.firstMs = timestampMs;
+                        if (
+                            !Number.isFinite(stat.lastMs) ||
+                            timestampMs > stat.lastMs
+                        )
+                            stat.lastMs = timestampMs;
+                    }
+                }
+
+                const result = {
+                    totalCopies,
+                    firstMs,
+                    lastMs,
+                    accountStats,
+                };
+                state.catalogPullHistorySummaryCache.set(id, result);
+                return result;
+            }
+
+            function getCatalogPullHistoryEntriesForAccount(cardId, account) {
+                const id = String(cardId || "").trim();
+                const accountKey = String(account || "");
+                if (!id || !accountKey) return [];
+                ensureCatalogPullHistoryIndex();
+
+                const matches =
+                    state.catalogPullHistoryRowIndex.get(id) || [];
+                const entries = [];
+                for (const { row, count } of matches) {
+                    if (row.account !== accountKey) continue;
+                    const timestampMs = Number.isFinite(row.timestampMs)
+                        ? row.timestampMs
+                        : Number.NaN;
+                    entries.push({
+                        account: row.account,
+                        pack: row.pack,
+                        packLabel: row.packLabel || getPackLabel(row.pack),
+                        count,
+                        timestamp: row.timestamp,
+                        timestampMs,
+                        timestampLabel: formatRowTimestamp(row),
+                        rowNumber: row.rowNumber || row.index || 0,
+                    });
+                }
+
+                entries.sort((a, b) => {
+                    const aHasTime = Number.isFinite(a.timestampMs);
+                    const bHasTime = Number.isFinite(b.timestampMs);
+                    if (
+                        aHasTime &&
+                        bHasTime &&
+                        a.timestampMs !== b.timestampMs
+                    )
+                        return b.timestampMs - a.timestampMs;
+                    if (aHasTime !== bHasTime) return aHasTime ? -1 : 1;
+                    return (b.rowNumber || 0) - (a.rowNumber || 0);
+                });
+
+                return entries;
+            }
+
+            function formatCatalogPullHistoryDate(ms) {
+                if (!Number.isFinite(ms)) return "N/A";
+                const date = new Date(ms);
+                if (!Number.isFinite(date.getTime())) return "N/A";
+                const monthNames = [
+                    "Jan",
+                    "Feb",
+                    "Mar",
+                    "Apr",
+                    "May",
+                    "Jun",
+                    "Jul",
+                    "Aug",
+                    "Sep",
+                    "Oct",
+                    "Nov",
+                    "Dec",
+                ];
+                const monthName = monthNames[date.getMonth()];
+                return `${date.getDate()} ${monthName} ${date.getFullYear()} · ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+            }
+
+            function getCatalogPullHistoryFullDate(ms) {
+                if (!Number.isFinite(ms)) return "";
+                const date = new Date(ms);
+                if (!Number.isFinite(date.getTime())) return "";
+                return formatLocalTimestamp(date);
+            }
+
+            function clipCatalogPullHistoryLabel(text, maxLength) {
+                const value = String(text || "").trim();
+                if (!value) return "";
+                const max = Math.max(4, maxLength || 18);
+                return value.length > max ? `${value.slice(0, max - 3)}...` : value;
+            }
+
+            function buildCatalogPullHistoryRowHtml(entry) {
+                const timeTitle = Number.isFinite(entry.timestampMs)
+                    ? getCatalogPullHistoryFullDate(entry.timestampMs)
+                    : entry.timestampLabel || entry.timestamp || "";
+                const timeLabel = Number.isFinite(entry.timestampMs)
+                    ? formatCatalogPullHistoryDate(entry.timestampMs)
+                    : clipCatalogPullHistoryLabel(
+                          entry.timestampLabel ||
+                              entry.timestamp ||
+                              "Unknown time",
+                          16,
+                      );
+                return `<div class="catalog-pull-history-item"><div class="catalog-pull-history-time" title="${escapeHtml(timeTitle)}">${escapeHtml(timeLabel)}</div><div class="catalog-pull-history-count">x${formatNumber(entry.count)}</div></div>`;
+            }
+
+            function scheduleCatalogPullHistoryFill(listEl, entries) {
+                const fill = { listEl, entries, idx: 0 };
+                catalogPullHistoryActiveFill = fill;
+                const scheduleNext = (fn) => {
+                    if (typeof window.requestIdleCallback === "function") {
+                        window.requestIdleCallback(fn, { timeout: 200 });
+                    } else {
+                        window.requestAnimationFrame(fn);
+                    }
+                };
+                const step = (deadline) => {
+                    if (catalogPullHistoryActiveFill !== fill) return;
+                    if (!fill.listEl.isConnected) {
+                        catalogPullHistoryActiveFill = null;
+                        return;
+                    }
+                    const hasDeadline =
+                        deadline &&
+                        typeof deadline.timeRemaining === "function";
+                    let html = "";
+                    let cnt = 0;
+                    while (
+                        fill.idx < fill.entries.length &&
+                        cnt < CATALOG_PULL_HISTORY_ASYNC_MAX_CHUNK
+                    ) {
+                        html += buildCatalogPullHistoryRowHtml(
+                            fill.entries[fill.idx++],
+                        );
+                        cnt++;
+                        if (
+                            cnt >= CATALOG_PULL_HISTORY_ASYNC_MIN_CHUNK &&
+                            hasDeadline &&
+                            deadline.timeRemaining() < 3
+                        )
+                            break;
+                    }
+                    if (html) fill.listEl.insertAdjacentHTML("beforeend", html);
+                    if (fill.idx < fill.entries.length) {
+                        scheduleNext(step);
+                    } else {
+                        catalogPullHistoryActiveFill = null;
+                    }
+                };
+                scheduleNext(step);
+            }
+
+            function activateCatalogPullHistoryFill(sideRoot) {
+                const pending = catalogPullHistoryPendingFill;
+                if (!pending || !sideRoot) return;
+                const listEl = sideRoot.querySelector(
+                    `[data-pull-history-fill="${pending.token}"]`,
+                );
+                if (!listEl) return;
+                catalogPullHistoryPendingFill = null;
+                listEl.removeAttribute("data-pull-history-fill");
+                scheduleCatalogPullHistoryFill(listEl, pending.entries);
+            }
+
+            function renderCatalogPullHistoryHtml(cardId, account) {
+                const entries = getCatalogPullHistoryEntriesForAccount(
+                    cardId,
+                    account,
+                );
+
+                let bodyHtml;
+                if (!entries.length) {
+                    bodyHtml = `<div class="catalog-pull-history-empty">No pull history found in the loaded database rows.</div>`;
+                } else {
+                    const initialEntries = entries.slice(
+                        0,
+                        CATALOG_PULL_HISTORY_INITIAL_CHUNK,
+                    );
+                    const remainingEntries =
+                        entries.length > CATALOG_PULL_HISTORY_INITIAL_CHUNK
+                            ? entries.slice(
+                                  CATALOG_PULL_HISTORY_INITIAL_CHUNK,
+                              )
+                            : null;
+                    let listAttrs = `class="catalog-pull-history-list"`;
+                    if (remainingEntries) {
+                        const token = String(++catalogPullHistoryFillCounter);
+                        catalogPullHistoryPendingFill = {
+                            token,
+                            entries: remainingEntries,
+                        };
+                        listAttrs += ` data-pull-history-fill="${token}"`;
+                    }
+                    bodyHtml = `<div ${listAttrs}>${initialEntries
+                        .map(buildCatalogPullHistoryRowHtml)
+                        .join("")}</div>`;
+                }
+
+                return `<div class="catalog-control-section catalog-pull-history-section"><div class="catalog-control-head"><div class="catalog-control-title">Pull History</div></div>${bodyHtml}</div>`;
+            }
+
             function sortCatalogAccounts(rows) {
                 const pinned = state.selectedCatalogAccount || "";
                 const mode = state.catalogAccountSort;
@@ -15719,6 +17286,19 @@
                             ? b.ageDays
                             : Number.POSITIVE_INFINITY;
                         if (aAge !== bAge) return (aAge - bAge) * dir;
+                    } else if (
+                        mode === "lastPulled" ||
+                        mode === "firstPulled"
+                    ) {
+                        const field =
+                            mode === "lastPulled"
+                                ? "lastPulledMs"
+                                : "firstPulledMs";
+                        const aHasTime = Number.isFinite(a[field]);
+                        const bHasTime = Number.isFinite(b[field]);
+                        if (aHasTime !== bHasTime) return aHasTime ? -1 : 1;
+                        if (aHasTime && a[field] !== b[field])
+                            return (a[field] - b[field]) * dir;
                     } else {
                         if (a.count !== b.count)
                             return (a.count - b.count) * dir;
@@ -15915,75 +17495,101 @@
                     .join("");
 
                 const controlsHtml = `<div class="catalog-controls"><div class="catalog-controls-panel catalog-controls-panel--compact panel"><div class="catalog-controls-row catalog-controls-row--filters"><div class="catalog-control-field"><label class="field-label" for="catalogExpansionFilter">Expansion</label><select id="catalogExpansionFilter">${expansionOptions}</select></div><div class="catalog-control-field"><label class="field-label" for="catalogCardSearch">Card</label><input id="catalogCardSearch" type="search" value="${escapeHtml(currentSearch)}" placeholder="Card name or ID" autocomplete="off" spellcheck="false"></div><div class="catalog-control-field catalog-control-field--size"><label class="field-label" for="catalogCardSize">Size</label><select id="catalogCardSize">${cardSizeOptions}</select></div><div class="catalog-control-field catalog-control-field--wishlist"><label class="field-label">Wishlist</label>${renderWishlistOnlyFilterChip("catalogWishlistOnly", state.catalogWishlistOnly)}</div></div><div class="catalog-controls-row catalog-controls-row--rarity"><div class="checkbox-list" id="catalogRarityFilters">${rarityControls}</div><div class="small-actions catalog-rarity-actions"><button type="button" data-catalog-rarity-action="all">All</button><button type="button" data-catalog-rarity-action="none">Clear</button></div></div></div></div>`;
-                const sectionsHtml = hasVisibleCards
-                    ? showingAllExpansions
-                        ? `<div class="expansions-grid">${renderedSections
-                              .map((section) => {
-                                  const total = section.cards.length;
-                                  const avail = section.cards.filter(
-                                      (c) => c.totalCopies > 0,
-                                  ).length;
-                                  const copies = section.cards.reduce(
-                                      (s, c) => s + c.totalCopies,
-                                      0,
-                                  );
-                                  const completion = total
-                                      ? Math.round((avail / total) * 100)
-                                      : 0;
-                                  const iconUrl = getPackIconUrl(section.code);
-                                  return `<button type="button" class="expansion-nav" data-jump-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
-                                      iconUrl
-                                          ? `<img class="ex-icon" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'ex-icon-empty\\'></div>'">`
-                                          : `<div class="ex-icon-empty"></div>`
-                                  }</div><div class="ex-title">${escapeHtml(section.label)}</div><div class="ex-meta">${formatNumber(avail)}/${formatNumber(total)} cards · ${formatNumber(copies)} copies</div><div class="ex-go">Open →</div></button>`;
-                              })
-                              .join("")}</div>`
-                        : renderedSections
-                              .map((section) => {
-                                  const cardsHtml = section.cards
-                                      .map((card) => {
-                                          const unavailable =
-                                              card.totalCopies === 0;
-                                          const selectedClass =
-                                              card.id ===
-                                              state.selectedCatalogCardId
-                                                  ? " selected"
-                                                  : "";
-                                          const unavailableClass = unavailable
-                                              ? " unavailable"
-                                              : "";
-                                          const imgPart = card.info.imageUrl
-                                              ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="${escapeHtml(card.info.name)}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');">`
-                                              : "";
-                                          const fallbackClass = card.info
-                                              .imageUrl
-                                              ? "hidden empty"
-                                              : "empty";
-                                          const wishOn = isWishlisted(card.id);
-                                          const wishClass = wishOn
-                                              ? " wishlisted"
-                                              : "";
-                                          const wishBtn = `<span class="wishlist-heart-btn${wishOn ? " on" : ""}" role="button" tabindex="-1" data-wishlist-card="${escapeHtml(card.id)}" aria-pressed="${wishOn ? "true" : "false"}" title="${wishOn ? "Remove from wishlist" : "Add to wishlist"}" aria-label="${wishOn ? "Remove from wishlist" : "Add to wishlist"}">${wishOn ? "♥" : "♡"}</span>`;
-                                          return `<button type="button" class="catalog-card-btn" data-catalog-card-id="${escapeHtml(card.id)}"><div class="card-tile${selectedClass}${unavailableClass}${wishClass}"><div class="card-media">${wishBtn}${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div><div class="qty">×${formatNumber(card.totalCopies)}</div></div><div class="card-name">${escapeHtml(card.info.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(card.id, card.info))}</span></div></div></button>`;
-                                      })
-                                      .join("");
-                                  const availableInSection =
-                                      section.cards.filter(
-                                          (card) => card.totalCopies > 0,
-                                      ).length;
-                                  const sectionIconUrl = getPackIconUrl(
-                                      section.code,
-                                  );
-                                  const sectionLogoHtml = sectionIconUrl
-                                      ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(section.label)}" title="${escapeHtml(section.label)}" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(section.label).replace(/'/g, "\\\\'")}</div>'">`
-                                      : `<div class="catalog-section-title">${escapeHtml(section.label)}</div>`;
-                                  const backBtnHtml = isAllExpansions
-                                      ? `<span></span>`
-                                      : `<button type="button" class="catalog-back-btn" data-catalog-back title="Back to All Expansions" aria-label="Back to All Expansions">\u2190</button>`;
-                                  return `<article class="catalog-section panel"><div class="catalog-section-head">${backBtnHtml}<div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${formatNumber(availableInSection)}/${formatNumber(section.cards.length)} available</div></div><div class="cards-grid">${cardsHtml}</div></article>`;
-                              })
-                              .join("")
-                    : `<div class="empty panel">No cards match the selected filters.</div>`;
+
+                function renderCatalogLibraryCardButton(card) {
+                    const unavailable = card.totalCopies === 0;
+                    const selectedClass =
+                        card.id === state.selectedCatalogCardId
+                            ? " selected"
+                            : "";
+                    const unavailableClass = unavailable ? " unavailable" : "";
+                    const imgPart = card.info.imageUrl
+                        ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="${escapeHtml(card.info.name)}" ${cardImageOnErrorAttr(card.info, "catalog")}>`
+                        : "";
+                    const fallbackClass = card.info.imageUrl
+                        ? "hidden empty"
+                        : "empty";
+                    const wishOn = isWishlisted(card.id);
+                    const wishClass = wishOn ? " wishlisted" : "";
+                    const wishBtn = `<span class="wishlist-heart-btn${wishOn ? " on" : ""}" role="button" tabindex="-1" data-wishlist-card="${escapeHtml(card.id)}" aria-pressed="${wishOn ? "true" : "false"}" title="${wishOn ? "Remove from wishlist" : "Add to wishlist"}" aria-label="${wishOn ? "Remove from wishlist" : "Add to wishlist"}">${wishOn ? "♥" : "♡"}</span>`;
+                    return `<button type="button" class="catalog-card-btn" data-catalog-card-id="${escapeHtml(card.id)}"><div class="card-tile${selectedClass}${unavailableClass}${wishClass}"><div class="card-media">${wishBtn}${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div><div class="qty">×${formatNumber(card.totalCopies)}</div></div><div class="card-name">${escapeHtml(card.info.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(card.id, card.info))}</span></div></div></button>`;
+                }
+
+                let sectionsHtml = "";
+                if (showingAllExpansions) {
+                    sectionsHtml = `<div class="expansions-grid">${renderedSections
+                        .map((section) => {
+                            const total = section.cards.length;
+                            const avail = section.cards.filter(
+                                (c) => c.totalCopies > 0,
+                            ).length;
+                            const copies = section.cards.reduce(
+                                (s, c) => s + c.totalCopies,
+                                0,
+                            );
+                            const completion = total
+                                ? Math.round((avail / total) * 100)
+                                : 0;
+                            const iconUrl = getPackIconUrl(section.code);
+                            return `<button type="button" class="expansion-nav" data-jump-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
+                                iconUrl
+                                    ? `<img class="ex-icon" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'ex-icon-empty\\'></div>'">`
+                                    : `<div class="ex-icon-empty"></div>`
+                            }</div><div class="ex-title">${escapeHtml(section.label)}</div><div class="ex-meta">${formatNumber(avail)}/${formatNumber(total)} cards · ${formatNumber(copies)} copies</div><div class="ex-go">Open →</div></button>`;
+                        })
+                        .join("")}</div>`;
+                } else if (!isAllExpansions) {
+                    const expansionSection = base.sectionListAll.find(
+                        (entry) =>
+                            entry.code === state.catalogExpansionFilter,
+                    );
+                    const sectionLabel =
+                        expansionSection?.label ||
+                        getPackLabel(state.catalogExpansionFilter);
+                    const sectionCode =
+                        expansionSection?.code ||
+                        state.catalogExpansionFilter;
+                    const filteredCards = renderedSections[0]?.cards || [];
+                    const cardsHtml = filteredCards
+                        .map((card) => renderCatalogLibraryCardButton(card))
+                        .join("");
+                    const availableInSection = expansionSection
+                        ? expansionSection.cards.filter(
+                              (card) => card.totalCopies > 0,
+                          ).length
+                        : 0;
+                    const totalInSection = expansionSection
+                        ? expansionSection.cards.length
+                        : 0;
+                    sectionsHtml = renderCatalogExpansionSectionHtml(
+                        sectionCode,
+                        sectionLabel,
+                        `${formatNumber(availableInSection)}/${formatNumber(totalInSection)} available`,
+                        cardsHtml,
+                        { backAttr: "data-catalog-back" },
+                    );
+                } else if (!hasVisibleCards) {
+                    sectionsHtml = `<div class="empty panel">No cards match the selected filters.</div>`;
+                } else {
+                    sectionsHtml = renderedSections
+                        .map((section) => {
+                            const cardsHtml = section.cards
+                                .map((card) =>
+                                    renderCatalogLibraryCardButton(card),
+                                )
+                                .join("");
+                            const availableInSection = section.cards.filter(
+                                (card) => card.totalCopies > 0,
+                            ).length;
+                            return renderCatalogExpansionSectionHtml(
+                                section.code,
+                                section.label,
+                                `${formatNumber(availableInSection)}/${formatNumber(section.cards.length)} available`,
+                                cardsHtml,
+                            );
+                        })
+                        .join("");
+                }
 
                 const allAccountRows = selected
                     ? buildCatalogAccountRows(
@@ -16002,58 +17608,92 @@
 
                 let sideHtml = "";
                 if (includeSide) {
-                    const accountItemsHtml = selected
-                        ? accountRows.length
-                            ? accountRows
-                                  .map((row) => {
-                                      const noTrade =
-                                          selected.info.rarityValue === 800 ||
-                                          selected.info.rarityValue === 900 ||
-                                          isPromoCard(selected.id);
-                                      const mappedFileName =
-                                          state.accountFileLabelMap.get(
-                                              row.account,
-                                          ) || "";
-                                      const preferredRaw =
-                                          mappedFileName || row.account;
-                                      const preferredShort =
-                                          buildFileLabelMeta(preferredRaw);
-                                      const accountNameLabel =
-                                          preferredRaw !== row.account
-                                              ? `<span title="${escapeHtml(preferredRaw)}">${escapeHtml(preferredShort || preferredRaw)}</span>`
-                                              : escapeHtml(row.account);
-                                      const accountTradeBlocked =
-                                          isKnownTradeBlocked(row);
-                                      const tradeBtn = noTrade
-                                          ? ""
-                                          : accountTradeBlocked
-                                            ? ""
-                                            : `<button type="button" data-mark-traded-account="${escapeHtml(row.account)}" data-mark-traded-card="${escapeHtml(selected.id)}">Mark traded</button>`;
-                                      const isLowRarity =
-                                          !noTrade &&
-                                          (selected.info.rarityValue === 100 ||
-                                              selected.info.rarityValue ===
-                                                  200 ||
-                                              selected.info.rarityValue ===
-                                                  300 ||
-                                              selected.info.rarityValue ===
-                                                  400);
-                                      const sharedBtn = isLowRarity
-                                          ? `<button type="button" data-mark-shared-account="${escapeHtml(row.account)}" data-mark-shared-card="${escapeHtml(selected.id)}" title="Mark this card as shared">Mark shared</button>`
-                                          : "";
-                                      const startTradeBtn = noTrade
-                                          ? ""
-                                          : accountTradeBlocked
-                                            ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
-                                            : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(row.account)}" data-start-trade-card="${escapeHtml(selected.id)}" data-start-trade-file="${escapeHtml(mappedFileName)}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
-                                      const isPinned =
-                                          row.account ===
-                                          state.selectedCatalogAccount;
-                                      return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(row.account)}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}<div class="catalog-account-actions"><button type="button" data-copy-account="${escapeHtml(preferredRaw)}">Copy account</button>${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
-                                  })
-                                  .join("")
-                            : `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`
-                        : `<div class="empty panel" style="padding:14px">Select a card to view account availability.</div>`;
+                    const accountItemHtmls = selected
+                        ? accountRows.map((row) => {
+                              const noTrade =
+                                  selected.info.rarityValue === 800 ||
+                                  selected.info.rarityValue === 900 ||
+                                  isPromoCard(selected.id);
+                              const mappedFileName =
+                                  state.accountFileLabelMap.get(
+                                      row.account,
+                                  ) || "";
+                              const preferredRaw =
+                                  mappedFileName || row.account;
+                              const preferredShort =
+                                  buildFileLabelMeta(preferredRaw);
+                              const accountNameLabel =
+                                  preferredRaw !== row.account
+                                      ? `<span title="${escapeHtml(preferredRaw)}">${escapeHtml(preferredShort || preferredRaw)}</span>`
+                                      : escapeHtml(row.account);
+                              const accountTradeBlocked =
+                                  isKnownTradeBlocked(row);
+                              const tradeBtn = noTrade
+                                  ? ""
+                                  : accountTradeBlocked
+                                    ? ""
+                                    : `<button type="button" data-mark-traded-account="${escapeHtml(row.account)}" data-mark-traded-card="${escapeHtml(selected.id)}">Mark traded</button>`;
+                              const isLowRarity =
+                                  !noTrade &&
+                                  (selected.info.rarityValue === 100 ||
+                                      selected.info.rarityValue === 200 ||
+                                      selected.info.rarityValue === 300 ||
+                                      selected.info.rarityValue === 400);
+                              const sharedBtn = isLowRarity
+                                  ? `<button type="button" data-mark-shared-account="${escapeHtml(row.account)}" data-mark-shared-card="${escapeHtml(selected.id)}" title="Mark this card as shared">Mark shared</button>`
+                                  : "";
+                              const startTradeBtn = noTrade
+                                  ? ""
+                                  : accountTradeBlocked
+                                    ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
+                                    : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(row.account)}" data-start-trade-card="${escapeHtml(selected.id)}" data-start-trade-file="${escapeHtml(mappedFileName)}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
+                              const isPinned =
+                                  row.account ===
+                                  state.selectedCatalogAccount;
+                              const isHistoryOpen =
+                                  row.account ===
+                                  state.catalogPullHistoryAccount;
+                              const historyButton =
+                                  catalogPullHistoryToggleButtonHtml(
+                                      row.account,
+                                      isHistoryOpen,
+                                      row.pullRowCount,
+                                  );
+                              const historyHtml = isHistoryOpen
+                                  ? renderCatalogPullHistoryHtml(
+                                        selected.id,
+                                        row.account,
+                                    )
+                                  : "";
+                              return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(row.account)}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned, historyButton)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}${historyHtml}<div class="catalog-account-actions"><button type="button" data-copy-account="${escapeHtml(preferredRaw)}">Copy account</button>${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
+                          })
+                        : null;
+
+                    let accountListFillAttr = "";
+                    let accountItemsHtml;
+                    if (!selected) {
+                        accountItemsHtml = `<div class="empty panel" style="padding:14px">Select a card to view account availability.</div>`;
+                    } else if (!accountItemHtmls.length) {
+                        accountItemsHtml = `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`;
+                    } else if (
+                        accountItemHtmls.length >
+                        CATALOG_ACCOUNT_LIST_INITIAL_CHUNK
+                    ) {
+                        accountItemsHtml = accountItemHtmls
+                            .slice(0, CATALOG_ACCOUNT_LIST_INITIAL_CHUNK)
+                            .join("");
+                        const token = String(
+                            ++catalogAccountListFillCounter,
+                        );
+                        catalogAccountListPendingFill = {
+                            token,
+                            htmls: accountItemHtmls,
+                            fromIdx: CATALOG_ACCOUNT_LIST_INITIAL_CHUNK,
+                        };
+                        accountListFillAttr = ` data-account-list-fill="${token}"`;
+                    } else {
+                        accountItemsHtml = accountItemHtmls.join("");
+                    }
 
                     const catalogFiltersActive =
                         state.catalogTradeReadyOnly ||
@@ -16085,7 +17725,7 @@
                                 state.catalogRequiredShinedustOnly,
                             requiredShinedust,
                         });
-                    sideHtml = `<aside class="catalog-side panel"><div class="catalog-side-title">Card Availability</div><div class="catalog-side-update-body"><div class="catalog-side-meta-slot">${selectedMeta}</div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort Accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div>${catalogTradeReadyToggleHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderCatalogAccountPinHint(accountRows)}</div><div class="catalog-account-list">${accountItemsHtml}</div></div></div></div></aside>`;
+                    sideHtml = `<aside class="catalog-side panel"><div class="catalog-side-title">Card Availability</div><div class="catalog-side-update-body"><div class="catalog-side-meta-slot">${selectedMeta}</div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort Accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="lastPulled" ${state.catalogAccountSort === "lastPulled" ? "selected" : ""}>Last pulled</option><option value="firstPulled" ${state.catalogAccountSort === "firstPulled" ? "selected" : ""}>First pulled</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div>${catalogTradeReadyToggleHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderCatalogAccountPinHint(accountRows)}</div><div class="catalog-account-list"${accountListFillAttr}>${accountItemsHtml}</div></div></div></div></aside>`;
                 }
 
                 const clippedNote = hiddenCardCount
@@ -16589,6 +18229,7 @@
                             if (tile) tile.classList.add("selected");
                             state.selectedCatalogCardId = cardId;
                             state.selectedCatalogAccount = "";
+                            state.catalogPullHistoryAccount = "";
                             renderCatalogSidePanel({ animate: "selection" });
                         });
                     });
@@ -16717,6 +18358,8 @@
             }
 
             function renderAllCardsView() {
+                catalogPullHistoryPendingFill = null;
+                catalogAccountListPendingFill = null;
                 const scrollContainer =
                     document.scrollingElement ||
                     document.documentElement ||
@@ -17121,6 +18764,107 @@
                 window.setTimeout(finish, ROW_EXPAND_CLOSE_MS + 40);
             }
 
+            function getPackRowGridRenderer(row) {
+                const visibleCardIds = sortCardIdsByRarity(row.cardIds);
+                return () =>
+                    renderCardGrid(visibleCardIds, {
+                        showQuantity: false,
+                        account: row.account,
+                        disableTrade: true,
+                    });
+            }
+
+            function getAccountRowGridRenderer(
+                account,
+                cardFilterConfig = getActiveCardFilterConfig(),
+            ) {
+                return () =>
+                    renderCardGrid(
+                        sortCardEntriesByRarity(
+                            getAccountVisibleCardEntries(
+                                account,
+                                cardFilterConfig,
+                            ),
+                        ),
+                        {
+                            showQuantity: true,
+                            entries: true,
+                            account: account.account,
+                            disableTrade: true,
+                        },
+                    );
+            }
+
+            function animateShownPackRows(expanded) {
+                const limit = Math.min(
+                    state.displayLimit,
+                    state.filteredRows.length,
+                );
+                let matched = 0;
+                for (let i = 0; i < limit; i++) {
+                    const row = state.filteredRows[i];
+                    const article = el.rows.querySelector(
+                        `.db-row[data-row-index="${CSS.escape(String(row.index))}"]`,
+                    );
+                    if (!article) continue;
+                    const body = article.querySelector(".row-body");
+                    const btn = article.querySelector(".toggle-btn");
+                    if (!body || !btn) continue;
+                    matched++;
+                    btn.textContent = expanded ? "Compact" : "Expand";
+                    setExpandableRowBodyExpanded(
+                        body,
+                        expanded,
+                        expanded ? getPackRowGridRenderer(row) : null,
+                    );
+                }
+                return matched > 0;
+            }
+
+            function animateShownAccountRows(expanded) {
+                const accounts = state.accountRows;
+                if (!accounts?.length) return false;
+                const cardFilterConfig = getActiveCardFilterConfig();
+                const limit = Math.min(state.displayLimit, accounts.length);
+                let matched = 0;
+                for (let i = 0; i < limit; i++) {
+                    const account = accounts[i];
+                    const article = el.rows.querySelector(
+                        `.db-row[data-account-key="${CSS.escape(account.key)}"]`,
+                    );
+                    if (!article) continue;
+                    const body = article.querySelector(".row-body");
+                    const btn = article.querySelector(".toggle-btn");
+                    if (!body || !btn) continue;
+                    matched++;
+                    btn.textContent = expanded ? "Compact" : "Expand";
+                    setExpandableRowBodyExpanded(
+                        body,
+                        expanded,
+                        expanded
+                            ? getAccountRowGridRenderer(
+                                  account,
+                                  cardFilterConfig,
+                              )
+                            : null,
+                    );
+                }
+                return matched > 0;
+            }
+
+            function animateBulkExpandableRows(expanded) {
+                const animated =
+                    state.view === "rows"
+                        ? animateShownPackRows(expanded)
+                        : state.view === "accounts"
+                          ? animateShownAccountRows(expanded)
+                          : false;
+                if (!animated) {
+                    invalidateViewDomCache();
+                    renderCurrent();
+                }
+            }
+
             function renderRows() {
                 el.rows.innerHTML = "";
                 el.showMoreBtn.classList.add("hidden");
@@ -17149,6 +18893,7 @@
                 const expanded = rowIsExpanded(row);
                 const article = document.createElement("article");
                 article.className = "db-row db-row--expandable panel";
+                article.dataset.rowIndex = String(row.index);
                 const visibleCardIds = sortCardIdsByRarity(row.cardIds);
                 const rarityCountMap = new Map();
                 for (const cardId of visibleCardIds) {
@@ -17657,6 +19402,63 @@
                 };
             }
 
+            function getCollectionDisplayStats(model) {
+                if (state.collectionExpansionFilter === "__all__") {
+                    return {
+                        ownedTotal: model.ownedTotal,
+                        totalCards: model.totalCards,
+                        globalPct: model.globalPct,
+                        rarityTotals: model.rarityTotals,
+                        rarityOwned: model.rarityOwned,
+                        catalogRarityKeys: model.catalogRarityKeys,
+                    };
+                }
+                const section = model.sectionListAll.find(
+                    (entry) => entry.code === state.collectionExpansionFilter,
+                );
+                if (!section) {
+                    return {
+                        ownedTotal: 0,
+                        totalCards: 0,
+                        globalPct: 0,
+                        rarityTotals: new Map(),
+                        rarityOwned: new Map(),
+                        catalogRarityKeys: new Set(),
+                    };
+                }
+                const cards = section.cards;
+                const ownedTotal = cards.filter((card) => card.owned).length;
+                const totalCards = cards.length;
+                const rarityTotals = new Map();
+                const rarityOwned = new Map();
+                for (const card of cards) {
+                    const rarityKey = getCardRarityFilterKey(
+                        card.id,
+                        card.info,
+                    );
+                    if (!rarityKey) continue;
+                    rarityTotals.set(
+                        rarityKey,
+                        (rarityTotals.get(rarityKey) || 0) + 1,
+                    );
+                    if (card.owned)
+                        rarityOwned.set(
+                            rarityKey,
+                            (rarityOwned.get(rarityKey) || 0) + 1,
+                        );
+                }
+                return {
+                    ownedTotal,
+                    totalCards,
+                    globalPct: totalCards
+                        ? Math.round((ownedTotal / totalCards) * 100)
+                        : 0,
+                    rarityTotals,
+                    rarityOwned,
+                    catalogRarityKeys: new Set(rarityTotals.keys()),
+                };
+            }
+
             function buildFilteredCollectionSections(model) {
                 const searchTerm = normaliseSearch(state.collectionCardSearch);
                 const allRaritiesSelected =
@@ -17708,7 +19510,7 @@
             function renderCollectionCardButton(card) {
                 const unavailable = !card.owned;
                 const imgPart = card.info.imageUrl
-                    ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="${escapeHtml(card.info.name)}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');">`
+                    ? `<img src="${escapeHtml(card.info.imageUrl)}" loading="lazy" alt="${escapeHtml(card.info.name)}" ${cardImageOnErrorAttr(card.info, "catalog")}>`
                     : "";
                 const fallbackClass = card.info.imageUrl
                     ? "hidden empty"
@@ -17717,6 +19519,42 @@
                 const wishClass = wishOn ? " wishlisted" : "";
                 const wishBtn = `<span class="wishlist-heart-btn${wishOn ? " on" : ""}" role="button" tabindex="-1" data-wishlist-card="${escapeHtml(card.id)}" aria-pressed="${wishOn ? "true" : "false"}" title="${wishOn ? "Remove from wishlist" : "Add to wishlist"}" aria-label="${wishOn ? "Remove from wishlist" : "Add to wishlist"}">${wishOn ? "♥" : "♡"}</span>`;
                 return `<button type="button" class="catalog-card-btn" data-catalog-card-id="${escapeHtml(card.id)}"><div class="card-tile${unavailable ? " unavailable" : ""}${wishClass}"><div class="card-media">${wishBtn}${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div></div><div class="card-name">${escapeHtml(card.info.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(card.id, card.info))}</span></div></div></button>`;
+            }
+
+            function renderCatalogExpansionSectionHtml(
+                sectionCode,
+                sectionLabel,
+                sectionMeta,
+                listInnerHtml,
+                options = {},
+            ) {
+                const listClass = options.listClass || "cards-grid";
+                const articleClass = options.articleClass || "catalog-section";
+                const backAttr = options.backAttr || "data-catalog-back";
+                const sectionIconUrl = getPackIconUrl(sectionCode);
+                const sectionLogoHtml = sectionIconUrl
+                    ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(sectionLabel)}" title="${escapeHtml(sectionLabel)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(sectionLabel).replace(/'/g, "\\'")}</div>'">`
+                    : `<div class="catalog-section-title">${escapeHtml(sectionLabel)}</div>`;
+                const bodyHtml = listInnerHtml
+                    ? `<div class="${listClass}">${listInnerHtml}</div>`
+                    : `<div class="empty">No cards match the selected filters.</div>`;
+                return `<article class="${articleClass} panel"><div class="catalog-section-head"><button type="button" class="catalog-back-btn" ${backAttr} title="Back to All Expansions" aria-label="Back to All Expansions">←</button><div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${sectionMeta}</div></div>${bodyHtml}</article>`;
+            }
+
+            function renderCollectionExpansionSectionHtml(
+                sectionCode,
+                sectionLabel,
+                ownedInSection,
+                totalInSection,
+                cardsHtml,
+            ) {
+                return renderCatalogExpansionSectionHtml(
+                    sectionCode,
+                    sectionLabel,
+                    `${formatNumber(ownedInSection)}/${formatNumber(totalInSection)} registered`,
+                    cardsHtml,
+                    { backAttr: "data-collection-back" },
+                );
             }
 
             function buildCollectionGridParts() {
@@ -17759,17 +19597,49 @@
                             const completion = total
                                 ? Math.round((avail / total) * 100)
                                 : 0;
+                            const completeClass =
+                                completion >= 100 ? " is-complete" : "";
                             const iconUrl = getPackIconUrl(section.code);
-                            return `<button type="button" class="expansion-nav" data-collection-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
+                            return `<button type="button" class="expansion-nav${completeClass}" data-collection-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
                                 iconUrl
                                     ? `<img class="ex-icon" src="${escapeHtml(iconUrl)}" loading="lazy" alt="" onerror="this.outerHTML='<div class=\\'ex-icon-empty\\'></div>'">`
                                     : `<div class="ex-icon-empty"></div>`
                             }</div><div class="ex-title">${escapeHtml(section.label)}</div><div class="ex-meta">${formatNumber(avail)}/${formatNumber(total)} cards</div><div class="ex-go">Open →</div></button>`;
                         })
                         .join("")}</div>`;
+                } else if (!isAllExpansions) {
+                    const expansionSection = model.sectionListAll.find(
+                        (entry) =>
+                            entry.code === state.collectionExpansionFilter,
+                    );
+                    const sectionLabel =
+                        expansionSection?.label ||
+                        getPackLabel(state.collectionExpansionFilter);
+                    const sectionCode =
+                        expansionSection?.code ||
+                        state.collectionExpansionFilter;
+                    const filteredCards =
+                        filteredSections[0]?.cards || [];
+                    const cardsHtml = filteredCards
+                        .map((card) => renderCollectionCardButton(card))
+                        .join("");
+                    const ownedInSection = expansionSection
+                        ? expansionSection.cards.filter((card) => card.owned)
+                              .length
+                        : 0;
+                    const totalInSection = expansionSection
+                        ? expansionSection.cards.length
+                        : 0;
+                    mainHtml = renderCollectionExpansionSectionHtml(
+                        sectionCode,
+                        sectionLabel,
+                        ownedInSection,
+                        totalInSection,
+                        cardsHtml,
+                    );
                 } else if (!hasVisibleCards) {
                     mainHtml = `<div class="empty panel">No cards match the selected filters.</div>`;
-                } else if (isAllExpansions) {
+                } else {
                     mainHtml = filteredSections
                         .map((section) => {
                             const cardsHtml = section.cards
@@ -17787,29 +19657,6 @@
                             return `<article class="catalog-section panel"><div class="catalog-section-head"><span></span><div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${formatNumber(ownedInSection)}/${formatNumber(section.cards.length)} registered</div></div><div class="cards-grid">${cardsHtml}</div></article>`;
                         })
                         .join("");
-                } else {
-                    const section = filteredSections[0];
-                    const sectionLabel = section
-                        ? section.label
-                        : getPackLabel(state.collectionExpansionFilter);
-                    const sectionCode =
-                        section?.code || state.collectionExpansionFilter;
-                    const sectionIconUrl = getPackIconUrl(sectionCode);
-                    const sectionLogoHtml = sectionIconUrl
-                        ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(sectionLabel)}" title="${escapeHtml(sectionLabel)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(sectionLabel).replace(/'/g, "\\'")}</div>'">`
-                        : `<div class="catalog-section-title">${escapeHtml(sectionLabel)}</div>`;
-                    const cardsHtml = section
-                        ? section.cards
-                              .map((card) => renderCollectionCardButton(card))
-                              .join("")
-                        : "";
-                    const ownedInSection = section
-                        ? section.cards.filter((card) => card.owned).length
-                        : 0;
-                    const totalInSection = section ? section.cards.length : 0;
-                    mainHtml = section
-                        ? `<article class="catalog-section panel"><div class="catalog-section-head"><button type="button" class="catalog-back-btn" data-collection-back title="Back to All Expansions" aria-label="Back to All Expansions">←</button><div class="catalog-section-logo-wrap">${sectionLogoHtml}</div><div class="catalog-section-meta">${formatNumber(ownedInSection)}/${formatNumber(totalInSection)} registered</div></div><div class="cards-grid">${cardsHtml || `<div class="empty panel">No cards match the current filters.</div>`}</div></article>`
-                        : `<div class="empty panel">No cards match the current filters.</div>`;
                 }
 
                 return {
@@ -17821,8 +19668,8 @@
                 };
             }
 
-            function renderCollectionRarityStatsHtml(model) {
-                const cards = [...model.catalogRarityKeys]
+            function renderCollectionRarityStatsHtml(stats) {
+                const cards = [...stats.catalogRarityKeys]
                     .sort(
                         (a, b) =>
                             getRarityFilterSortValue(a) -
@@ -17830,9 +19677,9 @@
                     )
                     .map((rarityKey) => {
                         const owned =
-                            model.rarityOwned.get(rarityKey) || 0;
+                            stats.rarityOwned.get(rarityKey) || 0;
                         const total =
-                            model.rarityTotals.get(rarityKey) || 0;
+                            stats.rarityTotals.get(rarityKey) || 0;
                         const pct = total
                             ? Math.round((owned / total) * 100)
                             : 0;
@@ -17857,6 +19704,7 @@
             }
 
             function buildCollectionControlsHtml(model, selected) {
+                const displayStats = getCollectionDisplayStats(model);
                 const accountPickerHtml =
                     state.collectionAccounts.length > 1
                         ? `<div class="catalog-controls-row collection-account-row"><div class="catalog-control-field"><label class="field-label">Account</label><div class="collection-account-picker">${state.collectionAccounts
@@ -17880,17 +19728,17 @@
                 const summaryHtml = renderMetaBarHtml([
                     {
                         label: "Registered",
-                        value: formatNumber(model.ownedTotal),
+                        value: formatNumber(displayStats.ownedTotal),
                         className: "meta-collection-registered",
                     },
                     {
                         label: "Pool",
-                        value: formatNumber(model.totalCards),
+                        value: formatNumber(displayStats.totalCards),
                         className: "meta-collection-pool",
                     },
                     {
                         label: "Complete",
-                        value: `${formatNumber(model.globalPct)}%`,
+                        value: `${formatNumber(displayStats.globalPct)}%`,
                         className: "meta-collection-complete",
                     },
                     {
@@ -17900,7 +19748,8 @@
                     },
                 ]);
 
-                const rarityStatsHtml = renderCollectionRarityStatsHtml(model);
+                const rarityStatsHtml =
+                    renderCollectionRarityStatsHtml(displayStats);
 
                 const currentSearch = state.collectionCardSearch || "";
 
@@ -17925,6 +19774,44 @@
                     .join("");
 
                 return `<div class="catalog-controls"><div class="catalog-controls-panel catalog-controls-panel--compact panel">${accountPickerHtml}<div class="account-overview-meta-wrap collection-summary-meta">${summaryHtml}</div>${rarityStatsHtml}<div class="catalog-controls-row catalog-controls-row--filters"><div class="catalog-control-field"><label class="field-label" for="collectionCardSearch">Card</label><input id="collectionCardSearch" type="search" value="${escapeHtml(currentSearch)}" placeholder="Card name or ID" autocomplete="off" spellcheck="false"></div><div class="catalog-control-field catalog-control-field--wishlist"><label class="field-label">Missing</label>${renderMissingOnlyFilterChip("collectionMissingOnly", state.collectionShowMissingOnly)}</div><div class="catalog-control-field catalog-control-field--wishlist"><label class="field-label">Wishlist</label>${renderWishlistOnlyFilterChip("collectionWishlistOnly", state.collectionWishlistOnly)}</div></div><div class="catalog-controls-row catalog-controls-row--rarity"><div class="checkbox-list" id="collectionRarityFilters">${rarityControls}</div><div class="small-actions catalog-rarity-actions"><button type="button" data-collection-rarity-action="all">All</button><button type="button" data-collection-rarity-action="none">Clear</button></div></div></div></div>`;
+            }
+
+            function syncCollectionSummaryStats(model) {
+                const displayStats = getCollectionDisplayStats(model);
+                const registeredEl = el.rows.querySelector(
+                    ".meta-collection-registered .catalog-account-meta-value",
+                );
+                const poolEl = el.rows.querySelector(
+                    ".meta-collection-pool .catalog-account-meta-value",
+                );
+                const completeEl = el.rows.querySelector(
+                    ".meta-collection-complete .catalog-account-meta-value",
+                );
+                if (registeredEl)
+                    registeredEl.textContent = formatNumber(
+                        displayStats.ownedTotal,
+                    );
+                if (poolEl)
+                    poolEl.textContent = formatNumber(displayStats.totalCards);
+                if (completeEl)
+                    completeEl.textContent = `${formatNumber(displayStats.globalPct)}%`;
+                const rarityStatsEl = el.rows.querySelector(
+                    ".collection-rarity-stats",
+                );
+                if (rarityStatsEl)
+                    rarityStatsEl.outerHTML =
+                        renderCollectionRarityStatsHtml(displayStats);
+            }
+
+            function formatCollectionResultNote(model, selected) {
+                const displayStats = getCollectionDisplayStats(model);
+                const accountLabel = formatCollectionAccountLabel(selected);
+                const importedLabel = selected.registryImportedAt
+                    ? formatMetadataTimestamp(
+                          selected.registryImportedAt,
+                      ) || selected.registryImportedAt
+                    : "—";
+                return `${formatNumber(displayStats.ownedTotal)} of ${formatNumber(displayStats.totalCards)} cards registered (${formatNumber(displayStats.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
             }
 
             function syncCollectionControlsFromState() {
@@ -18025,17 +19912,13 @@
                     mainEl.style.minHeight = `${Math.ceil(prevMainH)}px`;
                 mainEl.innerHTML = parts.mainHtml;
                 syncCollectionControlsFromState();
+                syncCollectionSummaryStats(parts.model);
                 _attachCollectionMainListeners();
 
-                const accountLabel = formatCollectionAccountLabel(
+                el.resultNote.textContent = formatCollectionResultNote(
+                    parts.model,
                     parts.selected,
                 );
-                const importedLabel = parts.selected.registryImportedAt
-                    ? formatMetadataTimestamp(
-                          parts.selected.registryImportedAt,
-                      ) || parts.selected.registryImportedAt
-                    : "—";
-                el.resultNote.textContent = `${formatNumber(parts.model.ownedTotal)} of ${formatNumber(parts.model.totalCards)} cards registered (${formatNumber(parts.model.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
 
                 const restoreScroll = () => {
                     const maxY = Math.max(
@@ -18131,6 +20014,23 @@
                                 tile.classList.toggle("wishlisted", nowOn);
                             if (state.collectionWishlistOnly)
                                 deferRender(refreshCollectionMainOnly);
+                        });
+                    });
+                el.rows
+                    .querySelectorAll(
+                        ".collection-library-main [data-catalog-card-id]",
+                    )
+                    .forEach((btn) => {
+                        btn.addEventListener("click", (event) => {
+                            if (event.target.closest("[data-wishlist-card]"))
+                                return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            btn.blur();
+                            const cardId =
+                                btn.getAttribute("data-catalog-card-id") || "";
+                            if (!cardId) return;
+                            navigateCatalogFromWishlistCard(cardId);
                         });
                     });
             }
@@ -18246,16 +20146,10 @@
                 const parts = buildCollectionGridParts();
                 if (!parts) return;
 
-                const accountLabel = formatCollectionAccountLabel(
+                el.resultNote.textContent = formatCollectionResultNote(
+                    parts.model,
                     parts.selected,
                 );
-                const importedLabel = parts.selected.registryImportedAt
-                    ? formatMetadataTimestamp(
-                          parts.selected.registryImportedAt,
-                      ) || parts.selected.registryImportedAt
-                    : "—";
-
-                el.resultNote.textContent = `${formatNumber(parts.model.ownedTotal)} of ${formatNumber(parts.model.totalCards)} cards registered (${formatNumber(parts.model.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
 
                 const controlsHtml = buildCollectionControlsHtml(
                     parts.model,
@@ -18309,6 +20203,7 @@
                 const expanded = accountIsExpanded(account.key);
                 const article = document.createElement("article");
                 article.className = "db-row db-row--account db-row--expandable panel";
+                article.dataset.accountKey = account.key;
                 const cardFiltersActive = !!cardFilterConfig.active;
                 const visibleCount =
                     account.visibleCardCount ?? account.totalCards;
@@ -18491,7 +20386,7 @@
                     const count = options.entries ? item.count : 0;
                     const card = options.entries ? item.info : getCardInfo(id);
                     const imgPart = card.imageUrl
-                        ? `<img src="${escapeHtml(card.imageUrl)}" loading="lazy" alt="${escapeHtml(card.name)}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');">`
+                        ? `<img src="${escapeHtml(card.imageUrl)}" loading="lazy" alt="${escapeHtml(card.name)}" ${cardImageOnErrorAttr(card, "catalog")}>`
                         : "";
                     const fallbackClass = card.imageUrl
                         ? "hidden empty"
@@ -19128,6 +21023,10 @@
                 _buildRowDerivedCache.clear();
                 setStatus("Cleared cached card data.");
             });
+            el.useLocalCardImagesBtn?.addEventListener("click", () => {
+                if (state.suppressLocalCardImagesBtnEvent) return;
+                void handleUseLocalCardImagesBtnClick();
+            });
             el.accountSearch.addEventListener("input", debouncedFilter);
             el.cardSearch.addEventListener("input", () => {
                 state.appliedMultiSearchCardIds.clear();
@@ -19293,6 +21192,7 @@
                     );
                     for (let i = 0; i < limit; i++)
                         setRowExpanded(state.filteredRows[i].index, true);
+                    animateBulkExpandableRows(true);
                 } else if (state.view === "accounts") {
                     let accounts = state.accountRows;
                     if (!accounts) {
@@ -19301,21 +21201,28 @@
                         );
                         accounts = await ensureAccountOverviewBuild();
                         if (!accounts || state.view !== "accounts") return;
+                        const limit = Math.min(
+                            state.displayLimit,
+                            accounts.length,
+                        );
+                        for (let i = 0; i < limit; i++)
+                            setAccountExpanded(accounts[i].key, true);
+                        invalidateViewDomCache();
+                        renderAccountOverview();
+                        return;
                     }
                     const limit = Math.min(state.displayLimit, accounts.length);
                     for (let i = 0; i < limit; i++)
                         setAccountExpanded(accounts[i].key, true);
+                    animateBulkExpandableRows(true);
                 }
-                invalidateViewDomCache();
-                renderCurrent();
             });
 
             el.compactAllBtn.addEventListener("click", () => {
                 state.defaultExpanded = false;
                 state.expandedRows.clear();
                 state.expandedAccounts.clear();
-                invalidateViewDomCache();
-                renderCurrent();
+                animateBulkExpandableRows(false);
             });
 
             state.cardmaster = readCachedJson(LS_MASTER);
@@ -19353,6 +21260,7 @@
             });
             warmRarityIconImages();
             showLocalLauncherRequiredNotice();
+            void initCardImageCacheControls();
             autoLoadDefaultFiles();
 </script>
     </body>
