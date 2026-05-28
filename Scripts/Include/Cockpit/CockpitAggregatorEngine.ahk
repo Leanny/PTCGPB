@@ -1,4 +1,4 @@
-﻿;===============================================================================
+;===============================================================================
 ; CockpitAggregatorEngine.ahk
 ; In-process Aggregator engine used by Cockpit.ahk
 ;===============================================================================
@@ -91,6 +91,8 @@ Agg_TickBody() {
     if (!g_aggState.modeRings.HasKey(mode))
         g_aggState.modeRings[mode] := []
 
+    inj := Injectables_GetAll(instancesConfigured, mode)
+
     instanceData := {}
     instancesRunning := 0
     instancesStuck := 0
@@ -100,6 +102,12 @@ Agg_TickBody() {
     Loop, % instancesConfigured {
         N := A_Index
         info := Agg_ReadInstanceIni(N)
+        injN := (inj.perInstance.HasKey(N)) ? (inj.perInstance[N] + 0) : 0
+        injSource := (inj.HasKey("perInstanceSource") && inj.perInstanceSource.HasKey(N))
+            ? inj.perInstanceSource[N] : inj.source
+        queueExhausted := (mode != "Create Bots (13P)"
+            && injSource = "list_current"
+            && injN <= 0)
         isFirstObservation := !g_aggState.instances.HasKey(N)
         prev := isFirstObservation
             ? { "ring": [], "lastSeenEnd": 0, "stuckCount": 0, "lastStatus": ""
@@ -191,6 +199,10 @@ Agg_TickBody() {
         } else if (uiState = "pausing") {
             status := "pausing"
             statusSince := nowEpoch
+        } else if (uiState = "idle" || queueExhausted) {
+            status := "idle"
+            statusSince := (prev.lastStatus = "idle" && prev.HasKey("statusSince"))
+                ? prev.statusSince : nowEpoch
         } else if (prev.stuckActive) {
             status := "stuck"
             statusSince := (prev.stuckSinceEpoch > 0) ? prev.stuckSinceEpoch : nowEpoch
@@ -227,6 +239,7 @@ Agg_TickBody() {
         prev.status := status
         prev.statusSince := statusSince
         prev.mode := mode
+        prev.injectables := injN
 
         g_aggState.instances[N] := prev
         instanceData[N] := prev
@@ -241,14 +254,13 @@ Agg_TickBody() {
             instancesIdle += 1
     }
 
-    inj := Injectables_GetAll(instancesConfigured, mode)
-
     globalAvg := Metrics_Mean(g_aggState.globalRing)
     etaList := []
     Loop, % instancesConfigured {
         N := A_Index
         instData := instanceData[N]
-        injN := (inj.perInstance.HasKey(N)) ? (inj.perInstance[N] + 0) : 0
+        injN := instData.HasKey("injectables") ? (instData.injectables + 0)
+            : ((inj.perInstance.HasKey(N)) ? (inj.perInstance[N] + 0) : 0)
         instEta := Metrics_InstanceEta(injN, instData.ring, 0)
         instData.eta := instEta
         instData.injectables := injN
@@ -467,6 +479,8 @@ Agg_ParseOverlayStatus(rawText) {
     StringLower, low, low
     if (InStr(low, "pausing") || InStr(low, "paused"))
         return "pausing"
+    if (InStr(low, "no eligible accounts"))
+        return "idle"
     return ""
 }
 
