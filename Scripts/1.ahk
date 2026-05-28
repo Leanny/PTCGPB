@@ -498,7 +498,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 GoToMain()
             else{
                 clickX := getPackCoordXInHome()
-                FindImageAndClick("Pack_PackPointButton", clickX, 203)
+                WaitForPackPointButtonFromHome(clickX, 203, "after friend reload")
             }
 
         }
@@ -3830,6 +3830,42 @@ FindHourglassOpenConfirmationClosed(tenPackOpening, failSafeTime) {
     return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 1, failSafeTime))
 }
 
+DismissMainCloseAlertWindow(context := "") {
+    if(!FindOrLoseImage("Common_CloseAlertWindowInMain", 0, , , true))
+        return false
+
+    LogInfo("Dismissed close-alert popup | context=" . context)
+    if(context != "")
+        CreateStatusMessage("Closing app quit confirmation`n" . context,,,, false)
+    else
+        CreateStatusMessage("Closing app quit confirmation",,,, false)
+
+    adbClick_wbb(75, 365)
+    Delay(1)
+    return true
+}
+
+WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
+    global session
+
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if(DismissMainCloseAlertWindow(context)) {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            continue
+        }
+
+        adbClick_wbb(clickX, clickY)
+        Delay(0.5)
+        if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime))
+            return true
+
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Points`n(" . failSafeTime . "/90 seconds)")
+    }
+}
+
 RecoverPackOpeningToMainIfNeeded(caller := "") {
     global session
 
@@ -3923,6 +3959,11 @@ SelectPack(HG := false) {
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
         Loop {
+            if(DismissMainCloseAlertWindow("Waiting for Points")) {
+                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+                continue
+            }
+
             adbClick_wbb(packx, HomeScreenAllPackY)
             Delay(1)
             if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime)) {
