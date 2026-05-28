@@ -591,15 +591,31 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
 ; Pause Script
 PauseScript:
     CreateStatusMessage("Pausing...",,,, false)
-    Pause, On
+    g_scriptPaused := true
+    Pause, On, 1
 return
 
 ; Resume Script
 ResumeScript:
     CreateStatusMessage("Resuming...",,,, false)
+    g_scriptPaused := false
     Pause, Off
     session.set("StartSkipTime", A_TickCount) ;reset stuck timers
     session.set("failSafe", A_TickCount)
+return
+
+TogglePauseScript:
+    if (g_scriptPaused) {
+        CreateStatusMessage("Resuming...",,,, false)
+        session.set("StartSkipTime", A_TickCount) ;reset stuck timers
+        session.set("failSafe", A_TickCount)
+        g_scriptPaused := false
+        Pause, Off
+    } else {
+        CreateStatusMessage("Pausing...",,,, false)
+        g_scriptPaused := true
+        Pause, On, 1
+    }
 return
 
 ; Stop Script - Main.ahk always exits immediately (no "end of run" concept)
@@ -889,7 +905,9 @@ GPTestDropdownGuiEscape:
 return
 
 ~+F5::SafeReload("Main Shift+F5")
-~+F6::Pause
+~+F6::
+    Gosub, TogglePauseScript
+return
 ~+F10::
     Gosub, StopScript
 return
