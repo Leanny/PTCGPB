@@ -694,7 +694,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             SpendAllHourglass()
         }
 
-        if(botConfig.get("ocrShinedust") && session.get("injectMethod") && session.get("loadedAccount") && botConfig.get("s4tEnabled")) {
+        if(botConfig.get("ocrShinedust") && session.get("injectMethod") && session.get("loadedAccount")) {
             GoToMain()
             CountShinedust()
         }

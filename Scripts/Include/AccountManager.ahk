@@ -754,7 +754,7 @@ AccountEligibility_InjectRewardsEligible(accountMeta) {
     doWonderpick := botConfig.get("wonderpickForEventMissions")
     doSpecialMissions := botConfig.get("claimSpecialMissions")
     doGift := botConfig.get("receiveGift")
-    doShinedust := botConfig.get("ocrShinedust") && botConfig.get("s4tEnabled")
+    doShinedust := botConfig.get("ocrShinedust")
 
     if (!doWonderpick && !doSpecialMissions && !doGift && !doShinedust)
         return !AccountEligibility_WasAfterDailyReset(accountMeta["lastLoggedIn"])

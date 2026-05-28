@@ -2322,7 +2322,7 @@ Cockpit_AgeEnsureGui() {
     g_ageRewardsWonder := (botConfig.get("wonderpickForEventMissions") + 0) ? 1 : 0
     g_ageRewardsSpecial := (botConfig.get("claimSpecialMissions") + 0) ? 1 : 0
     g_ageRewardsGift := (botConfig.get("receiveGift") + 0) ? 1 : 0
-    g_ageRewardsShine := ((botConfig.get("ocrShinedust") + 0) && (botConfig.get("s4tEnabled") + 0)) ? 1 : 0
+    g_ageRewardsShine := ((botConfig.get("ocrShinedust") + 0)) ? 1 : 0
 
     Gui, Font, s15 c%THEME_ACCENT% Bold, %THEME_FONT%
     Gui, Add, Text, x14 y8 w260 h28 Background%THEME_BG%, Injection Queue
