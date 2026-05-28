@@ -1720,7 +1720,7 @@ Save:
         botConfig.set("claimSpecialMissions", 0, "ToolsAndSystem")
     }
 
-    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !(botConfig.get("ocrShinedust") && botConfig.get("s4tEnabled"))) {
+    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust")) {
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
     }
 
