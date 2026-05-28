@@ -1,4 +1,4 @@
-#Include %A_ScriptDir%\Config.ahk
+﻿#Include %A_ScriptDir%\Config.ahk
 #Include %A_ScriptDir%\Profiler.ahk
 #Include %A_ScriptDir%\Logging.ahk
 #Include %A_ScriptDir%\GitManager.ahk

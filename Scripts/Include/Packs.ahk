@@ -1,4 +1,4 @@
-class PackCoordinate {
+﻿class PackCoordinate {
     __New(packName, seriesType, expansionXPos, expansionYPos, dragType) {
         this.packName := packName
         this.seriesType := seriesType

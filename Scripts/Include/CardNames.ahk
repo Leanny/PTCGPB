@@ -1,4 +1,4 @@
-;===============================================================================
+﻿;===============================================================================
 ; CardNames.ahk - Card name + rarity emoji resolution for Discord webhooks
 ;===============================================================================
 ; Resolves cardId -> English name using Helper\cardmaster.json + Helper\en_US.json
@@ -330,7 +330,7 @@ CardName_TypeEmoji(typeKey) {
 ; Builds the rarity/card-name section for a Discord webhook as grouped Markdown.
 ; Returns "" if nothing to show. When
 ; cards/rarity aren't available (legacy callers) falls back to a count-only line
-; such as `emoji · **3 Diamond**` followed by `(x2)`.
+; such as `emoji Â· **3 Diamond**` followed by `(x2)`.
 CardName_BuildFoundBlock(cards, rarity, foundCards) {
     static typeOrder := ["1Diamond","2Diamond","3Diamond","4Diamond","1Star","Trainer","FullArt","Rainbow","Immersive","Crown","Shiny1Star","Shiny2Star"]
 

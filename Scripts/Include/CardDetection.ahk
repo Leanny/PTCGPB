@@ -1,4 +1,4 @@
-;===============================================================================
+﻿;===============================================================================
 ; CardDetection.ahk - Card Detection Functions
 ;===============================================================================
 ; This file contains functions for detecting and processing cards in packs.
@@ -990,7 +990,7 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     screenShotFileName := ""
     isSyntheticImage := false
     ; Try to generate a synthetic image from card IDs (avoids storing real screenshots on disk).
-    ; Only multi-pull (10-pack) needs s4t filtering on the synth image — single-pull packs
+    ; Only multi-pull (10-pack) needs s4t filtering on the synth image â€” single-pull packs
     ; show all 5 cards regardless of rarity. The rarity array itself is always honored for
     ; the webhook name lookup (CardName_BuildFoundBlock).
     syntheticCards := (isTenPackOpening && IsObject(rarity)) ? FilterCardsByS4T(cards, rarity) : cards
