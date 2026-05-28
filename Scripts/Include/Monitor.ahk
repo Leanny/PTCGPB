@@ -1,4 +1,4 @@
-﻿#Include %A_ScriptDir%\Config.ahk
+#Include %A_ScriptDir%\Config.ahk
 #Include %A_ScriptDir%\Profiler.ahk
 #Include %A_ScriptDir%\Logging.ahk
 #Include %A_ScriptDir%\GitManager.ahk
@@ -109,6 +109,8 @@ Loop {
                 ;Run, %Command%
                 scriptPath := A_ScriptDir "\.." "\" scriptName
                 Run, "%A_AhkPath%" /restart "%scriptPath%"
+                LogInfo("Monitor restarted instance " . instanceNum . ". Reason: last run completed "
+                    . secondsSinceLastEnd . " seconds ago", "Log_" . instanceNum . ".txt")
             }
         }
     }

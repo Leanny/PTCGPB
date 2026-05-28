@@ -152,7 +152,7 @@ Agg_TickBody() {
             Loop, % signals.stuckHits
                 Metrics_TrendIncrement(g_aggState.trendStuckRate, Metrics_LatestBinIndex(), 1)
         }
-        if (signals.restarted && prev.stuckActive) {
+        if ((signals.restarted || signals.recovered) && prev.stuckActive) {
             prev.stuckActive := false
             prev.stuckSinceEpoch := 0
             Agg_EmitEvent("info", "inst", N, "restart", "Instance " . N . " resumed")
@@ -191,6 +191,16 @@ Agg_TickBody() {
                 prev.livePacks := livePacksMeta
         }
         isAlive := Agg_IsInstanceScriptAlive(N)
+        if (prev.stuckActive && !signals.stuckHits && isAlive && prev.stuckSinceEpoch > 0) {
+            runStartedAfterStuck := (info.lastStartEpoch > prev.stuckSinceEpoch
+                && info.lastStartEpoch > info.lastEndEpoch)
+            runEndedAfterStuck := (info.lastEndEpoch > prev.stuckSinceEpoch)
+            if (runStartedAfterStuck || runEndedAfterStuck) {
+                prev.stuckActive := false
+                prev.stuckSinceEpoch := 0
+                Agg_EmitEvent("info", "inst", N, "restart", "Instance " . N . " resumed")
+            }
+        }
         status := "idle"
         statusSince := nowEpoch
         if (!isAlive
@@ -512,7 +522,7 @@ Agg_ParseOverlayPacks(rawText) {
     if (rawText = "")
         return -1
     ; generateStatusText(): "Packs: " N " |" - allow stray spaces / fullwidth colon
-    if (RegExMatch(rawText, "i)Packs\s*[:Ã¯Â¼Å¡]\s*(\d+)", m))
+    if (RegExMatch(rawText, "i)Packs\s*[:ï¼š]\s*(\d+)", m))
         return m1 + 0
     return -1
 }
@@ -521,7 +531,7 @@ Agg_ParseOverlayRuns(rawText) {
     if (rawText = "")
         return -1
     ; generateStatusText(): "Runs: " N " |" - same allowances as Agg_ParseOverlayPacks
-    if (RegExMatch(rawText, "i)Runs\s*[:Ã¯Â¼Å¡]\s*(\d+)", m))
+    if (RegExMatch(rawText, "i)Runs\s*[:ï¼š]\s*(\d+)", m))
         return m1 + 0
     return -1
 }
@@ -678,7 +688,7 @@ Agg_Max(a, b) {
 
 Agg_PollInstanceLogSignals(instanceNum, instState, nowEpoch := 0) {
     global g_aggIgnoreHistoricalLogs
-    result := { "gpFound": false, "stuckHits": 0, "restarted": false
+    result := { "gpFound": false, "stuckHits": 0, "restarted": false, "recovered": false
         , "lastStuckReason": "log signal" }
     logsDir := getScriptBaseFolder() . "\Logs"
     logPath := logsDir . "\Log_" . instanceNum . ".txt"
@@ -748,8 +758,11 @@ Agg_PollInstanceLogSignals(instanceNum, instState, nowEpoch := 0) {
 
         if (InStr(line, "Restarted MuMu instance. Reason:")
             || InStr(line, "Restarted game. Reason:")
-            || InStr(line, "Restart complete!")) {
+            || InStr(line, "Restart complete!")
+            || InStr(line, "Monitor restarted instance")) {
             result.restarted := true
+        } else if (InStr(line, "Successfully loaded account for injection")) {
+            result.recovered := true
         }
     }
     return result
