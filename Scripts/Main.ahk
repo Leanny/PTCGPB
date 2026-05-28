@@ -602,6 +602,17 @@ ResumeScript:
     session.set("failSafe", A_TickCount)
 return
 
+TogglePauseScript:
+    if (A_IsPaused) {
+        CreateStatusMessage("Resuming...",,,, false)
+        session.set("StartSkipTime", A_TickCount) ;reset stuck timers
+        session.set("failSafe", A_TickCount)
+    } else {
+        CreateStatusMessage("Pausing...",,,, false)
+    }
+    Pause
+return
+
 ; Stop Script - Main.ahk always exits immediately (no "end of run" concept)
 StopScript:
     if (!botConfig.get("groupRerollEnabled")) {
@@ -889,7 +900,9 @@ GPTestDropdownGuiEscape:
 return
 
 ~+F5::SafeReload("Main Shift+F5")
-~+F6::Pause
+~+F6::
+    Gosub, TogglePauseScript
+return
 ~+F10::
     Gosub, StopScript
 return
