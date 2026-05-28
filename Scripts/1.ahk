@@ -2746,7 +2746,8 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
 ; Pause Script
 PauseScript:
     CreateStatusMessage("Pausing...",,,, false)
-    Pause, On
+    g_scriptPaused := true
+    Pause, On, 1
 return
 
 ; Resume Script
@@ -2754,7 +2755,22 @@ ResumeScript:
     CreateStatusMessage("Resuming...",,,, false)
     session.set("StartSkipTime", A_TickCount) ;reset stuck timers
     session.set("failSafe", A_TickCount)
+    g_scriptPaused := false
     Pause, Off
+return
+
+TogglePauseScript:
+    if (g_scriptPaused) {
+        CreateStatusMessage("Resuming...",,,, false)
+        session.set("StartSkipTime", A_TickCount) ;reset stuck timers
+        session.set("failSafe", A_TickCount)
+        g_scriptPaused := false
+        Pause, Off
+    } else {
+        CreateStatusMessage("Pausing...",,,, false)
+        g_scriptPaused := true
+        Pause, On, 1
+    }
 return
 
 ; Stop Script
@@ -3029,7 +3045,9 @@ Return
     CleanupBeforeExit()
     SafeReload("Shift+F5")
 return
-~+F6::Pause
+~+F6::
+    Gosub, TogglePauseScript
+return
 ~+F7::
     ; Only instance 1 handles Shift+F7 - shows popup and controls all instances
     ; Other instances do nothing here; they receive commands via PostMessage from instance 1
