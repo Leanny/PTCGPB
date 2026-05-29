@@ -521,8 +521,8 @@ Agg_ReadInstanceStatusGuiText(N) {
 Agg_ParseOverlayPacks(rawText) {
     if (rawText = "")
         return -1
-    ; generateStatusText(): "Packs: " N " |" - allow stray spaces / fullwidth colon
-    if (RegExMatch(rawText, "i)Packs\s*[:ï¼š]\s*(\d+)", m))
+    ; generateStatusText(): "Packs: " N " |"
+    if (RegExMatch(rawText, "i)Packs\s*:\s*(\d+)", m))
         return m1 + 0
     return -1
 }
@@ -530,8 +530,8 @@ Agg_ParseOverlayPacks(rawText) {
 Agg_ParseOverlayRuns(rawText) {
     if (rawText = "")
         return -1
-    ; generateStatusText(): "Runs: " N " |" - same allowances as Agg_ParseOverlayPacks
-    if (RegExMatch(rawText, "i)Runs\s*[:ï¼š]\s*(\d+)", m))
+    ; generateStatusText(): "Runs: " N " |"
+    if (RegExMatch(rawText, "i)Runs\s*:\s*(\d+)", m))
         return m1 + 0
     return -1
 }
