@@ -379,7 +379,6 @@
             }
 
             .page {
-
                 --page-shell-cap: 1440px;
                 --page-shell-gutter: 24px;
                 width: min(
@@ -617,8 +616,7 @@
                 background: transparent;
                 color: var(--muted);
                 cursor: pointer;
-                transition:
-                    color 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+                transition: color 0.32s cubic-bezier(0.22, 1, 0.36, 1);
             }
 
             .section-switcher-btn:hover {
@@ -659,13 +657,17 @@
 
             .toolbar-control-grid {
                 display: grid;
-                grid-template-columns: max-content minmax(220px, 320px);
+                grid-template-columns: max-content minmax(170px, 220px) minmax(
+                        220px,
+                        320px
+                    );
                 align-items: end;
                 gap: 10px;
                 width: auto;
                 max-width: 100%;
             }
 
+            .toolbar-language-cell,
             .toolbar-size-cell {
                 min-width: 0;
             }
@@ -1028,12 +1030,11 @@
                 inset: 8px 12px;
                 border-radius: 9px;
                 border: 1px solid rgba(255, 255, 255, 0.2);
-                background:
-                    linear-gradient(
-                        150deg,
-                        rgba(142, 180, 255, 0.9),
-                        rgba(176, 240, 208, 0.72)
-                    );
+                background: linear-gradient(
+                    150deg,
+                    rgba(142, 180, 255, 0.9),
+                    rgba(176, 240, 208, 0.72)
+                );
                 box-shadow: 0 14px 24px rgba(0, 0, 0, 0.24);
                 animation: boot-card-float 1.45s ease-in-out infinite;
             }
@@ -1638,8 +1639,14 @@
             #filtersSection .control-title {
                 font-size: 0.84rem;
             }
-            #filtersSection .control-section--rarity .control-head-tools .small-actions,
-            #filtersSection .control-section--packs .control-head-tools .small-actions {
+            #filtersSection
+                .control-section--rarity
+                .control-head-tools
+                .small-actions,
+            #filtersSection
+                .control-section--packs
+                .control-head-tools
+                .small-actions {
                 margin-left: 0;
             }
             #filtersSection label.field-label {
@@ -2001,8 +2008,7 @@
                 cursor: pointer;
                 flex: 0 0 auto;
                 white-space: nowrap;
-                transition:
-                    color 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+                transition: color 0.32s cubic-bezier(0.22, 1, 0.36, 1);
             }
 
             .tab:hover {
@@ -2026,7 +2032,6 @@
             }
 
             @media (prefers-reduced-motion: no-preference) {
-
                 #rows
                     :is(
                         .catalog-library-main,
@@ -2370,7 +2375,6 @@
                 max-height: 15px;
             }
             .received-pair {
-
                 --trade-thumb-w: 48px;
                 --trade-pad-inline: 18px;
                 --trade-chip-w: calc(
@@ -2560,8 +2564,8 @@
             }
 
             .db-row--expandable .row-body.is-closing {
-                animation: row-expand-close 240ms cubic-bezier(0.4, 0, 0.85, 0.45)
-                    both;
+                animation: row-expand-close 240ms
+                    cubic-bezier(0.4, 0, 0.85, 0.45) both;
             }
 
             @keyframes row-expand-open {
@@ -2755,9 +2759,7 @@
                 margin-bottom: calc(var(--page-panel-stack-y) + 4px);
             }
 
-            .collection-page
-                .catalog-controls
-                > .catalog-controls-panel {
+            .collection-page .catalog-controls > .catalog-controls-panel {
                 background: var(--panel);
                 box-shadow:
                     0 10px 24px rgba(0, 0, 0, 0.28),
@@ -3255,7 +3257,6 @@
             }
 
             .mini-badge {
-
                 display: inline-flex;
                 align-items: center;
                 gap: 7px;
@@ -3371,7 +3372,10 @@
             }
             .rarity-count-chip {
                 display: grid;
-                grid-template-columns: var(--rarity-count-value-w) minmax(0, 1fr);
+                grid-template-columns: var(--rarity-count-value-w) minmax(
+                        0,
+                        1fr
+                    );
                 align-items: stretch;
                 flex: 0 0 var(--rarity-count-chip-w);
                 width: var(--rarity-count-chip-w);
@@ -3447,8 +3451,7 @@
                     inset 0 1px 0 rgba(255, 255, 255, 0.9),
                     0 1px 2px rgba(20, 40, 80, 0.08);
             }
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="500"],
+            [data-theme="light"] .rarity-count-chip[data-rarity="500"],
             [data-theme="light"]
                 .rarity-count-chip[data-rarity="__two_star__"] {
                 border-color: rgba(180, 110, 20, 0.28);
@@ -3458,12 +3461,9 @@
                     rgba(255, 230, 190, 0.72)
                 );
             }
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="600"],
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="700"],
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="__trainer__"] {
+            [data-theme="light"] .rarity-count-chip[data-rarity="600"],
+            [data-theme="light"] .rarity-count-chip[data-rarity="700"],
+            [data-theme="light"] .rarity-count-chip[data-rarity="__trainer__"] {
                 border-color: rgba(110, 70, 180, 0.24);
                 background: linear-gradient(
                     180deg,
@@ -3471,12 +3471,9 @@
                     rgba(230, 218, 255, 0.72)
                 );
             }
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="800"],
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="830"],
-            [data-theme="light"]
-                .rarity-count-chip[data-rarity="860"] {
+            [data-theme="light"] .rarity-count-chip[data-rarity="800"],
+            [data-theme="light"] .rarity-count-chip[data-rarity="830"],
+            [data-theme="light"] .rarity-count-chip[data-rarity="860"] {
                 border-color: rgba(20, 120, 160, 0.22);
                 background: linear-gradient(
                     180deg,
@@ -3542,9 +3539,7 @@
                 margin: 0;
             }
             .rarity-count-chip .multi-picker-rarity-badge > .rarity-icon,
-            .rarity-count-chip
-                .multi-picker-rarity-badge
-                .rarity-icon-wrap {
+            .rarity-count-chip .multi-picker-rarity-badge .rarity-icon-wrap {
                 display: block;
                 margin: 0 auto;
             }
@@ -3658,7 +3653,9 @@
                 margin-top: 0;
             }
 
-            .account-overview-meta-wrap .catalog-account-meta + .catalog-account-meta {
+            .account-overview-meta-wrap
+                .catalog-account-meta
+                + .catalog-account-meta {
                 margin-top: -1px;
                 border-top-left-radius: 0;
                 border-top-right-radius: 0;
@@ -3693,13 +3690,17 @@
                 line-height: 1.15;
             }
 
-            .account-overview-meta-wrap .account-overview-meta-identity .catalog-account-meta-value {
+            .account-overview-meta-wrap
+                .account-overview-meta-identity
+                .catalog-account-meta-value {
                 white-space: normal;
                 word-break: break-word;
                 line-height: 1.2;
             }
 
-            .account-overview-meta-wrap .account-overview-meta-extra .catalog-account-meta-value {
+            .account-overview-meta-wrap
+                .account-overview-meta-extra
+                .catalog-account-meta-value {
                 font-size: 0.68rem;
                 white-space: normal;
                 word-break: break-word;
@@ -3846,7 +3847,8 @@
                     0 6px 16px rgba(0, 0, 0, 0.24);
             }
 
-            .collection-rarity-card.is-complete .collection-rarity-ring::before {
+            .collection-rarity-card.is-complete
+                .collection-rarity-ring::before {
                 border-color: rgba(255, 210, 120, 0.28);
             }
 
@@ -3917,9 +3919,7 @@
             }
 
             .collection-rarity-badge .multi-picker-rarity-stack-img,
-            .collection-rarity-badge
-                .multi-picker-rarity-badge
-                > .rarity-icon,
+            .collection-rarity-badge .multi-picker-rarity-badge > .rarity-icon,
             .collection-rarity-badge
                 .multi-picker-rarity-badge
                 .rarity-icon-wrap
@@ -4421,12 +4421,8 @@
                 );
             }
 
-            .catalog-library-picker
-                .catalog-controls
-                > .catalog-controls-panel,
-            .multi-search-page
-                > .catalog-controls
-                > .catalog-controls-panel {
+            .catalog-library-picker .catalog-controls > .catalog-controls-panel,
+            .multi-search-page > .catalog-controls > .catalog-controls-panel {
                 background: var(--panel);
                 box-shadow:
                     0 10px 24px rgba(0, 0, 0, 0.28),
@@ -4488,12 +4484,10 @@
                 flex: 1 1 200px;
                 min-width: 0;
             }
-            .catalog-controls-row--filters
-                .catalog-control-field--size {
+            .catalog-controls-row--filters .catalog-control-field--size {
                 flex: 0 0 130px;
             }
-            .catalog-controls-row--filters
-                .catalog-control-field--wishlist {
+            .catalog-controls-row--filters .catalog-control-field--wishlist {
                 flex: 0 0 auto;
                 width: auto;
                 min-width: 0;
@@ -4651,7 +4645,10 @@
                 flex-shrink: 0;
             }
 
-            #rarityFilters .check-chip .multi-picker-rarity-badge > .rarity-icon,
+            #rarityFilters
+                .check-chip
+                .multi-picker-rarity-badge
+                > .rarity-icon,
             #catalogRarityFilters
                 .check-chip
                 .multi-picker-rarity-badge
@@ -5918,7 +5915,9 @@
                 pointer-events: none;
             }
 
-            .multi-search-results .catalog-account-sort .account-filter-toggles {
+            .multi-search-results
+                .catalog-account-sort
+                .account-filter-toggles {
                 flex: 0 0 auto;
             }
 
@@ -6784,7 +6783,9 @@
                     <span class="boot-card"></span>
                 </div>
                 <div class="dashboard-boot-copy">
-                    <div class="dashboard-boot-title">Loading Card Database</div>
+                    <div class="dashboard-boot-title">
+                        Loading Card Database
+                    </div>
                     <div
                         id="dashboardBootMessage"
                         class="dashboard-boot-message"
@@ -6826,7 +6827,10 @@
                     <span class="boot-card"></span>
                 </div>
                 <div class="dashboard-boot-copy">
-                    <div class="dashboard-boot-title" id="cardImageDownloadTitle">
+                    <div
+                        class="dashboard-boot-title"
+                        id="cardImageDownloadTitle"
+                    >
                         Downloading card images
                     </div>
                     <div
@@ -6974,6 +6978,12 @@
                                     Local card images
                                 </button>
                             </div>
+                        </div>
+                        <div class="toolbar-language-cell">
+                            <label class="field-label" for="cardLanguage"
+                                >Language</label
+                            >
+                            <select id="cardLanguage"></select>
                         </div>
                         <div class="toolbar-size-cell">
                             <label class="field-label" for="cardSize"
@@ -7137,10 +7147,16 @@
                                     id="cardTypeFilters"
                                 ></div>
                                 <div class="small-actions">
-                                    <button type="button" data-rarity-action="all">
+                                    <button
+                                        type="button"
+                                        data-rarity-action="all"
+                                    >
                                         All
                                     </button>
-                                    <button type="button" data-rarity-action="none">
+                                    <button
+                                        type="button"
+                                        data-rarity-action="none"
+                                    >
                                         Clear
                                     </button>
                                 </div>
@@ -7158,10 +7174,16 @@
                             ></div>
                             <div class="control-head-tools">
                                 <div class="small-actions">
-                                    <button type="button" data-pack-action="all">
+                                    <button
+                                        type="button"
+                                        data-pack-action="all"
+                                    >
                                         All
                                     </button>
-                                    <button type="button" data-pack-action="none">
+                                    <button
+                                        type="button"
+                                        data-pack-action="none"
+                                    >
                                         Clear
                                     </button>
                                 </div>
@@ -7172,7 +7194,11 @@
                 </section>
 
                 <section id="viewBarSection" class="view-bar">
-                    <div class="tabs" role="tablist" aria-label="Database views">
+                    <div
+                        class="tabs"
+                        role="tablist"
+                        aria-label="Database views"
+                    >
                         <span
                             class="workspace-tab-indicator"
                             aria-hidden="true"
@@ -7842,14 +7868,27 @@
 
             const CARDMASTER_URL =
                 "https://leanny.github.io/pocket_tcg_resources/data/cardmaster.json";
-            const LOCALISATION_URL =
-                "https://leanny.github.io/pocket_tcg_resources/data/en_US.json";
+            const LOCALISATION_BASE_URL =
+                "https://leanny.github.io/pocket_tcg_resources/data/";
+            const LOCALISATION_LANGUAGES = [
+                ["de_DE", "Deutsch"],
+                ["en_US", "English"],
+                ["es_ES", "Español"],
+                ["fr_FR", "Français"],
+                ["it_IT", "Italiano"],
+                ["ja_JP", "日本語"],
+                ["ko_KR", "한국어"],
+                ["pt_BR", "Português (Brasil)"],
+                ["zh_TW", "繁體中文"],
+            ];
             const CARDMAP_URL =
                 "https://leanny.github.io/pocket_tcg_resources/data/cardmap.json";
             const IMAGE_PREFIX =
                 "https://leanny.github.io/pocket_tcg_resources/img/S/US/";
             const LS_MASTER = "ptcgp-card-db-cardmaster-v4";
             const LS_LOCALISATION = "ptcgp-card-db-en-us-v4";
+            const LS_LOCALISATION_PREFIX = "ptcgp-card-db-localisation-v4-";
+            const LS_SELECTED_LANGUAGE = "ptcgp-card-db-language-v1";
             const LS_CARDMAP = "ptcgp-card-db-cardmap-v4";
             const LS_MISSING_RETRY_AT = "ptcgp-card-db-missing-retry-at-v4";
             const LS_THEME = "ptcgp-card-db-theme-v1";
@@ -7891,6 +7930,29 @@
                 860: 30000,
             };
             const DEFAULT_ACCOUNTS_DATA_PATH = "/__dashboard/accounts-data";
+
+            function getSupportedLanguage(code) {
+                return LOCALISATION_LANGUAGES.some(([value]) => value === code)
+                    ? code
+                    : "en_US";
+            }
+
+            function readSelectedLanguage() {
+                return getSupportedLanguage(
+                    localStorage.getItem(LS_SELECTED_LANGUAGE) || "en_US",
+                );
+            }
+
+            function getLocalisationUrl(language) {
+                return `${LOCALISATION_BASE_URL}${getSupportedLanguage(language)}.json`;
+            }
+
+            function getLocalisationCacheKey(language) {
+                const code = getSupportedLanguage(language);
+                return code === "en_US"
+                    ? LS_LOCALISATION
+                    : `${LS_LOCALISATION_PREFIX}${code}`;
+            }
 
             function readSavedPageSize() {
                 const saved = Number(localStorage.getItem(LS_PAGE_SIZE));
@@ -8130,8 +8192,7 @@
                             ).format(date);
                             return `${datePart}\n${timePart}`;
                         }
-                    } catch {
-                    }
+                    } catch {}
                 }
                 return str;
             }
@@ -8236,6 +8297,7 @@
                 collectionRaritiesInitialized: false,
                 collectionShowMissingOnly: false,
                 collectionWishlistOnly: false,
+                language: readSelectedLanguage(),
                 defaultExpanded: false,
                 pageSize: initialPageSize,
                 displayLimit: initialPageSize,
@@ -8248,6 +8310,7 @@
             };
 
             const el = {
+                cardLanguage: document.getElementById("cardLanguage"),
                 cardSize: document.getElementById("cardSize"),
                 status: document.getElementById("status"),
                 loadRemoteBtn: document.getElementById("loadRemoteBtn"),
@@ -8309,8 +8372,9 @@
                 showMoreBtn: document.getElementById("showMoreBtn"),
                 themeToggleBtn: document.getElementById("themeToggleBtn"),
                 sectionDbBtn: document.getElementById("sectionDbBtn"),
-                sectionCollectionBtn:
-                    document.getElementById("sectionCollectionBtn"),
+                sectionCollectionBtn: document.getElementById(
+                    "sectionCollectionBtn",
+                ),
                 sectionLibraryBtn: document.getElementById("sectionLibraryBtn"),
                 sectionMultiBtn: document.getElementById("sectionMultiBtn"),
                 sectionWishlistBtn:
@@ -8324,6 +8388,16 @@
             const raf = () =>
                 new Promise((resolve) => requestAnimationFrame(resolve));
 
+            function initLanguageSelect() {
+                if (!el.cardLanguage) return;
+                el.cardLanguage.innerHTML = LOCALISATION_LANGUAGES.map(
+                    ([value, label]) =>
+                        `<option value="${value}">${escapeHtml(label)}</option>`,
+                ).join("");
+                el.cardLanguage.value = state.language;
+            }
+
+            initLanguageSelect();
             el.pageSizeSelect.value = String(state.pageSize);
             el.markedSort.value = state.markedSort;
             el.markedSortDir.textContent = state.markedSortAsc ? "↑" : "↓";
@@ -9900,7 +9974,8 @@
                     state.catalogPullHistoryAccount &&
                     accountRows.length &&
                     !accountRows.some(
-                        (row) => row.account === state.catalogPullHistoryAccount,
+                        (row) =>
+                            row.account === state.catalogPullHistoryAccount,
                     )
                 ) {
                     state.catalogPullHistoryAccount = "";
@@ -9983,10 +10058,7 @@
                         const deltaX = firstRect.left - lastRect.left;
                         const deltaY = firstRect.top - lastRect.top;
 
-                        if (
-                            Math.abs(deltaX) < 2 &&
-                            Math.abs(deltaY) < 2
-                        ) {
+                        if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
                             playAccountPinPopOnRow(row);
                             return;
                         }
@@ -10030,8 +10102,7 @@
             function applyCatalogAccountPinToggle(account) {
                 if (!account) return;
                 const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ??
-                    null;
+                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
                 const action = toggleCatalogAccountPin(account);
                 renderCatalogSidePanel({
                     patchOnly: true,
@@ -10043,8 +10114,7 @@
             function applyMultiAccountPinToggle(account) {
                 if (!account) return;
                 const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ??
-                    null;
+                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
                 const action = toggleMultiAccountPin(account);
                 refreshMultiBestAccountsPanel({
                     animate: false,
@@ -10171,7 +10241,7 @@
                     shinedustTitle ||
                     `Only show accounts with at least ${formatNumber(requiredShinedust)} Shinedust`;
                 const shinedustActive = requiredShinedust > 0;
-                const shinedustToggle = `<label class="check-chip account-filter-toggle shinedust-filter-toggle${shinedustChecked ? " checked" : ""}${shinedustActive ? "" : " account-filter-toggle--inactive"}" title="${escapeHtml(dustTitle)}"${shinedustActive ? "" : ' aria-hidden="true"'}><input id="${shinedustInputId}" type="checkbox" ${shinedustChecked ? "checked" : ""}${shinedustActive ? "" : " disabled tabindex=\"-1\""}>${escapeHtml(dustLabel)}</label>`;
+                const shinedustToggle = `<label class="check-chip account-filter-toggle shinedust-filter-toggle${shinedustChecked ? " checked" : ""}${shinedustActive ? "" : " account-filter-toggle--inactive"}" title="${escapeHtml(dustTitle)}"${shinedustActive ? "" : ' aria-hidden="true"'}><input id="${shinedustInputId}" type="checkbox" ${shinedustChecked ? "checked" : ""}${shinedustActive ? "" : ' disabled tabindex="-1"'}>${escapeHtml(dustLabel)}</label>`;
                 return `<div class="account-filter-toggles">${ageToggle}${shinedustToggle}</div>`;
             }
 
@@ -10430,7 +10500,9 @@
                 loader.dataset.phase = getDashboardBootPhase(clean);
             }
 
-            function showDashboardBootLoader(message = "Loading account data...") {
+            function showDashboardBootLoader(
+                message = "Loading account data...",
+            ) {
                 const loader = document.getElementById("dashboardBootLoader");
                 if (!loader) return;
                 clearTimeout(dashboardBootHideTimer);
@@ -10447,13 +10519,16 @@
                 dashboardBootDismissed = true;
                 clearTimeout(dashboardBootHideTimer);
                 clearTimeout(dashboardBootHiddenTimer);
-                dashboardBootHideTimer = setTimeout(() => {
-                    loader.classList.add("is-hiding");
-                    loader.setAttribute("aria-hidden", "true");
-                    dashboardBootHiddenTimer = setTimeout(() => {
-                        loader.classList.add("is-hidden");
-                    }, 420);
-                }, Math.max(0, delayMs));
+                dashboardBootHideTimer = setTimeout(
+                    () => {
+                        loader.classList.add("is-hiding");
+                        loader.setAttribute("aria-hidden", "true");
+                        dashboardBootHiddenTimer = setTimeout(() => {
+                            loader.classList.add("is-hidden");
+                        }, 420);
+                    },
+                    Math.max(0, delayMs),
+                );
             }
 
             function setStatus(message, kind = "normal") {
@@ -10531,9 +10606,7 @@
             }
 
             function readUseLocalCardImages() {
-                return (
-                    localStorage.getItem(LS_USE_LOCAL_CARD_IMAGES) === "1"
-                );
+                return localStorage.getItem(LS_USE_LOCAL_CARD_IMAGES) === "1";
             }
 
             function sanitizeIllustrationFileName(illustrationId) {
@@ -10658,13 +10731,16 @@
                 if (!loader) return;
                 clearTimeout(cardImageDownloadHideTimer);
                 clearTimeout(cardImageDownloadHiddenTimer);
-                cardImageDownloadHideTimer = setTimeout(() => {
-                    loader.classList.add("is-hiding");
-                    loader.setAttribute("aria-hidden", "true");
-                    cardImageDownloadHiddenTimer = setTimeout(() => {
-                        loader.classList.add("is-hidden");
-                    }, 380);
-                }, Math.max(0, delayMs));
+                cardImageDownloadHideTimer = setTimeout(
+                    () => {
+                        loader.classList.add("is-hiding");
+                        loader.setAttribute("aria-hidden", "true");
+                        cardImageDownloadHiddenTimer = setTimeout(() => {
+                            loader.classList.add("is-hidden");
+                        }, 380);
+                    },
+                    Math.max(0, delayMs),
+                );
             }
 
             function updateCardImageDownloadPanel(data) {
@@ -10681,8 +10757,9 @@
 
                 if (el.cardImageDownloadMessage) {
                     if (data.lastError && !data.running) {
-                        el.cardImageDownloadMessage.textContent =
-                            String(data.lastError);
+                        el.cardImageDownloadMessage.textContent = String(
+                            data.lastError,
+                        );
                     } else if (data.running) {
                         el.cardImageDownloadMessage.textContent =
                             total > 0
@@ -10922,8 +10999,7 @@
                     try {
                         navigator.sendBeacon(DASHBOARD_SHUTDOWN_PATH, payload);
                         return;
-                    } catch {
-                    }
+                    } catch {}
                 }
                 fetch(DASHBOARD_SHUTDOWN_PATH, {
                     method: "POST",
@@ -10968,10 +11044,10 @@
             function renderThemeToggleBtn(resolved) {
                 const toLight = resolved !== "light";
                 const label = toLight ? "Light Mode" : "Dark Mode";
-                const iconEl = el.themeToggleBtn.querySelector(".theme-btn-icon");
-                const labelEl = el.themeToggleBtn.querySelector(
-                    ".theme-btn-label",
-                );
+                const iconEl =
+                    el.themeToggleBtn.querySelector(".theme-btn-icon");
+                const labelEl =
+                    el.themeToggleBtn.querySelector(".theme-btn-label");
                 if (iconEl)
                     iconEl.innerHTML = toLight
                         ? themeSunIconSvg()
@@ -10998,8 +11074,7 @@
                     if (persist) {
                         try {
                             localStorage.setItem(LS_THEME, resolved);
-                        } catch {
-                        }
+                        } catch {}
                     }
                     requestAnimationFrame(() =>
                         syncSectionSwitcherStackHeight(),
@@ -11218,11 +11293,14 @@
 
             async function loadResources(force = false) {
                 let loadedFromCache = false;
+                const language = getSupportedLanguage(state.language);
+                const localisationCacheKey = getLocalisationCacheKey(language);
                 if (!force) {
                     if (!state.cardmaster)
                         state.cardmaster = readCachedJson(LS_MASTER);
                     if (!state.localisation)
-                        state.localisation = readCachedJson(LS_LOCALISATION);
+                        state.localisation =
+                            readCachedJson(localisationCacheKey);
                     if (!state.cardmap)
                         state.cardmap = readCachedJson(LS_CARDMAP);
                     loadedFromCache = Boolean(
@@ -11243,7 +11321,7 @@
                     try {
                         const [master, loc, cardmap] = await Promise.all([
                             fetchJson(CARDMASTER_URL),
-                            fetchJson(LOCALISATION_URL),
+                            fetchJson(getLocalisationUrl(language)),
                             fetchJson(CARDMAP_URL),
                         ]);
                         state.cardmaster = master;
@@ -11258,7 +11336,7 @@
                         _rarityFilterKeyCache.clear();
                         _buildRowDerivedCache.clear();
                         writeCachedJson(LS_MASTER, master);
-                        writeCachedJson(LS_LOCALISATION, loc);
+                        writeCachedJson(localisationCacheKey, loc);
                         writeCachedJson(LS_CARDMAP, cardmap);
                         setStatus("Card definitions loaded and cached.");
                         if (state.rows.length)
@@ -11778,9 +11856,7 @@
                             ]) || "",
                         ).trim();
                         if (!account && sourceFileName) {
-                            const leaf = sourceFileName
-                                .split("/")
-                                .pop();
+                            const leaf = sourceFileName.split("/").pop();
                             account = leaf.replace(/\.json$/i, "");
                         }
                     }
@@ -11899,9 +11975,7 @@
                         ]);
                         const registeredCards = Array.isArray(registeredNode)
                             ? registeredNode
-                                  .map((value) =>
-                                      String(value ?? "").trim(),
-                                  )
+                                  .map((value) => String(value ?? "").trim())
                                   .filter(Boolean)
                             : [];
                         if (!registeredCards.length) continue;
@@ -11916,9 +11990,7 @@
                             accountLower: normaliseSearch(account),
                             collectionId: account,
                             displayName:
-                                collectionDisplayName ||
-                                accountName ||
-                                account,
+                                collectionDisplayName || accountName || account,
                             isCollection: true,
                             instance,
                             accountName,
@@ -12174,7 +12246,8 @@
 
                 const tradeAccountCount = tradeAccountIds.size;
                 const collectionRegistryCount = collectionRegistryIds.size;
-                const accountCount = tradeAccountCount + collectionRegistryCount;
+                const accountCount =
+                    tradeAccountCount + collectionRegistryCount;
                 let tradeWithProfileMetaCount = 0;
                 for (const account of tradeAccountIds) {
                     if (accountMetadataMap.has(account))
@@ -12474,9 +12547,12 @@
             function getPackIconUrl(packCode) {
                 const code = String(packCode ?? "").trim();
                 if (!code) return "";
-                if (_packIconCache.has(code)) return _packIconCache.get(code);
-                const url = `${SET_LOGO_BASE_URL}LOGO_expansion_${code}_en_US.png`;
-                _packIconCache.set(code, url);
+                const language = getSupportedLanguage(state.language);
+                const cacheKey = `${language}:${code}`;
+                if (_packIconCache.has(cacheKey))
+                    return _packIconCache.get(cacheKey);
+                const url = `${SET_LOGO_BASE_URL}LOGO_expansion_${code}_${language}.png`;
+                _packIconCache.set(cacheKey, url);
                 return url;
             }
 
@@ -13452,11 +13528,9 @@
                 if (
                     config.selectedCardIds &&
                     config.selectedCardIds.length &&
-                    !(
-                        config.selectedCardIdSet
-                            ? config.selectedCardIdSet.has(cardId)
-                            : config.selectedCardIds.includes(cardId)
-                    )
+                    !(config.selectedCardIdSet
+                        ? config.selectedCardIdSet.has(cardId)
+                        : config.selectedCardIds.includes(cardId))
                 )
                     return false;
                 if (
@@ -13632,7 +13706,8 @@
                 else if (state.view === "wishlist") renderWishlistView();
                 else if (state.view === "traded") renderTradedView();
                 else if (state.view === "shared") renderSharedView();
-                else if (state.view === "mycollection") renderMyCollectionView();
+                else if (state.view === "mycollection")
+                    renderMyCollectionView();
                 else renderAccountOverview();
                 delete el.rows.dataset.viewState;
             }
@@ -14678,9 +14753,8 @@
                 const listStage = liveResultsEl.querySelector(
                     ".catalog-side-list-stage",
                 );
-                const listEl = liveResultsEl.querySelector(
-                    ".multi-result-list",
-                );
+                const listEl =
+                    liveResultsEl.querySelector(".multi-result-list");
                 const hintSlot = liveResultsEl.querySelector(
                     ".account-pin-hint-slot",
                 );
@@ -14699,9 +14773,8 @@
                     selectedCards,
                     accountRows,
                 );
-                const parsedList = listPatch.querySelector(
-                    ".multi-result-list",
-                );
+                const parsedList =
+                    listPatch.querySelector(".multi-result-list");
                 const parsedClipped = listPatch.querySelector(
                     ".multi-results-clipped-note",
                 );
@@ -14712,14 +14785,12 @@
                     .querySelector(".multi-results-clipped-note")
                     ?.remove();
                 if (parsedClipped) {
-                    const anchor = listStage.querySelector(
-                        ".multi-result-list",
-                    );
+                    const anchor =
+                        listStage.querySelector(".multi-result-list");
                     if (anchor) anchor.after(parsedClipped);
                 }
 
-                hintSlot.innerHTML =
-                    renderMultiAccountPinHint(accountRows);
+                hintSlot.innerHTML = renderMultiAccountPinHint(accountRows);
                 return true;
             }
 
@@ -14799,8 +14870,7 @@
                     return;
                 }
                 const liveResultsEl =
-                    el.rows.querySelector(".multi-search-results") ||
-                    resultsEl;
+                    el.rows.querySelector(".multi-search-results") || resultsEl;
                 const swapMode = liveResultsEl.querySelector(
                     ".catalog-side-list-stage",
                 )
@@ -15196,10 +15266,7 @@
                 const inWishlist = view === "wishlist";
                 const inCollection = view === "mycollection";
                 const inStandaloneTool = isStandaloneToolView(view);
-                el.sectionDbBtn.classList.toggle(
-                    "active",
-                    !inStandaloneTool,
-                );
+                el.sectionDbBtn.classList.toggle("active", !inStandaloneTool);
                 el.sectionCollectionBtn?.classList.toggle(
                     "active",
                     inCollection,
@@ -15439,9 +15506,7 @@
                 if (stickyPanel)
                     multiSearchStickyResizeObserver.observe(stickyPanel);
                 const controlsEl = page.querySelector(".catalog-controls");
-                const mainCol = page.querySelector(
-                    ".multi-search-picker-main",
-                );
+                const mainCol = page.querySelector(".multi-search-picker-main");
                 if (controlsEl)
                     multiSearchStickyResizeObserver.observe(controlsEl);
                 if (mainCol) multiSearchStickyResizeObserver.observe(mainCol);
@@ -15558,8 +15623,7 @@
                                 (card) => card.totalCopies > 0,
                             ).length;
                             const selectedInSection = section.cards.filter(
-                                (card) =>
-                                    state.multiSearchCardIds.has(card.id),
+                                (card) => state.multiSearchCardIds.has(card.id),
                             ).length;
                             const iconUrl = getPackIconUrl(section.code);
                             const logoHtml = iconUrl
@@ -15579,15 +15643,13 @@
 
                 if (!isAllExpansions) {
                     const expansionSection = model.sectionListAll.find(
-                        (entry) =>
-                            entry.code === state.multiExpansionFilter,
+                        (entry) => entry.code === state.multiExpansionFilter,
                     );
                     const sectionLabel =
                         expansionSection?.label ||
                         getPackLabel(state.multiExpansionFilter);
                     const sectionCode =
-                        expansionSection?.code ||
-                        state.multiExpansionFilter;
+                        expansionSection?.code || state.multiExpansionFilter;
                     const filteredCards = renderedSections[0]?.cards || [];
                     const cardsHtml = filteredCards
                         .map((card) => renderMultiSearchPickerCardButton(card))
@@ -15696,9 +15758,7 @@
                     return;
 
                 const page = el.rows.querySelector(".multi-search-page");
-                const mainEl = page?.querySelector(
-                    ".multi-search-picker-main",
-                );
+                const mainEl = page?.querySelector(".multi-search-picker-main");
                 if (!page || !mainEl) {
                     renderMultiCardSearchView();
                     return;
@@ -16155,10 +16215,7 @@
             function setPullHistoryToggleVisualState(btn, isOpen) {
                 if (!btn) return;
                 btn.classList.toggle("is-open", isOpen);
-                btn.setAttribute(
-                    "aria-expanded",
-                    isOpen ? "true" : "false",
-                );
+                btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
             }
 
             function applyCatalogPullHistoryToggleInPlace(
@@ -16208,9 +16265,7 @@
                     cardId,
                     account,
                 );
-                const actionsEl = row.querySelector(
-                    ".catalog-account-actions",
-                );
+                const actionsEl = row.querySelector(".catalog-account-actions");
                 if (actionsEl) {
                     actionsEl.insertAdjacentHTML("beforebegin", historyHtml);
                 } else {
@@ -16247,16 +16302,14 @@
                 visit("[data-select-catalog-account]", (btn) => {
                     const selectAccount = () => {
                         const account =
-                            btn.getAttribute(
-                                "data-select-catalog-account",
-                            ) || "";
+                            btn.getAttribute("data-select-catalog-account") ||
+                            "";
                         applyCatalogAccountPinToggle(account);
                     };
                     btn.addEventListener("click", (event) => {
                         if (event.target.closest(".catalog-account-actions"))
                             return;
-                        if (event.target.closest("[data-pin-account]"))
-                            return;
+                        if (event.target.closest("[data-pin-account]")) return;
                         if (
                             event.target.closest(
                                 "[data-toggle-catalog-pull-history]",
@@ -16331,12 +16384,10 @@
                     (btn) => {
                         btn.addEventListener("click", async () => {
                             const account =
-                                btn.getAttribute(
-                                    "data-mark-traded-account",
-                                ) || "";
-                            const cardId =
-                                btn.getAttribute("data-mark-traded-card") ||
+                                btn.getAttribute("data-mark-traded-account") ||
                                 "";
+                            const cardId =
+                                btn.getAttribute("data-mark-traded-card") || "";
                             if (!account || !cardId) return;
                             await markSelectedCardTraded(
                                 account,
@@ -16358,12 +16409,10 @@
                     (btn) => {
                         btn.addEventListener("click", () => {
                             const account =
-                                btn.getAttribute(
-                                    "data-mark-shared-account",
-                                ) || "";
-                            const cardId =
-                                btn.getAttribute("data-mark-shared-card") ||
+                                btn.getAttribute("data-mark-shared-account") ||
                                 "";
+                            const cardId =
+                                btn.getAttribute("data-mark-shared-card") || "";
                             if (!account || !cardId) return;
                             const preferredAccountName =
                                 state.accountFileLabelMap.get(account) ||
@@ -16391,12 +16440,10 @@
                         btn.addEventListener("click", async () => {
                             if (btn.disabled) return;
                             const account =
-                                btn.getAttribute(
-                                    "data-start-trade-account",
-                                ) || "";
-                            const cardId =
-                                btn.getAttribute("data-start-trade-card") ||
+                                btn.getAttribute("data-start-trade-account") ||
                                 "";
+                            const cardId =
+                                btn.getAttribute("data-start-trade-card") || "";
                             const fileName =
                                 btn.getAttribute("data-start-trade-file") ||
                                 state.accountFileLabelMap.get(account) ||
@@ -16469,8 +16516,7 @@
                         html += fill.htmls[fill.idx++];
                         cnt++;
                         if (
-                            cnt >=
-                                CATALOG_ACCOUNT_LIST_ASYNC_MIN_CHUNK &&
+                            cnt >= CATALOG_ACCOUNT_LIST_ASYNC_MIN_CHUNK &&
                             hasDeadline &&
                             deadline.timeRemaining() < 3
                         )
@@ -16534,9 +16580,13 @@
                 catalogTradeReadyToggleHtml,
                 accountRows,
             ) {
-                const metaSlot = sideEl.querySelector(".catalog-side-meta-slot");
+                const metaSlot = sideEl.querySelector(
+                    ".catalog-side-meta-slot",
+                );
                 const listEl = sideEl.querySelector(".catalog-account-list");
-                const togglesEl = sideEl.querySelector(".account-filter-toggles");
+                const togglesEl = sideEl.querySelector(
+                    ".account-filter-toggles",
+                );
                 if (!metaSlot || !listEl) return false;
                 metaSlot.innerHTML = selectedMeta || "";
                 listEl.innerHTML = accountItemsHtml;
@@ -16704,8 +16754,7 @@
                 } else if (!accountItemHtmls.length) {
                     accountItemsHtml = `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`;
                 } else if (
-                    accountItemHtmls.length >
-                    CATALOG_ACCOUNT_LIST_INITIAL_CHUNK
+                    accountItemHtmls.length > CATALOG_ACCOUNT_LIST_INITIAL_CHUNK
                 ) {
                     accountItemsHtml = accountItemHtmls
                         .slice(0, CATALOG_ACCOUNT_LIST_INITIAL_CHUNK)
@@ -16754,8 +16803,12 @@
                     return;
                 }
 
-                const swapMode = getCatalogSidePanelSwapMode(options, patchOnly);
-                const getSideRoot = () => el.rows.querySelector(".catalog-side");
+                const swapMode = getCatalogSidePanelSwapMode(
+                    options,
+                    patchOnly,
+                );
+                const getSideRoot = () =>
+                    el.rows.querySelector(".catalog-side");
 
                 if (patchOnly) {
                     const metaSlot = sideEl.querySelector(
@@ -17091,7 +17144,11 @@
                         accountMap.set(acc, (accountMap.get(acc) || 0) + 1);
                     }
                 }
-                const cache = { cardToAccounts, accountFirstSeenMs, rowCardIds };
+                const cache = {
+                    cardToAccounts,
+                    accountFirstSeenMs,
+                    rowCardIds,
+                };
                 state.catalogAccountCountsCache = cache;
                 state.catalogAccountCountsRowsRef = state.rows;
                 state.catalogAccountCountsTradeMetaVersion =
@@ -17128,10 +17185,7 @@
                     for (const rowCardId of row.cardIds) {
                         const rid = String(rowCardId || "").trim();
                         if (!rid) continue;
-                        perRowCounts.set(
-                            rid,
-                            (perRowCounts.get(rid) || 0) + 1,
-                        );
+                        perRowCounts.set(rid, (perRowCounts.get(rid) || 0) + 1);
                     }
                     for (const [rid, c] of perRowCounts) {
                         let bucket = index.get(rid);
@@ -17163,18 +17217,14 @@
                 let firstMs = Number.NaN;
                 let lastMs = Number.NaN;
 
-                const matches =
-                    state.catalogPullHistoryRowIndex.get(id) || [];
+                const matches = state.catalogPullHistoryRowIndex.get(id) || [];
                 for (const { row, count } of matches) {
                     totalCopies += count;
                     const timestampMs = Number.isFinite(row.timestampMs)
                         ? row.timestampMs
                         : Number.NaN;
                     if (Number.isFinite(timestampMs)) {
-                        if (
-                            !Number.isFinite(firstMs) ||
-                            timestampMs < firstMs
-                        )
+                        if (!Number.isFinite(firstMs) || timestampMs < firstMs)
                             firstMs = timestampMs;
                         if (!Number.isFinite(lastMs) || timestampMs > lastMs)
                             lastMs = timestampMs;
@@ -17221,8 +17271,7 @@
                 if (!id || !accountKey) return [];
                 ensureCatalogPullHistoryIndex();
 
-                const matches =
-                    state.catalogPullHistoryRowIndex.get(id) || [];
+                const matches = state.catalogPullHistoryRowIndex.get(id) || [];
                 const entries = [];
                 for (const { row, count } of matches) {
                     if (row.account !== accountKey) continue;
@@ -17244,11 +17293,7 @@
                 entries.sort((a, b) => {
                     const aHasTime = Number.isFinite(a.timestampMs);
                     const bHasTime = Number.isFinite(b.timestampMs);
-                    if (
-                        aHasTime &&
-                        bHasTime &&
-                        a.timestampMs !== b.timestampMs
-                    )
+                    if (aHasTime && bHasTime && a.timestampMs !== b.timestampMs)
                         return b.timestampMs - a.timestampMs;
                     if (aHasTime !== bHasTime) return aHasTime ? -1 : 1;
                     return (b.rowNumber || 0) - (a.rowNumber || 0);
@@ -17290,7 +17335,9 @@
                 const value = String(text || "").trim();
                 if (!value) return "";
                 const max = Math.max(4, maxLength || 18);
-                return value.length > max ? `${value.slice(0, max - 3)}...` : value;
+                return value.length > max
+                    ? `${value.slice(0, max - 3)}...`
+                    : value;
             }
 
             function buildCatalogPullHistoryRowHtml(entry) {
@@ -17382,9 +17429,7 @@
                     );
                     const remainingEntries =
                         entries.length > CATALOG_PULL_HISTORY_INITIAL_CHUNK
-                            ? entries.slice(
-                                  CATALOG_PULL_HISTORY_INITIAL_CHUNK,
-                              )
+                            ? entries.slice(CATALOG_PULL_HISTORY_INITIAL_CHUNK)
                             : null;
                     let listAttrs = `class="catalog-pull-history-list"`;
                     if (remainingEntries) {
@@ -17707,15 +17752,13 @@
                         .join("")}</div>`;
                 } else if (!isAllExpansions) {
                     const expansionSection = base.sectionListAll.find(
-                        (entry) =>
-                            entry.code === state.catalogExpansionFilter,
+                        (entry) => entry.code === state.catalogExpansionFilter,
                     );
                     const sectionLabel =
                         expansionSection?.label ||
                         getPackLabel(state.catalogExpansionFilter);
                     const sectionCode =
-                        expansionSection?.code ||
-                        state.catalogExpansionFilter;
+                        expansionSection?.code || state.catalogExpansionFilter;
                     const filteredCards = renderedSections[0]?.cards || [];
                     const cardsHtml = filteredCards
                         .map((card) => renderCatalogLibraryCardButton(card))
@@ -17782,9 +17825,8 @@
                                   selected.info.rarityValue === 900 ||
                                   isPromoCard(selected.id);
                               const mappedFileName =
-                                  state.accountFileLabelMap.get(
-                                      row.account,
-                                  ) || "";
+                                  state.accountFileLabelMap.get(row.account) ||
+                                  "";
                               const preferredRaw =
                                   mappedFileName || row.account;
                               const preferredShort =
@@ -17815,8 +17857,7 @@
                                     ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
                                     : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(row.account)}" data-start-trade-card="${escapeHtml(selected.id)}" data-start-trade-file="${escapeHtml(mappedFileName)}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
                               const isPinned =
-                                  row.account ===
-                                  state.selectedCatalogAccount;
+                                  row.account === state.selectedCatalogAccount;
                               const isHistoryOpen =
                                   row.account ===
                                   state.catalogPullHistoryAccount;
@@ -17849,9 +17890,7 @@
                         accountItemsHtml = accountItemHtmls
                             .slice(0, CATALOG_ACCOUNT_LIST_INITIAL_CHUNK)
                             .join("");
-                        const token = String(
-                            ++catalogAccountListFillCounter,
-                        );
+                        const token = String(++catalogAccountListFillCounter);
                         catalogAccountListPendingFill = {
                             token,
                             htmls: accountItemHtmls,
@@ -18575,7 +18614,8 @@
                 _attachCatalogLibraryControlListeners(parts.catalogRarityKeys);
 
                 const catalogSide = el.rows.querySelector(".catalog-side");
-                if (catalogSide) attachCatalogSidePanelChromeListeners(catalogSide);
+                if (catalogSide)
+                    attachCatalogSidePanelChromeListeners(catalogSide);
 
                 const restoreScroll = () => {
                     const currentScrollY =
@@ -19292,7 +19332,9 @@
                                 (a.visibleUniqueCards - b.visibleUniqueCards)
                             );
                         if (a.visibleCardCount !== b.visibleCardCount)
-                            return dir * (a.visibleCardCount - b.visibleCardCount);
+                            return (
+                                dir * (a.visibleCardCount - b.visibleCardCount)
+                            );
                         return a.account.localeCompare(b.account);
                     }
                     if (state.accountSort === "shinedust") {
@@ -19421,10 +19463,7 @@
                     return state.accountOverviewBuildPromise;
 
                 const token = state.accountOverviewBuildToken;
-                const promise = buildAccountOverviewChunked(
-                    token,
-                    options,
-                )
+                const promise = buildAccountOverviewChunked(token, options)
                     .then((accounts) => {
                         if (
                             accounts &&
@@ -19694,10 +19733,7 @@
                 const filtered = model.sectionListAll
                     .map((section) => {
                         const cards = section.cards.filter((card) => {
-                            if (
-                                state.collectionShowMissingOnly &&
-                                card.owned
-                            )
+                            if (state.collectionShowMissingOnly && card.owned)
                                 return false;
                             if (
                                 state.collectionWishlistOnly &&
@@ -19787,8 +19823,7 @@
                 const selected = getSelectedCollectionAccountEntry();
                 if (!selected) return null;
                 const model = buildCollectionModel(selected);
-                const filteredSections =
-                    buildFilteredCollectionSections(model);
+                const filteredSections = buildFilteredCollectionSections(model);
                 const isAllExpansions =
                     state.collectionExpansionFilter === "__all__";
                 const hasCardSearch =
@@ -19810,7 +19845,9 @@
                     !hasRaritySelection;
                 const hasVisibleCards =
                     showingAllExpansions ||
-                    filteredSections.some((section) => section.cards.length > 0);
+                    filteredSections.some(
+                        (section) => section.cards.length > 0,
+                    );
 
                 let mainHtml = "";
                 if (showingAllExpansions) {
@@ -19851,8 +19888,7 @@
                     const sectionCode =
                         expansionSection?.code ||
                         state.collectionExpansionFilter;
-                    const filteredCards =
-                        filteredSections[0]?.cards || [];
+                    const filteredCards = filteredSections[0]?.cards || [];
                     const cardsHtml = filteredCards
                         .map((card) => renderCollectionCardButton(card))
                         .join("");
@@ -19881,9 +19917,7 @@
                             const ownedInSection = section.cards.filter(
                                 (card) => card.owned,
                             ).length;
-                            const sectionIconUrl = getPackIconUrl(
-                                section.code,
-                            );
+                            const sectionIconUrl = getPackIconUrl(section.code);
                             const sectionLogoHtml = sectionIconUrl
                                 ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(section.label)}" title="${escapeHtml(section.label)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(section.label).replace(/'/g, "\\'")}</div>'">`
                                 : `<div class="catalog-section-title">${escapeHtml(section.label)}</div>`;
@@ -19909,10 +19943,8 @@
                             getRarityFilterSortValue(b),
                     )
                     .map((rarityKey) => {
-                        const owned =
-                            stats.rarityOwned.get(rarityKey) || 0;
-                        const total =
-                            stats.rarityTotals.get(rarityKey) || 0;
+                        const owned = stats.rarityOwned.get(rarityKey) || 0;
+                        const total = stats.rarityTotals.get(rarityKey) || 0;
                         const isComplete = total > 0 && owned >= total;
                         const pct = total
                             ? isComplete
@@ -20032,23 +20064,24 @@
                 const displayStats = getCollectionDisplayStats(model);
                 const accountLabel = formatCollectionAccountLabel(selected);
                 const importedLabel = selected.registryImportedAt
-                    ? formatMetadataTimestamp(
-                          selected.registryImportedAt,
-                      ) || selected.registryImportedAt
+                    ? formatMetadataTimestamp(selected.registryImportedAt) ||
+                      selected.registryImportedAt
                     : "-";
                 return `${formatNumber(displayStats.ownedTotal)} of ${formatNumber(displayStats.totalCards)} cards registered (${formatNumber(displayStats.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
             }
 
             function syncCollectionControlsFromState() {
-                const searchInput =
-                    document.getElementById("collectionCardSearch");
+                const searchInput = document.getElementById(
+                    "collectionCardSearch",
+                );
                 if (searchInput) {
                     const v = state.collectionCardSearch || "";
                     if (searchInput.value !== v) searchInput.value = v;
                 }
 
-                const missingToggle =
-                    document.getElementById("collectionMissingOnly");
+                const missingToggle = document.getElementById(
+                    "collectionMissingOnly",
+                );
                 if (missingToggle) {
                     missingToggle.classList.toggle(
                         "checked",
@@ -20098,7 +20131,9 @@
             function refreshCollectionMainOnly() {
                 if (state.view !== "mycollection") return;
                 const page = el.rows.querySelector(".collection-page");
-                const mainEl = el.rows.querySelector(".collection-library-main");
+                const mainEl = el.rows.querySelector(
+                    ".collection-library-main",
+                );
                 if (!page || !mainEl) {
                     renderMyCollectionView();
                     return;
@@ -20163,8 +20198,9 @@
                     mainEl.style.minHeight = "";
                     restoreScroll();
                     if (preserveSearchFocus) {
-                        const focusEl =
-                            document.getElementById("collectionCardSearch");
+                        const focusEl = document.getElementById(
+                            "collectionCardSearch",
+                        );
                         if (!focusEl) return;
                         try {
                             focusEl.focus({ preventScroll: true });
@@ -20198,9 +20234,7 @@
                             );
                         });
                     });
-                const backBtn = el.rows.querySelector(
-                    "[data-collection-back]",
-                );
+                const backBtn = el.rows.querySelector("[data-collection-back]");
                 if (backBtn)
                     backBtn.addEventListener("click", () => {
                         state.collectionExpansionFilter = "__all__";
@@ -20318,8 +20352,9 @@
                     });
                 }
 
-                const searchInput =
-                    document.getElementById("collectionCardSearch");
+                const searchInput = document.getElementById(
+                    "collectionCardSearch",
+                );
                 if (searchInput) {
                     searchInput.addEventListener("input", () => {
                         state.collectionCardSearch = searchInput.value;
@@ -20332,8 +20367,9 @@
                     });
                 }
 
-                const missingToggle =
-                    document.getElementById("collectionMissingOnly");
+                const missingToggle = document.getElementById(
+                    "collectionMissingOnly",
+                );
                 if (missingToggle)
                     missingToggle.addEventListener("click", () => {
                         state.collectionShowMissingOnly =
@@ -20364,12 +20400,16 @@
                                         "data-collection-rarity",
                                     ) || "";
                                 if (!rarity) return;
-                                if (state.collectionSelectedRarities.has(rarity))
+                                if (
+                                    state.collectionSelectedRarities.has(rarity)
+                                )
                                     state.collectionSelectedRarities.delete(
                                         rarity,
                                     );
                                 else
-                                    state.collectionSelectedRarities.add(rarity);
+                                    state.collectionSelectedRarities.add(
+                                        rarity,
+                                    );
                                 deferRender(refreshCollectionMainOnly);
                             });
                         });
@@ -20470,7 +20510,8 @@
             ) {
                 const expanded = accountIsExpanded(account.key);
                 const article = document.createElement("article");
-                article.className = "db-row db-row--account db-row--expandable panel";
+                article.className =
+                    "db-row db-row--account db-row--expandable panel";
                 article.dataset.accountKey = account.key;
                 const cardFiltersActive = !!cardFilterConfig.active;
                 const visibleCount =
@@ -20503,10 +20544,7 @@
                 const copyBtn = rowHead.querySelector("[data-copy-file]");
                 const getVisibleEntriesForGrid = () =>
                     sortCardEntriesByRarity(
-                        getAccountVisibleCardEntries(
-                            account,
-                            cardFilterConfig,
-                        ),
+                        getAccountVisibleCardEntries(account, cardFilterConfig),
                     );
                 if (expanded) {
                     article.classList.add("is-row-expanded");
@@ -20637,7 +20675,10 @@
                     }) +
                     chunkMetaBarCells(extraCells)
                         .map((row) =>
-                            renderMetaBarHtml(row, "account-overview-meta-extra"),
+                            renderMetaBarHtml(
+                                row,
+                                "account-overview-meta-extra",
+                            ),
                         )
                         .join("");
                 article.insertBefore(metaWrap, body);
@@ -20848,9 +20889,8 @@
             }
 
             function prefersReducedMotion() {
-                return window.matchMedia(
-                    "(prefers-reduced-motion: reduce)",
-                ).matches;
+                return window.matchMedia("(prefers-reduced-motion: reduce)")
+                    .matches;
             }
 
             function getMainScrollY() {
@@ -20913,7 +20953,10 @@
 
             function clearSidePanelSwapPhase(targetEl) {
                 if (!targetEl) return;
-                targetEl.classList.remove("side-panel-swap-out", "side-panel-swap-in");
+                targetEl.classList.remove(
+                    "side-panel-swap-out",
+                    "side-panel-swap-in",
+                );
             }
 
             function finishSidePanelSwapEnter(targetEl) {
@@ -21119,10 +21162,8 @@
             }
 
             function shouldAnimateSectionSwitch(previousView, view) {
-
                 return !(
-                    DB_VIEWS.includes(previousView) &&
-                    DB_VIEWS.includes(view)
+                    DB_VIEWS.includes(previousView) && DB_VIEWS.includes(view)
                 );
             }
 
@@ -21181,8 +21222,7 @@
                 const isMarkedView = view === "traded" || view === "shared";
                 el.markedSortControl.classList.toggle("hidden", !isMarkedView);
                 el.markedSortDir.classList.toggle("hidden", !isMarkedView);
-                const hideExpandCompact =
-                    inStandaloneTool || isMarkedView;
+                const hideExpandCompact = inStandaloneTool || isMarkedView;
                 el.expandAllBtn.classList.toggle("hidden", hideExpandCompact);
                 el.compactAllBtn.classList.toggle("hidden", hideExpandCompact);
                 if (el.dbWorkspaceControlsSticky)
@@ -21250,8 +21290,7 @@
                     refreshMultiSearchPickerOnly();
             }, 450);
             const debouncedCollectionRender = debounce(() => {
-                if (state.view === "mycollection")
-                    refreshCollectionMainOnly();
+                if (state.view === "mycollection") refreshCollectionMainOnly();
             }, 450);
             el.loadRemoteBtn.addEventListener("click", async () => {
                 if (el.loadRemoteBtn.disabled) return;
@@ -21278,6 +21317,8 @@
             el.clearCacheBtn.addEventListener("click", () => {
                 localStorage.removeItem(LS_MASTER);
                 localStorage.removeItem(LS_LOCALISATION);
+                for (const [language] of LOCALISATION_LANGUAGES)
+                    localStorage.removeItem(getLocalisationCacheKey(language));
                 localStorage.removeItem(LS_CARDMAP);
                 localStorage.removeItem(LS_MISSING_RETRY_AT);
                 state.cardmaster = null;
@@ -21286,6 +21327,7 @@
                 state.cardInfoCache.clear();
                 state.cardExpansionCache.clear();
                 state.packLabelCache.clear();
+                _packIconCache.clear();
                 _cardTypeCache.clear();
                 _rarityFilterKeyCache.clear();
                 _buildRowDerivedCache.clear();
@@ -21392,6 +21434,62 @@
                     `${el.cardSize.value}px`,
                 ),
             );
+            el.cardLanguage?.addEventListener("change", async () => {
+                const nextLanguage = getSupportedLanguage(
+                    el.cardLanguage.value,
+                );
+                if (nextLanguage === state.language) return;
+                const previousLanguage = state.language;
+                const previousLocalisation = state.localisation;
+                state.language = nextLanguage;
+                localStorage.setItem(LS_SELECTED_LANGUAGE, nextLanguage);
+                state.localisation = null;
+                state.cardInfoCache.clear();
+                state.packLabelCache.clear();
+                _packIconCache.clear();
+                _cardTypeCache.clear();
+                _rarityFilterKeyCache.clear();
+                _buildRowDerivedCache.clear();
+                el.cardLanguage.disabled = true;
+                try {
+                    await loadResources(false);
+                    if (!state.localisation)
+                        throw new Error("No localisation data loaded");
+                    if (state.rows.length)
+                        refreshDerivedDataAfterMetadataChange();
+                    const label =
+                        LOCALISATION_LANGUAGES.find(
+                            ([value]) => value === nextLanguage,
+                        )?.[1] || nextLanguage;
+                    setStatus(`Language changed to ${label}.`);
+                } catch (err) {
+                    state.language = previousLanguage;
+                    state.localisation =
+                        previousLocalisation ||
+                        readCachedJson(
+                            getLocalisationCacheKey(previousLanguage),
+                        );
+                    localStorage.setItem(
+                        LS_SELECTED_LANGUAGE,
+                        previousLanguage,
+                    );
+                    state.cardInfoCache.clear();
+                    state.packLabelCache.clear();
+                    _packIconCache.clear();
+                    _cardTypeCache.clear();
+                    _rarityFilterKeyCache.clear();
+                    _buildRowDerivedCache.clear();
+                    if (state.localisation && state.rows.length)
+                        refreshDerivedDataAfterMetadataChange();
+                    setStatus(
+                        `Could not load selected language (${err && err.message ? err.message : "unknown error"}).`,
+                        "danger",
+                    );
+                } finally {
+                    el.cardLanguage.disabled = false;
+                    el.cardLanguage.value = state.language;
+                }
+            });
             el.packFilters.addEventListener("change", () => {
                 readSelectedFilters();
                 syncFilterChipCheckedStates(el.packFilters);
@@ -21494,7 +21592,9 @@
             });
 
             state.cardmaster = readCachedJson(LS_MASTER);
-            state.localisation = readCachedJson(LS_LOCALISATION);
+            state.localisation = readCachedJson(
+                getLocalisationCacheKey(state.language),
+            );
             const rawCardmapCache = readCachedJson(LS_CARDMAP);
             if (rawCardmapCache) {
                 state.cardmap =
@@ -21530,6 +21630,6 @@
             showLocalLauncherRequiredNotice();
             void initCardImageCacheControls();
             autoLoadDefaultFiles();
-</script>
+        </script>
     </body>
 </html>
