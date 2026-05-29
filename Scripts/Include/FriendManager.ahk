@@ -778,7 +778,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
 
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime, , true)) {
             if(FindOrLoseImage("Common_ColorChangeButton2", 0, , 80)) {
-                adbClick_wbb(30, 80)
+                adbClick_wbb(200, 80)
             }
             if(!IsSocialHubReadyForFriends()) {
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
