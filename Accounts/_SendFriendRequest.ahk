@@ -41,6 +41,7 @@ SetWorkingDir, %A_ScriptDir%\..\Scripts
 global pToken := Gdip_Startup()
 
 #Include %A_ScriptDir%\..\Scripts\Include\Utils.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\AccountMetadata.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\ADB.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Coords.ahk
 
