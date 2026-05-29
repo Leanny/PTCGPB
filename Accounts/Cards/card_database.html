@@ -8266,6 +8266,7 @@
                 catalogBaseModelCache: null,
                 catalogBaseModelRowsRef: null,
                 catalogBaseModelCardmasterRef: null,
+                catalogBaseModelLocalisationRef: null,
                 catalogBaseModelTradeMetaVersion: -1,
                 catalogAccountCountsCache: null,
                 catalogAccountCountsRowsRef: null,
@@ -11775,6 +11776,7 @@
                 state.catalogBaseModelCache = null;
                 state.catalogBaseModelRowsRef = null;
                 state.catalogBaseModelCardmasterRef = null;
+                state.catalogBaseModelLocalisationRef = null;
                 state.catalogBaseModelTradeMetaVersion = -1;
                 state.catalogAccountCountsCache = null;
                 state.catalogAccountCountsRowsRef = null;
@@ -12480,15 +12482,23 @@
                 return rows;
             }
 
+            function getLocalisedText(key) {
+                const loc = state.localisation || {};
+                const direct = String(loc[key] ?? "").trim();
+                if (direct) return direct;
+                const plural = String(loc[`${key}_plural`] ?? "").trim();
+                return plural;
+            }
+
             function getCardInfo(cardId) {
                 if (state.cardInfoCache.has(cardId))
                     return state.cardInfoCache.get(cardId);
-                const master = state.cardmaster || {},
-                    loc = state.localisation || {};
+                const master = state.cardmaster || {};
                 const raw = master[cardId] || null;
                 const nameKey = raw && raw.Name;
-                const name =
-                    nameKey && loc[nameKey] ? loc[nameKey] : nameKey || cardId;
+                const name = nameKey
+                    ? getLocalisedText(nameKey) || nameKey
+                    : cardId;
                 const rarityValue =
                     raw && raw.Rarity != null ? Number(raw.Rarity) : null;
                 const rarityName =
@@ -14140,6 +14150,8 @@
                     state.catalogBaseModelCache &&
                     state.catalogBaseModelRowsRef === state.rows &&
                     state.catalogBaseModelCardmasterRef === state.cardmaster &&
+                    state.catalogBaseModelLocalisationRef ===
+                        state.localisation &&
                     state.catalogBaseModelTradeMetaVersion ===
                         state.catalogTradeMetaVersion
                 ) {
@@ -14218,6 +14230,7 @@
                 state.catalogBaseModelCache = cache;
                 state.catalogBaseModelRowsRef = state.rows;
                 state.catalogBaseModelCardmasterRef = state.cardmaster;
+                state.catalogBaseModelLocalisationRef = state.localisation;
                 state.catalogBaseModelTradeMetaVersion =
                     state.catalogTradeMetaVersion;
                 return cache;
