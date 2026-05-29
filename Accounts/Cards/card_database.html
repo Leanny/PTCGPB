@@ -7910,7 +7910,16 @@
                 const row = MULTI_PICKER_BADGE_STACK[n];
                 return row ? row : null;
             }
+            const _multiPickerBadgeHtmlCache = new Map();
             function getMultiPickerRarityBadgeHtml(rarityKey) {
+                const cacheKey = String(rarityKey ?? "");
+                const cached = _multiPickerBadgeHtmlCache.get(cacheKey);
+                if (cached !== undefined) return cached;
+                const html = _buildMultiPickerRarityBadgeHtml(rarityKey);
+                _multiPickerBadgeHtmlCache.set(cacheKey, html);
+                return html;
+            }
+            function _buildMultiPickerRarityBadgeHtml(rarityKey) {
                 const stack = resolveMultiPickerBadgeStack(rarityKey);
                 const label = getRarityFilterLabel(rarityKey);
                 if (stack) {
@@ -10032,11 +10041,11 @@
                 const copiesValue = formatNumber(copies ?? 0);
                 const shinedustValue = Number.isFinite(shinedust)
                     ? formatNumber(shinedust)
-                    : "—";
-                const instanceValue = instance ? String(instance) : "—";
+                    : "-";
+                const instanceValue = instance ? String(instance) : "-";
                 const ageValue = Number.isFinite(ageDays)
                     ? `${formatNumber(ageDays)}d`
-                    : "—";
+                    : "-";
                 return renderMetaBarHtml([
                     {
                         label: "Copies",
@@ -10479,6 +10488,18 @@
 
             function cardImageOnErrorAttr(info, variant = "catalog") {
                 if (!info || !info.imageUrl) return "";
+                const cache = info._onErrorAttrCache;
+                if (cache) {
+                    const hit = cache[variant];
+                    if (hit !== undefined) return hit;
+                }
+                const result = _buildCardImageOnErrorAttr(info, variant);
+                (info._onErrorAttrCache || (info._onErrorAttrCache = {}))[
+                    variant
+                ] = result;
+                return result;
+            }
+            function _buildCardImageOnErrorAttr(info, variant) {
                 if (!info.imageUrlFallback) {
                     if (variant === "visibility") {
                         return `onerror="this.style.visibility='hidden'"`;
@@ -10758,6 +10779,11 @@
                         return;
                     }
                     if (!res.ok && res.status !== 202) {
+                        if (res.status === 405) {
+                            throw new Error(
+                                "Card image prefetch is not available on this server (HTTP 405). Restart via start_card_dashboard.bat or PTCGPB.ahk and ensure Accounts/Cards/start_card_dashboard_server.ps1 from this branch is running.",
+                            );
+                        }
                         throw new Error(
                             data.error ||
                                 `Download request failed (${res.status}).`,
@@ -11083,8 +11109,14 @@
             }
 
             function splitCardsIntoExpansionBlocks(pack, cardIds) {
+                if (
+                    cardIds.length <= 1 ||
+                    (typeof pack === "string" && pack.indexOf(",") < 0)
+                ) {
+                    return [{ pack, cardIds }];
+                }
                 const packParts = splitPackList(pack);
-                if (packParts.length <= 1 || cardIds.length <= 1) {
+                if (packParts.length <= 1) {
                     return [{ pack, cardIds }];
                 }
                 const blocks = [];
@@ -12448,14 +12480,14 @@
                 for (let i = 0; i < cardIds.length; i++) {
                     const id = cardIds[i];
                     const info = getCardInfo(id);
-                    searchParts.push(info.name, id);
+                    searchParts.push(info.searchBlob);
                     cardTypeSet.add(getCardType(id));
                     if (info.rarityValue != null)
                         raritySet.add(getCardRarityFilterKey(id, info));
                     if (!info.raw) missing.push(id);
                 }
                 const value = {
-                    cardSearchBlob: normaliseSearch(searchParts.join(" ")),
+                    cardSearchBlob: searchParts.join(" "),
                     rarityValues: [...raritySet],
                     cardTypeValues: [...cardTypeSet],
                     missing,
@@ -13855,9 +13887,8 @@
                     for (const id of Object.keys(state.cardmaster))
                         ids.add(String(id));
                 }
-                for (const row of state.rows) {
-                    for (const id of row.cardIds) ids.add(String(id));
-                }
+                const { rowCardIds } = buildCardAccountCounts();
+                for (const id of rowCardIds) ids.add(id);
                 const allIds = [...ids];
                 state.catalogAllKnownCardIdsCache = allIds;
                 state.catalogAllKnownCardIdsRowsRef = state.rows;
@@ -16889,6 +16920,7 @@
 
                 const cardToAccounts = new Map();
                 const accountFirstSeenMs = new Map();
+                const rowCardIds = new Set();
                 for (const row of state.rows) {
                     if (Number.isFinite(row.timestampMs)) {
                         const prev = accountFirstSeenMs.get(row.account);
@@ -16899,9 +16931,12 @@
                             );
                     }
                     for (const cardId of row.cardIds) {
-                        if (!cardToAccounts.has(cardId))
-                            cardToAccounts.set(cardId, new Map());
-                        const accountMap = cardToAccounts.get(cardId);
+                        rowCardIds.add(cardId);
+                        let accountMap = cardToAccounts.get(cardId);
+                        if (!accountMap) {
+                            accountMap = new Map();
+                            cardToAccounts.set(cardId, accountMap);
+                        }
                         accountMap.set(
                             row.account,
                             (accountMap.get(row.account) || 0) + 1,
@@ -16929,7 +16964,7 @@
                         accountMap.set(acc, (accountMap.get(acc) || 0) + 1);
                     }
                 }
-                const cache = { cardToAccounts, accountFirstSeenMs };
+                const cache = { cardToAccounts, accountFirstSeenMs, rowCardIds };
                 state.catalogAccountCountsCache = cache;
                 state.catalogAccountCountsRowsRef = state.rows;
                 state.catalogAccountCountsTradeMetaVersion =
@@ -17528,7 +17563,12 @@
                                 0,
                             );
                             const completion = total
-                                ? Math.round((avail / total) * 100)
+                                ? avail >= total
+                                    ? 100
+                                    : Math.min(
+                                          99,
+                                          Math.round((avail / total) * 100),
+                                      )
                                 : 0;
                             const iconUrl = getPackIconUrl(section.code);
                             return `<button type="button" class="expansion-nav" data-jump-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
@@ -19395,7 +19435,14 @@
                     ownedTotal,
                     totalCards: allIds.length,
                     globalPct: allIds.length
-                        ? Math.round((ownedTotal / allIds.length) * 100)
+                        ? ownedTotal >= allIds.length
+                            ? 100
+                            : Math.min(
+                                  99,
+                                  Math.round(
+                                      (ownedTotal / allIds.length) * 100,
+                                  ),
+                              )
                         : 0,
                     rarityTotals,
                     rarityOwned,
@@ -19451,7 +19498,12 @@
                     ownedTotal,
                     totalCards,
                     globalPct: totalCards
-                        ? Math.round((ownedTotal / totalCards) * 100)
+                        ? ownedTotal >= totalCards
+                            ? 100
+                            : Math.min(
+                                  99,
+                                  Math.round((ownedTotal / totalCards) * 100),
+                              )
                         : 0,
                     rarityTotals,
                     rarityOwned,
@@ -19594,11 +19646,18 @@
                             const avail = section.cards.filter(
                                 (card) => card.owned,
                             ).length;
+                            const isComplete = total > 0 && avail >= total;
                             const completion = total
-                                ? Math.round((avail / total) * 100)
+                                ? isComplete
+                                    ? 100
+                                    : Math.min(
+                                          99,
+                                          Math.round((avail / total) * 100),
+                                      )
                                 : 0;
-                            const completeClass =
-                                completion >= 100 ? " is-complete" : "";
+                            const completeClass = isComplete
+                                ? " is-complete"
+                                : "";
                             const iconUrl = getPackIconUrl(section.code);
                             return `<button type="button" class="expansion-nav${completeClass}" data-collection-expansion="${escapeHtml(section.code)}" title="${escapeHtml(section.label)} completion ${formatNumber(completion)}%"><div class="ex-progress-ring" style="--completion:${completion}" aria-hidden="true"><span class="ex-progress-value">${formatNumber(completion)}%</span></div><div class="ex-logo-wrap">${
                                 iconUrl
@@ -19680,23 +19739,27 @@
                             stats.rarityOwned.get(rarityKey) || 0;
                         const total =
                             stats.rarityTotals.get(rarityKey) || 0;
+                        const isComplete = total > 0 && owned >= total;
                         const pct = total
-                            ? Math.round((owned / total) * 100)
+                            ? isComplete
+                                ? 100
+                                : Math.min(
+                                      99,
+                                      Math.round((owned / total) * 100),
+                                  )
                             : 0;
                         const missing = Math.max(0, total - owned);
                         const label = getRarityFilterLabel(rarityKey);
-                        const stateClass =
-                            pct >= 100
-                                ? "is-complete"
-                                : pct <= 0
-                                  ? "is-empty"
-                                  : "is-progress";
-                        const subLabel =
-                            pct >= 100
-                                ? "Complete"
-                                : pct <= 0
-                                  ? "Not started"
-                                  : `${formatNumber(missing)} missing`;
+                        const stateClass = isComplete
+                            ? "is-complete"
+                            : pct <= 0
+                              ? "is-empty"
+                              : "is-progress";
+                        const subLabel = isComplete
+                            ? "Complete"
+                            : pct <= 0
+                              ? "Not started"
+                              : `${formatNumber(missing)} missing`;
                         return `<article class="collection-rarity-card ${stateClass}" style="--completion:${pct}" title="${escapeHtml(label)}: ${formatNumber(owned)} of ${formatNumber(total)} (${formatNumber(pct)}%)"><div class="collection-rarity-ring" aria-hidden="true"><span class="collection-rarity-pct">${formatNumber(pct)}%</span></div><div class="collection-rarity-badge" aria-hidden="true">${getMultiPickerRarityBadgeHtml(rarityKey)}</div><div class="collection-rarity-counts"><span class="owned">${formatNumber(owned)}</span><span class="sep">/</span><span class="total">${formatNumber(total)}</span></div><div class="collection-rarity-sub">${escapeHtml(subLabel)}</div></article>`;
                     })
                     .join("");
@@ -19723,7 +19786,7 @@
                 const importedLabel = selected.registryImportedAt
                     ? formatMetadataTimestamp(selected.registryImportedAt) ||
                       selected.registryImportedAt
-                    : "—";
+                    : "-";
 
                 const summaryHtml = renderMetaBarHtml([
                     {
@@ -19810,7 +19873,7 @@
                     ? formatMetadataTimestamp(
                           selected.registryImportedAt,
                       ) || selected.registryImportedAt
-                    : "—";
+                    : "-";
                 return `${formatNumber(displayStats.ownedTotal)} of ${formatNumber(displayStats.totalCards)} cards registered (${formatNumber(displayStats.globalPct)}%) · ${accountLabel} · imported ${importedLabel}`;
             }
 
@@ -20120,8 +20183,8 @@
                     });
             }
 
-            function attachMyCollectionListeners() {
-                const parts = buildCollectionGridParts();
+            function attachMyCollectionListeners(prebuiltParts) {
+                const parts = prebuiltParts || buildCollectionGridParts();
                 if (!parts) return;
                 _attachCollectionControlListeners(parts.catalogRarityKeys);
                 _attachCollectionMainListeners();
@@ -20157,7 +20220,7 @@
                 );
 
                 el.rows.innerHTML = `<section class="collection-page">${controlsHtml}<div class="collection-library-main">${parts.mainHtml}</div></section>`;
-                attachMyCollectionListeners();
+                attachMyCollectionListeners(parts);
             }
 
             function renderAccountOverview() {
@@ -20315,12 +20378,12 @@
                               [
                                   {
                                       label: "Account Name",
-                                      value: metadata.accountName || "—",
+                                      value: metadata.accountName || "-",
                                       className: "meta-account-name",
                                   },
                                   {
                                       label: "Friend Code",
-                                      value: metadata.friendCode || "—",
+                                      value: metadata.friendCode || "-",
                                       className: "meta-friend-code",
                                   },
                               ],
