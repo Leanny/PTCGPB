@@ -4777,6 +4777,10 @@ DoWonderPickOnly() {
 
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
+
+    if (isTerminatePTCGPHelperApp()) {
+        InitPackOpening()
+    }
     Loop {
         adbClick_wbb(80, 390) ; first wonderpick slot
         adbClick_wbb(80, 460) ; backup, second wonderpick slot
@@ -4853,6 +4857,10 @@ DoWonderPickOnly() {
         Delay(4)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for Shop`n(" . failSafeTime . "/45 seconds)")
+    }
+    result := EvaluatePack()
+    if (result) {
+        LogToCardDatabase(result)
     }
     SetWonderPickMetadataFlag()
 }
