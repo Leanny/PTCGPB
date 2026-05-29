@@ -11,7 +11,6 @@ global adbShell, adbPath, adbPorts, winTitle, folderPath, selectedFilePath, mumu
 
 IniRead, winTitle, InjectAccount.ini, UserSettings, winTitle, 1
 IniRead, fileName, InjectAccount.ini, UserSettings, fileName, name
-IniRead, folderPath, InjectAccount.ini, UserSettings, folderPath, C:\Program Files\Netease
 IniRead, selectedFilePath, InjectAccount.ini, UserSettings, selectedFilePath, ""
 IniRead, sendFriendRequestAfterInject, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject, 0
 IniRead, injectExtraFriendIDsIni, InjectAccount.ini, UserSettings, injectExtraFriendIDs,
@@ -19,6 +18,7 @@ if (injectExtraFriendIDsIni = "ERROR")
     injectExtraFriendIDsIni := ""
 
 settingsIniFriend := A_ScriptDir . "\..\Settings.ini"
+IniRead, folderPath, %settingsIniFriend%, ToolsAndSystem, folderPath, C:\Program Files\Netease
 IniRead, injectFriendPrimary, %settingsIniFriend%, General, FriendID, ERROR
 if (injectFriendPrimary = "ERROR")
     injectFriendPrimary := ""
@@ -178,7 +178,7 @@ SaveSettings:
     ; Removed: Gui, Destroy
     IniWrite, %winTitle%, InjectAccount.ini, UserSettings, winTitle
     IniWrite, %fileName%, InjectAccount.ini, UserSettings, fileName
-    IniWrite, %folderPath%, InjectAccount.ini, UserSettings, folderPath
+    IniWrite, %folderPath%, %settingsIniFriend%, ToolsAndSystem, folderPath
     IniWrite, %selectedFilePath%, InjectAccount.ini, UserSettings, selectedFilePath
     IniWrite, %sendFriendRequestAfterInject%, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject
     extraFriendForIni := extraFriendIDs
@@ -295,7 +295,8 @@ RunInjectFlow:
 return
 
 getMumuFolder(folderPath) {
-    candidateFolders := [folderPath . "\MuMu"
+    candidateFolders := [folderPath
+        , folderPath . "\MuMu"
         , folderPath . "\MuMuPlayerGlobal-12.0"
         , folderPath . "\MuMuPlayerGlobal"
         , folderPath . "\MuMuPlayer-12.0"
@@ -305,7 +306,7 @@ getMumuFolder(folderPath) {
         , folderPath . "\MuMuPlayer12"]
 
     for _, candidateFolder in candidateFolders {
-        if FileExist(candidateFolder)
+        if FileExist(candidateFolder . "\nx_main")
             return candidateFolder
     }
 

@@ -11,7 +11,8 @@ global adbShell, adbPath, adbPorts, winTitle, folderPath, mumuFolder, extractInP
 
 IniRead, winTitle, ExtractAccount.ini, UserSettings, winTitle, 1
 IniRead, fileName, ExtractAccount.ini, UserSettings, fileName, name
-IniRead, folderPath, ExtractAccount.ini, UserSettings, folderPath, C:\Program Files\Netease
+settingsIniFriend := A_ScriptDir . "\..\Settings.ini"
+IniRead, folderPath, %settingsIniFriend%, ToolsAndSystem, folderPath, C:\Program Files\Netease
 
 ; Match Inject visual style
 Gui, Font, s10, Segoe UI
@@ -61,7 +62,7 @@ SaveSettings:
     UpdateExtractUi("Saving settings...", 5)
     IniWrite, %winTitle%, ExtractAccount.ini, UserSettings, winTitle
     IniWrite, %fileName%, ExtractAccount.ini, UserSettings, fileName
-    IniWrite, %folderPath%, ExtractAccount.ini, UserSettings, folderPath
+    IniWrite, %folderPath%, %settingsIniFriend%, ToolsAndSystem, folderPath
 
     UpdateExtractUi("Resolving MuMu folder...", 12)
     mumuFolder := getMumuFolder(folderPath)
@@ -251,7 +252,8 @@ RunAdbPull(remotePath, localPath) {
 }
 
 getMumuFolder(folderPath) {
-    candidateFolders := [folderPath . "\MuMu"
+    candidateFolders := [folderPath
+        , folderPath . "\MuMu"
         , folderPath . "\MuMuPlayerGlobal-12.0"
         , folderPath . "\MuMuPlayerGlobal"
         , folderPath . "\MuMuPlayer-12.0"
@@ -261,7 +263,7 @@ getMumuFolder(folderPath) {
         , folderPath . "\MuMuPlayer12"]
 
     for _, candidateFolder in candidateFolders {
-        if FileExist(candidateFolder)
+        if FileExist(candidateFolder . "\nx_main")
             return candidateFolder
     }
 
