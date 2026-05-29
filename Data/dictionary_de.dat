@@ -100,10 +100,11 @@ Txt_openExtraPack:Extra-Pack öffnen
 Txt_claimSpecialMissions:Spezialmissionen
 SortByText:Sortieren nach:
 
-Txt_PulsingAura:Pulsing Aura
-Txt_MegaShine:Mega Shine
-Txt_PaldeanWonders:Paldean Wonders
-Txt_Parade:Parade
+Txt_Parade:Traumhafte Parade
+Txt_PaldeanWonders:Wundervolles Paldea
+Txt_MegaShine:Mega-Schillern
+Txt_PulsingAura:Pulsierende Aura
+Txt_ParadoxDrive:Paradoxansturm
 Txt_CrimsonBlaze:Feuerrote Flammen
 Txt_MegaGyarados:Mega-Garados
 Txt_MegaBlaziken:Mega-Lohgock
@@ -165,35 +166,35 @@ HideSwipeToolTip:(This message disappears when you click outside the input field
 
 Title:Dieses Projekt ist lizensiert unter CC BY-NC 4.0
 Content:Die ursprüngliche Absicht dieses Projekts war nicht,
- dass es für bezahlte Dienste genutzt wird – 
-auch nicht in Form angeblicher 'Spenden'. 
+ dass es für bezahlte Dienste genutzt wird –
+auch nicht in Form angeblicher 'Spenden'.
 Ich hoffe, dass die Leute meine Wünsche und die der Community respektieren.
-`nDas Projekt steht nun unter der Lizenz CC BY-NC 4.0. Diese erlaubt die Nutzung, 
-Modifikation und Weitergabe der 
-Software ausschließlich für nicht-kommerzielle Zwecke. 
-Kommerzielle Nutzung – einschließlich bezahlter Dienste oder 
-Verkäufe (auch mit Spenden) – ist unter dieser Lizenz nicht gestattet. 
+`nDas Projekt steht nun unter der Lizenz CC BY-NC 4.0. Diese erlaubt die Nutzung,
+Modifikation und Weitergabe der
+Software ausschließlich für nicht-kommerzielle Zwecke.
+Kommerzielle Nutzung – einschließlich bezahlter Dienste oder
+Verkäufe (auch mit Spenden) – ist unter dieser Lizenz nicht gestattet.
 Die neue Lizenz gilt für diese und alle zukünftigen Versionen.
 
 Notice:Proxy erkannt. Wechsle zur Proxy-Version.
 
-Error_BotPathTooLong:Der Pfad zum Bot-Ordner ist zu lang oder 
-enthält Leerzeichen. Bitte verschiebe 
+Error_BotPathTooLong:Der Pfad zum Bot-Ordner ist zu lang oder
+enthält Leerzeichen. Bitte verschiebe
 ihn in ein kürzeres Verzeichnis ohne Leerzeichen.
-Confirm_SelectedMethod:Gewählte Methode: 
-Confirm_RangeValue:Wertbereich: 
-Confirm_MaxPackCount:Maximale Paketanzahl: 
-Confirm_MinPackCount:Mindestpackungsanzahl: 
-Confirm_SelectedPacks:Gewählte Packs: 
-Confirm_AdditionalSettings:Weitere Einstellungen: 
+Confirm_SelectedMethod:Gewählte Methode:
+Confirm_RangeValue:Wertbereich:
+Confirm_MaxPackCount:Maximale Paketanzahl:
+Confirm_MinPackCount:Mindestpackungsanzahl:
+Confirm_SelectedPacks:Gewählte Packs:
+Confirm_AdditionalSettings:Weitere Einstellungen:
 Confirm_1PackMethod:• 1-Pack Methode
 Confirm_MenuDelete:• Menü löschen
 Confirm_SpendHourGlass:• Sanduhren verwenden
 Confirm_openExtraPack:• Extra-Pack öffnen
 Confirm_ClaimMissions:• Spezialmissionen einfordern
-Confirm_SortBy:• Sortieren nach: 
+Confirm_SortBy:• Sortieren nach:
 Confirm_None:Keine
-Confirm_CardDetection:Kartenerkennung: 
+Confirm_CardDetection:Kartenerkennung:
 Confirm_SingleFullArt:• Einzelne Full Art
 Confirm_SingleTrainer:• Einzelne Trainer
 Confirm_SingleRainbow:• Einzelne Regenbogen
@@ -202,7 +203,7 @@ Confirm_SaveCrowns:• Kronen speichern
 Confirm_SaveShiny:• Schillernde speichern
 Confirm_SaveImmersives:• Immersive speichern
 Confirm_IgnoreInvalid:• Ignoriere ungültige Packs
-Confirm_RowGap:Abstand zw. Instanzen: 
+Confirm_RowGap:Abstand zw. Instanzen:
 Confirm_SaveForTrade:Für Tausch speichern aktivieren
 Confirm_Enabled:Aktiviert
 Confirm_Disabled:Deaktiviert
@@ -211,17 +212,17 @@ Confirm_Gholdengo:Gholdengo
 Confirm_WonderPick:Wunderwahl
 Confirm_MinCards:Min. Karten
 Confirm_XMLWarning:⚠️ WARNUNG: Account XML senden ist aktiviert. Diese Einstellung wird nur zur alleinigen Nutzung empfohlen. Verwenden Sie sie nicht in Gruppen, da Ihre Konten mit anderen Mitgliedern Ihrer Gruppe geteilt werden.
-Confirm_StartBot:Klicke auf Ja, um den BOT mit diesen 
-Einstellungen zu STARTEN. Klicke auf 
+Confirm_StartBot:Klicke auf Ja, um den BOT mit diesen
+Einstellungen zu STARTEN. Klicke auf
 Nein, um die Einstellungen zu ÄNDERN.
 
-Help_Shortcuts:Tastatur Shortcuts: 
-Help_FunctionKeys:Funktionstasten: 
+Help_Shortcuts:Tastatur Shortcuts:
+Help_FunctionKeys:Funktionstasten:
 Help_F4:Dieses Hilfemenü anzeigen
 Help_ShiftF7:Sende alle Offline Status & Verlassen
-Help_Interface:Oberflächeneinstellungen: 
-Help_CurrentTheme:Aktuelles Thema: 
-Help_BackgroundImage:Hintergrundbild: 
+Help_Interface:Oberflächeneinstellungen:
+Help_CurrentTheme:Aktuelles Thema:
+Help_BackgroundImage:Hintergrundbild:
 Help_Enabled:Aktiviert
 Help_Disabled:Deaktiviert
 Help_ToggleTheme:Wechsle das Thema mit dem Knopf oben im Fenster.

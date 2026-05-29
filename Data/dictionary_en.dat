@@ -104,7 +104,7 @@ Txt_ParadoxDrive:Paradox Drive
 Txt_PulsingAura:Pulsing Aura
 Txt_MegaShine:Mega Shine
 Txt_PaldeanWonders:Paldean Wonders
-Txt_Parade:Parade
+Txt_Parade:Fantastical Parade
 Txt_CrimsonBlaze:Crimson Blaze
 Txt_MegaGyarados:Mega Gyarados
 Txt_MegaBlaziken:Mega Blaziken
@@ -165,26 +165,26 @@ RecommandSwipeSpeedUseModMenu:→ 250 is recommended if the 'No Speedmod Menu' c
 HideSwipeToolTip:(This message disappears when you click outside the input field.)
 
 Title:The project is now licensed under CC BY-NC 4.0
-Content:The original intention of this project was not for it 
-to be used for paid services even those disguised as 'donations.' 
+Content:The original intention of this project was not for it
+to be used for paid services even those disguised as 'donations.'
 I hope people respect my wishes and those of the community.
-`nThe project is now licensed under CC BY-NC 4.0, which allows you to use, modify, 
-and share the software only for non-commercial purposes. Commercial use, 
-including using the software to provide paid services 
-or selling it (even if donations are involved), is not allowed under this license. 
+`nThe project is now licensed under CC BY-NC 4.0, which allows you to use, modify,
+and share the software only for non-commercial purposes. Commercial use,
+including using the software to provide paid services
+or selling it (even if donations are involved), is not allowed under this license.
 The new license applies to this and all future releases.
 
 Notice:Proxy detected. Switched to proxy version.
 
-Error_BotPathTooLong:The bot folder path is too long 
-or contains white spaces. 
+Error_BotPathTooLong:The bot folder path is too long
+or contains white spaces.
 Try moving it to C:\PTCGPB or D:\PTCGPB
-Confirm_SelectedMethod:Selected Method: 
-Confirm_RangeValue:Range Value: 
-Confirm_MaxPackCount:Maximum Pack Count: 
-Confirm_MinPackCount:Minimum Pack Count: 
-Confirm_SelectedPacks:Selected Packs: 
-Confirm_AdditionalSettings:Additional settings: 
+Confirm_SelectedMethod:Selected Method:
+Confirm_RangeValue:Range Value:
+Confirm_MaxPackCount:Maximum Pack Count:
+Confirm_MinPackCount:Minimum Pack Count:
+Confirm_SelectedPacks:Selected Packs:
+Confirm_AdditionalSettings:Additional settings:
 Confirm_1PackMethod:• 1 Pack Method
 Confirm_MenuDelete:• Menu Delete
 Confirm_openExtraPack:• Open Extra Pack
@@ -192,7 +192,7 @@ Confirm_SpendHourGlass:• Spend Hourglass
 Confirm_ClaimMissions:• Claim Special Missions
 Confirm_SortBy:• Sort By:
 Confirm_None:None
-Confirm_CardDetection:Card Detection: 
+Confirm_CardDetection:Card Detection:
 Confirm_SingleFullArt:• Single Full Art
 Confirm_SingleTrainer:• Single Trainer
 Confirm_SingleRainbow:• Single Rainbow
@@ -201,7 +201,7 @@ Confirm_SaveCrowns:• Save Crowns
 Confirm_SaveShiny:• Save Shiny
 Confirm_SaveImmersives:• Save Immersives
 Confirm_IgnoreInvalid:• Ignore Invalid Packs
-Confirm_RowGap:Row Gap: 
+Confirm_RowGap:Row Gap:
 Confirm_SaveForTrade:Save for Trade
 Confirm_Enabled:Enabled
 Confirm_Disabled:Disabled
@@ -213,13 +213,13 @@ Confirm_XMLWarning:⚠️ WARNING: Send Account XML is enabled. This setting is 
 Confirm_StartBot:Click 'Yes' to START THE BOT with these settings.
 Click 'No' to CHANGE settings.
 
-Help_Shortcuts:Keyboard Shortcuts: 
-Help_FunctionKeys:Function Keys: 
+Help_Shortcuts:Keyboard Shortcuts:
+Help_FunctionKeys:Function Keys:
 Help_F4:Show This Help Menu
 Help_ShiftF7:Send All Offline Status & Exit
-Help_Interface:Interface Settings: 
-Help_CurrentTheme:Current Theme: 
-Help_BackgroundImage:Background Image: 
+Help_Interface:Interface Settings:
+Help_CurrentTheme:Current Theme:
+Help_BackgroundImage:Background Image:
 Help_Enabled:Enabled
 Help_Disabled:Disabled
 Help_ToggleTheme:Toggle theme with the button at the top of the window.
