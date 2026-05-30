@@ -328,9 +328,15 @@ AddFriends(renew := false, getFC := false) {
     }
 
     ; ratelimit, only use this route when number of added ids is 6-10, 16-20, etc
-    if (Mod(n - 1, 10) >= 5) {
-        inventoryIconPos := FindImageAndClick("Menu_InventoryIconInMenu", 240, 494)
-        DelayH(600)
+    rateLimitMod := Mod(n - 1, 10)
+    if (rateLimitMod >= 5) {
+        menuClickX := GetScaleProfileValue(240, 245)
+        menuClickY := GetScaleProfileValue(494, 520)
+        menuOpenSleepTime := GetScaleProfileValue(botConfig.get("Delay"), 1000)
+        inventoryIconPos := FindImageAndClick("Menu_InventoryIconInMenu", menuClickX, menuClickY, , menuOpenSleepTime)
+        menuSettleDelay := GetScaleProfileValue(0, 1)
+        if(menuSettleDelay > 0)
+            Delay(menuSettleDelay)
 
         if(!inventoryIconPos) {
             restartGameInstance("Stuck at InSubMenu...")
@@ -338,8 +344,8 @@ AddFriends(renew := false, getFC := false) {
         }
 
         StringSplit, inventoryIconCoord, inventoryIconPos, `,
-        miscClickX := inventoryIconCoord1 + 8
-        miscClickY := inventoryIconCoord2 + 170
+        miscClickX := inventoryIconCoord1 + GetScaleProfileValue(8, 7)
+        miscClickY := inventoryIconCoord2 + GetScaleProfileValue(170, 167)
         adbClick_wbb(miscClickX, miscClickY)
 
         miscWaitStart := A_TickCount

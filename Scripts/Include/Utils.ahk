@@ -1350,11 +1350,58 @@ ResolveNeedlePath(path) {
     if (GetConfiguredDisplayScale() != 125)
         return path
 
+    if (!IsScale125NeedleFallbackAllowed(path))
+        return path
+
     scale125Path := StrReplace(path, "\Needles\", "\Scale125\")
     if (scale125Path != path && FileExist(scale125Path))
         return scale125Path
 
     return path
+}
+
+IsScale125NeedleFallbackAllowed(path) {
+    SplitPath, path, fileName
+
+    if (fileName = "")
+        return false
+
+    if (IsScale125RarityNeedle(fileName))
+        return true
+
+    static allowedUiNeedles := ""
+    if (!IsObject(allowedUiNeedles)) {
+        allowedUiNeedles := {}
+        ; Shared Needles are the default. These are legacy pixel-sensitive
+        ; Scale 125 UI fallbacks that differ from the shared asset set.
+        for _, allowedName in ["Account.png"
+            , "CloseAlertWindow.png"
+            , "Error.png"
+            , "Friend2.png"
+            , "FriendSearchButton.png"
+            , "GoToTitle.png"
+            , "HardwareReqs.png"
+            , "Hourglass1.png"
+            , "InSubMenu.png"
+            , "Mission_dino2.png"
+            , "noWPenergy.png"
+            , "OK2.png"
+            , "One.png"
+            , "Settings.png"
+            , "speedmodMenu.png"
+            , "SwipeUp.png"
+            , "Three.png"
+            , "Two.png"
+            , "WonderPickRaminItems.png"] {
+            allowedUiNeedles[allowedName] := true
+        }
+    }
+
+    return allowedUiNeedles.HasKey(fileName)
+}
+
+IsScale125RarityNeedle(fileName) {
+    return RegExMatch(fileName, "i)^(1star|3diamond|crown|gimmighoul|immersive|normal|rainbow|shiny1star|ShinyEx_ex_|trainer)\d+\.png$")
 }
 
 GetScaleProfileValue(scale100Value, scale125Value) {

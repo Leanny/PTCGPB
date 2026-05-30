@@ -111,7 +111,7 @@ Loop {
         WinGetPos, x, y, Width, Height, % "ahk_id " . OwnerWND
         sleep, 1000
         x4 := x + 4
-        y4 := y + 529
+        y4 := y + Height - 2
         buttonWidth := 45
 
         Gui, ToolBar:New, +Owner%OwnerWND% -AlwaysOnTop +ToolWindow -Caption +LastFound -DPIScale
