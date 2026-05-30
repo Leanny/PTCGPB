@@ -924,12 +924,13 @@ getScreenHandle(ParentTitle){
 }
 
 FixInstanceScreen(instanceNo){
+    windowMetrics := GetMumuWindowMetrics()
     instanceTitle := instanceNo . " ahk_class Qt5156QWindowIcon"
     SendMessage, 0x0005, 1, 0,, %instanceTitle%
     Sleep, 50
     SendMessage, 0x0005, 0, 0,, %instanceTitle%
     Sleep, 500
-    WinMove, %instanceTitle%, , , , 283, 532
+    WinMove, %instanceTitle%, , , , % windowMetrics.scaleParam, % windowMetrics.rowHeight
 }
 
 getMuMuHwnd(winTitle) {
