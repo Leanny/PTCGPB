@@ -646,15 +646,32 @@ CmdRet(sCmd, callBackFuncObj := "", encoding := "") {
    Return sOutput
 }
 
-writeLastEndEpoch(scriptName) {
+writeMetricEpoch(scriptName, metricName) {
     if(InStr(scriptName, "Main"))
-        return
+        return 0
 
     scriptName := StrReplace(scriptName, ".ahk")
 
     now := A_NowUTC
     EnvSub, now, 1970, seconds
-    IniWrite, %now%, %A_ScriptDir%\%scriptName%.ini, Metrics, LastEndEpoch
+    iniPath := GetScriptIniPathByName(scriptName)
+    IniWrite, %now%, %iniPath%, Metrics, %metricName%
+    return now
+}
+
+writeLastEndEpoch(scriptName) {
+    return writeMetricEpoch(scriptName, "LastEndEpoch")
+}
+
+writeLastActivityEpoch(scriptName, minIntervalMs := 0) {
+    static lastWriteTick := Object()
+
+    scriptName := StrReplace(scriptName, ".ahk")
+    if (minIntervalMs > 0 && lastWriteTick.HasKey(scriptName) && (A_TickCount - lastWriteTick[scriptName]) < minIntervalMs)
+        return 0
+
+    lastWriteTick[scriptName] := A_TickCount
+    return writeMetricEpoch(scriptName, "LastActivityEpoch")
 }
 
 SerializeArray(arr) {

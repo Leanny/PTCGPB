@@ -362,6 +362,7 @@ RemoveFriends() {
     cleanupAccount := session.get("accountFileName")
     LogInfo("RemoveFriends start | account=" . cleanupAccount)
     LogDebug("RemoveFriends start detail | account=" . cleanupAccount . " | friended=" . session.get("friended") . " | DeadCheck=" . DeadCheck . " | deleteMethod=" . botConfig.get("deleteMethod") . " | useSoloIdsFile=" . botConfig.get("useSoloIdsFile"))
+    writeLastActivityEpoch(session.get("scriptName"), 4000)
 
     ; Only allow RemoveFriends in Inject Wonderpick 96P+ mode
     if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+" && !botConfig.get("useSoloIdsFile")) {
@@ -432,6 +433,7 @@ RemoveFriends() {
         Sleep, 500
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for Social`n(" . failSafeTime . "/90 seconds)")
+        writeLastActivityEpoch(session.get("scriptName"), 4000)
     }
 
     GoToFriendsList(false, false)
@@ -469,6 +471,7 @@ RemoveFriends() {
             break
         }
         CreateStatusMessage("Waiting for clearAll`n(" . failSafeTime . "/45 seconds)")
+        writeLastActivityEpoch(session.get("scriptName"), 4000)
     }
     interceptProc := false
     FindImageAndClick("Friend_FriendListSubmenu", 22, 464, , 10)
@@ -499,6 +502,7 @@ RemoveFriends() {
                 break
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Waiting for Accepted2`n(" . failSafeTime . "/45 seconds)")
+            writeLastActivityEpoch(session.get("scriptName"), 4000)
         }
         if(finished)
             break
@@ -545,11 +549,13 @@ RemoveFriends() {
                 break
         }
         friendsProcessed++
+        writeLastActivityEpoch(session.get("scriptName"), 4000)
     }
 
     ; Exit friend removal process
     CreateStatusMessage("Friend removal completed. Processed " . friendsProcessed . " friends. Returning to main...",,,, false)
     LogInfo("RemoveFriends complete | account=" . cleanupAccount . " | processed=" . friendsProcessed . " | DeadCheckBeforeClear=" . DeadCheck)
+    writeLastActivityEpoch(session.get("scriptName"), 4000)
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
     ClearFriendCleanupPending()
     session.set("friended", false)
