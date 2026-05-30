@@ -1,5 +1,5 @@
 # Description
-Autorun is a script that will start the PTCGPB bot in admin immediatly after Windows login is done without asking anything to the user and balance XML files.
+Autorun is a script that will start the PTCGPB bot in admin imediatly after Windows login is done without asking anything to the user and balance XML files.
 
 # Usage
 - Configure your AutoHotkey v1 path and PTCGPB_Leanny path in "autorun.bat". Configure the task to run (ex: %AutoHotkeyPath% "%PTCGPBPath%\PTCGPB.ahk" clicommand Inject13P)
