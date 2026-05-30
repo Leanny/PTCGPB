@@ -56,7 +56,7 @@
         Lang["GroupSettings"] := "Group Settings"
         Lang["DiscordSettingsHeading"] := "Discord Settings"
         Lang["HeartbeatSettingsSubHeading"] := "Heartbeat Settings"
-        
+
         Lang["Txt_Instances"] := "Instances:"
         Lang["Txt_InstanceStartDelay"] := "Start Delay (s):"
         Lang["Txt_Columns"] := "Columns:"
@@ -210,7 +210,7 @@
         Lang["GroupSettings"] := "群組設定"
         Lang["DiscordSettingsHeading"] := "Discord 設定"
         Lang["HeartbeatSettingsSubHeading"] := "心跳設定"
-        
+
         Lang["Txt_Instances"] := "模擬器數量："
         Lang["Txt_InstanceStartDelay"] := "啟動延遲："
         Lang["Txt_Columns"] := "排列數："
@@ -295,7 +295,7 @@
         Lang["Txt_s4tWPMinCards"] := "最少卡數："
         Lang["S4TDiscordSettingsSubHeading"] := "S4T Discord 設定"
         Lang["Txt_s4tSendAccountXml"] := "傳送帳號 XML"
-        
+
         Lang["Txt_sendAccountXml"] := "傳送帳號 XML"
         Lang["Txt_heartBeat"] := "Discord 心跳"
         Lang["hbName"] := "名稱："
@@ -364,7 +364,7 @@
         Lang["GroupSettings"] := "グループ設定"
         Lang["DiscordSettingsHeading"] := "Discord 設定"
         Lang["HeartbeatSettingsSubHeading"] := "ハートビート設定"
-        
+
         Lang["Txt_Instances"] := "エミュレータ数："
         Lang["Txt_InstanceStartDelay"] := "起動遅延："
         Lang["Txt_Columns"] := "列数："
@@ -449,7 +449,7 @@
         Lang["Txt_s4tWPMinCards"] := "最小枚数："
         Lang["S4TDiscordSettingsSubHeading"] := "S4T Discord 設定"
         Lang["Txt_s4tSendAccountXml"] := "アカウント XML 送信"
-        
+
         Lang["Txt_sendAccountXml"] := "アカウント XML 送信"
         Lang["Txt_heartBeat"] := "Discord ハートビート"
         Lang["hbName"] := "名称："
@@ -520,7 +520,7 @@
         Lang["GroupSettings"] := "Gruppen-Einstellungen"
         Lang["DiscordSettingsHeading"] := "Discord Einstellungen"
         Lang["HeartbeatSettingsSubHeading"] := "Herzschlag Einstellungen"
-        
+
         Lang["Txt_Instances"] := "Instanzen:"
         Lang["Txt_InstanceStartDelay"] := "Startverzögerung:"
         Lang["Txt_Columns"] := "Spalten:"
@@ -596,7 +596,7 @@
         Lang["Txt_ShinyCheck"] := "Schillernde speichern"
         Lang["Txt_ImmersiveCheck"] := "Immersive speichern"
         Lang["Txt_InvalidCheck"] := "Ignoriere ungültige Packs"
-        
+
         Lang["Txt_s4tEnabled"] := "Für Tausch speichern aktivieren"
         Lang["Txt_S4TEnabled"] := "S4T: Aktiviert"
         Lang["Txt_S4TDisabled"] := "Deaktiviert"
@@ -605,12 +605,12 @@
         Lang["Txt_s4tWPMinCards"] := "Min. Karten:"
         Lang["S4TDiscordSettingsSubHeading"] := "S4T Discord Einstellungen"
         Lang["Txt_s4tSendAccountXml"] := "Account XML senden"
-        
+
         Lang["Txt_sendAccountXml"] := "Account XML senden"
         Lang["Txt_heartBeat"] := "Discord Herzschlag"
         Lang["hbName"] := "Name:"
         Lang["hbDelay"] := "Herzschlag Verzögerung (min):"
-        
+
         Lang["Txt_showcaseEnabled"] := "Showcase aus showcase_ids.txt verwenden"
         Lang["Txt_Disabled"] := "Deaktiviert"
 
@@ -653,14 +653,14 @@ CreateLicenseNoteLanguage(Language) {
     } else if (Language = 4) {
         LicenseLang["Title"] := "Dieses Projekt ist lizensiert unter CC BY-NC 4.0"
         LicenseLang["Content"] := "Die ursprüngliche Absicht dieses Projekts war nicht,"
-        LicenseLang["Content"] .= " dass es für bezahlte Dienste genutzt wird – "
+        LicenseLang["Content"] .= " dass es für bezahlte Dienste genutzt wird - "
         LicenseLang["Content"] .= "auch nicht in Form angeblicher 'Spenden'. "
         LicenseLang["Content"] .= "Ich hoffe, dass die Leute meine Wünsche und die der Community respektieren."
         LicenseLang["Content"] .= "`nDas Projekt steht nun unter der Lizenz CC BY-NC 4.0. Diese erlaubt die Nutzung, "
         LicenseLang["Content"] .= "Modifikation und Weitergabe der "
         LicenseLang["Content"] .= "Software ausschließlich für nicht-kommerzielle Zwecke. "
-        LicenseLang["Content"] .= "Kommerzielle Nutzung – einschließlich bezahlter Dienste oder "
-        LicenseLang["Content"] .= "Verkäufe (auch mit Spenden) – ist unter dieser Lizenz nicht gestattet. "
+        LicenseLang["Content"] .= "Kommerzielle Nutzung - einschließlich bezahlter Dienste oder "
+        LicenseLang["Content"] .= "Verkäufe (auch mit Spenden) - ist unter dieser Lizenz nicht gestattet. "
         LicenseLang["Content"] .= "Die neue Lizenz gilt für diese und alle zukünftigen Versionen."
     }
     return LicenseLang
@@ -755,7 +755,7 @@ CreateSetUpByLanguage(Language) {
         SetUpLang["Confirm_WonderPick"] := "得卡挑戰"
         SetUpLang["Confirm_MinCards"] := "最少卡數"
         SetUpLang["Confirm_XMLWarning"] := "⚠️ 警告：傳送帳號 XML 已啟用。此設定僅建議單獨使用。請勿在群組中使用，因為您的帳號將會共享給群組的其他成員。"
-                SetUpLang["Confirm_StartBot"] := "按「是」開始運行，按「否」返回修改設定。"
+        SetUpLang["Confirm_StartBot"] := "按「是」開始運行，按「否」返回修改設定。"
     } else if (Language = 3) {
         SetUpLang["Error_BotPathTooLong"] := "BOTフォルダのパスが長すぎるか、スペースが含まれています"
         SetUpLang["Error_BotPathTooLong"] .= "。より短くスペースを含まないパスに移動してください。"

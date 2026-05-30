@@ -34,7 +34,7 @@ Helper/*.json
 Helper/*_src/target/
 Accounts/Cards/accounts/
 Accounts/GodPacks
-SpecialEvents/Events
+SpecialEvents/Events/*.sevt
 SpecialEvents/PastEvents
 
 # macOS metadata files
