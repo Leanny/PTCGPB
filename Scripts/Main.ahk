@@ -571,7 +571,8 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
         fileName := "packstats_temp.png"
     filePath := fileDir "\" . fileName
 
-    yBias := 40 - 45
+    windowMetrics := GetMumuWindowMetrics()
+    yBias := windowMetrics.titleHeight - 45
     pBitmapW := from_window(getMuMuHwnd(session.get("winTitle")))
     pBitmap := Gdip_CloneBitmapArea(pBitmapW, 18, 71+yBias, 240, 165)
 

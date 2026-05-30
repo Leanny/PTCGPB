@@ -190,7 +190,7 @@ startPreProcess(methodType){
         processPrivacyAgreement()
         Path = %imagePath%Privacy.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 130, 473, 145, 488, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [130, 473, 145, 488], [130, 473, 145, 488], searchVariation)
         if(vRet = 1){
             adbClick_wbb(137, 480)
             Sleep, 1000
@@ -198,7 +198,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%LevelUp.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 100, 86, 167, 116, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [100, 86, 167, 116], [100, 86, 167, 116], searchVariation)
         if(vRet = 1){
             adbInputEvent("111") ;send ESC
             Sleep, 1000
@@ -206,7 +206,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%TradeUnlocked.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 114, 146, 163, 197, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [114, 146, 163, 197], [114, 146, 163, 197], searchVariation)
         if(vRet = 1){
             adbInputEvent("111") ;send ESC
             Sleep, 1000
@@ -214,7 +214,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%LanguageBox.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 8, 374, 30, 398, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [8, 374, 30, 398], [8, 374, 30, 398], searchVariation)
         if(vRet = 1){
             adbInputEvent("111") ;send ESC
             Sleep, 1000

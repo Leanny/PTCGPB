@@ -1049,7 +1049,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     if (imageName = "CommunityShowcase" || imageName = "Search" || imageName = "inHamburgerMenu" || imageName = "Trade") {
         Path = %imagePath%Tutorial.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 111, 115, 167, 121, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [111, 115, 167, 121], [111, 115, 167, 121], searchVariation)
         if (vRet = 1) {
             adbClick_wbb(145, 451)
         }
@@ -1064,7 +1064,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         Path = %imagePath%Delete2.png
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 118, 353, 135, 390, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [118, 353, 135, 390], [118, 353, 135, 390], searchVariation)
         if (vRet = 1) {
             adbClick_wbb(74, 353)
             Delay(1)
@@ -1082,7 +1082,7 @@ if(imageName = "CommunityShowcase") {
         Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [30, 331, 50, 449], [30, 331, 50, 449], searchVariation)
         if (vRet = 1) {
             adbWriteRaw("rm -rf /data/data/jp.pokemon.pokemontcgp/cache/*") ; clear cache
             waitadb()
@@ -1204,7 +1204,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if (imageName = "CommunityShowcase" || imageName = "Add" || imageName = "Search") {
             Path = %imagePath%Tutorial.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 111, 115, 167, 121, searchVariation)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [111, 115, 167, 121], [111, 115, 167, 121], searchVariation)
             if (vRet = 1) {
                 adbClick_wbb(145, 451)
             }
@@ -1219,7 +1219,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
             pNeedle := GetNeedle(Path)
             ; ImageSearch within the region
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, searchVariation)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [30, 331, 50, 449], [30, 331, 50, 449], searchVariation)
             if (vRet = 1) {
                 adbWriteRaw("rm -rf /data/data/jp.pokemon.pokemontcgp/cache/*") ; clear cache
                 waitadb()
@@ -1237,7 +1237,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(imageName = "Skip2" || imageName = "Pack" || imageName = "Hourglass2") {
             Path = %imagePath%notenoughitems.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 92, 299, 115, 317, 0)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [92, 299, 115, 317], [92, 299, 115, 317], 0)
             if(vRet = 1) {
                 session.set("cantOpenMorePacks", 1)
                 return 0
@@ -1247,7 +1247,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(imageName = "Mission_dino2" || imageName = "Mission_dino3") {
             Path = %imagePath%1solobattlemission.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 108, 180, 177, 208, 0)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [108, 180, 177, 208], [108, 180, 177, 208], 0)
             if(vRet = 1) {
                 SetBeginnerMissionsDone()
                 return
@@ -3913,16 +3913,16 @@ ensureMissionUserPrefsExist() {
 
 FindHourglassOpenConfirmation(tenPackOpening, failSafeTime) {
     if (tenPackOpening)
-        return (FindOrLoseImage(67, 446, 83, 468, , "HourglassPack10", 0, failSafeTime) || FindOrLoseImage(45, 446, 60, 465, , "HourGlassAndPokeGoldPack10", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 0, failSafeTime))
+        return (FindOrLoseImage("Pack_Hourglass10ImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_HourglassAndPokeGold10ImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 0, failSafeTime))
 
-    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 0, failSafeTime))
+    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 0, failSafeTime))
 }
 
 FindHourglassOpenConfirmationClosed(tenPackOpening, failSafeTime) {
     if (tenPackOpening)
-        return (FindOrLoseImage(67, 446, 83, 468, , "HourglassPack10", 1, failSafeTime) && FindOrLoseImage(45, 446, 60, 465, , "HourGlassAndPokeGoldPack10", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 1, failSafeTime))
+        return (FindOrLoseImage("Pack_Hourglass10ImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGold10ImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 1, failSafeTime))
 
-    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 1, failSafeTime))
+    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 1, failSafeTime))
 }
 
 DismissMainCloseAlertWindow(context := "") {
