@@ -11,6 +11,9 @@ cd "%PTCGPBPath%"
 @REM Start all mumu
 %AutoHotkeyPath% "%PTCGPBPath%\Scripts\Include\LaunchAllMumu.ahk"
 
+@REM Sleep 60s
+timeout /t 60
+
 @REM Execute a specific script without using the UI. This will run BalanceXML first. Supported commands :
 @REM CreateBots13P, Inject13P, InjectWonderpick96P, InjectRewards
 %AutoHotkeyPath% "%PTCGPBPath%\PTCGPB.ahk" clicommand Inject13P
