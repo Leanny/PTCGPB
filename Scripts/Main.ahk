@@ -1016,9 +1016,11 @@ CheckFriendOpsRateLimit() {
             session.set("friendOpsCount", 0)
             session.set("friendOpsWindowStart", A_TickCount)
         } else if (session.get("A_gptest")) {
+            LogToFile("FriendOps rate limit reached | script=" . session.get("scriptName") . " | mode=auto | count=" . session.get("friendOpsCount") . " | remainingMs=" . remaining, "GroupReroll.txt")
             return false
         } else {
             ; Manual mode: show countdown dialog with two cancel options
+            LogToFile("FriendOps rate limit reached | script=" . session.get("scriptName") . " | mode=manual | count=" . session.get("friendOpsCount") . " | remainingMs=" . remaining, "GroupReroll.txt")
             session.set("rateLimitAction", "")
             Gui, RateLimit:Destroy
             Gui, RateLimit:New, +AlwaysOnTop, GP Test - Rate Limit
@@ -1046,6 +1048,7 @@ CheckFriendOpsRateLimit() {
             ; Timer expired ? reset and continue
             session.set("friendOpsCount", 0)
             session.set("friendOpsWindowStart", A_TickCount)
+            LogToFile("FriendOps rate limit wait complete | script=" . session.get("scriptName"), "GroupReroll.txt")
         }
     }
     session.set("friendOpsCount", session.get("friendOpsCount") + 1)

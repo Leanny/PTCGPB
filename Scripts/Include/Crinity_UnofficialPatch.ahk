@@ -133,7 +133,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%CrashWhilePackOpen.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 20, 180, 35, 182, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [20, 180, 35, 182], [20, 180, 35, 182], searchVariation)
         if(vRet = 1){
             CreateStatusMessage("Clearing problem opening pack pop-up",,,, false)
             adbClick_wbb(145, 370)
@@ -177,7 +177,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%DataDownload.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 41, 378, 92, 393, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [41, 378, 92, 393], [41, 378, 92, 393], searchVariation)
         if(vRet = 1){
             CreateStatusMessage("Downloading data",,,, false)
             Sleep, 1000
@@ -223,7 +223,7 @@ startPreProcess(methodType){
         Path = %imagePath%Button.png
         pNeedle := GetNeedle(Path)
         if(!skipGenericButtonFallback){
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 95, 350, 195, 530, 80)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [95, 350, 195, 530], [100, 367, 190, 480], 80)
             if(vRet = 1){
                 if (InStr(vPosXY, ",")) {
                     StringSplit, pos, vPosXY, `,

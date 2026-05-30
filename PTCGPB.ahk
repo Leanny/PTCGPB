@@ -2289,10 +2289,6 @@ SaveAllSettings() {
 
     botConfig.saveConfigToSettings("ALL")
 
-    if (botConfig.get("debugMode")) {
-        FileAppend, % A_Now . " - Settings saved. DeleteMethod: " . botConfig.get("deleteMethod") . "`n", %A_ScriptDir%\debug_settings.log
-    }
-
     return true
 }
 
