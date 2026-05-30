@@ -7056,7 +7056,7 @@
                                 <input
                                     id="accountSearch"
                                     type="search"
-                                    placeholder="Account or filename"
+                                    placeholder="Account, name, friend code or filename"
                                     autocomplete="off"
                                     spellcheck="false"
                                 />
@@ -13601,6 +13601,7 @@
                 clearAccountOverviewCache();
                 invalidateViewDomCache();
                 const accountTerm = normaliseSearch(el.accountSearch.value);
+                const accountTermDigits = accountTerm.replace(/\D/g, "");
                 const filterPacks =
                     state.selectedPacks.size !== state.allPacks.size;
                 const cardFilterConfig = getActiveCardFilterConfig(
@@ -13631,7 +13632,7 @@
                     return;
                 }
 
-                const fileLabelLowerByAccount = accountTerm ? new Map() : null;
+                const accountMetaSearchCache = accountTerm ? new Map() : null;
                 const selectedPacks = state.selectedPacks;
                 const rows = state.rows;
                 const filtered = [];
@@ -13641,19 +13642,39 @@
                 for (let i = 0; i < rows.length; i++) {
                     const row = rows[i];
                     if (accountTerm) {
-                        let fileLower = fileLabelLowerByAccount.get(
-                            row.account,
-                        );
-                        if (fileLower === undefined) {
-                            fileLower = normaliseSearch(
+                        let meta = accountMetaSearchCache.get(row.account);
+                        if (meta === undefined) {
+                            const accountMeta =
+                                state.accountMetadataMap.get(row.account) ||
+                                null;
+                            const fileLabel =
                                 state.accountFileLabelMap.get(row.account) ||
-                                    "",
-                            );
-                            fileLabelLowerByAccount.set(row.account, fileLower);
+                                "";
+                            const accountName =
+                                accountMeta && accountMeta.accountName
+                                    ? accountMeta.accountName
+                                    : "";
+                            const friendCode =
+                                accountMeta && accountMeta.friendCode
+                                    ? accountMeta.friendCode
+                                    : "";
+                            meta = {
+                                blob: normaliseSearch(
+                                    [fileLabel, accountName, friendCode]
+                                        .filter(Boolean)
+                                        .join(" "),
+                                ),
+                                fcDigits: String(friendCode).replace(/\D/g, ""),
+                            };
+                            accountMetaSearchCache.set(row.account, meta);
                         }
                         if (
                             !row.accountLower.includes(accountTerm) &&
-                            !fileLower.includes(accountTerm)
+                            !meta.blob.includes(accountTerm) &&
+                            !(
+                                accountTermDigits.length >= 4 &&
+                                meta.fcDigits.includes(accountTermDigits)
+                            )
                         )
                             continue;
                     }
