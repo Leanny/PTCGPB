@@ -8,7 +8,7 @@ Autorun is a script that will start the PTCGPB bot in admin immediatly after Win
 
 # Configure the task
 - In the General tab, set the name as PTCGPB_autorun and check "run with highest privilege". Select "Configure for" => Windows 10.
-- In the Triggers Tab, click on New then Begin the task => At startup. Check Stop task if it runs longer than 1 day => Ok
+- In the Triggers Tab, click on New then Begin the task => At startup. Check "Delay Task for" => 1min. Check "Stop task if it runs longer than" => 1 day => Ok
 - In the Action Tab, click New then Start a program => Browse => Select Autorun/autorun.bat => Ok
 - In the Conditions Tab, uncheck "Stop if the computer switches battery to power" and "Start the task only if the computer is on AC power"
 - In the Settings Tab, change "Stop the task if it runs longer than:" to "1 day" => Ok
