@@ -16,6 +16,105 @@
 ;===============================================================================
 
 ;-------------------------------------------------------------------------------
+; Inject verification helpers
+;-------------------------------------------------------------------------------
+
+VerifyDeviceAccountXmlOnDevice(expectedDeviceAccount := "") {
+    prof := Prof_Scope(A_ThisFunc)
+
+    result := Trim(adbWriteRaw("test -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml && echo 1 || echo 0", true), "`r`n`t ")
+    if (result != "1") {
+        LogWarn("VerifyDeviceAccountXmlOnDevice: deviceAccount XML missing on device")
+        return false
+    }
+
+    if (expectedDeviceAccount = "")
+        return true
+
+    onDevice := GetDeviceAccountFromDevice()
+    if (onDevice = "" || onDevice != expectedDeviceAccount) {
+        LogWarn("VerifyDeviceAccountXmlOnDevice: mismatch expected=" . expectedDeviceAccount . " onDevice=" . onDevice)
+        return false
+    }
+
+    return true
+}
+
+IsNoSaveDataOnScreen() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    if(FindOrLoseImage("Common_Error_3ButtonError_Nodata", 0, , , true))
+        return true
+
+    imagePath := A_ScriptDir . "\Needles\"
+    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
+    if (!pBitmap)
+        return false
+
+    Path = %imagePath%NoSave.png
+    pNeedle := GetNeedle(Path)
+    vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, 20)
+    Gdip_DisposeImage(pBitmap)
+    return (vRet = 1)
+}
+
+IsAccountStartupPopupOnScreen(pBitmap) {
+    prof := Prof_Scope(A_ThisFunc)
+
+    if (!pBitmap)
+        return false
+
+    imagePath := A_ScriptDir . "\Needles\"
+    searchVariation := 20
+
+    Path = %imagePath%DataDownload.png
+    pNeedle := GetNeedle(Path)
+    if(Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 41, 378, 92, 393, searchVariation) = 1)
+        return true
+
+    Path = %imagePath%Privacy.png
+    pNeedle := GetNeedle(Path)
+    if(Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 130, 473, 145, 488, searchVariation) = 1)
+        return true
+
+    Path = %imagePath%Button.png
+    pNeedle := GetNeedle(Path)
+    if(Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 95, 350, 195, 530, 80) = 1)
+        return true
+
+    return false
+}
+
+IsInjectedAccountAcceptedInGame(pBitmap := "") {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    if(!session.get("injectMethod") || !session.get("loadedAccount"))
+        return true
+
+    if(!session.get("injectVerifiedOnDevice"))
+        return false
+
+    if(isTerminatePTCGPAppByADBShell())
+        return false
+
+    if(IsNoSaveDataOnScreen())
+        return false
+
+    if(FindOrLoseImage("Pack_PackPointButton", 0, , , true)
+        || FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, , , true)
+        || FindOrLoseImage("Common_ShopButtonInMain", 0, , , true)
+        || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, , , true)
+        || FindOrLoseImage("Friend_BottomDarkHomeIcon", 0, , , true)
+        || FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, , , true)
+        || FindOrLoseImage("Create_CountryComboBoxButton", 0, , , true))
+        return true
+
+    return IsAccountStartupPopupOnScreen(pBitmap)
+}
+
+;-------------------------------------------------------------------------------
 ; loadAccount - Load an account XML file into the game
 ;-------------------------------------------------------------------------------
 loadAccount() {
@@ -122,11 +221,29 @@ loadAccount() {
     clearMissionCache()
     Sleep, 100
 
+    expectedDeviceAccount := AccountMetadata_GetDeviceAccountFromFile(loadFile)
+    if (expectedDeviceAccount = "") {
+        LogWarn("Cannot inject account without deviceAccount in XML: " . session.get("accountFileName"))
+        return false
+    }
+
+    adbWriteRaw("mkdir -p /data/data/jp.pokemon.pokemontcgp/shared_prefs")
     RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
     CreateStatusMessage("Injecting: " . session.get("accountFileName"),,,, false)
     adbWriteRaw("cp /sdcard/deviceAccount.xml /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
+    adbWriteRaw("chmod 664 /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
+    adbWriteRaw("chown system:system /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
     adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
     Sleep, 100
+
+    if (!VerifyDeviceAccountXmlOnDevice(expectedDeviceAccount)) {
+        LogWarn("Inject failed on device for " . session.get("accountFileName"))
+        CreateStatusMessage("Inject verification failed: " . session.get("accountFileName"),,,, false)
+        return false
+    }
+
+    session.set("deviceAccount", expectedDeviceAccount)
+    session.set("injectVerifiedOnDevice", true)
     ; Reliably restart the app: Wait for launch, and start in a clean, new task without animation.
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName")
     loadedAccountPath := saveDir . "\" . session.get("accountFileName")
@@ -142,7 +259,6 @@ loadAccount() {
         session.set("accountFileNameOrig", session.get("accountFileName"))
     }
 
-    session.set("deviceAccount", GetDeviceAccountFromXML())
     startPTCGPApp_ApplyMetadataLanguage(loadFile)
     startPTCGPApp()
     currentAccountInfo .= "Account: " . session.get("accountFileName") . "`nDeviceAccount: " . session.get("deviceAccount")

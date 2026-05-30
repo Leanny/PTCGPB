@@ -83,6 +83,36 @@ GetDeviceAccountFromXML() {
 }
 
 ;-------------------------------------------------------------------------------
+; GetDeviceAccountFromDevice - Always read deviceAccount ID from device XML
+;-------------------------------------------------------------------------------
+GetDeviceAccountFromDevice() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    tempDir := A_ScriptDir . "\temp"
+    if !FileExist(tempDir)
+        FileCreateDir, %tempDir%
+
+    tempPath := tempDir . "\current_device_" . session.get("scriptName") . ".xml"
+    if FileExist(tempPath)
+        FileDelete, %tempPath%
+
+    adbWriteRaw("cp -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml /sdcard/deviceAccount.xml")
+    Sleep, 200
+
+    RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " pull /sdcard/deviceAccount.xml """ . tempPath . """",, Hide
+
+    deviceAccount := ""
+    if (FileExist(tempPath)) {
+        deviceAccount := AccountMetadata_GetDeviceAccountFromFile(tempPath)
+        FileDelete, %tempPath%
+    }
+
+    adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
+    return deviceAccount
+}
+
+;-------------------------------------------------------------------------------
 ; LogToTradesDatabase - Compatibility no-op
 ;-------------------------------------------------------------------------------
 LogToTradesDatabase(deviceAccount, cardTypes, cardCounts, screenShotFileName := "", shinedustValue := "") {
