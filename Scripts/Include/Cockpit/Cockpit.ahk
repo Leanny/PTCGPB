@@ -212,9 +212,10 @@ Cockpit_BuildGui() {
 
     ; --- MODE: big, prominent ---
     Gui, Font, s16 c%THEME_ACCENT% Bold, %THEME_FONT%
-    ; Buttons start at GUI_W-264. Mode label stops 10px before that (lbl x14; w=W-288 -> right edge at W-274)
-    Gui, Add, Text, % "x14 y8 w" . (GUI_W - 288) . " h32 vlblModeVal Background" . THEME_BG, (loading...)
+    ; Buttons start at GUI_W-394 (Card Database). Mode label stops 10px before that (lbl x14; w=W-418 -> right edge at W-404)
+    Gui, Add, Text, % "x14 y8 w" . (GUI_W - 418) . " h32 vlblModeVal Background" . THEME_BG, (loading...)
     Gui, Font, s9 c%THEME_TEXT% Bold, %THEME_FONT%
+    Gui, Add, Button, % "x" . (GUI_W - 394) . " y12 w120 h22 vbtnCardDb gCockpit_OpenCardDatabase", Card Database
     Gui, Add, Button, % "x" . (GUI_W - 264) . " y12 w120 h22 vbtnAgeView gCockpit_OpenAgeView", Injection Queue
     Gui, Add, Button, % "x" . (GUI_W - 134) . " y12 w120 h22 vbtnCols gCockpit_OpenColumns", Customise
     Cockpit_UpdateAgeButtonVisibility(botConfig.get("deleteMethod"))
@@ -2285,6 +2286,20 @@ Cockpit_OpenSelectedAccountMetadata() {
     Run, % """" . jsonPath . """"
 }
 
+Cockpit_OpenCardDatabase:
+    base := getScriptBaseFolder()
+    cardDbStartScript := base . "\Accounts\Cards\start_card_dashboard.bat"
+    cardDbHtml := base . "\Accounts\Cards\card_database.html"
+    if (FileExist(cardDbStartScript))
+        Run, %cardDbStartScript%
+    else if (FileExist(cardDbHtml))
+        Run, %cardDbHtml%
+    else {
+        nf := "Could not find Card Database launcher.`nChecked:`n" . cardDbStartScript
+        MsgBox, 48, PTCGPB Cockpit, %nf%
+    }
+return
+
 Cockpit_OpenAgeView:
     global botConfig, g_ageWindowH
     botConfig.loadSettingsToConfig("ALL")
@@ -3450,7 +3465,8 @@ Cockpit_Relayout(w, h, forcedInstN := 0) {
     if (w <= 0 || h <= 0)
         return
     g_cockpitW := w
-    GuiControl, Cockpit:Move, lblModeVal, % "w" . (w - 288)
+    GuiControl, Cockpit:Move, lblModeVal, % "w" . (w - 418)
+    GuiControl, Cockpit:Move, btnCardDb, % "x" . (w - 394)
     GuiControl, Cockpit:Move, btnAgeView, % "x" . (w - 264)
     GuiControl, Cockpit:Move, btnCols, % "x" . (w - 134)
 

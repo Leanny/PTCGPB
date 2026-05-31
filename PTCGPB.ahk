@@ -51,7 +51,7 @@ githubUser := "kevnITG"
     ,extractPath := A_Temp . "\update"
     ,modRepoUser := "Leanny"
 
-global GUI_WIDTH := 690
+global GUI_WIDTH := 750
 global GUI_HEIGHT := 410
 global MainGuiName
 
@@ -184,7 +184,7 @@ NextStep:
 
     sectionColor := "cWhite"
     Gui, Add, GroupBox, x5 y0 w240 h50 %sectionColor%, Friend ID
-    Gui, Add, Edit, vui_FriendID w180 x35 y20 h20 -E0x200 Background2A2A2A cWhite, % ((botConfig.get("FriendID") || botConfig.get("FriendID") = "ERROR") ? botConfig.get("FriendID") : "")
+    Gui, Add, Edit, vui_FriendID w210 x20 y20 h20 -E0x200 Background2A2A2A cWhite, % ((botConfig.get("FriendID") || botConfig.get("FriendID") = "ERROR") ? botConfig.get("FriendID") : "")
 
     if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+") {
         GuiControl, Hide, ui_FriendID
@@ -262,7 +262,7 @@ NextStep:
     else if (botMethod = "Inject Rewards")
         defaultDelete := 4
     Gui, Add, Text, x20 y%botY207% %sectionColor%, Bot Mode
-    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w200 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards
+    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w210 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards
 
     Gui, Add, Text, % "vui_injectWonderpickMinPacksText x20 y" . botY257 . " " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), Min Packs:
     Gui, Add, Edit, % "vui_injectWonderpickMinPacks w40 x130 y" . botY257 . " h20 -E0x200 Background2A2A2A cWhite Center" . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % botConfig.get("injectWonderpickMinPacks")
@@ -280,10 +280,10 @@ NextStep:
         sortOption := 4
     else if (botConfig.get("injectSortMethod") = "LastLoginAsc")
         sortOption := 5
-    Gui, Add, DropDownList, % "vui_SortByDropdown gSortByDropdownHandler choose" . sortOption . " x90 y" . botY_sortDDL . " w150 Background2A2A2A cWhite", Oldest First|Newest First|Fewest Packs First|Most Packs First|Oldest Last Login
+    Gui, Add, DropDownList, % "vui_SortByDropdown gSortByDropdownHandler choose" . sortOption . " x90 y" . botY_sortDDL . " w140 Background2A2A2A cWhite", Oldest First|Newest First|Fewest Packs First|Most Packs First|Oldest Last Login
 
     Gui, Add, Text, % "x20 y" . botY_accountRow . " " . sectionColor . " vui_AccountNameText", % GuiLabel(dict["Txt_AccountName"])
-    Gui, Add, Edit, % "vui_AccountName w90 x130 y" . botY_accountRow . " h20 -E0x200 Background2A2A2A cWhite Center", % botConfig.get("AccountName")
+    Gui, Add, Edit, % "vui_AccountName w100 x130 y" . botY_accountRow . " h20 -E0x200 Background2A2A2A cWhite Center", % botConfig.get("AccountName")
 
     GuiControlGet, curMethod, , ui_deleteMethod
     if (curMethod = "Create Bots (13P)") {
@@ -298,88 +298,88 @@ NextStep:
     ; =================== UI - Pack Selection ===================
     sectionColor := "cFFD700"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y0 w215 h52 %sectionColor%, % dict["PackHeading"]
+    Gui, Add, GroupBox, x255 y0 w240 h52 %sectionColor%, % dict["PackHeading"]
 
-    Gui, Add, Button, x277 y19 w170 h25 gShowPackSelection vui_PackSelectionButton BackgroundTrans, Loading...
+    Gui, Add, Button, x270 y19 w210 h25 gShowPackSelection vui_PackSelectionButton BackgroundTrans, Loading...
     UpdatePackSelectionButtonText()
 
     ; =================== UI - Inject WP Card Detection ===================
     sectionColor := "cFF4500"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y57 w215 h52 %sectionColor%, % dict["CardDetection"]
+    Gui, Add, GroupBox, x255 y57 w240 h52 %sectionColor%, % dict["CardDetection"]
 
-    Gui, Add, Button, x277 y76 w170 h25 gShowCardDetection vui_CardDetectionButton BackgroundTrans, Loading...
+    Gui, Add, Button, x270 y76 w210 h25 gShowCardDetection vui_CardDetectionButton BackgroundTrans, Loading...
 
     UpdateCardDetectionButtonText()
 
     ; =================== UI - Save for Trade ===================
     sectionColor := "c4169E1"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y114 w215 h78 %sectionColor%, % dict["SaveForTrade"]
+    Gui, Add, GroupBox, x255 y114 w240 h78 %sectionColor%, % dict["SaveForTrade"]
 
-    Gui, Add, Button, x277 y133 w170 h25 gShowS4TSettings vui_S4TButton BackgroundTrans, Loading...
+    Gui, Add, Button, x270 y133 w210 h25 gShowS4TSettings vui_S4TButton BackgroundTrans, Loading...
 
     Gui, Font, s7 cWhite, Segoe UI
-    Gui, Add, Button, x297 y163 w130 h20 gOpenCardDatabase BackgroundTrans, Open Card Database
+    Gui, Add, Button, x310 y163 w130 h20 gOpenCardDatabase BackgroundTrans, Open Card Database
 
     UpdateS4TButtonText()
 
     ; =================== UI - Group Settings ===================
     sectionColor := "cWhite"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y197 w215 h50 %sectionColor%, % dict["GroupSettings"]
+    Gui, Add, GroupBox, x255 y197 w240 h50 %sectionColor%, % dict["GroupSettings"]
 
-    Gui, Add, Button, x277 y216 w170 h25 gShowGroupRerollSettings vui_GroupRerollButton BackgroundTrans, Loading...
+    Gui, Add, Button, x270 y216 w210 h25 gShowGroupRerollSettings vui_GroupRerollButton BackgroundTrans, Loading...
 
     UpdateGroupRerollButtonText()
 
     ; =================== UI - Discord Settings ===================
     sectionColor := "c00FFFF"
     Gui, Font, s10 cWhite, Segoe UI
-    Gui, Add, GroupBox, x255 y252 w215 h55 %sectionColor%, % dict["DiscordSettingsHeading"]
-    Gui, Add, Button, x277 y271 w170 h25 gShowDiscordSettings vui_DiscordSettingsButton BackgroundTrans, Loading...
+    Gui, Add, GroupBox, x255 y252 w240 h55 %sectionColor%, % dict["DiscordSettingsHeading"]
+    Gui, Add, Button, x270 y271 w210 h25 gShowDiscordSettings vui_DiscordSettingsButton BackgroundTrans, Loading...
     UpdateDiscordSettingsButtonText()
 
     ; =================== UI - Time Settings ===================
     Gui, Font, s10 cWhite, Segoe UI
     sectionColor := "c9370DB"
-    Gui, Add, GroupBox, x255 y312 w215 h93 %sectionColor%, % dict["TimeSettings"]
+    Gui, Add, GroupBox, x255 y312 w240 h93 %sectionColor%, % dict["TimeSettings"]
     Gui, Add, Text, x270 y332 %sectionColor%, % GuiLabel(dict["Txt_Delay"])
-    Gui, Add, Edit, vui_Delay w34 x427 y330 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
+    Gui, Add, Edit, vui_Delay w34 x446 y330 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
     Gui, Add, Text, x270 y356 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
-    Gui, Add, Edit, vui_swipeSpeed w34 x427 y354 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
+    Gui, Add, Edit, vui_swipeSpeed w34 x446 y354 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
     Gui, Add, Text, x270 y380 w150 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
-    Gui, Add, Edit, vui_waitTime w34 x427 y378 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
+    Gui, Add, Edit, vui_waitTime w34 x446 y378 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
 
     ; =================== UI - Description & Button ===================
     sectionColor := "cWhite"
-    Gui, Add, GroupBox, x480 y0 w205 h405 %sectionColor%
+    Gui, Add, GroupBox, x505 y0 w240 h405 %sectionColor%
 
     Gui, Font, s12 cWhite Bold
-    Gui, Add, Text, x493 y20 w180 h50 Center BackgroundTrans cWhite, % dict["title_main"]
+    Gui, Add, Text, x535 y20 w180 h50 Center BackgroundTrans cWhite, % dict["title_main"]
     Gui, Font, s10 cWhite Bold
-    Gui, Add, Text, x493 y43 w180 h20 Center BackgroundTrans cWhite, % localVersion
+    Gui, Add, Text, x535 y43 w180 h20 Center BackgroundTrans cWhite, % localVersion
     Gui, Font, s8 cWhite Bold
-    Gui, Add, Text, x485 y63 w195 h18 Center BackgroundTrans cWhite, (Mod: Improve Card Detection)
+    Gui, Add, Text, x528 y63 w195 h18 Center BackgroundTrans cWhite, (Mod: Improve Card Detection)
     Gui, Font, s10 cWhite Bold
-    Gui, Add, Text, x493 y93 w180 h20 Center BackgroundTrans cWhite, Modder: Lean && xedranort
-    Gui, Add, Text, x493 y113 w180 h20 Center BackgroundTrans cWhite, % modVersion
+    Gui, Add, Text, x535 y93 w180 h20 Center BackgroundTrans cWhite, Modder: Lean && xedranort
+    Gui, Add, Text, x535 y113 w180 h20 Center BackgroundTrans cWhite, % modVersion
 
-    Gui, Add, Picture, gBuyMeCoffee x508 y145 w150, %A_ScriptDir%\GUI\Images\support_me_on_kofi.png
+    Gui, Add, Picture, gBuyMeCoffee x550 y145 w150, %A_ScriptDir%\GUI\Images\support_me_on_kofi.png
 
     ; =================== UI - Icon ===================
     Gui, Font, s10 cWhite
-    Gui, Add, Picture, gOpenDiscord x518 y194 w32 h32, %A_ScriptDir%\GUI\Images\discord-icon.png
-    Gui, Add, Picture, gOpenToolTip x568 y194 w32 h32, %A_ScriptDir%\GUI\Images\help-icon.png
-    Gui, Add, Picture, gShowToolsAndSystemSettings vui_ToolsPicture x618 y195 w30 h30, %A_ScriptDir%\GUI\Images\tools-icon.png
+    Gui, Add, Picture, gOpenDiscord x560 y194 w32 h32, %A_ScriptDir%\GUI\Images\discord-icon.png
+    Gui, Add, Picture, gOpenToolTip x610 y194 w32 h32, %A_ScriptDir%\GUI\Images\help-icon.png
+    Gui, Add, Picture, gShowToolsAndSystemSettings vui_ToolsPicture x660 y195 w30 h30, %A_ScriptDir%\GUI\Images\tools-icon.png
 
     Gui, Font, s10 cWhite Bold
-    Gui, Add, Button, x497 y246 w170 h34 gBalanceXMLs BackgroundTrans, % dict["btn_balance"]
-    Gui, Add, Button, x497 y292 w170 h34 gLaunchAllMumu BackgroundTrans, % dict["btn_mumu"]
-    Gui, Add, Button, gSave vui_StartBotButton x497 y338 w170 h34, Start Bot
+    Gui, Add, Button, x520 y246 w210 h34 gBalanceXMLs BackgroundTrans, % dict["btn_balance"]
+    Gui, Add, Button, x520 y292 w210 h34 gLaunchAllMumu BackgroundTrans, % dict["btn_mumu"]
+    Gui, Add, Button, gSave vui_StartBotButton x520 y338 w210 h34, Start Bot
 
     Gui, Font, s7 cGray
-    Gui, Add, Text, x489 y376 w190 Center BackgroundTrans, CC BY-NC 4.0 international license
+    Gui, Add, Text, x530 y376 w190 Center BackgroundTrans, CC BY-NC 4.0 international license
 
     Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
 
@@ -1250,8 +1250,8 @@ ShowS4TSettings:
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("ocrShinedust") ? "Checked" : "") " vui_ocrShinedust_Popup x15 y" . yPos . " " . sectionColor, Track Shinedust
     yPos += 25
 
-    Gui, S4TSettingsSelect:Add, Button, x25 y%yPos% w70 h30 gApplyS4TSettings, Apply
-    Gui, S4TSettingsSelect:Add, Button, x105 y%yPos% w70 h30 gCancelS4TSettings, Cancel
+    Gui, S4TSettingsSelect:Add, Button, x68 y%yPos% w70 h30 gApplyS4TSettings, Apply
+    Gui, S4TSettingsSelect:Add, Button, x148 y%yPos% w70 h30 gCancelS4TSettings, Cancel
     yPos += 40
 
     Gui, S4TSettingsSelect:Show, x%popupX% y%popupY% w%s4tPopupW% h%yPos%
@@ -1688,19 +1688,21 @@ Save:
         irGiftChecked := botConfig.get("receiveGift") ? "Checked" : ""
         irWPChecked := botConfig.get("wonderpickForEventMissions") ? "Checked" : ""
         irShinedustChecked := botConfig.get("ocrShinedust") ? "Checked" : ""
+        irSaveFCChecked := botConfig.get("saveAccountFriendInfo") ? "Checked" : ""
 
         g_irDialogResult := "cancel"
         Gui, InjectReqDlg:New, +AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Inject Rewards Options
         Gui, InjectReqDlg:Font, s9, Segoe UI
         Gui, InjectReqDlg:Add, Text, x12 y12 w285, Confirm the actions for 'Inject Rewards'. You can leave every option unchecked to only log in and out.
-        Gui, InjectReqDlg:Add, Checkbox, x12 y60 vui_irClaim %irClaimChecked%, Claim Special Missions
-        Gui, InjectReqDlg:Add, Checkbox, x12 y82 vui_irGift %irGiftChecked%, Receive Gift
-        Gui, InjectReqDlg:Add, Checkbox, x12 y104 vui_irWP %irWPChecked%, Wonderpick
-        Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irShinedust %irShinedustChecked%, Track Shinedust
-        Gui, InjectReqDlg:Add, Button, x12 y160 w80 h26 gInjectReqDlgOK Default, OK
-        Gui, InjectReqDlg:Add, Button, x102 y160 w80 h26 gInjectReqDlgCancel, Cancel
+        Gui, InjectReqDlg:Add, Checkbox, x12 y60 vui_irSaveFC %irSaveFCChecked%, Save Name + Friend Code
+        Gui, InjectReqDlg:Add, Checkbox, x12 y82 vui_irWP %irWPChecked%, Wonderpick
+        Gui, InjectReqDlg:Add, Checkbox, x12 y104 vui_irClaim %irClaimChecked%, Claim Special Missions
+        Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irGift %irGiftChecked%, Receive Gift
+        Gui, InjectReqDlg:Add, Checkbox, x12 y148 vui_irShinedust %irShinedustChecked%, Track Shinedust
+        Gui, InjectReqDlg:Add, Button, x12 y182 w80 h26 gInjectReqDlgOK Default, OK
+        Gui, InjectReqDlg:Add, Button, x102 y182 w80 h26 gInjectReqDlgCancel, Cancel
         PTCGPB_PopupRightOfCtl("ui_StartBotButton", 310, 12, dlgX, dlgY)
-        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h200
+        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h224
         irDlgHwnd := WinExist()
         WinWaitClose, ahk_id %irDlgHwnd%
         if (g_irDialogResult = "cancel")
@@ -1720,7 +1722,7 @@ Save:
         botConfig.set("claimSpecialMissions", 0, "ToolsAndSystem")
     }
 
-    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust")) {
+    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo")) {
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
     }
 
@@ -2195,6 +2197,7 @@ InjectReqDlgOK:
     botConfig.set("receiveGift", ui_irGift, "ToolsAndSystem")
     botConfig.set("wonderpickForEventMissions", ui_irWP, "ToolsAndSystem")
     botConfig.set("ocrShinedust", ui_irShinedust, "SaveForTrade")
+    botConfig.set("saveAccountFriendInfo", ui_irSaveFC, "ToolsAndSystem")
     botConfig.saveConfigToSettings("ALL")
     g_irDialogResult := "ok"
     Gui, InjectReqDlg:Destroy
