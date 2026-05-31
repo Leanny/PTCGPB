@@ -329,11 +329,21 @@ doesMissionUserPrefsExist() {
 
 startPTCGPApp() {
     prof := Prof_Scope(A_ThisFunc)
-    if(isTerminatePTCGPApp()) {
-        adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-        adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-        DelayH(100)
+    ADB_LogTrace("startPTCGPApp started")
+    retryCount := 0
+    Loop {
+        if(isTerminatePTCGPApp()) {
+            ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
+            adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+            adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
+            DelayH(100)
+        }
+        if(waitUntilActivatePTCGPApp())
+            break
+        if(++retryCount >= 3)
+            break
     }
+    ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
 }
 
 startPTCGPApp_ApplyMetadataLanguage(loadFile) {
