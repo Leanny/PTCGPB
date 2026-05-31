@@ -34,13 +34,15 @@ if !FileExist(mumuFolder){
     ExitApp
 }
 
-; Reset LastEndEpoch for all instances at startup so stale timestamps from
+; Reset monitor timestamps for all instances at startup so stale timestamps from
 ; a previous session don't immediately trigger the stuck detection.
 nowEpoch := A_NowUTC
 EnvSub, nowEpoch, 1970, seconds
 Loop %Instances% {
     instanceNum := Format("{:u}", A_Index)
-    IniWrite, %nowEpoch%, %A_ScriptDir%\..\%instanceNum%.ini, Metrics, LastEndEpoch
+    iniPath := GetScriptIniPathByName(instanceNum)
+    IniWrite, %nowEpoch%, %iniPath%, Metrics, LastEndEpoch
+    IniWrite, %nowEpoch%, %iniPath%, Metrics, LastActivityEpoch
 }
 
 Loop {
@@ -61,26 +63,38 @@ Loop {
 
         instanceNum := Format("{:u}", A_Index)
 
-        IniRead, LastEndEpoch, %A_ScriptDir%\..\%instanceNum%.ini, Metrics, LastEndEpoch, 0
-        IniRead, LastStartEpoch, %A_ScriptDir%\..\%instanceNum%.ini, Metrics, LastStartEpoch, 0
-        secondsSinceLastEnd := nowEpoch - LastEndEpoch
+        iniPath := GetScriptIniPathByName(instanceNum)
+        IniRead, LastEndEpoch, %iniPath%, Metrics, LastEndEpoch, 0
+        IniRead, LastStartEpoch, %iniPath%, Metrics, LastStartEpoch, 0
+        IniRead, LastActivityEpoch, %iniPath%, Metrics, LastActivityEpoch, 0
         ; Set threshold: 30 minutes for Create Bots, 11 minutes for others
         threshold := (deleteMethod == "Create Bots (13P)") ? (30 * 60) : (11 * 60)
-        ; Use LastEndEpoch if available, otherwise fall back to LastStartEpoch for first-run detection
-        if (LastEndEpoch > 0) {
-            secondsSinceLastEnd := nowEpoch - LastEndEpoch
-            isStuck := (secondsSinceLastEnd > threshold)
-        } else if (LastStartEpoch > 0) {
-            secondsSinceLastEnd := nowEpoch - LastStartEpoch
-            isStuck := (secondsSinceLastEnd > threshold)
+        lastProgressEpoch := 0
+        lastProgressSource := ""
+        if ((LastEndEpoch + 0) > lastProgressEpoch) {
+            lastProgressEpoch := LastEndEpoch + 0
+            lastProgressSource := "LastEndEpoch"
+        }
+        if ((LastStartEpoch + 0) > lastProgressEpoch) {
+            lastProgressEpoch := LastStartEpoch + 0
+            lastProgressSource := "LastStartEpoch"
+        }
+        if ((LastActivityEpoch + 0) > lastProgressEpoch) {
+            lastProgressEpoch := LastActivityEpoch + 0
+            lastProgressSource := "LastActivityEpoch"
+        }
+
+        if (lastProgressEpoch > 0) {
+            secondsSinceLastActivity := nowEpoch - lastProgressEpoch
+            isStuck := (secondsSinceLastActivity > threshold)
         } else {
-            secondsSinceLastEnd := 0
+            secondsSinceLastActivity := 0
             isStuck := false
         }
         if(isStuck)
         {
-            ; msgbox, Killing Instance %instanceNum%! Last Run Completed %secondsSinceLastEnd% Seconds Ago
-            msg := "Killing Instance " . instanceNum . "! Last Run Completed " . secondsSinceLastEnd . " Seconds Ago"
+            ; msgbox, Killing Instance %instanceNum%! Last Activity %secondsSinceLastActivity% Seconds Ago
+            msg := "Killing Instance " . instanceNum . "! Last Activity " . secondsSinceLastActivity . " Seconds Ago (" . lastProgressSource . ")"
             LogInfo(msg, "Monitor.txt")
 
             scriptName := instanceNum . ".ahk"
@@ -95,7 +109,8 @@ Loop {
             pID := checkInstance(instanceNum)
             if not pID && not cntAHK {
                 ; Change the last end date to now so that we don't keep trying to restart this beast
-                IniWrite, %nowEpoch%, %A_ScriptDir%\..\%instanceNum%.ini, Metrics, LastEndEpoch
+                IniWrite, %nowEpoch%, %iniPath%, Metrics, LastEndEpoch
+                IniWrite, %nowEpoch%, %iniPath%, Metrics, LastActivityEpoch
 
                 launchInstance(instanceNum)
 
@@ -109,8 +124,8 @@ Loop {
                 ;Run, %Command%
                 scriptPath := A_ScriptDir "\.." "\" scriptName
                 Run, "%A_AhkPath%" /restart "%scriptPath%"
-                LogInfo("Monitor restarted instance " . instanceNum . ". Reason: last run completed "
-                    . secondsSinceLastEnd . " seconds ago", "Log_" . instanceNum . ".txt")
+                LogInfo("Monitor restarted instance " . instanceNum . ". Reason: last activity recorded "
+                    . secondsSinceLastActivity . " seconds ago (" . lastProgressSource . ")", "Log_" . instanceNum . ".txt")
             }
         }
     }
