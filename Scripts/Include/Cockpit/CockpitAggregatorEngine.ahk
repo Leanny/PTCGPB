@@ -201,6 +201,10 @@ Agg_TickBody() {
                 Agg_EmitEvent("info", "inst", N, "restart", "Instance " . N . " resumed")
             }
         }
+        activeByRunClock := (info.lastStartEpoch > info.lastEndEpoch)
+        activeByLiveAccount := (isAlive && Trim(info.currentAccount) != "")
+        activeWithoutClock := (activeByLiveAccount && uiState != "idle")
+
         status := "idle"
         statusSince := nowEpoch
         if (!isAlive
@@ -209,18 +213,22 @@ Agg_TickBody() {
         } else if (uiState = "pausing") {
             status := "pausing"
             statusSince := nowEpoch
+        } else if (prev.stuckActive) {
+            status := "stuck"
+            statusSince := (prev.stuckSinceEpoch > 0) ? prev.stuckSinceEpoch : nowEpoch
+        } else if (activeByRunClock) {
+            status := "running"
+            statusSince := info.lastStartEpoch
+        } else if (activeWithoutClock) {
+            status := "running"
+            statusSince := (prev.lastStatus = "running" && prev.HasKey("statusSince"))
+                ? prev.statusSince : nowEpoch
         } else if (uiState = "idle" || queueExhausted) {
             status := "idle"
             statusSince := (prev.lastStatus = "idle" && prev.HasKey("statusSince"))
                 ? prev.statusSince : nowEpoch
-        } else if (prev.stuckActive) {
-            status := "stuck"
-            statusSince := (prev.stuckSinceEpoch > 0) ? prev.stuckSinceEpoch : nowEpoch
         } else if (info.lastStartEpoch = 0 && info.lastEndEpoch = 0) {
             status := "idle"
-        } else if (info.lastStartEpoch > info.lastEndEpoch) {
-            status := "running"
-            statusSince := info.lastStartEpoch
         } else {
             status := "idle"
             statusSince := info.lastEndEpoch
@@ -229,8 +237,10 @@ Agg_TickBody() {
 
         currentRunSeconds := 0
         if (status = "running" || status = "stuck" || status = "pausing") {
-            if (info.lastStartEpoch > 0)
+            if (activeByRunClock)
                 currentRunSeconds := Agg_Max(0, nowEpoch - info.lastStartEpoch)
+            else if (statusSince > 0)
+                currentRunSeconds := Agg_Max(0, nowEpoch - statusSince)
         }
 
         if (signals.gpFound) {

@@ -40,6 +40,15 @@ TryDismissSocialFirstTutorial(failSafeTime := 0) {
     if (failSafeTime < 5 || Mod(failSafeTime, 2) != 0)
         return false
 
+    if (GetConfiguredDisplayScale() = 125) {
+        if (!FindOrLoseImage("Friend_SocialTutorialMarker", 0, , 20, true))
+            return false
+
+        adbClick_wbb(145, 451)
+        Delay(0.2)
+        return true
+    }
+
     adbClick_wbb(145, 451)
     Delay(0.2)
     adbClick_wbb(167, 447)
@@ -54,6 +63,15 @@ TryDismissSocialFirstTutorial(failSafeTime := 0) {
 TryHandleTradeTutorial(failSafeTime := 0) {
     if (failSafeTime < 6 || Mod(failSafeTime, 2) != 0)
         return false
+
+    if (GetConfiguredDisplayScale() = 125) {
+        if (!FindOrLoseImage("Friend_SocialTutorialMarker", 0, , 20, true))
+            return false
+
+        adbClick_wbb(145, 451)
+        Delay(0.2)
+        return true
+    }
 
     if (FindOrLoseImage("Friend_AddButtonInFriendList", 0, , , true))
         return false
@@ -343,37 +361,46 @@ AddFriends(renew := false, getFC := false) {
             return false
         }
 
-        StringSplit, inventoryIconCoord, inventoryIconPos, `,
-        miscClickX := inventoryIconCoord1 + GetScaleProfileValue(8, 7)
-        miscClickY := inventoryIconCoord2 + GetScaleProfileValue(170, 167)
-        adbClick_wbb(miscClickX, miscClickY)
-
-        miscWaitStart := A_TickCount
+        menuRecoveryStart := A_TickCount
         Loop {
-            if(FindOrLoseImage("Menu_GoToTitleButton_Up", 0, , 60, true)
-                || FindOrLoseImage("Menu_GoToTitleButton_Down", 0, , 60, true))
-                break
-
-            if((A_TickCount - miscWaitStart) > 5000) {
+            if((A_TickCount - menuRecoveryStart) > 15000) {
                 restartGameInstance("Stuck at InSubMenu...")
                 return false
             }
+
+            if(FindOrLoseImage("Create_DownloadAlertWindow", 0, , , true)) {
+                adbClick_wbb(197, 365)
+                Delay(1)
+                if(FindOrLoseImage("Create_DownloadAlertWindow", 1))
+                    break
+                continue
+            }
+
+            if(FindOrLoseImage("Menu_GoToTitleButton_Down", 0, , 60, true)) {
+                adbClick_wbb(137, 470)
+                DelayH(300)
+                continue
+            }
+
+            if(FindOrLoseImage("Menu_GoToTitleButton_Up", 0, , 60, true)) {
+                adbClick_wbb(137, 430)
+                DelayH(300)
+                continue
+            }
+
+            currentInventoryIconPos := FindOrLoseImage("Menu_InventoryIconInMenu", 0, , 60, true)
+            if(currentInventoryIconPos) {
+                StringSplit, currentInventoryIconCoord, currentInventoryIconPos, `,
+                currentMiscClickX := currentInventoryIconCoord1 + GetScaleProfileValue(8, 7)
+                currentMiscClickY := currentInventoryIconCoord2 + GetScaleProfileValue(170, 167)
+                adbClick_wbb(currentMiscClickX, currentMiscClickY)
+                DelayH(300)
+                continue
+            }
+
             Delay(0.25)
         }
 
-        clickX := 137
-        clickY := 430
-        if(FindOrLoseImage("Menu_GoToTitleButton_Down", 0, , 60))
-            clickY := 470
-
-        FindImageAndClick("Create_DownloadAlertWindow", clickX, clickY)
-
-        Loop, {
-            adbClick_wbb(197, 365)
-            Delay(1)
-            if(FindOrLoseImage("Create_DownloadAlertWindow", 1))
-                break
-        }
         session.set("isReloadAfterAddFriends", true)
     }
     else {
@@ -877,7 +904,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             if(!skipTutorialProc) {
                 if(TryHandleTradeTutorial(failSafeTime))
                     continue
-                else if(!TryDismissSocialFirstTutorial(failSafeTime))
+                else if(!TryDismissSocialFirstTutorial(failSafeTime) && GetConfiguredDisplayScale() != 125)
                     adbClick_wbb(155, 425)
             }
         }
