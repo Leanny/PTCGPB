@@ -398,6 +398,12 @@ AddFriends(renew := false, getFC := false) {
                 continue
             }
 
+            if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, , , true) || IsSocialHubReadyForFriends()) {
+                adbClick_wbb(menuClickX, menuClickY)
+                DelayH(300)
+                continue
+            }
+
             Delay(0.25)
         }
 
@@ -768,6 +774,14 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
             Delay(0.25)
         }
 
+        if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, , 80, true)
+            || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
+            || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
+            || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
+            || FindOrLoseImage("Common_Error", 0, , , true)
+            || !FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, , , true))
+            return true
+
         LogToFile("Friend ID input did not submit; retrying | index=" . num . " | try=" . A_Index)
         EraseInput(num, total)
     }
@@ -786,6 +800,15 @@ EraseInput(num := 0, total := 0) {
     failSafeTime := 0
 
     Loop {
+        if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, , 80, true)
+            || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
+            || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
+            || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
+            || FindOrLoseImage("Common_Error", 0, , , true)) {
+            LogToFile("EraseInput skipped because search result is open | index=" . num)
+            break
+        }
+
         FindImageAndClick("Friend_FriendIDInputReady", 138, 265)
         adbInputEvent("59 122 67") ; Press Shift + Home + Backspace
         if(FindOrLoseImage("Friend_InputFormBlank", 0, failSafeTime))

@@ -317,6 +317,16 @@ waitUntilActivatePTCGPApp(){
     return true
 }
 
+isPTCGPAppFocused() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    result := CmdRet(adbCommand . " shell dumpsys window | grep -E 'mCurrentFocus'")
+    ADB_LogTrace("isPTCGPAppFocused focus=" . Trim(result))
+    return InStr(result, "jp.pokemon.pokemontcgp")
+}
+
 doesMissionUserPrefsExist() {
     prof := Prof_Scope(A_ThisFunc)
     global session

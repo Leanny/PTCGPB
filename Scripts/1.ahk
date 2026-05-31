@@ -1214,6 +1214,11 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(stateResult){
             restartGameInstance("Stuck at " . imageName . "... (found App3.png)")
         }
+        else if(imageName = "speedmodMenu") {
+            speedmodWaitTime := (A_TickCount - session.get("StartSkipTime")) // 1000
+            if(speedmodWaitTime >= 8 && !isPTCGPAppFocused())
+                restartGameInstance("Stuck at " . imageName . "... (app inactive)")
+        }
 
         if(imageName = "Social" || imageName = "Country" || imageName = "Account2" || imageName = "Account") { ;only look for deleted account on start up.
             Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
