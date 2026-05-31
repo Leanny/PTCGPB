@@ -319,7 +319,46 @@ LogShinedustToDatabase(shinedustValue) {
     deviceAccount := GetDeviceAccountFromXML()
     if (deviceAccount != "")
         AccountMetadata_SetShinedust(deviceAccount, shinedustValueClean, session.get("scriptName"), session.get("accountFileName"))
+}
 
+AddShinedustToDatabase(shinedustValue) {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    shinedustValueClean := StrReplace(shinedustValue, ",", "")
+    shinedustValueClean := Trim(shinedustValueClean)
+    if (!RegExMatch(shinedustValueClean, "^-?\d+$"))
+        return false
+
+    shinedustDelta := shinedustValueClean + 0
+    if (shinedustDelta < 0)
+        return false
+
+    deviceAccount := GetDeviceAccountFromXML()
+    if (deviceAccount = "")
+        return false
+
+    instance := session.get("scriptName")
+    fileName := session.get("accountFileName")
+    account := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
+    account["deviceAccount"] := deviceAccount
+    if (instance != "")
+        account["instance"] := instance
+    if (fileName != "") {
+        account["fileName"] := fileName
+        if (account["packCount"] = "")
+            account["packCount"] := AccountMetadata_ExtractPackCount(fileName)
+    }
+
+    shinedust := AccountMetadata_NormalizeShinedust(account["shinedust"])
+    currentValue := shinedust["value"] + 0
+    if (currentValue < 0)
+        currentValue := 0
+
+    shinedust["value"] := currentValue + shinedustDelta
+    account["shinedust"] := shinedust
+
+    return AccountMetadata_WriteAccountUnlocked(deviceAccount, account)
 }
 
 ;-------------------------------------------------------------------------------

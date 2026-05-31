@@ -1702,11 +1702,6 @@ EnsureAccountLanguageMetadata() {
         return false
     }
 
-    if (AccountMetadata_HasLanguage(deviceAccount, session.get("scriptName"), session.get("accountFileName"))) {
-        LogTrace("Account language already set for " . session.get("accountFileName"), "ADB.txt")
-        return true
-    }
-
     LogTrace("Ensuring ptcgpb helper exists before language lookup", "ADB.txt")
     if (!EnsurePTCGPBHelperInstalled())
         return false
@@ -1823,9 +1818,9 @@ InitPackOpening(full := false) {
     SavePackOpeningMissionUserPrefsSnapshot("pre")
 
     if (full) {
-        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --full >/dev/null 2>&1 </dev/null &'", , Hide
+        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --full --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
     } else {
-        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards >/dev/null 2>&1 </dev/null &'", , Hide
+        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
     }
     Sleep, 300
 }
@@ -1922,13 +1917,14 @@ ParsePackResultOutput(output) {
     }
     lines := parsedLines
 
-    if (lines.Length() < 3)
+    if (lines.Length() < 4)
         return false
 
     pulls := []
     cards := []
     rarity := []
     packNames := []
+    shinedust := 0
     raw_msg := ""
 
     idx := 1
@@ -1950,8 +1946,11 @@ ParsePackResultOutput(output) {
         if (pullCards.Length() = 0 || pullRarity.Length() = 0)
             break
 
-        pullRaw := lines[idx] . "`n" . lines[idx + 1] . "`n" . lines[idx + 2]
-        pulls.Push({ cards: pullCards, pack: pullPack, rarity: pullRarity, raw: pullRaw })
+        pullShinedust := lines[idx + 3] + 0
+        shinedust += pullShinedust
+
+        pullRaw := lines[idx] . "`n" . lines[idx + 1] . "`n" . lines[idx + 2] . "`n" . lines[idx + 3]
+        pulls.Push({ cards: pullCards, pack: pullPack, rarity: pullRarity, shinedust: pullShinedust, raw: pullRaw })
         packNames.Push(pullPack)
 
         for _, card in pullCards
@@ -1963,7 +1962,7 @@ ParsePackResultOutput(output) {
             raw_msg .= "`n"
         raw_msg .= pullRaw
 
-        idx += 3
+        idx += 4
     }
 
     if (pulls.Length() = 0)
@@ -1976,7 +1975,7 @@ ParsePackResultOutput(output) {
         pack .= packName
     }
 
-    return { cards: cards, pack: pack, rarity: rarity, raw: raw_msg, pulls: pulls }
+    return { cards: cards, pack: pack, rarity: rarity, shinedust: shinedust, raw: raw_msg, pulls: pulls }
 }
 
 UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
@@ -2075,7 +2074,7 @@ RecoverPack() {
     post := PackOpeningMissionUserPrefsSnapshotPath("post")
 
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
-    adbWriteRaw("/data/ptcgp/ptcgpb diff-files " . pre . " " . post)
+    adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
 
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
     return ParsePackResultOutput(output)
@@ -2183,6 +2182,7 @@ CheckPack(stopEarly := false) {
     cards := result.cards
     pack := result.pack
     rarity := result.rarity
+    shinedust := result.shinedust
     raw_msg := result.raw
     if(rarity[1] = 0) {
         ; Fallback in case recognition failed
@@ -2201,6 +2201,8 @@ CheckPack(stopEarly := false) {
 
     logMessage := "Instance: " . session.get("scriptName") " | Stored to card database"
     LogDebug(logMessage, "debug_cards.txt")
+    UpdatePackCountAfterOpening()
+    AddShinedustToDatabase(shinedust)
 
     if (stopEarly) {
         if (botConfig.get("s4tEnabled")) {
@@ -2208,7 +2210,6 @@ CheckPack(stopEarly := false) {
         }
         return
     }
-    UpdatePackCountAfterOpening()
 
     ; NEW: Disable card detection for Create Bots and Inject 13P+
     ; Only run detection for Inject Wonderpick 96P+

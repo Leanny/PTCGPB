@@ -101,7 +101,7 @@ RemoveOldFiles() {
         return
     }
 
-    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 9, 0)) {
+    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 10, 0)) {
         LogInfo("RemoveOldFiles deleting old ptcgpb helper version " . versionMatch1 . "." . versionMatch2 . "." . versionMatch3, "ADB.txt")
         adbWriteRaw("rm -f " . remotePath)
     } else {
