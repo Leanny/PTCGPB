@@ -4288,12 +4288,7 @@ PackOpening(tenPackOpening := false) {
     failSafeTime := 0
     Loop {
         Delay(1)
-        if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
-            HandleGiftPackDexRegistration()
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-            continue
-        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
+        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
@@ -4303,6 +4298,11 @@ PackOpening(tenPackOpening := false) {
             break
         } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
             break
+        } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
+            HandleGiftPackDexRegistration()
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
         } else {
             adbClick_wbb(146, 489) ;146, 494
         }
@@ -4489,12 +4489,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     failSafeTime := 0
     Loop {
         Delay(1)
-        if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
-            HandleGiftPackDexRegistration()
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-            continue
-        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
+        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 494) ;146, 494
@@ -4502,6 +4497,11 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
             adbClick_wbb(146, 494) ;146, 494
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
+        } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
+            HandleGiftPackDexRegistration()
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
         } else {
             adbClick_wbb(146, 494) ;146, 494
         }
