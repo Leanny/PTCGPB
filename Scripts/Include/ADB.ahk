@@ -342,9 +342,12 @@ startPTCGPApp() {
     ADB_LogTrace("startPTCGPApp started")
     retryCount := 0
     Loop {
-        if(isTerminatePTCGPApp()) {
-            ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
+        appTerminated := isTerminatePTCGPApp()
+        if(appTerminated)
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+
+        if(appTerminated || !isPTCGPAppFocused()) {
+            ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
             adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
             DelayH(100)
         }
