@@ -4298,11 +4298,6 @@ PackOpening(tenPackOpening := false) {
             break
         } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
             break
-        } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
-            HandleGiftPackDexRegistration()
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-            continue
         } else {
             adbClick_wbb(146, 489) ;146, 494
         }
@@ -4497,11 +4492,6 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
             adbClick_wbb(146, 494) ;146, 494
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
-        } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
-            HandleGiftPackDexRegistration()
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-            continue
         } else {
             adbClick_wbb(146, 494) ;146, 494
         }
@@ -4625,14 +4615,6 @@ HandleGiftedPacksAfterReceiveGift() {
             continue
         }
 
-        if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
-            HandleGiftPackDexRegistration()
-            rewardSetHandled := true
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-            continue
-        }
-
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, 1)) {
             adbClick_wbb(247, 500)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, 1) || FindOrLoseImage("Next2", 0, 1)) {
@@ -4729,8 +4711,6 @@ HandleSingleGiftPackOpening() {
             break
         } else if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 1)) {
             break
-        } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
-            break
         } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, 1)) {
             adbClick_wbb(247, 500)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, 1) || FindOrLoseImage("Next2", 0, 1)) {
@@ -4746,35 +4726,6 @@ HandleSingleGiftPackOpening() {
         if(failSafeTime > 45)
             break
     }
-}
-
-HandleGiftPackDexRegistration() {
-    global session
-
-    if(session.get("setSpeed") > 1) {
-        SetOpenGiftSpeed(1)
-    }
-
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        adbSwipe_wbb("266 770 266 355 60")
-        Sleep, 100
-        if(FindOrLoseImage("Create_ConfirmRegisteredCard", 0, failSafeTime)) {
-            if(session.get("setSpeed") > 1) {
-                SetOpenGiftSpeed(session.get("setSpeed"))
-            }
-            break
-        }
-
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Registering cards in Dex`n(" . failSafeTime . "/30 seconds)")
-        if(failSafeTime > 30)
-            break
-    }
-
-    Delay(1)
-    adbClick_wbb(204, 371)
 }
 
 DoWonderPickOnly() {
