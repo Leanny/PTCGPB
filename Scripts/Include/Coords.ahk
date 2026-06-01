@@ -246,6 +246,12 @@ needlesDict.Add(new Needle("GPTest_AccountNotFound", "GPTest_NotFound", new Coor
 needlesDict.Add(new Needle("GPTest_ReqeustCancelButtonInSearchResult", "PendingFriendRequest", new Coordinate(188, 238, 221, 269)))
 needlesDict.Add(new Needle("GPTest_FriendRequestButtonInUserDetails", "FavouriteFriend2", new Coordinate(84, 392, 98, 405)))
 
+; privacy popup
+needlesDict.Add(new Needle("Privacy_Box", "Privacy1", new Coordinate(11, 140, 28, 167)))
+needlesDict.Add(new Needle("Privacy_Box2", "Privacy2", new Coordinate(30, 355, 44, 376)))
+needlesDict.Add(new Needle("Privacy_Cross", "Privacy", new Coordinate(130, 473, 145, 488)))
+needlesDict.Add(new Needle("Privacy_Green", "Privacy3", new Coordinate(31, 353, 44, 377)))
+
 ; Do not use
 ;needlesDict.Add(new Needle("CountrySelect", )
 ;needlesDict.Add(new Needle("CountrySelect2", )

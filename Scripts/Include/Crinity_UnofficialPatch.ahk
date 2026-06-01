@@ -3,53 +3,36 @@
 ; ====================================================================
 ; #Include %A_ScriptDir%\Include\Crinity_UnofficialPatch.ahk
 
-/*
 processPrivacyAgreement()
 {
-    if(!FindOrLoseImage("newPrivacyTOSpopup", 0))
+    if(!FindOrLoseImage("Privacy_Box", 0) || !FindOrLoseImage("Privacy_Box2", 0))
         return
 
     CreateStatusMessage("Accepting Privacy and TOS popup.",,,, false)
-
-    FindImageAndClick("NewPrivacyAgreement_Main", 142, 372) ; Click First alert OK
-    FindImageAndClick("NewPrivacyAgreement_DescX", 140, 336) ; Click Description Button
-    FindImageAndClick("NewPrivacyAgreement_Main", 138, 487) ; Close Description Window
+    Delay(2)
     Loop, {
-        adbClick_wbb(47, 371) ; Click Check button
+        adbClick(139, 329)
         Delay(2)
-        if(FindOrLoseImage("NewPrivacyAgreement_Checked", 0))
+        if(FindOrLoseImage("Privacy_Cross", 0))
             break
     }
-
+    Delay(2)
     Loop, {
-        adbClick_wbb(143, 488) ; Click Main OK Button
-        Delay(1)
-        if(FindOrLoseImage("NewPrivacyAgreement_Main", 1)) {
-            Delay(2)
-            adbClick_wbb(142, 372) ; Click Second alert OK
+        adbClick(138, 479)
+        Delay(2)
+        if(!FindOrLoseImage("Privacy_Cross", 0))
             break
-        }
+    }
+    Delay(2)
+    Loop, {
+        adbClick(40, 365)
+        Delay(2)
+        if(FindOrLoseImage("Privacy_Green", 0))
+            break
     }
     Delay(1)
-    adbClick_wbb(142, 372) ; Click Second alert OK(One more)
-
-    FindImageAndClick("NewPrivacyAgreement_DescX", 140, 336) ; Click Description Button
-    FindImageAndClick("NewPrivacyAgreement_Main", 138, 487) ; Close Description Window
-    Loop, {
-        adbClick_wbb(47, 371) ; Click Check button
-        Delay(2)
-        if(FindOrLoseImage("NewPrivacyAgreement_Checked", 0))
-            break
-    }
-
-    Loop, {
-        adbClick_wbb(143, 488) ; Click Main OK Button
-        Delay(2)
-        if(FindOrLoseImage("NewPrivacyAgreement_Checked", 1))
-            break
-    }
+    adbClick(138, 479)
 }
-*/
 
 getPackCoordXInHome(){
     global botConfig, session
@@ -204,7 +187,7 @@ startPreProcess(methodType){
 
             ;processPrivacyAgreement()
         }
-
+        processPrivacyAgreement()
         Path = %imagePath%Privacy.png
         pNeedle := GetNeedle(Path)
         vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 130, 473, 145, 488, searchVariation)
