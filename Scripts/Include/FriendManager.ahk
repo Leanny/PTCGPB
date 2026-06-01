@@ -291,6 +291,49 @@ AddFriends(renew := false, getFC := false) {
                 MarkFriendCleanupPending("Friend request pending")
                 break
             }
+            else if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime)) {
+                LogToFile("Friend details request button detected during AddFriends | index=" . friendIDIdx)
+                adbClick_wbb(143, 407)
+                MarkFriendCleanupPending("Friend request submitted from details")
+                Delay(1)
+
+                waitSendResult := A_TickCount
+                interceptProc := true
+                Loop{
+                    Delay(0.25)
+                    if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
+                        MarkFriendCleanupPending("Friend accepted from details")
+                        break
+                    }
+                    else if(interceptErrorCheck("ADD")){
+                        skipCurrentID := true
+                        LogToFile("Skipping friend ID after ADD error from details | index=" . friendIDIdx)
+                        break
+                    }
+                    else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+                        LogToFile("Skipping friend ID because cannot send friend request to this user from details | index=" . friendIDIdx)
+                        break
+                    }
+                    if(!isSendReqeest
+                        && (A_TickCount - waitSendResult) > 2500
+                        && FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime, , true)
+                        && !FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime, , true)) {
+                        adbClick_wbb(143, 407)
+                        MarkFriendCleanupPending("Friend request resubmitted from details")
+                        isSendReqeest := true
+                    }
+                    if ((A_TickCount - waitSendResult) > 10000)
+                        break
+                }
+                interceptProc := false
+                CloseFriendDetailsIfOpen()
+                break
+            }
+            else if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
+                MarkFriendCleanupPending("Friend accepted from details")
+                CloseFriendDetailsIfOpen()
+                break
+            }
             else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
                 LogToFile("Skipping friend ID because cannot send friend request to this user | index=" . friendIDIdx)
                 break
@@ -327,6 +370,7 @@ AddFriends(renew := false, getFC := false) {
             continue
 
         if(friendIDIdx != session.get("friendIDs").maxIndex()) {
+            CloseFriendDetailsIfOpen()
             FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 143, 518, , 1000)
             FindImageAndClick("Friend_FriendIDInputReady", 138, 265, , 1000)
             EraseInput(friendIDIdx, n)
@@ -761,6 +805,8 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
             if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, , 80, true)
                 || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
                 || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
+                || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+                || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
                 || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
                 || FindOrLoseImage("Common_Error", 0, , , true))
                 return true
@@ -777,6 +823,8 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
         if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, , 80, true)
             || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
+            || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+            || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
             || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
             || FindOrLoseImage("Common_Error", 0, , , true)
             || !FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, , , true))
@@ -803,6 +851,8 @@ EraseInput(num := 0, total := 0) {
         if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, , 80, true)
             || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
+            || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+            || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
             || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
             || FindOrLoseImage("Common_Error", 0, , , true)) {
             LogToFile("EraseInput skipped because search result is open | index=" . num)
@@ -819,6 +869,18 @@ EraseInput(num := 0, total := 0) {
             break
         }
     }
+}
+
+CloseFriendDetailsIfOpen() {
+    Loop, 4 {
+        if(!FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+            && !FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true))
+            return true
+
+        adbClick_wbb(143, 507)
+        Delay(0.5)
+    }
+    return false
 }
 
 ShouldSkipGenericButtonInSocialWait() {
