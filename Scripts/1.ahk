@@ -1719,7 +1719,9 @@ EnsureAccountLanguageMetadata() {
         return false
     }
 
-    if (!AccountMetadata_SetLanguageIfUnset(deviceAccount, language, session.get("scriptName"), session.get("accountFileName"))) {
+    session.set("language", language)
+
+    if (!AccountMetadata_SetLanguage(deviceAccount, language, session.get("scriptName"), session.get("accountFileName"))) {
         LogWarn("EnsureAccountLanguageMetadata failed to save language for " . session.get("accountFileName"))
         return false
     }

@@ -1377,6 +1377,57 @@ AccountMetadata_SetLanguageIfUnset(deviceAccount, language, instance := "", file
     return true
 }
 
+AccountMetadata_SetLanguage(deviceAccount, language, instance := "", fileName := "") {
+    if (deviceAccount = "" || language = "")
+        return false
+
+    language := Trim(language)
+    if (language = "")
+        return false
+
+    if (AccountMetadata_UseTempWrites()) {
+        account := AccountMetadata_NewAccount(instance, fileName)
+        account["deviceAccount"] := deviceAccount
+        if (instance != "")
+            account["instance"] := instance
+        if (fileName != "")
+            account["fileName"] := fileName
+        account["language"] := language
+        return AccountMetadata_SaveTempAccount(instance, fileName, account)
+    }
+
+    hMutex := AccountMetadata_AcquireLock()
+    if (!hMutex)
+        return false
+
+    store := AccountMetadata_ReadStoreUnlocked()
+    key := AccountMetadata_FindKey(store, instance, fileName, "", deviceAccount)
+    if (store["accounts"].HasKey(key)) {
+        account := store["accounts"][key]
+    } else {
+        account := AccountMetadata_NewAccount(instance, fileName)
+        account["deviceAccount"] := deviceAccount
+    }
+
+    account["deviceAccount"] := deviceAccount
+    if (instance != "")
+        account["instance"] := instance
+    if (fileName != "") {
+        account["fileName"] := fileName
+        if (account["createdAt"] = "" || account["createdAt"] = "0")
+            account["createdAt"] := AccountMetadata_ExtractCreatedAt(fileName)
+    }
+    account["language"] := language
+
+    newKey := AccountMetadata_DeviceKey(deviceAccount)
+    if (key != newKey && store["accounts"].HasKey(key))
+        store["accounts"].Delete(key)
+    store["accounts"][newKey] := account
+    AccountMetadata_WriteStoreUnlocked(store)
+    AccountMetadata_ReleaseLock(hMutex)
+    return true
+}
+
 AccountMetadata_HasLanguage(deviceAccount, instance := "", fileName := "") {
     if (deviceAccount = "")
         return false
