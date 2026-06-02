@@ -6,6 +6,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$script:AccountJsonSerializer = $null
+
 $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
 if (-not (Test-Path -LiteralPath $resolvedRoot -PathType Container)) {
     throw "Root path not found: $resolvedRoot"
@@ -994,6 +996,1088 @@ function Invoke-SaveWishlist {
     }
 }
 
+function Test-DeviceAccountId {
+    param([AllowNull()][string]$Value)
+    return -not [string]::IsNullOrWhiteSpace($Value) -and ($Value -match '^[a-fA-F0-9]{8,64}$')
+}
+
+function Get-AccountJsonPath {
+    param([Parameter(Mandatory = $true)][string]$DeviceAccount)
+
+    if (-not (Test-DeviceAccountId -Value $DeviceAccount)) { return $null }
+    $accountsDir = Join-Path $resolvedRoot "Accounts\Cards\accounts"
+    $path = Join-Path $accountsDir ($DeviceAccount + ".json")
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    return $path
+}
+
+function Test-TradeCardId {
+    param([AllowNull()][string]$Value)
+    return -not [string]::IsNullOrWhiteSpace($Value) -and ($Value -match '^(PK|TR)_\d{2}_\d{6}(_\d{2})?$')
+}
+
+function Get-AccountJsonSerializer {
+    if (-not $script:AccountJsonSerializer) {
+        Add-Type -AssemblyName System.Web.Extensions
+        $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+        $serializer.MaxJsonLength = 268435456
+        $serializer.RecursionLimit = 512
+        $script:AccountJsonSerializer = $serializer
+    }
+    return $script:AccountJsonSerializer
+}
+
+function ConvertTo-JsonHashtable {
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $table = @{}
+        foreach ($entry in $Value.GetEnumerator()) {
+            $table[[string]$entry.Key] = ConvertTo-JsonHashtable $entry.Value
+        }
+        return $table
+    }
+    if ($Value -is [pscustomobject]) {
+        $table = @{}
+        foreach ($prop in $Value.PSObject.Properties) {
+            $table[[string]$prop.Name] = ConvertTo-JsonHashtable $prop.Value
+        }
+        return $table
+    }
+    if ($Value -is [System.Array]) {
+        $list = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $Value) {
+            $list.Add((ConvertTo-JsonHashtable $item))
+        }
+        return $list.ToArray()
+    }
+    if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+        $list = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $Value) {
+            $list.Add((ConvertTo-JsonHashtable $item))
+        }
+        return $list.ToArray()
+    }
+    return $Value
+}
+
+function Read-AccountJsonDocument {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $text = [System.IO.File]::ReadAllText($Path)
+    if ($text -notmatch '(?i)"deviceAccount"\s*:\s*"([^"]+)"') {
+        throw "Account JSON is missing deviceAccount."
+    }
+    $deviceAccount = $Matches[1].Trim()
+    $serializer = Get-AccountJsonSerializer
+    $rawDoc = $serializer.DeserializeObject($text)
+    if (-not ($rawDoc -is [System.Collections.IDictionary])) {
+        throw "Account JSON root must be an object."
+    }
+    $doc = ConvertTo-JsonHashtable $rawDoc
+    if (-not ($doc -is [hashtable])) {
+        throw "Account JSON root must be an object."
+    }
+    return [pscustomobject]@{
+        Path = $Path
+        Text = $text
+        DeviceAccount = $deviceAccount
+        Doc = $doc
+    }
+}
+
+function Write-AccountJsonDocument {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$Doc
+    )
+
+    if ($Doc -isnot [hashtable]) {
+        if ($Doc -is [System.Collections.IDictionary]) {
+            $Doc = ConvertTo-JsonHashtable $Doc
+        } else {
+            throw "Account JSON document must be an object."
+        }
+    }
+
+    $json = ConvertTo-Json -InputObject $Doc -Depth 100
+    $tmp = "$Path.tmp"
+    Write-Utf8File -Path $tmp -Text $json
+    Move-Item -LiteralPath $tmp -Destination $Path -Force
+}
+
+function Find-JsonValueEndIndex {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][int]$ValueStartIndex
+    )
+
+    $i = $ValueStartIndex
+    while ($i -lt $Text.Length -and [char]::IsWhiteSpace($Text, $i)) {
+        $i++
+    }
+    if ($i -ge $Text.Length) {
+        throw "Unexpected end of JSON while reading a value."
+    }
+
+    $c = $Text[$i]
+    if ($c -eq '"') {
+        $i++
+        $escape = $false
+        while ($i -lt $Text.Length) {
+            $ch = $Text[$i]
+            if ($escape) {
+                $escape = $false
+                $i++
+                continue
+            }
+            if ($ch -eq '\') {
+                $escape = $true
+                $i++
+                continue
+            }
+            if ($ch -eq '"') {
+                return $i + 1
+            }
+            $i++
+        }
+        throw "Unterminated JSON string."
+    }
+
+    if ($c -eq '{' -or $c -eq '[') {
+        $open = $c
+        $close = if ($open -eq '{') { '}' } else { ']' }
+        $depth = 0
+        $inString = $false
+        $escape = $false
+        for ($pos = $i; $pos -lt $Text.Length; $pos++) {
+            $ch = $Text[$pos]
+            if ($inString) {
+                if ($escape) {
+                    $escape = $false
+                    continue
+                }
+                if ($ch -eq '\') {
+                    $escape = $true
+                    continue
+                }
+                if ($ch -eq '"') {
+                    $inString = $false
+                }
+                continue
+            }
+            if ($ch -eq '"') {
+                $inString = $true
+                continue
+            }
+            if ($ch -eq $open) {
+                $depth++
+                continue
+            }
+            if ($ch -eq $close) {
+                $depth--
+                if ($depth -eq 0) {
+                    return $pos + 1
+                }
+            }
+        }
+        throw "Unterminated JSON object or array."
+    }
+
+    $primitiveMatch = [regex]::Match(
+        $Text.Substring($i),
+        '^(?:true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)'
+    )
+    if ($primitiveMatch.Success) {
+        return $i + $primitiveMatch.Length
+    }
+
+    throw "Unsupported JSON value near index $i."
+}
+
+function Get-JsonPropertyValueSubstring {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$PropertyName,
+        [int]$SearchFrom = 0
+    )
+
+    $pattern = '(?ms)"' + [regex]::Escape($PropertyName) + '"\s*:\s*'
+    $slice = if ($SearchFrom -gt 0) { $Text.Substring($SearchFrom) } else { $Text }
+    $match = [regex]::Match($slice, $pattern)
+    if (-not $match.Success) {
+        return $null
+    }
+
+    $valueStart = $SearchFrom + $match.Index + $match.Length
+    $valueEnd = Find-JsonValueEndIndex -Text $Text -ValueStartIndex $valueStart
+    return $Text.Substring($valueStart, $valueEnd - $valueStart).Trim()
+}
+
+function Remove-JsonObjectPropertyByName {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$PropertyName
+    )
+
+    $pattern = '(?ms),\s*"' + [regex]::Escape($PropertyName) + '"\s*:\s*'
+    $match = [regex]::Match($Text, $pattern)
+    if ($match.Success) {
+        $valueStart = $match.Index + $match.Length
+        $valueEnd = Find-JsonValueEndIndex -Text $Text -ValueStartIndex ($valueStart - 1)
+        while ($valueStart -lt $Text.Length -and [char]::IsWhiteSpace($Text, $valueStart)) {
+            $valueStart++
+        }
+        if ($valueStart -lt $Text.Length -and $Text[$valueStart] -ne '{' -and $Text[$valueStart] -ne '[') {
+            $valueEnd = Find-JsonValueEndIndex -Text $Text -ValueStartIndex $valueStart
+        }
+        return $Text.Remove($match.Index, $valueEnd - $match.Index)
+    }
+
+    $patternLead = '(?ms)"' + [regex]::Escape($PropertyName) + '"\s*:\s*'
+    $match = [regex]::Match($Text, $patternLead)
+    if (-not $match.Success) {
+        return $Text
+    }
+
+    $valueStart = $match.Index + $match.Length
+    while ($valueStart -lt $Text.Length -and [char]::IsWhiteSpace($Text, $valueStart)) {
+        $valueStart++
+    }
+    $valueEnd = Find-JsonValueEndIndex -Text $Text -ValueStartIndex $valueStart
+    $removeLength = $valueEnd - $match.Index
+    $tail = $Text.Substring($valueEnd)
+    if ($tail -match '^\s*,') {
+        $removeLength += ($tail.Length - $tail.TrimStart(',').Length)
+    }
+    return $Text.Remove($match.Index, $removeLength)
+}
+
+function Add-MetadataJsonComma {
+    param(
+        [Parameter(Mandatory = $true)][System.Text.StringBuilder]$Builder,
+        [ref]$FirstField
+    )
+
+    if (-not $FirstField.Value) {
+        [void]$Builder.Append(",`r`n")
+    }
+    $FirstField.Value = $false
+}
+
+function Add-MetadataJsonStringField {
+    param(
+        [Parameter(Mandatory = $true)][System.Text.StringBuilder]$Builder,
+        [ref]$FirstField,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [AllowNull()][string]$Value,
+        [string]$Indent = "    "
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) { return }
+    Add-MetadataJsonComma -Builder $Builder -FirstField $FirstField
+    [void]$Builder.Append($Indent)
+    [void]$Builder.Append('"')
+    [void]$Builder.Append($Name)
+    [void]$Builder.Append('": ')
+    [void]$Builder.Append((ConvertTo-JsonStringLiteral -Value $Value))
+}
+
+function Add-MetadataJsonNumberField {
+    param(
+        [Parameter(Mandatory = $true)][System.Text.StringBuilder]$Builder,
+        [ref]$FirstField,
+        [Parameter(Mandatory = $true)][string]$Name,
+        $Value,
+        [string]$Indent = "    "
+    )
+
+    if ($null -eq $Value) { return }
+    try {
+        $number = [int][Math]::Round([double]$Value)
+    } catch {
+        return
+    }
+    if ($Name -ne 'packCount' -and $number -eq 0) { return }
+    Add-MetadataJsonComma -Builder $Builder -FirstField $FirstField
+    [void]$Builder.Append($Indent)
+    [void]$Builder.Append('"')
+    [void]$Builder.Append($Name)
+    [void]$Builder.Append('": ')
+    [void]$Builder.Append([string]$number)
+}
+
+function Format-AccountMetadataShinedustJson {
+    param($Shinedust)
+
+    if ($null -eq $Shinedust) { return "" }
+    $table = Get-CardMarkHashtable $Shinedust
+    if (-not $table) { return "" }
+
+    $value = -1
+    if ($table.ContainsKey('value')) {
+        try { $value = [int][Math]::Round([double]$table['value']) } catch { $value = -1 }
+    }
+    $lastUpdatedAt = ""
+    if ($table.ContainsKey('lastUpdatedAt')) {
+        $lastUpdatedAt = [string]$table['lastUpdatedAt']
+    }
+    if ($value -lt 0 -and ([string]::IsNullOrWhiteSpace($lastUpdatedAt) -or $lastUpdatedAt -eq '0')) {
+        return ""
+    }
+
+    $builder = New-Object System.Text.StringBuilder
+    $first = $true
+    [void]$builder.Append("{")
+    if ($value -ge 0) {
+        if (-not $first) { [void]$builder.Append(",`r`n") }
+        [void]$builder.Append("`r`n      ""value"": ")
+        [void]$builder.Append([string]$value)
+        $first = $false
+    }
+    if (-not [string]::IsNullOrWhiteSpace($lastUpdatedAt) -and $lastUpdatedAt -ne '0') {
+        if (-not $first) { [void]$builder.Append(",`r`n") }
+        [void]$builder.Append('      "lastUpdatedAt": ')
+        [void]$builder.Append((ConvertTo-JsonStringLiteral -Value $lastUpdatedAt))
+        $first = $false
+    }
+    [void]$builder.Append("`r`n    }")
+    return $builder.ToString()
+}
+
+function Format-AccountMetadataFlagsJson {
+    param($Flags)
+
+    if ($null -eq $Flags) { return "" }
+    $table = Get-CardMarkHashtable $Flags
+    if (-not $table -or $table.Count -eq 0) { return "" }
+
+    $flagOrder = @('B', 'X', 'T', 'R', 'W', 'H', 'SH')
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append("{")
+    $firstFlag = $true
+    foreach ($flagName in $flagOrder) {
+        if (-not $table.ContainsKey($flagName)) { continue }
+        $flag = $table[$flagName]
+        $flagTable = Get-CardMarkHashtable $flag
+        if (-not $flagTable) { continue }
+
+        $flagValue = 0
+        if ($flagTable.ContainsKey('value')) {
+            try { $flagValue = [int][Math]::Round([double]$flagTable['value']) } catch { $flagValue = 0 }
+        }
+        $setAt = if ($flagTable.ContainsKey('setAt')) { [string]$flagTable['setAt'] } else { "" }
+        $validUntil = if ($flagTable.ContainsKey('validUntil')) { [string]$flagTable['validUntil'] } else { "" }
+        if ($flagValue -le 0 -and [string]::IsNullOrWhiteSpace($setAt) -and [string]::IsNullOrWhiteSpace($validUntil)) {
+            continue
+        }
+
+        if (-not $firstFlag) { [void]$builder.Append(",`r`n") }
+        [void]$builder.Append("`r`n      """)
+        [void]$builder.Append($flagName)
+        [void]$builder.Append('": {')
+        [void]$builder.Append("`r`n")
+        $firstField = $true
+        if ($flagValue -gt 0) {
+            if (-not $firstField) { [void]$builder.Append(",`r`n") }
+            [void]$builder.Append('        "value": ')
+            [void]$builder.Append([string]$flagValue)
+            $firstField = $false
+        }
+        if (-not [string]::IsNullOrWhiteSpace($setAt)) {
+            if (-not $firstField) { [void]$builder.Append(",`r`n") }
+            [void]$builder.Append('        "setAt": ')
+            [void]$builder.Append((ConvertTo-JsonStringLiteral -Value $setAt))
+            $firstField = $false
+        }
+        if (-not [string]::IsNullOrWhiteSpace($validUntil)) {
+            if (-not $firstField) { [void]$builder.Append(",`r`n") }
+            [void]$builder.Append('        "validUntil": ')
+            [void]$builder.Append((ConvertTo-JsonStringLiteral -Value $validUntil))
+            $firstField = $false
+        }
+        [void]$builder.Append("`r`n      }")
+        $firstFlag = $false
+    }
+    [void]$builder.Append("`r`n    }")
+    return $builder.ToString()
+}
+
+function Get-CardMarkHashtable {
+    param($Value)
+
+    if ($null -eq $Value) { return $null }
+    $converted = ConvertTo-JsonHashtable $Value
+    if ($converted -is [hashtable]) {
+        return $converted
+    }
+    return $null
+}
+
+function Format-AccountMetadataCardMarkEntryJson {
+    param(
+        [Parameter(Mandatory = $true)][string]$CardId,
+        $Mark
+    )
+
+    $markTable = Get-CardMarkHashtable $Mark
+    if (-not $markTable) { return "" }
+
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append('      "')
+    [void]$builder.Append($CardId)
+    [void]$builder.Append('": {')
+    [void]$builder.Append("`r`n")
+
+    $pairings = @()
+    if ($markTable.ContainsKey('pairings')) {
+        $rawPairings = $markTable['pairings']
+        if ($rawPairings -is [System.Array]) {
+            $pairings = @($rawPairings)
+        } elseif ($rawPairings -is [System.Collections.IEnumerable] -and -not ($rawPairings -is [string])) {
+            $pairings = @($rawPairings)
+        }
+    }
+    [void]$builder.Append('        "pairings": [')
+    $pairingLines = New-Object System.Collections.Generic.List[string]
+    foreach ($pairing in $pairings) {
+        $pairTable = Get-CardMarkHashtable $pairing
+        if (-not $pairTable) { continue }
+        $receivedCardId = ""
+        if ($pairTable.ContainsKey('receivedCardId')) {
+            $receivedCardId = [string]$pairTable['receivedCardId']
+        }
+        if ([string]::IsNullOrWhiteSpace($receivedCardId)) { continue }
+        $timestampMs = 0
+        if ($pairTable.ContainsKey('timestampMs')) {
+            try { $timestampMs = [int64][Math]::Round([double]$pairTable['timestampMs']) } catch { $timestampMs = 0 }
+        }
+        $pairingLines.Add(
+            "          {`r`n            ""receivedCardId"": " + (ConvertTo-JsonStringLiteral -Value $receivedCardId) +
+            ",`r`n            ""timestampMs"": " + [string]$timestampMs + "`r`n          }"
+        )
+    }
+    if ($pairingLines.Count -gt 0) {
+        [void]$builder.Append("`r`n")
+        [void]$builder.Append(($pairingLines -join ",`r`n"))
+        [void]$builder.Append("`r`n        ")
+    }
+    [void]$builder.Append("],")
+
+    $timestampMs = 0
+    if ($markTable.ContainsKey('timestampMs')) {
+        try { $timestampMs = [int64][Math]::Round([double]$markTable['timestampMs']) } catch { $timestampMs = 0 }
+    }
+    [void]$builder.Append("`r`n        ""timestampMs"": ")
+    [void]$builder.Append([string]$timestampMs)
+
+    $count = 0
+    if ($markTable.ContainsKey('count')) {
+        try { $count = [int][Math]::Round([double]$markTable['count']) } catch { $count = 0 }
+    }
+    if ($count -gt 0) {
+        [void]$builder.Append(",`r`n        ""count"": ")
+        [void]$builder.Append([string]$count)
+    }
+
+    [void]$builder.Append("`r`n      }")
+    return $builder.ToString()
+}
+
+function Format-AccountMetadataSharedCardEntryJson {
+    param(
+        [Parameter(Mandatory = $true)][string]$CardId,
+        $Mark
+    )
+
+    $markTable = Get-CardMarkHashtable $Mark
+    if (-not $markTable) { return "" }
+
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append('      "')
+    [void]$builder.Append($CardId)
+    [void]$builder.Append('": {')
+    [void]$builder.Append("`r`n")
+
+    $timestampMs = 0
+    if ($markTable.ContainsKey('timestampMs')) {
+        try { $timestampMs = [int64][Math]::Round([double]$markTable['timestampMs']) } catch { $timestampMs = 0 }
+    }
+    [void]$builder.Append('        "timestampMs": ')
+    [void]$builder.Append([string]$timestampMs)
+
+    $count = 0
+    if ($markTable.ContainsKey('count')) {
+        try { $count = [int][Math]::Round([double]$markTable['count']) } catch { $count = 0 }
+    }
+    if ($count -gt 0) {
+        [void]$builder.Append(",`r`n        ""count"": ")
+        [void]$builder.Append([string]$count)
+    }
+
+    [void]$builder.Append("`r`n      }")
+    return $builder.ToString()
+}
+
+function Format-AccountMetadataCardMarksPropertyJson {
+    param(
+        [Parameter(Mandatory = $true)][string]$PropertyName,
+        $Marks
+    )
+
+    $marksTable = Get-CardMarkHashtable $Marks
+    if (-not $marksTable -or $marksTable.Count -eq 0) {
+        return ""
+    }
+
+    $cardIds = @($marksTable.Keys | ForEach-Object { [string]$_ } | Where-Object { Test-TradeCardId -Value $_ } | Sort-Object)
+    if ($cardIds.Count -eq 0) {
+        return ""
+    }
+
+    $isShared = ($PropertyName -eq 'sharedCards')
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append('    "')
+    [void]$builder.Append($PropertyName)
+    [void]$builder.Append('": {')
+    [void]$builder.Append("`r`n")
+    $firstCard = $true
+    foreach ($cardId in $cardIds) {
+        if (-not $firstCard) {
+            [void]$builder.Append(",`r`n")
+        }
+        if ($isShared) {
+            [void]$builder.Append((Format-AccountMetadataSharedCardEntryJson -CardId $cardId -Mark $marksTable[$cardId]))
+        } else {
+            [void]$builder.Append((Format-AccountMetadataCardMarkEntryJson -CardId $cardId -Mark $marksTable[$cardId]))
+        }
+        $firstCard = $false
+    }
+    [void]$builder.Append("`r`n    }")
+    return $builder.ToString()
+}
+
+function Format-AccountMetadataBlock {
+    param([Parameter(Mandatory = $true)][hashtable]$Metadata)
+
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append("{`r`n")
+    $firstField = $true
+
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'instance' -Value ([string]$Metadata['instance'])
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'fileName' -Value ([string]$Metadata['fileName'])
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'accountName' -Value ([string]$Metadata['accountName'])
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'friendCode' -Value ([string]$Metadata['friendCode'])
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'language' -Value ([string]$Metadata['language'])
+    Add-MetadataJsonNumberField -Builder $builder -FirstField ([ref]$firstField) -Name 'packCount' -Value $Metadata['packCount']
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'createdAt' -Value ([string]$Metadata['createdAt'])
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'lastPackPulled' -Value ([string]$Metadata['lastPackPulled'])
+    Add-MetadataJsonStringField -Builder $builder -FirstField ([ref]$firstField) -Name 'lastLoggedIn' -Value ([string]$Metadata['lastLoggedIn'])
+
+    $shinedustJson = Format-AccountMetadataShinedustJson -Shinedust $Metadata['shinedust']
+    if (-not [string]::IsNullOrWhiteSpace($shinedustJson)) {
+        Add-MetadataJsonComma -Builder $builder -FirstField ([ref]$firstField)
+        [void]$builder.Append('    "shinedust": ')
+        [void]$builder.Append($shinedustJson)
+    }
+
+    $flagsJson = Format-AccountMetadataFlagsJson -Flags $Metadata['flags']
+    if (-not [string]::IsNullOrWhiteSpace($flagsJson)) {
+        Add-MetadataJsonComma -Builder $builder -FirstField ([ref]$firstField)
+        [void]$builder.Append('    "flags": ')
+        [void]$builder.Append($flagsJson)
+    }
+
+    $tradedJson = Format-AccountMetadataCardMarksPropertyJson -PropertyName 'tradedCards' -Marks $Metadata['tradedCards']
+    if (-not [string]::IsNullOrWhiteSpace($tradedJson)) {
+        Add-MetadataJsonComma -Builder $builder -FirstField ([ref]$firstField)
+        [void]$builder.Append($tradedJson)
+    }
+
+    $sharedJson = Format-AccountMetadataCardMarksPropertyJson -PropertyName 'sharedCards' -Marks $Metadata['sharedCards']
+    if (-not [string]::IsNullOrWhiteSpace($sharedJson)) {
+        Add-MetadataJsonComma -Builder $builder -FirstField ([ref]$firstField)
+        [void]$builder.Append($sharedJson)
+    }
+
+    [void]$builder.Append("`r`n  }")
+    return $builder.ToString()
+}
+
+function Write-AccountJsonCardMarksPreserveFormat {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$OriginalText,
+        [Parameter(Mandatory = $true)][hashtable]$Doc
+    )
+
+    if ($Doc -isnot [hashtable]) {
+        throw "Account JSON document must be an object."
+    }
+
+    $deviceAccount = [string]$Doc['deviceAccount']
+    if ([string]::IsNullOrWhiteSpace($deviceAccount)) {
+        throw "Account JSON is missing deviceAccount."
+    }
+
+    $metadata = Get-AccountMetadataHashtable -Doc $Doc
+    $metadataJson = Format-AccountMetadataBlock -Metadata $metadata
+
+    $pullsJson = Get-JsonPropertyValueSubstring -Text $OriginalText -PropertyName 'pulls'
+    if ([string]::IsNullOrWhiteSpace($pullsJson)) {
+        $pullsJson = '[]'
+    }
+
+    $registeredCardsJson = Get-JsonPropertyValueSubstring -Text $OriginalText -PropertyName 'registeredCards'
+    if ([string]::IsNullOrWhiteSpace($registeredCardsJson) -or $registeredCardsJson -eq '{}') {
+        $registeredCardsJson = '[]'
+    }
+
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append("{`r`n")
+    [void]$builder.Append('  "deviceAccount": ')
+    [void]$builder.Append((ConvertTo-JsonStringLiteral -Value $deviceAccount))
+    [void]$builder.Append(",`r`n")
+    [void]$builder.Append('  "metadata": ')
+    [void]$builder.Append($metadataJson)
+    [void]$builder.Append(",`r`n")
+    [void]$builder.Append('  "pulls": ')
+    [void]$builder.Append($pullsJson)
+    [void]$builder.Append(",`r`n")
+    [void]$builder.Append('  "registeredCards": ')
+    [void]$builder.Append($registeredCardsJson)
+    [void]$builder.Append("`r`n}`r`n")
+
+    $tmp = "$Path.tmp"
+    Write-Utf8File -Path $tmp -Text $builder.ToString()
+    Move-Item -LiteralPath $tmp -Destination $Path -Force
+}
+
+function Invoke-FormatAccountJson {
+    param([Parameter(Mandatory = $true)][string]$DeviceAccount)
+
+    if ([string]::IsNullOrWhiteSpace($DeviceAccount)) { return $false }
+    $carddbPath = Join-Path $resolvedRoot "Helper\carddb.exe"
+    if (-not (Test-Path -LiteralPath $carddbPath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        & $carddbPath @('--root', $resolvedRoot, 'format-account', '--device-account', $DeviceAccount) 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+function ConvertTo-TradeMarksObject {
+    param($InputObject)
+
+    $normalised = Normalize-CardMarksInput -InputObject $InputObject
+    if ($normalised.Count -eq 0) { return @{} }
+    return ConvertTo-JsonHashtable $normalised
+}
+
+function Normalize-CardMarksInput {
+    param($InputObject)
+
+    $normalised = [ordered]@{}
+    if ($null -eq $InputObject) { return $normalised }
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        foreach ($entry in $InputObject.GetEnumerator()) {
+            $cardId = [string]$entry.Key
+            if (-not (Test-TradeCardId -Value $cardId)) { continue }
+            $normalised[$cardId] = $entry.Value
+        }
+        return $normalised
+    }
+    foreach ($prop in $InputObject.PSObject.Properties) {
+        $cardId = [string]$prop.Name
+        if (-not (Test-TradeCardId -Value $cardId)) { continue }
+        $normalised[$cardId] = $prop.Value
+    }
+    return $normalised
+}
+
+function Get-AccountMetadataHashtable {
+    param([Parameter(Mandatory = $true)][hashtable]$Doc)
+
+    if (-not $Doc.ContainsKey('metadata') -or $null -eq $Doc['metadata']) {
+        $metadata = @{}
+        $Doc['metadata'] = $metadata
+        return $metadata
+    }
+    $metadata = $Doc['metadata']
+    $converted = ConvertTo-JsonHashtable $metadata
+    if (-not ($converted -is [hashtable])) { $converted = @{} }
+    $Doc['metadata'] = $converted
+    return $converted
+}
+
+function Set-AccountMetadataCardMarks {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Doc,
+        [string]$PropertyName,
+        $InputObject
+    )
+
+    $metadata = Get-AccountMetadataHashtable -Doc $Doc
+    $normalised = Normalize-CardMarksInput -InputObject $InputObject
+    if ($normalised.Count -eq 0) {
+        if ($metadata.ContainsKey($PropertyName)) {
+            $metadata.Remove($PropertyName) | Out-Null
+        }
+        return 0
+    }
+    $metadata[$PropertyName] = ConvertTo-TradeMarksObject -InputObject $normalised
+    return $normalised.Count
+}
+
+function Invoke-SetAccountCardMarks {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $bodyText = Read-RequestBody -Context $Context
+    if ([string]::IsNullOrWhiteSpace($bodyText)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Empty request body." }
+        return
+    }
+    $bodyText = $bodyText.TrimStart([char]0xFEFF)
+    try {
+        $payload = $bodyText | ConvertFrom-Json
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid JSON body." }
+        return
+    }
+    if ($null -eq $payload) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "JSON body must be an object." }
+        return
+    }
+
+    $deviceAccount = [string](Get-JsonPayloadProperty -Payload $payload -Name "deviceAccount")
+    if ([string]::IsNullOrWhiteSpace($deviceAccount)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Missing 'deviceAccount' field." }
+        return
+    }
+    $deviceAccount = $deviceAccount.Trim()
+    if (-not (Test-DeviceAccountId -Value $deviceAccount)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid deviceAccount." }
+        return
+    }
+
+    $tradedPayload = Get-JsonPayloadProperty -Payload $payload -Name "tradedCards"
+    $sharedPayload = Get-JsonPayloadProperty -Payload $payload -Name "sharedCards"
+    $hasTraded = $null -ne $tradedPayload
+    $hasShared = $null -ne $sharedPayload
+    if (-not $hasTraded -and -not $hasShared) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{
+            ok = $false
+            error = "Missing 'tradedCards' and/or 'sharedCards' field."
+        }
+        return
+    }
+
+    $path = Get-AccountJsonPath -DeviceAccount $deviceAccount
+    if (-not $path) {
+        Write-JsonResponse -Context $Context -StatusCode 404 -Payload @{
+            ok = $false
+            error = "Account JSON not found for deviceAccount '$deviceAccount'."
+        }
+        return
+    }
+
+    try {
+        $loaded = Read-AccountJsonDocument -Path $path
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to read account JSON: $($_.Exception.Message)"
+        }
+        return
+    }
+
+    if ($loaded.DeviceAccount -ne $deviceAccount) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{
+            ok = $false
+            error = "deviceAccount mismatch in account JSON."
+        }
+        return
+    }
+
+    $doc = $loaded.Doc
+
+    $tradedCount = 0
+    $sharedCount = 0
+    if ($hasTraded) {
+        $tradedCount = Set-AccountMetadataCardMarks -Doc $doc -PropertyName "tradedCards" -InputObject $tradedPayload
+    }
+    if ($hasShared) {
+        $sharedCount = Set-AccountMetadataCardMarks -Doc $doc -PropertyName "sharedCards" -InputObject $sharedPayload
+    }
+
+    try {
+        Write-AccountJsonCardMarksPreserveFormat -Path $path -OriginalText $loaded.Text -Doc $doc
+        Invoke-FormatAccountJson -DeviceAccount $deviceAccount | Out-Null
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to write account JSON: $($_.Exception.Message)"
+        }
+        return
+    }
+
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+        ok = $true
+        deviceAccount = $deviceAccount
+        tradedCount = $tradedCount
+        sharedCount = $sharedCount
+        path = $path
+    }
+}
+
+function Invoke-SetAccountTradeMarks {
+    param([Parameter(Mandatory = $true)]$Context)
+    Invoke-SetAccountCardMarks -Context $Context
+}
+
+function Invoke-DeductAccountShinedust {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $bodyText = Read-RequestBody -Context $Context
+    if ([string]::IsNullOrWhiteSpace($bodyText)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Empty request body." }
+        return
+    }
+    try { $payload = $bodyText | ConvertFrom-Json } catch {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid JSON body." }
+        return
+    }
+
+    $deviceAccount = [string](Get-JsonPayloadProperty -Payload $payload -Name "deviceAccount")
+    $deductRaw = Get-JsonPayloadProperty -Payload $payload -Name "deduct"
+    $creditRaw = Get-JsonPayloadProperty -Payload $payload -Name "credit"
+    if ([string]::IsNullOrWhiteSpace($deviceAccount)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Missing 'deviceAccount' field." }
+        return
+    }
+    $deviceAccount = $deviceAccount.Trim()
+    if (-not (Test-DeviceAccountId -Value $deviceAccount)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid deviceAccount." }
+        return
+    }
+
+    try { $deduct = [int][Math]::Round([double]$deductRaw) } catch { $deduct = 0 }
+    try { $credit = [int][Math]::Round([double]$creditRaw) } catch { $credit = 0 }
+    if ($deduct -gt 0 -and $credit -gt 0) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{
+            ok = $false
+            error = "Specify either 'deduct' or 'credit', not both."
+        }
+        return
+    }
+    if ($deduct -le 0 -and $credit -le 0) {
+        Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+            ok = $true
+            skipped = $true
+            deviceAccount = $deviceAccount
+            deducted = 0
+            credited = 0
+        }
+        return
+    }
+
+    $path = Get-AccountJsonPath -DeviceAccount $deviceAccount
+    if (-not $path) {
+        Write-JsonResponse -Context $Context -StatusCode 404 -Payload @{
+            ok = $false
+            error = "Account JSON not found for deviceAccount '$deviceAccount'."
+        }
+        return
+    }
+
+    try {
+        $text = [System.IO.File]::ReadAllText($path)
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to read account JSON: $($_.Exception.Message)"
+        }
+        return
+    }
+
+    if ($text -notmatch '(?i)"deviceAccount"\s*:\s*"([^"]+)"') {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{
+            ok = $false
+            error = "Account JSON is missing deviceAccount."
+        }
+        return
+    }
+    $embeddedAccount = $Matches[1].Trim()
+    if ($embeddedAccount -ne $deviceAccount) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{
+            ok = $false
+            error = "deviceAccount mismatch in account JSON."
+        }
+        return
+    }
+
+    $pattern = '(?ms)("shinedust"\s*:\s*\{\s*"value"\s*:\s*)(-?\d+)(\s*,\s*"lastUpdatedAt"\s*:\s*")([^"]*)(")'
+    if ($text -notmatch $pattern) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{
+            ok = $false
+            error = "Account JSON has no shinedust metadata to update."
+        }
+        return
+    }
+
+    $previous = [int]$Matches[2]
+
+    if ($credit -gt 0) {
+        $actualCredit = $credit
+        $newValue = $previous + $actualCredit
+        $stamp = (Get-Date).ToString("yyyyMMddHHmmss")
+        $updatedText = [regex]::Replace($text, $pattern, {
+            param($match)
+            return $match.Groups[1].Value + $newValue + $match.Groups[3].Value + $stamp + $match.Groups[5].Value
+        }, 1)
+        if ($updatedText -eq $text) {
+            Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+                ok = $false
+                error = "Failed to update shinedust in account JSON."
+            }
+            return
+        }
+
+        $tmp = "$path.tmp"
+        try {
+            Write-Utf8File -Path $tmp -Text $updatedText
+            Move-Item -LiteralPath $tmp -Destination $path -Force
+        } catch {
+            if (Test-Path -LiteralPath $tmp -PathType Leaf) {
+                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            }
+            Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+                ok = $false
+                error = "Failed to write account JSON: $($_.Exception.Message)"
+            }
+            return
+        }
+
+        Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+            ok = $true
+            deviceAccount = $deviceAccount
+            previous = $previous
+            value = $newValue
+            credited = $actualCredit
+            lastUpdatedAt = $stamp
+            path = $path
+        }
+        return
+    }
+
+    if ($previous -lt 0) {
+        Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+            ok = $true
+            skipped = $true
+            reason = "unknown_balance"
+            deviceAccount = $deviceAccount
+            deducted = 0
+            previous = $previous
+        }
+        return
+    }
+
+    $actualDeduct = [Math]::Min($deduct, $previous)
+    $newValue = $previous - $actualDeduct
+    $stamp = (Get-Date).ToString("yyyyMMddHHmmss")
+    $updatedText = [regex]::Replace($text, $pattern, {
+        param($match)
+        return $match.Groups[1].Value + $newValue + $match.Groups[3].Value + $stamp + $match.Groups[5].Value
+    }, 1)
+    if ($updatedText -eq $text) {
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to update shinedust in account JSON."
+        }
+        return
+    }
+
+    $tmp = "$path.tmp"
+    try {
+        Write-Utf8File -Path $tmp -Text $updatedText
+        Move-Item -LiteralPath $tmp -Destination $path -Force
+    } catch {
+        if (Test-Path -LiteralPath $tmp -PathType Leaf) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        }
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to write account JSON: $($_.Exception.Message)"
+        }
+        return
+    }
+
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+        ok = $true
+        deviceAccount = $deviceAccount
+        previous = $previous
+        value = $newValue
+        deducted = $actualDeduct
+        lastUpdatedAt = $stamp
+        path = $path
+    }
+}
+
+function Invoke-OpenAccountJson {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $bodyText = Read-RequestBody -Context $Context
+    if ([string]::IsNullOrWhiteSpace($bodyText)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Empty request body." }
+        return
+    }
+    try { $payload = $bodyText | ConvertFrom-Json } catch {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid JSON body." }
+        return
+    }
+
+    $deviceAccount = [string](Get-JsonPayloadProperty -Payload $payload -Name "deviceAccount")
+    if ([string]::IsNullOrWhiteSpace($deviceAccount)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Missing 'deviceAccount' field." }
+        return
+    }
+    $deviceAccount = $deviceAccount.Trim()
+    if (-not (Test-DeviceAccountId -Value $deviceAccount)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid deviceAccount." }
+        return
+    }
+
+    $path = Get-AccountJsonPath -DeviceAccount $deviceAccount
+    if (-not $path) {
+        Write-JsonResponse -Context $Context -StatusCode 404 -Payload @{
+            ok = $false
+            error = "Account JSON not found for deviceAccount '$deviceAccount'."
+        }
+        return
+    }
+
+    try {
+        Start-Process -FilePath $path | Out-Null
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to open account JSON: $($_.Exception.Message)"
+        }
+        return
+    }
+
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+        ok = $true
+        deviceAccount = $deviceAccount
+        path = $path
+    }
+}
+
 function Is-LocalRequest {
     param([Parameter(Mandatory = $true)]$Context)
     $remoteAddress = $Context.Request.RemoteEndPoint.Address.ToString()
@@ -1388,6 +2472,10 @@ function Invoke-StopCardImagePrefetch {
     Write-JsonResponse -Context $Context -StatusCode 200 -Payload $snapshot
 }
 
+if ($env:PTCGP_CARD_DASHBOARD_NO_LISTEN -eq '1') {
+    return
+}
+
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Prefixes.Add("http://127.0.0.1:$Port/")
@@ -1499,6 +2587,48 @@ try {
             }
             try {
                 Invoke-SaveWishlist -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/account-shinedust/deduct" -and $request.HttpMethod -eq "POST") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-DeductAccountShinedust -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/account-json/open" -and $request.HttpMethod -eq "POST") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-OpenAccountJson -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if (
+            ($request.Url.AbsolutePath -eq "/__dashboard/account-trade-marks" -or $request.Url.AbsolutePath -eq "/__dashboard/account-card-marks") -and
+            $request.HttpMethod -eq "POST"
+        ) {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-SetAccountCardMarks -Context $context
             } catch {
                 Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
             }
