@@ -124,6 +124,8 @@ if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
 session.set("packMethod", botConfig.get("packMethod"))
 if(botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
     session.set("packMethod", 0)
+session.set("packMethodSkipFriendRenew", 0)
+session.set("packMethodStayOnPackScreen", 0)
 
 IniRead, DeadCheck, % session.get("scriptIniFile"), UserSettings, DeadCheck, 0
 IniRead, friendCleanupPending, % session.get("scriptIniFile"), UserSettings, friendCleanupPending, 0
@@ -517,9 +519,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         ; Pack method handling
         if(session.get("packMethod")) {
-            session.set("friendsAdded", AddFriends(true))
-            GoToMain()
-            SelectPack()
+            session.set("friendsAdded", PackMethod_RenewFriends())
+            if (!PackMethod_ConsumeStayOnPackScreen()) {
+                GoToMain()
+                SelectPack()
+            }
             if(session.get("cantOpenMorePacks"))
                 Goto, MidOfRun
         }
@@ -537,7 +541,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         ; Wonder pick additional handling - only for non-injection methods
         if(wonderPicked && !session.get("injectMethod")) {
             if(session.get("packMethod")) {
-                session.set("friendsAdded", AddFriends(true))
+                session.set("friendsAdded", PackMethod_RenewFriends())
                 SelectPack("HGPack")
                 PackOpening()
             } else {
@@ -545,7 +549,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
 
             if(session.get("packMethod")) {
-                session.set("friendsAdded", AddFriends(true))
+                session.set("friendsAdded", PackMethod_RenewFriends())
                 SelectPack("HGPack")
                 PackOpening()
             }
@@ -567,8 +571,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             else if(!botConfig.get("claimDailyMission") && botConfig.get("openExtraPack")) {
                 ; Remove & add friends between 2nd free pack & HG pack if 1-pack method is enabled
                 if(session.get("packMethod")) {
-                    session.set("friendsAdded", AddFriends(true))
-                    SelectPack("HGPack")
+                    session.set("friendsAdded", PackMethod_RenewFriends())
+                    if (!PackMethod_ConsumeStayOnPackScreen()) {
+                        GoToMain()
+                        SelectPack("HGPack")
+                    }
                 }
                 if(!session.get("cantOpenMorePacks")) {
                     HourglassOpening(true)
@@ -578,7 +585,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             else if(botConfig.get("claimDailyMission") && botConfig.get("openExtraPack")) {
                 ; Remove & add friends between 2nd free pack & HG pack if 1-pack method is enabled
                 if(session.get("packMethod")) {
-                    session.set("friendsAdded", AddFriends(true))
+                    session.set("friendsAdded", PackMethod_RenewFriends())
                 }
 
                 GoToMain()
@@ -2252,6 +2259,8 @@ CheckPack(stopEarly := false) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
+
+    PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star)
 
     Wishlist_EnsureFresh()
     wishlistMap      := session.get("wishlistMap")
@@ -4338,7 +4347,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         adbClick_wbb(203, 436) ; 203 436
 
         if(session.get("packMethod")) {
-            AddFriends(true)
+            PackMethod_RenewFriends()
             SelectPack("Tutorial")
         }
         else {
@@ -4983,11 +4992,14 @@ SpendAllHourglass() {
     ; Keep opening packs until we can't anymore
     while (!session.get("cantOpenMorePacks") && (session.get("friendIDs") || botConfig.get("FriendID") != "" || session.get("accountOpenPacks") < session.get("maxAccountPackNum"))) {
         if(session.get("packMethod")) {
-            session.set("friendsAdded", AddFriends(true))  ; true parameter removes and re-adds friends
-            SelectPack("HGPack")
+            session.set("friendsAdded", PackMethod_RenewFriends())
+            if (!PackMethod_ConsumeStayOnPackScreen()) {
+                GoToMain()
+                SelectPack("HGPack")
+            }
             if(session.get("cantOpenMorePacks"))
                 break
-            PackOpening()  ; Use PackOpening since we just selected the pack
+            PackOpening()
         } else {
             HourglassOpening(true)
         }
