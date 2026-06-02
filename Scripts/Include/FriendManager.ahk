@@ -69,6 +69,45 @@ TryHandleTradeTutorial(failSafeTime := 0) {
 }
 
 ;-------------------------------------------------------------------------------
+; 1 Pack Method: skip friend renew after Immersive / Crown / Shiny pack
+;-------------------------------------------------------------------------------
+PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star) {
+    global session
+
+    if (!session.get("packMethod"))
+        return
+
+    if (foundImmersive || foundCrown || foundShiny1Star || foundShiny2Star)
+        session.set("packMethodSkipFriendRenew", 1)
+    else
+        session.set("packMethodSkipFriendRenew", 0)
+}
+
+PackMethod_RenewFriends() {
+    global session
+
+    session.set("packMethodStayOnPackScreen", 0)
+    if (session.get("packMethodSkipFriendRenew")) {
+        session.set("packMethodSkipFriendRenew", 0)
+        session.set("packMethodStayOnPackScreen", 1)
+        LogInfo("1 Pack Method: skipping friend renew (Immersive/Crown/Shiny in previous pack)")
+        return session.get("friendsAdded")
+    }
+    return AddFriends(true)
+}
+
+; After PackOpening we are usually on the pack select screen. Skip GoToMain/SelectPack when renew was skipped.
+PackMethod_ConsumeStayOnPackScreen() {
+    global session
+
+    if (!session.get("packMethodStayOnPackScreen"))
+        return false
+    session.set("packMethodStayOnPackScreen", 0)
+    LogInfo("1 Pack Method: already on pack screen, skipping GoToMain/SelectPack")
+    return true
+}
+
+;-------------------------------------------------------------------------------
 ; AddFriends - Add friends from friend code list
 ;-------------------------------------------------------------------------------
 AddFriends(renew := false, getFC := false) {
