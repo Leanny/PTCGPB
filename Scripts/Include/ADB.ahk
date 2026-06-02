@@ -307,7 +307,7 @@ waitUntilActivatePTCGPApp(){
             break
 
         Sleep, 200
-        if((A_TickCount - session.get("baseTime")) > 10000){
+        if((A_TickCount - session.get("baseTime")) > 5000){
             LogWarn("[" . A_ScriptName . "] waitUntilActivatePTCGPApp timed out", "ADB.txt")
             return false
         }

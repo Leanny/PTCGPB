@@ -26,7 +26,6 @@ loadAccount() {
     session.get("missionDoneList")["specialMissionsDone"] := 0
     session.get("missionDoneList")["accountHasPackInTesting"] := 0
     session.get("missionDoneList")["receivedGiftDone"] := 0
-    session.get("language", language)
 
     if (session.get("stopToggle")) {
         CreateStatusMessage("Stopping...",,,, false)
@@ -44,7 +43,7 @@ loadAccount() {
     session.set("accountFileNameOrig", "")
     session.set("accountHasPackInfo", 0)
     session.set("currentLoadedAccountIndex", 0)
-session.set("language", "")
+    session.set("language", "")
 
     if FileExist(outputTxt) {
         cycle := 0
