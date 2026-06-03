@@ -343,8 +343,10 @@ startPTCGPApp() {
     retryCount := 0
     Loop {
         appTerminated := isTerminatePTCGPApp()
-        if(!appTerminated && isPTCGPAppFocused())
-            break
+        if(!appTerminated && isPTCGPAppFocused()) {
+            ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
+            return true
+        }
 
         if(appTerminated)
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
@@ -353,13 +355,17 @@ startPTCGPApp() {
         adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
         DelayH(100)
 
-        if(waitUntilActivatePTCGPApp())
-            break
+        if(waitUntilActivatePTCGPApp()) {
+            ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
+            return true
+        }
 
-        if(++retryCount >= 3)
-            break
+        if(++retryCount >= 3) {
+            LogWarn("[" . A_ScriptName . "] startPTCGPApp failed to activate after " . retryCount . " attempts", "ADB.txt")
+            ADB_LogTrace("startPTCGPApp failed retryCount=" . retryCount)
+            return false
+        }
     }
-    ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
 }
 
 startPTCGPApp_ApplyMetadataLanguage(loadFile) {

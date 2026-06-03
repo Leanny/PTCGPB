@@ -1422,7 +1422,18 @@ restartGameInstance(reason, RL := true) {
         closePTCGPApp()
         Sleep, 100
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
-        startPTCGPApp()
+        startSucceeded := startPTCGPApp()
+        if (!startSucceeded) {
+            CreateStatusMessage("Pocket app did not start. Restarting MuMu...",,,, false)
+            LogWarn("Pocket app did not activate after stuck restart; hard restarting MuMu instance " . session.get("scriptName") . ". Reason: " . reason, "Restart.txt")
+            restartInstance()
+            RefreshAdbConnectionAfterInstanceRestart(45000)
+            AccountMetadata_CloseTempForInstance(session.get("scriptName"))
+            startSucceeded := startPTCGPApp()
+            RestoreMuMuCoverWindow(GetMuMuCoverWindowForMaintenance(session.get("winTitle")), session.get("winTitle"))
+            if (!startSucceeded)
+                LogWarn("Pocket app still did not activate after hard MuMu restart for instance " . session.get("scriptName") . ". Reason: " . reason, "Restart.txt")
+        }
         SendMetadataToPTCGPB(session.get("packsThisRun"))
         LogInfo("Restarted MuMu instance. Reason: " reason)
 
