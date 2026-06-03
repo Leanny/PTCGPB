@@ -35,6 +35,7 @@ pToken := Gdip_Startup()
 #Include SpecialEvent.ahk
 #Include Crinity_UnofficialPatch.ahk
 #Include PTCGPHelper.ahk
+#Include HourglassSpend.ahk
 
 InitializeHiddenConsole()
 
@@ -4969,101 +4970,6 @@ DoWonderPick() {
     return true
 }
 
-SpendAllHourglass() {
-    global botConfig, session
-
-    if (botConfig.get("deleteMethod") = "Inject 13P+") {
-        SpendAllHourglassInject13P()
-        return
-    }
-
-    ; GoToMain()
-    ; GetAllRewards(false, true)
-    GoToMain()
-
-    SelectPack("HGPack")
-    if(session.get("cantOpenMorePacks"))
-        return
-
-    PackOpening()
-    if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
-        return
-
-    ; Keep opening packs until we can't anymore
-    while (!session.get("cantOpenMorePacks") && (session.get("friendIDs") || botConfig.get("FriendID") != "" || session.get("accountOpenPacks") < session.get("maxAccountPackNum"))) {
-        if(session.get("packMethod")) {
-            session.set("friendsAdded", PackMethod_RenewFriends())
-            if (!PackMethod_ConsumeStayOnPackScreen()) {
-                GoToMain()
-                SelectPack("HGPack")
-            }
-            if(session.get("cantOpenMorePacks"))
-                break
-            PackOpening()
-        } else {
-            HourglassOpening(true)
-        }
-
-        if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
-            break
-    }
-}
-
-CanContinuePackOpening() {
-    global botConfig, session
-    return !session.get("cantOpenMorePacks") && (session.get("friendIDs") || botConfig.get("FriendID") != "" || session.get("accountOpenPacks") < session.get("maxAccountPackNum"))
-}
-
-ResetTenPackFallbackState() {
-    global session
-
-    if (FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0, 0)) {
-        adbInputEvent("111")
-        Delay(1)
-    }
-    session.set("cantOpenMorePacks", 0)
-}
-
-SpendAllHourglassInject13P() {
-    global botConfig, session
-
-    GoToMain()
-    session.set("cantOpenMorePacks", 0)
-
-    SelectPack("HGPack10")
-    if (!session.get("cantOpenMorePacks")) {
-        session.set("expectedPackOpenCount", 10)
-        PackOpening(true)
-        session.set("expectedPackOpenCount", 1)
-    }
-
-    while (CanContinuePackOpening()) {
-        session.set("expectedPackOpenCount", 10)
-        HourglassOpening(true, true, true)
-        session.set("expectedPackOpenCount", 1)
-    }
-
-    if (!session.get("cantOpenMorePacks"))
-        return
-
-    ResetTenPackFallbackState()
-
-    if (!CanContinuePackOpening())
-        return
-
-    GoToMain()
-    SelectPack("HGPack")
-    if(session.get("cantOpenMorePacks"))
-        return
-
-    PackOpening()
-    if(!CanContinuePackOpening())
-        return
-
-    while (CanContinuePackOpening()) {
-        HourglassOpening(true)
-    }
-}
 
 ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
     global botConfig, session

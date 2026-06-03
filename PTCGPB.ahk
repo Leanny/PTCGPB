@@ -52,7 +52,7 @@ githubUser := "kevnITG"
     ,modRepoUser := "Leanny"
 
 global GUI_WIDTH := 750
-global GUI_HEIGHT := 410
+global GUI_HEIGHT := 418
 global MainGuiName
 
 global ProcessedIDs := {}
@@ -124,6 +124,57 @@ if (hasInvalidScale) {
 
 GuiLabel(labelText) {
     return RegExReplace(labelText, "[:：]\s*$", "")
+}
+
+UpdateBotSettingsLayout(deleteMethod) {
+    botSettings_grpY := 185
+    botSettings_grpH := 228
+    botSettings_titleBand := 22
+    botSettings_origY1 := 207
+    botSettings_topPad := 6
+    botSettings_innerTop := botSettings_grpY + botSettings_titleBand
+    botSettings_yShift := (botSettings_innerTop + botSettings_topPad) - botSettings_origY1
+    botSettings_chkStride := 20
+    botY277 := 277 + botSettings_yShift
+    botY_pack := botY277 + 6
+    botY_open := botY_pack + botSettings_chkStride
+    botY_spend := botY_open + botSettings_chkStride
+    botY_tenPack := -100
+    botY_hourglassCount := -100
+    botY_sort := botSettings_grpY + botSettings_grpH - 31
+
+    if (deleteMethod = "Inject 13P+") {
+        botY_open := botY_pack
+        botY_spend := botY_open + botSettings_chkStride
+        botY_tenPack := botY_spend + botSettings_chkStride
+        botY_hourglassCount := botY_tenPack + botSettings_chkStride
+    } else if (deleteMethod = "Inject Wonderpick 96P+") {
+        botY_hourglassCount := botY_spend + botSettings_chkStride
+    }
+
+    GuiControl, MoveDraw, ui_BotSettingsGroup, % "h" . botSettings_grpH
+    GuiControl, MoveDraw, ui_packMethod, % "y" . botY_pack
+    GuiControl, MoveDraw, ui_openExtraPack, % "y" . botY_open
+    GuiControl, MoveDraw, ui_spendHourGlass, % "y" . botY_spend
+    GuiControl, MoveDraw, ui_hourglassTenPackOpening, % "y" . botY_tenPack
+    GuiControl, MoveDraw, ui_spendHourglassPackCountText, % "y" . botY_hourglassCount
+    GuiControl, MoveDraw, ui_spendHourglassPackCount, % "y" . botY_hourglassCount
+    GuiControl, MoveDraw, ui_SortByText, % "y" . botY_sort
+    GuiControl, MoveDraw, ui_SortByDropdown, % "y" . botY_sort
+}
+
+UpdateHourglassPackCountVisibility(deleteMethod := "") {
+    if (deleteMethod = "") {
+        GuiControlGet, deleteMethod, , ui_deleteMethod
+        deleteMethod := Trim(deleteMethod)
+    }
+
+    GuiControlGet, spendHourGlassChecked, , ui_spendHourGlass
+    packCountVisible := (spendHourGlassChecked && deleteMethod != "Create Bots (13P)" && deleteMethod != "Inject Rewards") ? "Show" : "Hide"
+    tenPackVisible := (spendHourGlassChecked && deleteMethod = "Inject 13P+") ? "Show" : "Hide"
+    GuiControl, %tenPackVisible%, ui_hourglassTenPackOpening
+    GuiControl, %packCountVisible%, ui_spendHourglassPackCountText
+    GuiControl, %packCountVisible%, ui_spendHourglassPackCount
 }
 
 BotLanguage := botConfig.get("BotLanguage")
@@ -211,48 +262,45 @@ NextStep:
 
     ; =================== UI - Bot Settings ===================
     sectionColor := "c39FF14"
-    ; Near top for Bot Mode + DDL; middle rows use botSettings_yShift; Sort anchored from inner bottom mirroring botSettings_topPad.
     botSettings_grpY := 185
-    botSettings_grpH := 220
     botSettings_titleBand := 22
+    botSettings_grpH := 228
     botSettings_origY1 := 207
     botSettings_topPad := 6
-    botSettings_bottomPad := botSettings_topPad
     botSettings_innerTop := botSettings_grpY + botSettings_titleBand
-    botSettings_innerBot := botSettings_grpY + botSettings_grpH
     botSettings_yShift := (botSettings_innerTop + botSettings_topPad) - botSettings_origY1
-    ; Lift label + DDL slightly more toward group top (does not shift rows below Min Packs).
     botSettings_modeLift := 4
     botY207 := botSettings_origY1 + botSettings_yShift - botSettings_modeLift
     botY227 := 227 + botSettings_yShift - botSettings_modeLift
     botY257 := 257 + botSettings_yShift
     botY277 := 277 + botSettings_yShift
-    ; Lower only checkboxes slightly (spacing from Min Packs unchanged).
-    botSettings_chkNudge := 10
-    ; Three checkboxes evenly spaced (was 297→322 = +25 vs +20 above, so Spend looked “floating”).
+    botSettings_chkNudge := 6
     botSettings_chkStride := 20
     botY_chkPack := botY277 + botSettings_chkNudge
     botY_chkOpen := botY_chkPack + botSettings_chkStride
     botY_chkSpend := botY_chkOpen + botSettings_chkStride
-    ; Sort block ~DDL plus label row; reserve bottom gap = botSettings_bottomPad (same knob as top).
-    botSettings_sortTail := 24
-    botY_sortDDL := botSettings_innerBot - botSettings_bottomPad - botSettings_sortTail
-    botY_floorAboveSort := botY_chkSpend + 22 + 8
-    if (botY_sortDDL < botY_floorAboveSort)
-        botY_sortDDL := botY_floorAboveSort
-    ; Nudge Sort slightly up (~air vs row above); reclamp vs floor against overlap with Spend HG.
-    botSettings_sortVent := 6
-    botY_sortDDL -= botSettings_sortVent
-    if (botY_sortDDL < botY_floorAboveSort)
-        botY_sortDDL := botY_floorAboveSort
-    botY_sortTxt := botY_sortDDL + 5
-
+    botY_sortRow := botSettings_grpY + botSettings_grpH - 31
     botY_accountRow := 260 + botSettings_yShift
 
-    Gui, Add, GroupBox, x5 y%botSettings_grpY% w240 h%botSettings_grpH% %sectionColor%, % dict["BotSettings"]
+    botMethod := botConfig.get("deleteMethod")
+    if (botMethod = "Inject 13P+") {
+        botY_chkOpen := botY_chkPack
+        botY_chkSpend := botY_chkOpen + botSettings_chkStride
+        botY_chkTenPack := botY_chkSpend + botSettings_chkStride
+        botY_hourglassCountRow := botY_chkTenPack + botSettings_chkStride
+    } else if (botMethod = "Inject Wonderpick 96P+") {
+        botY_chkTenPack := -100
+        botY_hourglassCountRow := botY_chkSpend + botSettings_chkStride
+    } else if (botMethod = "Inject Rewards") {
+        botY_chkTenPack := -100
+        botY_hourglassCountRow := -100
+    } else {
+        botY_chkTenPack := -100
+        botY_hourglassCountRow := -100
+    }
+    Gui, Add, GroupBox, x5 y%botSettings_grpY% w240 h%botSettings_grpH% vui_BotSettingsGroup %sectionColor%, % dict["BotSettings"]
 
     defaultDelete := 1
-    botMethod := botConfig.get("deleteMethod")
     if (botMethod = "Create Bots (13P)")
         defaultDelete := 1
     else if (botMethod = "Inject 13P+")
@@ -265,12 +313,18 @@ NextStep:
     Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w210 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards
 
     Gui, Add, Text, % "vui_injectWonderpickMinPacksText x20 y" . botY257 . " " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), Min Packs:
-    Gui, Add, Edit, % "vui_injectWonderpickMinPacks w40 x130 y" . botY257 . " h20 -E0x200 Background2A2A2A cWhite Center" . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % botConfig.get("injectWonderpickMinPacks")
-    Gui, Add, Checkbox, % (botConfig.get("packMethod") ? "Checked" : "") " vui_packMethod x20 y" . botY_chkPack . " " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % dict["Txt_packMethod"]
-    Gui, Add, Checkbox, % (botConfig.get("openExtraPack") ? "Checked" : "") " vui_openExtraPack gopenExtraPackSettings x20 y" . botY_chkOpen . " " . sectionColor . ((botMethod = "Inject Wonderpick 96P+" || botMethod = "Inject 13P+") ? "" : " Hidden"), % dict["Txt_openExtraPack"]
-    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y" . botY_chkSpend . " " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards")? " Hidden":""), % dict["Txt_spendHourGlass"]
+    Gui, Add, Edit, % "vui_injectWonderpickMinPacks w40 x190 y" . botY257 . " h20 -E0x200 Background2A2A2A cWhite Center" . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % botConfig.get("injectWonderpickMinPacks")
+    Gui, Add, Checkbox, % (botConfig.get("packMethod") ? "Checked" : "") " vui_packMethod x20 y" . botY_chkPack . " w190 h20 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % dict["Txt_packMethod"]
+    Gui, Add, Checkbox, % (botConfig.get("openExtraPack") ? "Checked" : "") " vui_openExtraPack gopenExtraPackSettings x20 y" . botY_chkOpen . " w190 h20 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+" || botMethod = "Inject 13P+") ? "" : " Hidden"), % dict["Txt_openExtraPack"]
+    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y" . botY_chkSpend . " w190 h20 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards")? " Hidden":""), % dict["Txt_spendHourGlass"]
+    hourglassSpendUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards") ? " Hidden" : ""
+    hourglassPackCountUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
+    hourglassTenPackUiHidden := (botMethod != "Inject 13P+" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
+    Gui, Add, Checkbox, % (botConfig.get("hourglassTenPackOpening") ? "Checked" : "") " vui_hourglassTenPackOpening x20 y" . botY_chkTenPack . " w190 h20 " . sectionColor . hourglassTenPackUiHidden, % dict["Txt_hourglassTenPackOpening"]
+    Gui, Add, Text, % "vui_spendHourglassPackCountText x38 y" . botY_hourglassCountRow . " w147 h20 " . sectionColor . hourglassPackCountUiHidden, % dict["Txt_spendHourglassPackCount"]
+    Gui, Add, Edit, % "vui_spendHourglassPackCount w40 x190 y" . botY_hourglassCountRow . " h20 -E0x200 Background2A2A2A cWhite Center" . hourglassPackCountUiHidden, % botConfig.get("spendHourglassPackCount")
 
-    Gui, Add, Text, % "x20 y" . botY_sortTxt . " " . sectionColor . " vui_SortByText", % dict["SortByText"]
+    Gui, Add, Text, % "x20 y" . botY_sortRow . " " . sectionColor . " vui_SortByText", % dict["SortByText"]
     sortOption := 1
     if (botConfig.get("injectSortMethod") = "ModifiedDesc")
         sortOption := 2
@@ -280,12 +334,14 @@ NextStep:
         sortOption := 4
     else if (botConfig.get("injectSortMethod") = "LastLoginAsc")
         sortOption := 5
-    Gui, Add, DropDownList, % "vui_SortByDropdown gSortByDropdownHandler choose" . sortOption . " x90 y" . botY_sortDDL . " w140 Background2A2A2A cWhite", Oldest First|Newest First|Fewest Packs First|Most Packs First|Oldest Last Login
+    Gui, Add, DropDownList, % "vui_SortByDropdown gSortByDropdownHandler choose" . sortOption . " x90 y" . botY_sortRow . " w140 Background2A2A2A cWhite", Oldest First|Newest First|Fewest Packs First|Most Packs First|Oldest Last Login
 
     Gui, Add, Text, % "x20 y" . botY_accountRow . " " . sectionColor . " vui_AccountNameText", % GuiLabel(dict["Txt_AccountName"])
     Gui, Add, Edit, % "vui_AccountName w100 x130 y" . botY_accountRow . " h20 -E0x200 Background2A2A2A cWhite Center", % botConfig.get("AccountName")
 
     GuiControlGet, curMethod, , ui_deleteMethod
+    UpdateBotSettingsLayout(curMethod)
+    UpdateHourglassPackCountVisibility(curMethod)
     if (curMethod = "Create Bots (13P)") {
         GuiControl, Hide, ui_FriendID
         GuiControl, Hide, ui_SortByText
@@ -294,7 +350,6 @@ NextStep:
         GuiControl, Hide, ui_AccountNameText
         GuiControl, Hide, ui_AccountName
     }
-
     ; =================== UI - Pack Selection ===================
     sectionColor := "cFFD700"
     Gui, Font, s10 cWhite, Segoe UI
@@ -343,17 +398,17 @@ NextStep:
     ; =================== UI - Time Settings ===================
     Gui, Font, s10 cWhite, Segoe UI
     sectionColor := "c9370DB"
-    Gui, Add, GroupBox, x255 y312 w240 h93 %sectionColor%, % dict["TimeSettings"]
+    Gui, Add, GroupBox, x255 y312 w240 h101 %sectionColor%, % dict["TimeSettings"]
     Gui, Add, Text, x270 y332 %sectionColor%, % GuiLabel(dict["Txt_Delay"])
     Gui, Add, Edit, vui_Delay w34 x446 y330 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
-    Gui, Add, Text, x270 y356 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
-    Gui, Add, Edit, vui_swipeSpeed w34 x446 y354 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
-    Gui, Add, Text, x270 y380 w150 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
-    Gui, Add, Edit, vui_waitTime w34 x446 y378 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
+    Gui, Add, Text, x270 y360 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
+    Gui, Add, Edit, vui_swipeSpeed w34 x446 y358 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
+    Gui, Add, Text, x270 y388 w150 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
+    Gui, Add, Edit, vui_waitTime w34 x446 y386 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
 
     ; =================== UI - Description & Button ===================
     sectionColor := "cWhite"
-    Gui, Add, GroupBox, x505 y0 w240 h405 %sectionColor%
+    Gui, Add, GroupBox, x505 y0 w240 h413 %sectionColor%
 
     Gui, Font, s12 cWhite Bold
     Gui, Add, Text, x535 y20 w180 h50 Center BackgroundTrans cWhite, % dict["title_main"]
@@ -374,12 +429,12 @@ NextStep:
     Gui, Add, Picture, gShowToolsAndSystemSettings vui_ToolsPicture x660 y195 w30 h30, %A_ScriptDir%\GUI\Images\tools-icon.png
 
     Gui, Font, s10 cWhite Bold
-    Gui, Add, Button, x520 y246 w210 h34 gBalanceXMLs BackgroundTrans, % dict["btn_balance"]
-    Gui, Add, Button, x520 y292 w210 h34 gLaunchAllMumu BackgroundTrans, % dict["btn_mumu"]
-    Gui, Add, Button, gSave vui_StartBotButton x520 y338 w210 h34, Start Bot
+    Gui, Add, Button, x520 y252 w210 h34 gBalanceXMLs BackgroundTrans, % dict["btn_balance"]
+    Gui, Add, Button, x520 y302 w210 h34 gLaunchAllMumu BackgroundTrans, % dict["btn_mumu"]
+    Gui, Add, Button, gSave vui_StartBotButton x520 y352 w210 h34, Start Bot
 
     Gui, Font, s7 cGray
-    Gui, Add, Text, x530 y376 w190 Center BackgroundTrans, CC BY-NC 4.0 international license
+    Gui, Add, Text, x530 y398 w190 Center BackgroundTrans, CC BY-NC 4.0 international license
 
     Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
 
@@ -420,10 +475,14 @@ deleteSettings:
         botConfig.set("s4tWP", 0, "SaveForTrade")
         botConfig.set("s4tWPMinCards", 1, "SaveForTrade")
     }
+    UpdateBotSettingsLayout(curDeleteMethod)
 
     if (curDeleteMethod = "Create Bots (13P)") {
         GuiControl, Hide, ui_FriendID
         GuiControl, Hide, ui_spendHourGlass
+        GuiControl, Hide, ui_hourglassTenPackOpening
+        GuiControl, Hide, ui_spendHourglassPackCountText
+        GuiControl, Hide, ui_spendHourglassPackCount
         GuiControl, Hide, ui_packMethod
         GuiControl, Hide, ui_injectWonderpickMinPacksText
         GuiControl, Hide, ui_injectWonderpickMinPacks
@@ -437,6 +496,9 @@ deleteSettings:
     } else if (curDeleteMethod = "Inject Wonderpick 96P+") {
         GuiControl, Show, ui_FriendID
         GuiControl, Show, ui_spendHourGlass
+        GuiControl, Hide, ui_hourglassTenPackOpening
+        GuiControl, Show, ui_spendHourglassPackCountText
+        GuiControl, Show, ui_spendHourglassPackCount
         GuiControl, Show, ui_packMethod
         GuiControl, Show, ui_injectWonderpickMinPacksText
         GuiControl, Show, ui_injectWonderpickMinPacks
@@ -454,6 +516,9 @@ deleteSettings:
     } else if (curDeleteMethod = "Inject 13P+") {
         GuiControl, Hide, ui_FriendID
         GuiControl, Show, ui_spendHourGlass
+        GuiControl, Show, ui_hourglassTenPackOpening
+        GuiControl, Show, ui_spendHourglassPackCountText
+        GuiControl, Show, ui_spendHourglassPackCount
         GuiControl, Hide, ui_packMethod
         GuiControl, Hide, ui_injectWonderpickMinPacksText
         GuiControl, Hide, ui_injectWonderpickMinPacks
@@ -467,6 +532,9 @@ deleteSettings:
     } else if (curDeleteMethod = "Inject Rewards") {
         GuiControl, Hide, ui_FriendID
         GuiControl, Hide, ui_spendHourGlass
+        GuiControl, Hide, ui_hourglassTenPackOpening
+        GuiControl, Hide, ui_spendHourglassPackCountText
+        GuiControl, Hide, ui_spendHourglassPackCount
         GuiControl, Hide, ui_packMethod
         GuiControl, Hide, ui_injectWonderpickMinPacksText
         GuiControl, Hide, ui_injectWonderpickMinPacks
@@ -483,22 +551,35 @@ deleteSettings:
         GuiControl, Hide, ui_runMain
         GuiControl, Hide, ui_Mains
     }
+    UpdateHourglassPackCountVisibility(curDeleteMethod)
     g_prevDeleteMethod := curDeleteMethod
     UpdateCardDetectionButtonText()
 return
 
 openExtraPackSettings:
     Gui, Submit, NoHide
-    botConfig.set("openExtraPack", 1, "General")
-    botConfig.set("spendHourGlass", 0, "General")
-    GuiControl,, ui_spendHourGlass, 0
+    GuiControlGet, openExtraPackChecked, , ui_openExtraPack
+    if (openExtraPackChecked) {
+        botConfig.set("openExtraPack", 1, "General")
+        botConfig.set("spendHourGlass", 0, "General")
+        GuiControl,, ui_spendHourGlass, 0
+    } else {
+        botConfig.set("openExtraPack", 0, "General")
+    }
+    UpdateHourglassPackCountVisibility()
 Return
 
 spendHourGlassSettings:
     Gui, Submit, NoHide
-    botConfig.set("openExtraPack", 0, "General")
-    botConfig.set("spendHourGlass", 1, "General")
-    GuiControl,, ui_openExtraPack, 0
+    GuiControlGet, spendHourGlassChecked, , ui_spendHourGlass
+    if (spendHourGlassChecked) {
+        botConfig.set("openExtraPack", 0, "General")
+        botConfig.set("spendHourGlass", 1, "General")
+        GuiControl,, ui_openExtraPack, 0
+    } else {
+        botConfig.set("spendHourGlass", 0, "General")
+    }
+    UpdateHourglassPackCountVisibility()
 Return
 
 SortByDropdownHandler:
@@ -1589,8 +1670,14 @@ Save:
         additionalSettings .= dict["Confirm_1PackMethod"] . "`n"
     if (botConfig.get("openExtraPack"))
         additionalSettings .= dict["Confirm_openExtraPack"] . "`n"
-    if (botConfig.get("spendHourGlass"))
+    if (botConfig.get("spendHourGlass")) {
         additionalSettings .= dict["Confirm_SpendHourGlass"] . "`n"
+        if (botConfig.get("deleteMethod") = "Inject 13P+" && botConfig.get("hourglassTenPackOpening"))
+            additionalSettings .= "• " . dict["Txt_hourglassTenPackOpening"] . "`n"
+        hgPackCount := botConfig.get("spendHourglassPackCount") + 0
+        if (hgPackCount > 0)
+            additionalSettings .= "• " . dict["Txt_spendHourglassPackCount"] . ": " . hgPackCount . "`n"
+    }
     if (botConfig.get("claimSpecialMissions"))
         additionalSettings .= dict["Confirm_ClaimMissions"] . "`n"
     if (botConfig.get("showcaseEnabled"))
@@ -2252,6 +2339,14 @@ SaveAllSettings() {
     else if (!RegExMatch(botConfig.get("injectWonderpickMinPacks"), "^\d+$") || botConfig.get("injectWonderpickMinPacks") < 70 || botConfig.get("injectWonderpickMinPacks") > 999) {
         MsgBox, 0x40000, Invalid Setting, Inject Wonderpick minimum packs must be between 70 and 999.
         GuiControl, Focus, ui_injectWonderpickMinPacks
+        return false
+    }
+
+    if (botConfig.get("spendHourglassPackCount") = "")
+        botConfig.set("spendHourglassPackCount", 0, "General")
+    else if (!RegExMatch(botConfig.get("spendHourglassPackCount"), "^\d+$") || botConfig.get("spendHourglassPackCount") > 999) {
+        MsgBox, 0x40000, Invalid Setting, Hourglass pack count must be 0 (all available) or between 1 and 999.
+        GuiControl, Focus, ui_spendHourglassPackCount
         return false
     }
 

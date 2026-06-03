@@ -96,6 +96,8 @@ Txt_InjectRange:Bereich:
 Txt_packMethod:1 Pack Methode
 Txt_nukeAccount:Account löschen
 Txt_spendHourGlass:Sanduhren verwenden
+Txt_hourglassTenPackOpening:10-Pack-Modus nutzen
+Txt_spendHourglassPackCount:Packs öffnen (0 = alle)
 Txt_openExtraPack:Extra-Pack öffnen
 Txt_claimSpecialMissions:Spezialmissionen
 SortByText:Sortieren nach:
