@@ -407,7 +407,8 @@ AddFriends(renew := false, getFC := false) {
 
         menuRecoveryStart := A_TickCount
         Loop {
-            if((A_TickCount - menuRecoveryStart) > 15000) {
+            menuRecoveryTimeout := GetScaleProfileValue(15000, 25000)
+            if((A_TickCount - menuRecoveryStart) > menuRecoveryTimeout) {
                 restartGameInstance("Stuck at InSubMenu...")
                 return false
             }
@@ -831,7 +832,8 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
             return true
 
         LogToFile("Friend ID input did not submit; retrying | index=" . num . " | try=" . A_Index)
-        EraseInput(num, total)
+        if(EraseInput(num, total))
+            return true
     }
 
     LogToFile("Friend ID input failed after retries | index=" . num)
@@ -856,7 +858,7 @@ EraseInput(num := 0, total := 0) {
             || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
             || FindOrLoseImage("Common_Error", 0, , , true)) {
             LogToFile("EraseInput skipped because search result is open | index=" . num)
-            break
+            return true
         }
 
         FindImageAndClick("Friend_FriendIDInputReady", 138, 265)
@@ -869,6 +871,7 @@ EraseInput(num := 0, total := 0) {
             break
         }
     }
+    return false
 }
 
 CloseFriendDetailsIfOpen() {
