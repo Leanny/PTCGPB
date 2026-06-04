@@ -9500,6 +9500,37 @@
                 return false;
             }
 
+            function readAccountCardMarksObject(doc, fieldNames) {
+                const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+                const pickNonEmptyMarks = (node) => {
+                    if (
+                        !node ||
+                        typeof node !== "object" ||
+                        Array.isArray(node)
+                    ) {
+                        return null;
+                    }
+                    return Object.keys(node).length ? node : null;
+                };
+                for (const name of names) {
+                    const root = pickNonEmptyMarks(readObjectValue(doc, [name]));
+                    if (root) return root;
+                }
+                const metadata =
+                    readObjectValue(doc, ["metadata", "Metadata"]) || {};
+                for (const name of names) {
+                    const legacy = pickNonEmptyMarks(
+                        readObjectValue(metadata, [name]),
+                    );
+                    if (legacy) return legacy;
+                }
+                return null;
+            }
+
+            function documentHasCardMarksField(doc, fieldNames) {
+                return !!readAccountCardMarksObject(doc, fieldNames);
+            }
+
             function clearTradedMarksForAccount(account) {
                 const prefix = account + "::";
                 for (const key of [...state.tradedSet]) {
@@ -9532,29 +9563,18 @@
                 for (const doc of documents) {
                     const account = getDeviceAccountFromDocument(doc);
                     if (!account) continue;
-                    const metadataNode =
-                        readObjectValue(doc, ["metadata", "Metadata"]) || {};
-                    const metadata =
-                        metadataNode && typeof metadataNode === "object"
-                            ? metadataNode
-                            : {};
-
                     if (
-                        metadataHasCardMarksField(metadata, [
+                        documentHasCardMarksField(doc, [
                             "tradedCards",
                             "TradedCards",
                         ])
                     ) {
                         clearTradedMarksForAccount(account);
-                        const tradedCards = readObjectValue(metadata, [
+                        const tradedCards = readAccountCardMarksObject(doc, [
                             "tradedCards",
                             "TradedCards",
                         ]);
-                        if (
-                            tradedCards &&
-                            typeof tradedCards === "object" &&
-                            !Array.isArray(tradedCards)
-                        ) {
+                        if (tradedCards) {
                             for (const cardId of Object.keys(tradedCards)) {
                                 if (!isValidTradeCardId(cardId)) continue;
                                 const key = tradedKey(account, cardId);
@@ -9573,21 +9593,17 @@
                     }
 
                     if (
-                        metadataHasCardMarksField(metadata, [
+                        documentHasCardMarksField(doc, [
                             "sharedCards",
                             "SharedCards",
                         ])
                     ) {
                         clearSharedMarksForAccount(account);
-                        const sharedCards = readObjectValue(metadata, [
+                        const sharedCards = readAccountCardMarksObject(doc, [
                             "sharedCards",
                             "SharedCards",
                         ]);
-                        if (
-                            sharedCards &&
-                            typeof sharedCards === "object" &&
-                            !Array.isArray(sharedCards)
-                        ) {
+                        if (sharedCards) {
                             for (const cardId of Object.keys(sharedCards)) {
                                 if (!isValidTradeCardId(cardId)) continue;
                                 const key = tradedKey(account, cardId);
@@ -10220,7 +10236,6 @@
 
             function getTradeableRarities(rarity) {
                 const r = Number(rarity);
-                if (r === 100 || r === 200) return new Set([100, 200]);
                 if (r === 600 || r === 700) return new Set([600, 700]);
                 if (r === 800 || r === 900 || !Number.isFinite(r))
                     return new Set();
@@ -14864,12 +14879,19 @@
                 return allIds;
             }
 
+            function invalidateMarkedViewsDomCache() {
+                _viewDomCache.delete("traded");
+                _viewDomCache.delete("shared");
+                _viewDomCache.delete("accounts");
+            }
+
             function invalidateCatalogAccountCounts() {
                 state.catalogTradeMetaVersion++;
                 state.catalogAccountCountsCache = null;
                 state.catalogBaseModelCache = null;
                 state.catalogTradeShareIndex = null;
                 state.catalogTradeShareIndexVersion = -1;
+                invalidateMarkedViewsDomCache();
                 for (const view of CATALOG_VIEWS) {
                     const cached = _viewDomCache.get(view);
                     if (
@@ -15727,11 +15749,7 @@
                 );
             }
 
-            async function markSelectedCardTraded(
-                account,
-                cardId,
-                renderAfter,
-            ) {
+            async function markSelectedCardTraded(account, cardId) {
                 if (!account || !cardId) return;
                 const preferredAccountName =
                     state.accountFileLabelMap.get(account) || account;
@@ -15739,38 +15757,37 @@
                 if (!result) {
                     return;
                 }
+                if (result.receivedCardId) {
+                    const ok = await showConfirm(
+                        `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cardId)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(preferredAccountName)}.`,
+                        { html: true },
+                    );
+                    if (!ok) {
+                        return;
+                    }
+                }
                 addTradedCopy(account, cardId);
+                let partnerReceivedId = "";
+                if (result.receivedCardId) {
+                    setTradeMeta(account, cardId, {
+                        receivedCardId: result.receivedCardId,
+                        timestampMs: Date.now(),
+                    });
+                    partnerReceivedId = result.receivedCardId;
+                }
                 const persistResult = await persistAccountCardMarks(account);
                 const dustResult = await deductShinedustForTrade(
                     account,
                     cardId,
                 );
                 const persistWarn = formatTradePersistWarning(persistResult);
-                let partnerReceivedId = "";
                 if (result.receivedCardId) {
-                    const ok = await showConfirm(
-                        `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cardId)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(preferredAccountName)}.`,
+                    showToast(
+                        `Recorded trade: ${formatCardLabel(cardId)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                        "success",
+                        4000,
                         { html: true },
                     );
-                    if (ok) {
-                        setTradeMeta(account, cardId, {
-                            receivedCardId: result.receivedCardId,
-                            timestampMs: Date.now(),
-                        });
-                        partnerReceivedId = result.receivedCardId;
-                        showToast(
-                            `Recorded trade: ${formatCardLabel(cardId)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                            "success",
-                            4000,
-                            { html: true },
-                        );
-                    } else {
-                        showToast(
-                            `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                            "success",
-                            2500,
-                        );
-                    }
                 } else {
                     showToast(
                         `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
@@ -15778,8 +15795,7 @@
                         2500,
                     );
                 }
-                if (typeof renderAfter === "function")
-                    renderAfter(partnerReceivedId);
+                refreshDashboardAfterTradeMarks(cardId, partnerReceivedId);
             }
 
             async function startTradeForMultiAccount(
@@ -16028,9 +16044,7 @@
                                 btn.getAttribute(
                                     "data-multi-mark-traded-card",
                                 ) || "";
-                            await markSelectedCardTraded(account, cardId, () =>
-                                deferRender(renderMultiCardSearchView),
-                            );
+                            await markSelectedCardTraded(account, cardId);
                         });
                     });
                 el.rows
@@ -17339,17 +17353,7 @@
                             const cardId =
                                 btn.getAttribute("data-mark-traded-card") || "";
                             if (!account || !cardId) return;
-                            await markSelectedCardTraded(
-                                account,
-                                cardId,
-                                (partnerId) =>
-                                    deferRender(() =>
-                                        refreshCatalogLibraryTradeShareLight(
-                                            cardId,
-                                            partnerId || "",
-                                        ),
-                                    ),
-                            );
+                            await markSelectedCardTraded(account, cardId);
                         });
                     },
                 );
@@ -19140,6 +19144,26 @@
                     });
             }
 
+            function refreshDashboardAfterTradeMarks(
+                gaveCardId,
+                partnerReceivedId,
+            ) {
+                const gave = gaveCardId || "";
+                const partner = partnerReceivedId || "";
+                invalidateMarkedViewsDomCache();
+                if (state.view === "traded") {
+                    renderTradedView();
+                } else if (state.view === "accounts") {
+                    renderAccountOverview();
+                } else if (state.view === "multisearch") {
+                    deferRender(renderMultiCardSearchView);
+                } else if (state.view === "allcards") {
+                    deferRender(() =>
+                        refreshCatalogLibraryTradeShareLight(gave, partner),
+                    );
+                }
+            }
+
             function refreshCatalogLibraryTradeShareLight(
                 gaveCardId,
                 partnerReceivedId,
@@ -19639,17 +19663,7 @@
                             const cardId =
                                 btn.getAttribute("data-mark-traded-card") || "";
                             if (!account || !cardId) return;
-                            await markSelectedCardTraded(
-                                account,
-                                cardId,
-                                (partnerId) =>
-                                    deferRender(() =>
-                                        refreshCatalogLibraryTradeShareLight(
-                                            cardId,
-                                            partnerId || "",
-                                        ),
-                                    ),
-                            );
+                            await markSelectedCardTraded(account, cardId);
                         });
                     });
 
@@ -21842,71 +21856,60 @@
                             );
                             return;
                         }
-                        const nowTraded = toggleTraded(acc, cid);
-                        tile.classList.toggle("traded", isTraded(acc, cid));
-                        let dustResult = null;
-                        let persistResult = null;
-                        if (nowTraded) {
-                            persistResult =
-                                await persistAccountCardMarks(acc);
-                            dustResult = await deductShinedustForTrade(acc, cid);
+                        const result = await pickReceivedCard(acc, cid);
+                        if (!result) {
+                            return;
                         }
+                        if (result.receivedCardId) {
+                            const accLabel =
+                                state.accountFileLabelMap.get(acc) || acc;
+                            const ok = await showConfirm(
+                                `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cid)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(accLabel)}.`,
+                                { html: true },
+                            );
+                            if (!ok) {
+                                return;
+                            }
+                        }
+                        const nowTraded = toggleTraded(acc, cid);
+                        if (!nowTraded) {
+                            return;
+                        }
+                        tile.classList.toggle("traded", isTraded(acc, cid));
+                        let partnerReceivedId = "";
+                        if (result.receivedCardId) {
+                            setTradeMeta(acc, cid, {
+                                receivedCardId: result.receivedCardId,
+                                timestampMs: Date.now(),
+                            });
+                            partnerReceivedId = result.receivedCardId;
+                        }
+                        const persistResult =
+                            await persistAccountCardMarks(acc);
+                        const dustResult = await deductShinedustForTrade(
+                            acc,
+                            cid,
+                        );
                         const persistWarn =
                             formatTradePersistWarning(persistResult);
-                        if (nowTraded) {
-                            let partnerReceivedId = "";
-                            pickReceivedCard(acc, cid)
-                                .then(async (result) => {
-                                    if (result && result.receivedCardId) {
-                                        const accLabel =
-                                            state.accountFileLabelMap.get(
-                                                acc,
-                                            ) || acc;
-                                        const ok = await showConfirm(
-                                            `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cid)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(accLabel)}.`,
-                                            { html: true },
-                                        );
-                                        if (ok) {
-                                            setTradeMeta(acc, cid, {
-                                                receivedCardId:
-                                                    result.receivedCardId,
-                                                timestampMs: Date.now(),
-                                            });
-                                            partnerReceivedId =
-                                                result.receivedCardId;
-                                            showToast(
-                                                `Recorded trade: ${formatCardLabel(cid)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                                                "success",
-                                                4000,
-                                                { html: true },
-                                            );
-                                            if (state.view === "traded")
-                                                renderTradedView();
-                                        } else if (dustResult || persistWarn) {
-                                            showToast(
-                                                `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                                                "success",
-                                                2500,
-                                            );
-                                        }
-                                    } else if (dustResult || persistWarn) {
-                                        showToast(
-                                            `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                                            "success",
-                                            2500,
-                                        );
-                                    }
-                                })
-                                .finally(() => {
-                                    if (state.view === "allcards")
-                                        deferRender(() =>
-                                            refreshCatalogLibraryTradeShareLight(
-                                                cid,
-                                                partnerReceivedId,
-                                            ),
-                                        );
-                                });
+                        if (result.receivedCardId) {
+                            showToast(
+                                `Recorded trade: ${formatCardLabel(cid)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                                "success",
+                                4000,
+                                { html: true },
+                            );
+                        } else if (dustResult || persistWarn) {
+                            showToast(
+                                `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                                "success",
+                                2500,
+                            );
                         }
+                        refreshDashboardAfterTradeMarks(
+                            cid,
+                            partnerReceivedId,
+                        );
                 });
                 return grid;
             }

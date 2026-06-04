@@ -1079,6 +1079,7 @@ function Read-AccountJsonDocument {
     if (-not ($doc -is [hashtable])) {
         throw "Account JSON root must be an object."
     }
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $doc | Out-Null
     return [pscustomobject]@{
         Path = $Path
         Text = $text
@@ -1418,14 +1419,19 @@ function Get-CardMarkHashtable {
 function Format-AccountMetadataCardMarkEntryJson {
     param(
         [Parameter(Mandatory = $true)][string]$CardId,
-        $Mark
+        $Mark,
+        [int]$EntryIndentSpaces = 4
     )
 
     $markTable = Get-CardMarkHashtable $Mark
     if (-not $markTable) { return "" }
 
+    $entryPad = (' ' * $EntryIndentSpaces)
+    $fieldPad = (' ' * ($EntryIndentSpaces + 2))
+
     $builder = New-Object System.Text.StringBuilder
-    [void]$builder.Append('      "')
+    [void]$builder.Append($entryPad)
+    [void]$builder.Append('"')
     [void]$builder.Append($CardId)
     [void]$builder.Append('": {')
     [void]$builder.Append("`r`n")
@@ -1439,8 +1445,11 @@ function Format-AccountMetadataCardMarkEntryJson {
             $pairings = @($rawPairings)
         }
     }
-    [void]$builder.Append('        "pairings": [')
+    [void]$builder.Append($fieldPad)
+    [void]$builder.Append('"pairings": [')
     $pairingLines = New-Object System.Collections.Generic.List[string]
+    $pairingPad = (' ' * ($EntryIndentSpaces + 4))
+    $pairingFieldPad = (' ' * ($EntryIndentSpaces + 6))
     foreach ($pairing in $pairings) {
         $pairTable = Get-CardMarkHashtable $pairing
         if (-not $pairTable) { continue }
@@ -1454,14 +1463,17 @@ function Format-AccountMetadataCardMarkEntryJson {
             try { $timestampMs = [int64][Math]::Round([double]$pairTable['timestampMs']) } catch { $timestampMs = 0 }
         }
         $pairingLines.Add(
-            "          {`r`n            ""receivedCardId"": " + (ConvertTo-JsonStringLiteral -Value $receivedCardId) +
-            ",`r`n            ""timestampMs"": " + [string]$timestampMs + "`r`n          }"
+            $pairingPad + "{`r`n" +
+            $pairingFieldPad + """receivedCardId"": " + (ConvertTo-JsonStringLiteral -Value $receivedCardId) +
+            ",`r`n" + $pairingFieldPad + """timestampMs"": " + [string]$timestampMs + "`r`n" +
+            $pairingPad + "}"
         )
     }
     if ($pairingLines.Count -gt 0) {
         [void]$builder.Append("`r`n")
         [void]$builder.Append(($pairingLines -join ",`r`n"))
-        [void]$builder.Append("`r`n        ")
+        [void]$builder.Append("`r`n")
+        [void]$builder.Append($fieldPad)
     }
     [void]$builder.Append("],")
 
@@ -1469,7 +1481,9 @@ function Format-AccountMetadataCardMarkEntryJson {
     if ($markTable.ContainsKey('timestampMs')) {
         try { $timestampMs = [int64][Math]::Round([double]$markTable['timestampMs']) } catch { $timestampMs = 0 }
     }
-    [void]$builder.Append("`r`n        ""timestampMs"": ")
+    [void]$builder.Append("`r`n")
+    [void]$builder.Append($fieldPad)
+    [void]$builder.Append('"timestampMs": ')
     [void]$builder.Append([string]$timestampMs)
 
     $count = 0
@@ -1477,25 +1491,34 @@ function Format-AccountMetadataCardMarkEntryJson {
         try { $count = [int][Math]::Round([double]$markTable['count']) } catch { $count = 0 }
     }
     if ($count -gt 0) {
-        [void]$builder.Append(",`r`n        ""count"": ")
+        [void]$builder.Append(",`r`n")
+        [void]$builder.Append($fieldPad)
+        [void]$builder.Append('"count": ')
         [void]$builder.Append([string]$count)
     }
 
-    [void]$builder.Append("`r`n      }")
+    [void]$builder.Append("`r`n")
+    [void]$builder.Append($entryPad)
+    [void]$builder.Append('}')
     return $builder.ToString()
 }
 
 function Format-AccountMetadataSharedCardEntryJson {
     param(
         [Parameter(Mandatory = $true)][string]$CardId,
-        $Mark
+        $Mark,
+        [int]$EntryIndentSpaces = 4
     )
 
     $markTable = Get-CardMarkHashtable $Mark
     if (-not $markTable) { return "" }
 
+    $entryPad = (' ' * $EntryIndentSpaces)
+    $fieldPad = (' ' * ($EntryIndentSpaces + 2))
+
     $builder = New-Object System.Text.StringBuilder
-    [void]$builder.Append('      "')
+    [void]$builder.Append($entryPad)
+    [void]$builder.Append('"')
     [void]$builder.Append($CardId)
     [void]$builder.Append('": {')
     [void]$builder.Append("`r`n")
@@ -1504,7 +1527,8 @@ function Format-AccountMetadataSharedCardEntryJson {
     if ($markTable.ContainsKey('timestampMs')) {
         try { $timestampMs = [int64][Math]::Round([double]$markTable['timestampMs']) } catch { $timestampMs = 0 }
     }
-    [void]$builder.Append('        "timestampMs": ')
+    [void]$builder.Append($fieldPad)
+    [void]$builder.Append('"timestampMs": ')
     [void]$builder.Append([string]$timestampMs)
 
     $count = 0
@@ -1512,18 +1536,23 @@ function Format-AccountMetadataSharedCardEntryJson {
         try { $count = [int][Math]::Round([double]$markTable['count']) } catch { $count = 0 }
     }
     if ($count -gt 0) {
-        [void]$builder.Append(",`r`n        ""count"": ")
+        [void]$builder.Append(",`r`n")
+        [void]$builder.Append($fieldPad)
+        [void]$builder.Append('"count": ')
         [void]$builder.Append([string]$count)
     }
 
-    [void]$builder.Append("`r`n      }")
+    [void]$builder.Append("`r`n")
+    [void]$builder.Append($entryPad)
+    [void]$builder.Append('}')
     return $builder.ToString()
 }
 
 function Format-AccountMetadataCardMarksPropertyJson {
     param(
         [Parameter(Mandatory = $true)][string]$PropertyName,
-        $Marks
+        $Marks,
+        [int]$PropertyIndentSpaces = 2
     )
 
     $marksTable = Get-CardMarkHashtable $Marks
@@ -1536,9 +1565,12 @@ function Format-AccountMetadataCardMarksPropertyJson {
         return ""
     }
 
+    $propertyPad = (' ' * $PropertyIndentSpaces)
+    $cardEntryIndent = $PropertyIndentSpaces + 2
     $isShared = ($PropertyName -eq 'sharedCards')
     $builder = New-Object System.Text.StringBuilder
-    [void]$builder.Append('    "')
+    [void]$builder.Append($propertyPad)
+    [void]$builder.Append('"')
     [void]$builder.Append($PropertyName)
     [void]$builder.Append('": {')
     [void]$builder.Append("`r`n")
@@ -1548,13 +1580,15 @@ function Format-AccountMetadataCardMarksPropertyJson {
             [void]$builder.Append(",`r`n")
         }
         if ($isShared) {
-            [void]$builder.Append((Format-AccountMetadataSharedCardEntryJson -CardId $cardId -Mark $marksTable[$cardId]))
+            [void]$builder.Append((Format-AccountMetadataSharedCardEntryJson -CardId $cardId -Mark $marksTable[$cardId] -EntryIndentSpaces $cardEntryIndent))
         } else {
-            [void]$builder.Append((Format-AccountMetadataCardMarkEntryJson -CardId $cardId -Mark $marksTable[$cardId]))
+            [void]$builder.Append((Format-AccountMetadataCardMarkEntryJson -CardId $cardId -Mark $marksTable[$cardId] -EntryIndentSpaces $cardEntryIndent))
         }
         $firstCard = $false
     }
-    [void]$builder.Append("`r`n    }")
+    [void]$builder.Append("`r`n")
+    [void]$builder.Append($propertyPad)
+    [void]$builder.Append('}')
     return $builder.ToString()
 }
 
@@ -1589,20 +1623,56 @@ function Format-AccountMetadataBlock {
         [void]$builder.Append($flagsJson)
     }
 
-    $tradedJson = Format-AccountMetadataCardMarksPropertyJson -PropertyName 'tradedCards' -Marks $Metadata['tradedCards']
-    if (-not [string]::IsNullOrWhiteSpace($tradedJson)) {
-        Add-MetadataJsonComma -Builder $builder -FirstField ([ref]$firstField)
-        [void]$builder.Append($tradedJson)
-    }
-
-    $sharedJson = Format-AccountMetadataCardMarksPropertyJson -PropertyName 'sharedCards' -Marks $Metadata['sharedCards']
-    if (-not [string]::IsNullOrWhiteSpace($sharedJson)) {
-        Add-MetadataJsonComma -Builder $builder -FirstField ([ref]$firstField)
-        [void]$builder.Append($sharedJson)
-    }
-
     [void]$builder.Append("`r`n  }")
     return $builder.ToString()
+}
+
+function Merge-AccountCardMarksFromMetadataToRoot {
+    param([Parameter(Mandatory = $true)][hashtable]$Doc)
+
+    $metadata = Get-AccountMetadataHashtable -Doc $Doc
+    foreach ($propertyName in @('tradedCards', 'sharedCards')) {
+        $legacyMarks = $null
+        if ($metadata.ContainsKey($propertyName)) {
+            $legacyMarks = $metadata[$propertyName]
+            $metadata.Remove($propertyName) | Out-Null
+        }
+
+        $rootMarks = $null
+        if ($Doc.ContainsKey($propertyName)) {
+            $rootMarks = $Doc[$propertyName]
+        }
+
+        $rootTable = Get-CardMarkHashtable $rootMarks
+        $legacyTable = Get-CardMarkHashtable $legacyMarks
+        if ($legacyTable -and $legacyTable.Count -gt 0) {
+            if (-not $rootTable -or $rootTable.Count -eq 0) {
+                $Doc[$propertyName] = ConvertTo-TradeMarksObject -InputObject $legacyTable
+            }
+        }
+
+        if ($Doc.ContainsKey($propertyName)) {
+            $normalised = Normalize-CardMarksInput -InputObject $Doc[$propertyName]
+            if ($normalised.Count -eq 0) {
+                $Doc.Remove($propertyName) | Out-Null
+            } else {
+                $Doc[$propertyName] = ConvertTo-TradeMarksObject -InputObject $normalised
+            }
+        }
+    }
+}
+
+function Get-AccountCardMarksTable {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Doc,
+        [Parameter(Mandatory = $true)][string]$PropertyName
+    )
+
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
+    if (-not $Doc.ContainsKey($PropertyName)) {
+        return $null
+    }
+    return Get-CardMarkHashtable $Doc[$PropertyName]
 }
 
 function Write-AccountJsonCardMarksPreserveFormat {
@@ -1621,6 +1691,7 @@ function Write-AccountJsonCardMarksPreserveFormat {
         throw "Account JSON is missing deviceAccount."
     }
 
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
     $metadata = Get-AccountMetadataHashtable -Doc $Doc
     $metadataJson = Format-AccountMetadataBlock -Metadata $metadata
 
@@ -1633,6 +1704,13 @@ function Write-AccountJsonCardMarksPreserveFormat {
     if ([string]::IsNullOrWhiteSpace($registeredCardsJson) -or $registeredCardsJson -eq '{}') {
         $registeredCardsJson = '[]'
     }
+
+    $tradedJson = Format-AccountMetadataCardMarksPropertyJson `
+        -PropertyName 'tradedCards' `
+        -Marks (Get-AccountCardMarksTable -Doc $Doc -PropertyName 'tradedCards')
+    $sharedJson = Format-AccountMetadataCardMarksPropertyJson `
+        -PropertyName 'sharedCards' `
+        -Marks (Get-AccountCardMarksTable -Doc $Doc -PropertyName 'sharedCards')
 
     $builder = New-Object System.Text.StringBuilder
     [void]$builder.Append("{`r`n")
@@ -1647,6 +1725,14 @@ function Write-AccountJsonCardMarksPreserveFormat {
     [void]$builder.Append(",`r`n")
     [void]$builder.Append('  "registeredCards": ')
     [void]$builder.Append($registeredCardsJson)
+    if (-not [string]::IsNullOrWhiteSpace($tradedJson)) {
+        [void]$builder.Append(",`r`n")
+        [void]$builder.Append($tradedJson)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($sharedJson)) {
+        [void]$builder.Append(",`r`n")
+        [void]$builder.Append($sharedJson)
+    }
     [void]$builder.Append("`r`n}`r`n")
 
     $tmp = "$Path.tmp"
@@ -1715,22 +1801,27 @@ function Get-AccountMetadataHashtable {
     return $converted
 }
 
-function Set-AccountMetadataCardMarks {
+function Set-AccountCardMarks {
     param(
         [Parameter(Mandatory = $true)][hashtable]$Doc,
-        [string]$PropertyName,
+        [Parameter(Mandatory = $true)][string]$PropertyName,
         $InputObject
     )
 
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
     $metadata = Get-AccountMetadataHashtable -Doc $Doc
+    if ($metadata.ContainsKey($PropertyName)) {
+        $metadata.Remove($PropertyName) | Out-Null
+    }
+
     $normalised = Normalize-CardMarksInput -InputObject $InputObject
     if ($normalised.Count -eq 0) {
-        if ($metadata.ContainsKey($PropertyName)) {
-            $metadata.Remove($PropertyName) | Out-Null
+        if ($Doc.ContainsKey($PropertyName)) {
+            $Doc.Remove($PropertyName) | Out-Null
         }
         return 0
     }
-    $metadata[$PropertyName] = ConvertTo-TradeMarksObject -InputObject $normalised
+    $Doc[$PropertyName] = ConvertTo-TradeMarksObject -InputObject $normalised
     return $normalised.Count
 }
 
@@ -1809,10 +1900,10 @@ function Invoke-SetAccountCardMarks {
     $tradedCount = 0
     $sharedCount = 0
     if ($hasTraded) {
-        $tradedCount = Set-AccountMetadataCardMarks -Doc $doc -PropertyName "tradedCards" -InputObject $tradedPayload
+        $tradedCount = Set-AccountCardMarks -Doc $doc -PropertyName "tradedCards" -InputObject $tradedPayload
     }
     if ($hasShared) {
-        $sharedCount = Set-AccountMetadataCardMarks -Doc $doc -PropertyName "sharedCards" -InputObject $sharedPayload
+        $sharedCount = Set-AccountCardMarks -Doc $doc -PropertyName "sharedCards" -InputObject $sharedPayload
     }
 
     try {
