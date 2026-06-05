@@ -14,6 +14,8 @@
         , "ui_injectWonderpickMinPacks": "injectWonderpickMinPacks"
         , "ui_openExtraPack": "openExtraPack"
         , "ui_spendHourGlass": "spendHourGlass"
+        , "ui_hourglassTenPackOpening": "hourglassTenPackOpening"
+        , "ui_spendHourglassPackCount": "spendHourglassPackCount"
         , "ui_AccountName": "AccountName"
         , "ui_Delay": "Delay"
         , "ui_swipeSpeed": "swipeSpeed"
@@ -32,6 +34,8 @@
         , "injectWonderpickMinPacks": 96
         , "openExtraPack": 0
         , "spendHourGlass": 0
+        , "hourglassTenPackOpening": 1
+        , "spendHourglassPackCount": 0
         , "injectSortMethod": "PacksDesc"
         , "Delay": 250
         , "swipeSpeed": 250

@@ -96,6 +96,8 @@ Txt_InjectRange:Range:
 Txt_packMethod:1 Pack Method
 Txt_nukeAccount:Menu Delete
 Txt_spendHourGlass:Spend All Hourglass
+Txt_hourglassTenPackOpening:Use 10-Pack Mode
+Txt_spendHourglassPackCount:Packs to open (0 = all)
 Txt_openExtraPack:Open Extra Pack
 Txt_claimSpecialMissions:Claim Special Missions
 SortByText:Sort By:
