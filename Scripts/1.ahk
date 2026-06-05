@@ -4970,7 +4970,6 @@ DoWonderPick() {
     return true
 }
 
-
 ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
     global botConfig, session
 
