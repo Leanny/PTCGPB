@@ -532,6 +532,13 @@ fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value
     if obj.get("registeredCards").map_or(true, Value::is_null) {
         obj.insert("registeredCards".to_owned(), json!([]));
     }
+    if obj.get("tradedCards").map_or(true, Value::is_null) {
+        obj.insert("tradedCards".to_owned(), json!({}));
+    }
+    if obj.get("sharedCards").map_or(true, Value::is_null) {
+        obj.insert("sharedCards".to_owned(), json!({}));
+    }
+    hoist_card_marks_from_metadata(obj);
     obj.insert("sourceFileName".to_owned(), json!(file_name));
     if is_collection_path(path) {
         obj.insert("sourceType".to_owned(), json!("collection"));
@@ -796,6 +803,31 @@ fn compact_store_for_write(store: &Value) -> Value {
     output
 }
 
+fn card_marks_object_is_empty(value: &Value) -> bool {
+    value
+        .as_object()
+        .map(Map::is_empty)
+        .unwrap_or(true)
+}
+
+fn hoist_card_marks_from_metadata(obj: &mut Map<String, Value>) {
+    let Some(metadata) = obj.get_mut("metadata").and_then(Value::as_object_mut) else {
+        return;
+    };
+    for key in ["tradedCards", "sharedCards"] {
+        let Some(legacy) = metadata.remove(key) else {
+            continue;
+        };
+        let root_empty = obj
+            .get(key)
+            .map(card_marks_object_is_empty)
+            .unwrap_or(true);
+        if root_empty && !card_marks_object_is_empty(&legacy) {
+            obj.insert(key.to_owned(), legacy);
+        }
+    }
+}
+
 fn compact_account_for_write(account: &mut Value) {
     let Some(obj) = account.as_object_mut() else {
         return;
@@ -1022,6 +1054,13 @@ fn load_account_document(path: &Path, device_account: &str) -> Result<Value> {
         obj.entry("metadata".to_owned())
             .or_insert_with(|| json!({}));
         obj.entry("pulls".to_owned()).or_insert_with(|| json!([]));
+        obj.entry("registeredCards")
+            .or_insert_with(|| json!([]));
+        obj.entry("tradedCards")
+            .or_insert_with(|| json!({}));
+        obj.entry("sharedCards")
+            .or_insert_with(|| json!({}));
+        hoist_card_marks_from_metadata(obj);
         return Ok(value);
     }
 
@@ -1029,7 +1068,9 @@ fn load_account_document(path: &Path, device_account: &str) -> Result<Value> {
         "deviceAccount": device_account,
         "metadata": {},
         "pulls": [],
-        "registeredCards": []
+        "registeredCards": [],
+        "tradedCards": {},
+        "sharedCards": {}
     }))
 }
 
@@ -1055,8 +1096,11 @@ fn format_account(root: &Path, device_account: &str) -> Result<()> {
     }
 
     let mut doc = load_account_document(&path, device_account)?;
-    if let Some(metadata) = doc.get_mut("metadata") {
-        compact_account_for_write(metadata);
+    if let Some(obj) = doc.as_object_mut() {
+        hoist_card_marks_from_metadata(obj);
+        if let Some(metadata) = doc.get_mut("metadata") {
+            compact_account_for_write(metadata);
+        }
     }
     write_account_document(root, device_account, &doc)
 }
