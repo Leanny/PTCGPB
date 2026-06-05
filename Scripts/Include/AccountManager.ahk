@@ -408,31 +408,30 @@ saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag :
     EnvSub, now, 1970, seconds
     IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
 
-    if (xmlFile != "" && filePath != "") {
+    ; Only update account JSON metadata for canonical Saved-folder writes.
+    ; GodPacks/SpecificCards/Trades backups use a different filename and must not
+    ; overwrite metadata.fileName (CardDatabase trades resolve XML via Saved).
+    if (file = "All" && xmlFile != "" && filePath != "") {
         FileGetTime, savedModTime, %filePath%, M
         accountMeta := AccountMetadata_Get(session.get("scriptName"), xmlFile, filePath)
-        if (file = "All")
-            accountMeta["packCount"] := session.get("accountOpenPacks")
-        else
-            accountMeta["packCount"] := AccountMetadata_ExtractPackCount(xmlFile)
-        if (file = "All") {
-            flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
-                , "X": session.get("missionDoneList")["specialMissionsDone"]
-                , "T": session.get("missionDoneList")["accountHasPackInTesting"]
-                , "R": session.get("missionDoneList")["receivedGiftDone"]}
 
-            for flag, value in flags {
-                if (!accountMeta["flags"].HasKey(flag))
-                    accountMeta["flags"][flag] := AccountMetadata_NewFlag(0)
-                accountMeta["flags"][flag]["value"] := value ? 1 : 0
-                accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
-                if (flag = "T" && value) {
-                    validUntil := savedModTime
-                    validUntil += 5, Days
-                    accountMeta["flags"][flag]["validUntil"] := validUntil
-                } else if (!value) {
-                    accountMeta["flags"][flag]["validUntil"] := ""
-                }
+        accountMeta["packCount"] := session.get("accountOpenPacks")
+        flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
+            , "X": session.get("missionDoneList")["specialMissionsDone"]
+            , "T": session.get("missionDoneList")["accountHasPackInTesting"]
+            , "R": session.get("missionDoneList")["receivedGiftDone"]}
+
+        for flag, value in flags {
+            if (!accountMeta["flags"].HasKey(flag))
+                accountMeta["flags"][flag] := AccountMetadata_NewFlag(0)
+            accountMeta["flags"][flag]["value"] := value ? 1 : 0
+            accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
+            if (flag = "T" && value) {
+                validUntil := savedModTime
+                validUntil += 5, Days
+                accountMeta["flags"][flag]["validUntil"] := validUntil
+            } else if (!value) {
+                accountMeta["flags"][flag]["validUntil"] := ""
             }
         }
 
