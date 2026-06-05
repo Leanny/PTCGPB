@@ -1823,6 +1823,7 @@ InitPackOpening(full := false) {
     if (!EnsurePTCGPBHelperInstalled())
         return false
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
+    adbWriteRaw("rm -f /data/ptcgp/result.log")
     adbWriteRaw("pkill -f /data/ptcgp/ptcgpb")
 
     SavePackOpeningMissionUserPrefsSnapshot("pre")
@@ -1875,6 +1876,28 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
     return { kind: kind, remotePath: remotePath, localPath: localPath, exists: exists }
 }
 
+PullPackOpeningResultLog(failedDir, uniquePrefix) {
+    global session
+
+    if !FileExist(failedDir)
+        FileCreateDir, %failedDir%
+
+    remotePath := "/data/ptcgp/result.log"
+    sdcardPath := "/sdcard/" . uniquePrefix . "_result.log"
+    localPath := failedDir . "\" . uniquePrefix . "_result.log"
+
+    if (FileExist(localPath))
+        FileDelete, %localPath%
+
+    adbWriteRaw("rm -f " . sdcardPath)
+    adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
+    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    adbWriteRaw("rm -f " . sdcardPath)
+
+    exists := FileExist(localPath) ? true : false
+    return { kind: "result.log", remotePath: remotePath, localPath: localPath, exists: exists }
+}
+
 ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback mechanism") {
     global session, botConfig
 
@@ -1884,6 +1907,7 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
 
     preSnapshot := PullPackOpeningMissionUserPrefsSnapshot("pre", failedDir, uniquePrefix)
     postSnapshot := PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
+    resultLog := PullPackOpeningResultLog(failedDir, uniquePrefix)
 
     message := reason . "\nVersion: 0.12.0\nPlease submit these files for the bug report as well."
     for _, snapshot in [preSnapshot, postSnapshot] {
@@ -1895,6 +1919,15 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
             message .= "\n" . snapshot.kind . ": missing (remote " . snapshot.remotePath . " was not available)"
             LogWarn("Card recognition failure " . snapshot.kind . " MissionUserPrefs missing: " . snapshot.remotePath, "debug_cards.txt")
         }
+    }
+
+    resultLogPathForMessage := StrReplace(resultLog.localPath, "\", "/")
+    if (resultLog.exists) {
+        message .= "\n" . resultLog.kind . ": " . resultLogPathForMessage
+        LogWarn("Card recognition failure result.log saved: " . resultLog.localPath, "debug_cards.txt")
+    } else {
+        message .= "\n" . resultLog.kind . ": missing (remote " . resultLog.remotePath . " was not available)"
+        LogWarn("Card recognition failure result.log missing: " . resultLog.remotePath, "debug_cards.txt")
     }
 
     ownerWebhookURL := botConfig.get("heartBeatOwnerWebHookURL")
@@ -2084,6 +2117,7 @@ RecoverPack() {
     post := PackOpeningMissionUserPrefsSnapshotPath("post")
 
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
+    adbWriteRaw("rm -f /data/ptcgp/result.log")
     adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
 
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
