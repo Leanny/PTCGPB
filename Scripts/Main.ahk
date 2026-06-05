@@ -1440,7 +1440,7 @@ RemoveNonVipFriends() {
     ; Might be too much of a scroll, but ensures all *99* friends are loaded and visible
     CreateStatusMessage("Scrolling to bottom of friend list...",,,, false)
     Loop, 20 {
-        adbSwipe(143 . " " . 700 . " " . 143 . " " . 110 . " " . 300)
+        adbSwipe(8 . " " . 700 . " " . 8 . " " . 110 . " " . 300)
         Sleep, 200
     }
     Delay(2)
@@ -1604,7 +1604,7 @@ RemoveNonVipFriends() {
                     FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
                     Delay(3)
                     Loop, 20 {
-                        adbSwipe(143 . " " . 700 . " " . 143 . " " . 110 . " " . 300)
+                        adbSwipe(8 . " " . 700 . " " . 8 . " " . 110 . " " . 300)
                         Sleep, 200
                     }
                     Delay(2)
