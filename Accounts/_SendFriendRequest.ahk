@@ -1,7 +1,7 @@
 ﻿; _SendFriendRequest.ahk
-; Sends friend request(s): first to [General] FriendID in Settings.ini, then to any
-; extra 16-digit codes in InjectAccount.ini ([UserSettings] injectExtraFriendIDs=, comma-separated).
-; At most 10 codes total are sent (order: Settings.ini first, then extras; further codes are dropped).
+; Sends friend request(s) after account inject.
+; Prefers InjectAccount.ini [UserSettings] injectFriendRequestIds= (pre-built list for this run).
+; Otherwise uses injectSelectedFriendIDs (or legacy injectExtraFriendIDs). At most 10 codes total.
 ; Usage: _SendFriendRequest.ahk "<winTitle>" "<folderPath>"
 
 #SingleInstance off
@@ -28,7 +28,6 @@ if (!FileExist(g_settingsPath)) {
     MsgBox, 16, Send Friend Request, Cannot find Settings.ini at:`n%g_settingsPath%
     ExitApp, 1
 }
-IniRead, g_friendIDRaw, %g_settingsPath%, General, FriendID, ERROR
 
 SetWorkingDir, %A_ScriptDir%\..\Scripts
 
@@ -46,9 +45,17 @@ global pToken := Gdip_Startup()
 #Include %A_ScriptDir%\..\Scripts\Include\Coords.ahk
 
 global g_injectIniPath := A_ScriptDir . "\InjectAccount.ini"
+IniRead, g_injectRequestRaw, %g_injectIniPath%, UserSettings, injectFriendRequestIds,
+if (g_injectRequestRaw = "ERROR")
+    g_injectRequestRaw := ""
+IniRead, g_injectSelectedRaw, %g_injectIniPath%, UserSettings, injectSelectedFriendIDs,
+if (g_injectSelectedRaw = "ERROR")
+    g_injectSelectedRaw := ""
 IniRead, g_injectExtraRaw, %g_injectIniPath%, UserSettings, injectExtraFriendIDs,
 if (g_injectExtraRaw = "ERROR")
     g_injectExtraRaw := ""
+if (g_injectSelectedRaw = "")
+    g_injectSelectedRaw := g_injectExtraRaw
 
 ; Stubs for the few Logging.ahk symbols ADB.ahk / Utils.ahk reference,
 ; without pulling in the floating status GUI from Logging.ahk itself.
@@ -114,9 +121,11 @@ session.set("dbg_bboxNpause", 0)
 session.set("failSafe", A_TickCount)
 session.set("baseTime", 0)
 
-g_friendIDList := BuildFriendRequestIdList(g_friendIDRaw, g_injectExtraRaw)
+g_friendIDList := ParseFriendIdsCsv(g_injectRequestRaw)
+if (!g_friendIDList.MaxIndex())
+    g_friendIDList := ParseFriendIdsCsv(g_injectSelectedRaw)
 if (!g_friendIDList.MaxIndex()) {
-    MsgBox, 16, Send Friend Request, No friend codes to send.`n`nSet a valid 16-digit [General] FriendID= in Settings.ini and/or add optional extra codes in Inject Account (injectExtraFriendIDs).
+    MsgBox, 16, Send Friend Request, No friend codes to send.`n`nCheck at least one friend in Inject Account, or set injectFriendRequestIds in InjectAccount.ini.
     ExitApp, 1
 }
 
@@ -255,12 +264,9 @@ clickUntilNeedle(needleName, clickX, clickY, timeoutSec := 30, retryMs := 800) {
     return false
 }
 
-BuildFriendRequestIdList(settingsRaw, injectExtraRaw) {
+ParseFriendIdsCsv(rawCsv) {
     list := []
-    sid := Trim(settingsRaw)
-    if (sid != "" && sid != "ERROR" && RegExMatch(sid, "^\d{16}$"))
-        list.Push(sid)
-    cleaned := RegExReplace(injectExtraRaw, "[\r\n]+", ",")
+    cleaned := RegExReplace(rawCsv, "[\r\n]+", ",")
     cleaned := RegExReplace(cleaned, "\|+", ",")
     cleaned := RegExReplace(cleaned, "[\t; ]+", ",")
     Loop {
@@ -277,6 +283,12 @@ BuildFriendRequestIdList(settingsRaw, injectExtraRaw) {
         if (!HasVal(list, id))
             list.Push(id)
     }
+    return TruncateFriendRequestList(list)
+}
+
+TruncateFriendRequestList(list) {
+    if (!IsObject(list) || !list.MaxIndex())
+        return list
     if (list.MaxIndex() > 10) {
         oldN := list.MaxIndex()
         fixed := []

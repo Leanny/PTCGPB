@@ -6735,30 +6735,106 @@
                 margin-left: auto;
             }
 
-            #instancePickerFriendGrid .instance-picker-friend-slot {
+            #instancePickerFriendGrid {
                 display: flex;
+                gap: 16px;
+                margin-top: 6px;
+                width: 100%;
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-col {
+                flex: 1 1 0;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-headers {
+                display: grid;
+                grid-template-columns: 13px 71px minmax(122px, 1fr);
+                column-gap: 4px;
                 align-items: center;
-                gap: 8px;
+                margin-bottom: 2px;
             }
 
-            #instancePickerFriendGrid .instance-picker-friend-slot label {
-                display: inline-block !important;
-                width: 22px;
-                margin: 0 !important;
-                text-align: right;
-                font-family:
-                    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                font-size: 0.82rem !important;
-                line-height: 1;
+            #instancePickerFriendGrid .instance-picker-friend-headers .hdr-name {
+                grid-column: 2;
+                text-align: center;
+                font-size: 0.72rem;
                 color: var(--muted);
-                cursor: default;
-                user-select: none;
             }
 
-            #instancePickerFriendGrid .instance-picker-friend-slot input {
-                flex: 1;
+            #instancePickerFriendGrid .instance-picker-friend-headers .hdr-id {
+                grid-column: 3;
+                text-align: center;
+                font-size: 0.72rem;
+                color: var(--muted);
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-rows {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-row {
+                display: grid;
+                grid-template-columns: 13px 71px minmax(122px, 1fr);
+                column-gap: 4px;
+                align-items: center;
                 min-width: 0;
             }
+
+            #instancePickerFriendGrid .instance-picker-friend-row .fav-pick {
+                width: 13px;
+                height: 13px;
+                margin: 0;
+                flex: 0 0 auto;
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-row .fav-label {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+                font-size: 0.8rem;
+                padding: 3px 6px;
+                height: 22px;
+                line-height: 16px;
+                border-radius: var(--radius);
+                border: 1px solid var(--border);
+                background: var(--panel2, var(--panel));
+                color: var(--text);
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-row .fav-id {
+                width: 100%;
+                min-width: 122px;
+                box-sizing: border-box;
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                font-size: 0.8rem;
+                padding: 3px 6px;
+                height: 22px;
+                line-height: 16px;
+                border-radius: var(--radius);
+                border: 1px solid var(--border);
+                background: var(--panel2, var(--panel));
+                color: var(--text);
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-row .fav-label::placeholder,
+            #instancePickerFriendGrid .instance-picker-friend-row .fav-id::placeholder {
+                color: var(--muted);
+                opacity: 0.9;
+                font-size: 0.72rem;
+            }
+
+            #instancePickerFriendGrid .instance-picker-friend-row .fav-id::placeholder {
+                font-family: inherit;
+                font-size: 0.7rem;
+            }
+
 
             @media (prefers-reduced-motion: reduce) {
                 * {
@@ -7299,7 +7375,7 @@
         >
             <div
                 style="
-                    max-width: 520px;
+                    max-width: 548px;
                     width: 92%;
                     padding: 24px 22px;
                     display: flex;
@@ -7391,326 +7467,12 @@
                         font-size: 0.78rem;
                         color: var(--muted);
                         line-height: 1.35;
-                        margin-top: 2px;
-                    "
-                >
-                    Friend IDs (max 10). 1 = Settings.ini, 2-10 = extra.
-                </div>
-                <div
-                    id="instancePickerFriendGrid"
-                    style="
-                        display: flex;
-                        gap: 12px;
-                        align-items: flex-start;
                         margin-top: 4px;
                     "
                 >
-                    <div
-                        style="
-                            flex: 1;
-                            min-width: 0;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 6px;
-                        "
-                    >
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend1"
-                                style="
-                                    font-size: 0.78rem;
-                                    color: var(--muted);
-                                    display: block;
-                                    margin-bottom: 2px;
-                                "
-                                >1</label
-                            >
-                            <input
-                                id="instancePickerFriend1"
-                                type="text"
-                                readonly
-                                disabled
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--muted);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend2"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >2</label
-                            >
-                            <input
-                                id="instancePickerFriend2"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend3"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >3</label
-                            >
-                            <input
-                                id="instancePickerFriend3"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend4"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >4</label
-                            >
-                            <input
-                                id="instancePickerFriend4"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend5"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >5</label
-                            >
-                            <input
-                                id="instancePickerFriend5"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                    </div>
-                    <div
-                        style="
-                            flex: 1;
-                            min-width: 0;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 6px;
-                        "
-                    >
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend6"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >6</label
-                            >
-                            <input
-                                id="instancePickerFriend6"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend7"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >7</label
-                            >
-                            <input
-                                id="instancePickerFriend7"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend8"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >8</label
-                            >
-                            <input
-                                id="instancePickerFriend8"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend9"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >9</label
-                            >
-                            <input
-                                id="instancePickerFriend9"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                        <div class="instance-picker-friend-slot">
-                            <label
-                                for="instancePickerFriend10"
-                                class="field-label"
-                                style="font-size: 0.78rem"
-                                >10</label
-                            >
-                            <input
-                                id="instancePickerFriend10"
-                                type="text"
-                                inputmode="numeric"
-                                spellcheck="false"
-                                autocomplete="off"
-                                style="
-                                    width: 100%;
-                                    box-sizing: border-box;
-                                    font-family:
-                                        ui-monospace, SFMono-Regular, Menlo,
-                                        Consolas, monospace;
-                                    font-size: 0.8rem;
-                                    padding: 6px 8px;
-                                    border-radius: var(--radius);
-                                    border: 1px solid var(--border);
-                                    background: var(--panel2, var(--panel));
-                                    color: var(--text);
-                                "
-                            />
-                        </div>
-                    </div>
+                    Friends (saved). Check to send on this inject (max 10):
                 </div>
+                <div id="instancePickerFriendGrid"></div>
                 <div
                     style="display: flex; gap: 10px; justify-content: flex-end"
                 >
@@ -8856,82 +8618,271 @@
                 return payload;
             }
 
-            function parseExtraFriendIdsCsvToNine(text) {
+            const FAVORITE_FRIEND_SLOT_COUNT = 10;
+            const LS_FRIEND_PICKER_STATE = "ptcgp-card-db-friend-picker-state-v1";
+            function parseExtraFriendIdsCsvToSlots(text) {
                 const parts = String(text || "")
                     .split(/[\s,;|]+/)
                     .map((t) => t.trim())
                     .filter(Boolean);
                 const out = [];
-                for (let i = 0; i < 9; i++) {
+                for (let i = 0; i < FAVORITE_FRIEND_SLOT_COUNT; i++) {
                     out.push(i < parts.length ? parts[i] : "");
                 }
                 return out;
+            }
+            function parseFriendLabelsPipe(text) {
+                return String(text || "")
+                    .split("|")
+                    .map((t) => t.trim());
             }
             function sanitizeDashboardFriendSlotValue(value) {
                 return String(value || "")
                     .replace(/\D+/g, "")
                     .slice(0, 16);
             }
-            function applyDashboardExtraFriendInputs(savedCsv) {
-                const nine = parseExtraFriendIdsCsvToNine(savedCsv);
-                for (let j = 0; j < 9; j++) {
-                    const el = document.getElementById(
-                        `instancePickerFriend${j + 2}`,
-                    );
-                    if (el)
-                        el.value = sanitizeDashboardFriendSlotValue(
-                            nine[j] || "",
-                        );
+            function ensureInstancePickerFriendGrid() {
+                const grid = document.getElementById("instancePickerFriendGrid");
+                if (!grid || grid.dataset.friendGridLayout === "3") return grid;
+                grid.innerHTML = "";
+
+                function createFriendRow(slot) {
+                    const row = document.createElement("div");
+                    row.className = "instance-picker-friend-row";
+                    row.dataset.slot = String(slot);
+                    row.innerHTML =
+                        `<input type="checkbox" class="fav-pick" data-slot="${slot}" />` +
+                        `<input type="text" class="fav-label" placeholder="Name" spellcheck="false" autocomplete="off" maxlength="32" />` +
+                        `<input type="text" class="fav-id" placeholder="16-digit ID" inputmode="numeric" spellcheck="false" autocomplete="off" maxlength="16" />`;
+                    const idEl = row.querySelector(".fav-id");
+                    idEl.addEventListener("input", () => {
+                        const clean = sanitizeDashboardFriendSlotValue(idEl.value);
+                        if (idEl.value !== clean) idEl.value = clean;
+                    });
+                    return row;
+                }
+
+                function createFriendColumn(startSlot, endSlot) {
+                    const col = document.createElement("div");
+                    col.className = "instance-picker-friend-col";
+                    const headers = document.createElement("div");
+                    headers.className = "instance-picker-friend-headers";
+                    headers.innerHTML =
+                        `<span class="hdr-name">Name</span><span class="hdr-id">Friend ID</span>`;
+                    col.appendChild(headers);
+                    const rowsWrap = document.createElement("div");
+                    rowsWrap.className = "instance-picker-friend-rows";
+                    for (let slot = startSlot; slot <= endSlot; slot++) {
+                        rowsWrap.appendChild(createFriendRow(slot));
+                    }
+                    col.appendChild(rowsWrap);
+                    return col;
+                }
+
+                grid.appendChild(createFriendColumn(1, 5));
+                grid.appendChild(createFriendColumn(6, 10));
+                grid.dataset.friendGridLayout = "3";
+                return grid;
+            }
+            function readInstancePickerFriendSettingsFromApi(payload) {
+                const ids = parseExtraFriendIdsCsvToSlots(
+                    (payload && payload.favoriteFriendIds) ||
+                        (payload && payload.injectExtraFriendIds) ||
+                        "",
+                );
+                const labels = parseFriendLabelsPipe(
+                    (payload && payload.favoriteFriendLabels) || "",
+                );
+                const selectedSet = new Set(
+                    String(
+                        (payload && payload.injectSelectedFriendIds) ||
+                            (payload && payload.injectExtraFriendIds) ||
+                            "",
+                    )
+                        .split(/[\s,;|]+/)
+                        .map((t) => t.trim())
+                        .filter((id) => /^\d{16}$/.test(id)),
+                );
+                const selectedHasAny = selectedSet.size > 0;
+                const rows = [];
+                for (let i = 0; i < FAVORITE_FRIEND_SLOT_COUNT; i++) {
+                    const id = ids[i] || "";
+                    rows.push({
+                        id,
+                        label: labels[i] || "",
+                        picked: id
+                            ? !selectedHasAny || selectedSet.has(id)
+                            : false,
+                    });
+                }
+                return { rows };
+            }
+            function applyInstancePickerFriendSettings(settings) {
+                ensureInstancePickerFriendGrid();
+                const grid = document.getElementById("instancePickerFriendGrid");
+                if (!grid) return;
+                const rowEls = grid.querySelectorAll(".instance-picker-friend-row");
+                settings.rows.forEach((row, idx) => {
+                    const el = rowEls[idx];
+                    if (!el) return;
+                    const pick = el.querySelector(".fav-pick");
+                    const label = el.querySelector(".fav-label");
+                    const id = el.querySelector(".fav-id");
+                    if (pick) pick.checked = !!row.picked;
+                    if (label) label.value = row.label || "";
+                    if (id) id.value = sanitizeDashboardFriendSlotValue(row.id || "");
+                });
+            }
+            function loadSavedInstancePickerFriendState() {
+                try {
+                    const raw = localStorage.getItem(LS_FRIEND_PICKER_STATE);
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch (_) {
+                    return null;
                 }
             }
-            function setupDashboardFriendSlotRules() {
-                for (let i = 2; i <= 10; i++) {
-                    const el = document.getElementById(
-                        `instancePickerFriend${i}`,
-                    );
-                    if (!el) continue;
-                    el.maxLength = 16;
-                    el.value = sanitizeDashboardFriendSlotValue(el.value);
-                    if (!el.dataset.friendSanitizeBound) {
-                        el.addEventListener("input", () => {
-                            const clean = sanitizeDashboardFriendSlotValue(
-                                el.value,
+            function mergeInstancePickerFriendSettings(apiSettings, savedState) {
+                if (!savedState) return apiSettings;
+                const merged = {
+                    ...apiSettings,
+                    rows: apiSettings.rows.map((r) => ({ ...r })),
+                };
+                if (Array.isArray(savedState.rows)) {
+                    for (let i = 0; i < FAVORITE_FRIEND_SLOT_COUNT; i++) {
+                        const saved = savedState.rows[i];
+                        if (!saved) continue;
+                        if (saved.id != null) {
+                            merged.rows[i].id = sanitizeDashboardFriendSlotValue(
+                                saved.id,
                             );
-                            if (el.value !== clean) el.value = clean;
-                        });
-                        el.dataset.friendSanitizeBound = "1";
+                        }
+                        if (saved.label != null) {
+                            merged.rows[i].label = String(saved.label);
+                        }
+                        if (typeof saved.picked === "boolean") {
+                            merged.rows[i].picked = saved.picked;
+                        }
                     }
                 }
+                return merged;
             }
-            function collectDashboardExtraFriendCsv() {
-                const parts = [];
-                for (let i = 2; i <= 10; i++) {
-                    const el = document.getElementById(
-                        `instancePickerFriend${i}`,
-                    );
-                    const v = el
-                        ? sanitizeDashboardFriendSlotValue(el.value)
+            function collectInstancePickerFriendSelection() {
+                ensureInstancePickerFriendGrid();
+                const favoriteIds = [];
+                const favoriteLabels = [];
+                const selectedIds = [];
+                const grid = document.getElementById("instancePickerFriendGrid");
+                const rowEls = grid
+                    ? grid.querySelectorAll(".instance-picker-friend-row")
+                    : [];
+                rowEls.forEach((rowEl) => {
+                    const pick = rowEl.querySelector(".fav-pick");
+                    const labelEl = rowEl.querySelector(".fav-label");
+                    const idEl = rowEl.querySelector(".fav-id");
+                    const id = idEl
+                        ? sanitizeDashboardFriendSlotValue(idEl.value)
                         : "";
-                    if (v) parts.push(v);
-                }
-                return parts.join(",");
+                    const lbl = labelEl
+                        ? String(labelEl.value || "")
+                              .replace(/[|]/g, " ")
+                              .trim()
+                        : "";
+                    if (idEl) idEl.value = id;
+                    if (!id) return;
+                    favoriteIds.push(id);
+                    favoriteLabels.push(lbl);
+                    if (pick && pick.checked) selectedIds.push(id);
+                });
+                const selectedFriendIds = selectedIds.join(",");
+                const favoriteFriendIds = favoriteIds.join(",");
+                const favoriteFriendLabels = favoriteLabels.join("|");
+                return {
+                    selectedFriendIds,
+                    favoriteFriendIds,
+                    favoriteFriendLabels,
+                    injectExtraFriendIds: selectedFriendIds,
+                    resolvedCount: selectedIds.length,
+                };
             }
-            function validateDashboardFriendSlots() {
-                const parts = [];
-                for (let i = 2; i <= 10; i++) {
-                    const el = document.getElementById(
-                        `instancePickerFriend${i}`,
-                    );
-                    if (!el) continue;
-                    const v = sanitizeDashboardFriendSlotValue(el.value);
-                    el.value = v;
-                    if (!v) continue;
-                    if (!/^\d{16}$/.test(v)) {
-                        return { ok: false, slot: i, element: el };
+            function validateInstancePickerFriendSelection(sendFR) {
+                const sel = collectInstancePickerFriendSelection();
+                const grid = document.getElementById("instancePickerFriendGrid");
+                const rowEls = grid
+                    ? grid.querySelectorAll(".instance-picker-friend-row")
+                    : [];
+                for (let i = 0; i < rowEls.length; i++) {
+                    const idEl = rowEls[i].querySelector(".fav-id");
+                    const id = idEl
+                        ? sanitizeDashboardFriendSlotValue(idEl.value)
+                        : "";
+                    if (!id) continue;
+                    if (!/^\d{16}$/.test(id)) {
+                        return { ok: false, slot: i + 1, element: idEl };
                     }
-                    parts.push(v);
                 }
-                return { ok: true, csv: parts.join(",") };
+                if (sendFR && sel.resolvedCount < 1) {
+                    return {
+                        ok: false,
+                        message:
+                            "Check at least one friend to send.",
+                    };
+                }
+                if (sendFR && sel.resolvedCount > 10) {
+                    return {
+                        ok: false,
+                        message: `Maximum 10 friends per inject (you have ${sel.resolvedCount}).`,
+                    };
+                }
+                return { ok: true, ...sel };
+            }
+            function saveInstancePickerFriendState(selection) {
+                try {
+                    const grid = document.getElementById(
+                        "instancePickerFriendGrid",
+                    );
+                    const rows = [];
+                    const rowEls = grid
+                        ? grid.querySelectorAll(".instance-picker-friend-row")
+                        : [];
+                    rowEls.forEach((rowEl) => {
+                        const pick = rowEl.querySelector(".fav-pick");
+                        const labelEl = rowEl.querySelector(".fav-label");
+                        const idEl = rowEl.querySelector(".fav-id");
+                        rows.push({
+                            picked: !!(pick && pick.checked),
+                            label: labelEl ? labelEl.value : "",
+                            id: idEl
+                                ? sanitizeDashboardFriendSlotValue(idEl.value)
+                                : "",
+                        });
+                    });
+                    localStorage.setItem(
+                        LS_FRIEND_PICKER_STATE,
+                        JSON.stringify({ rows }),
+                    );
+                } catch (_) {}
+            }
+            async function loadInstancePickerFriendSettings(extraPayload) {
+                let apiPayload = extraPayload || null;
+                if (!apiPayload) {
+                    try {
+                        const res = await fetch("/__dashboard/settings-friend-id");
+                        apiPayload = await res.json();
+                    } catch (_) {
+                        apiPayload = null;
+                    }
+                }
+                if (!apiPayload || !apiPayload.ok) {
+                    apiPayload = { ok: true, friendId: "" };
+                }
+                let settings =
+                    readInstancePickerFriendSettingsFromApi(apiPayload);
+                settings = mergeInstancePickerFriendSettings(
+                    settings,
+                    loadSavedInstancePickerFriendState(),
+                );
+                return settings;
             }
 
             function pickMumuInstance(options = {}) {
@@ -8980,31 +8931,10 @@
                         sendFRChk.checked = initialFR;
                     }
                     if (friendGrid) {
-                        setupDashboardFriendSlotRules();
-                        const f1 = document.getElementById(
-                            "instancePickerFriend1",
-                        );
-                        if (f1) f1.value = "";
-                        for (let i = 2; i <= 10; i++) {
-                            const el = document.getElementById(
-                                `instancePickerFriend${i}`,
-                            );
-                            if (el) el.value = "";
-                        }
-                        fetch("/__dashboard/settings-friend-id")
-                            .then((r) => r.json())
-                            .then((payload) => {
-                                const el = document.getElementById(
-                                    "instancePickerFriend1",
-                                );
-                                if (
-                                    el &&
-                                    payload &&
-                                    payload.ok &&
-                                    payload.friendId != null
-                                ) {
-                                    el.value = String(payload.friendId);
-                                }
+                        ensureInstancePickerFriendGrid();
+                        loadInstancePickerFriendSettings()
+                            .then((settings) => {
+                                applyInstancePickerFriendSettings(settings);
                             })
                             .catch(() => {});
                     }
@@ -9044,12 +8974,20 @@
                             );
                         } catch (_) {}
                         _lastPickedInstance = value;
-                        let injectExtraFriendIds = "";
+                        let friendPick = {
+                            selectedFriendIds: "",
+                            favoriteFriendIds: "",
+                            favoriteFriendLabels: "",
+                            injectExtraFriendIds: "",
+                        };
                         if (friendGrid) {
-                            const check = validateDashboardFriendSlots();
+                            const check = validateInstancePickerFriendSelection(
+                                sendFR,
+                            );
                             if (!check.ok) {
                                 showToast(
-                                    `Friend ID slot ${check.slot} must contain exactly 16 digits.`,
+                                    check.message ||
+                                        `Friend ${check.slot} must contain exactly 16 digits.`,
                                     "error",
                                     4200,
                                 );
@@ -9060,18 +8998,16 @@
                                 }
                                 return;
                             }
-                            injectExtraFriendIds = check.csv;
-                            try {
-                                localStorage.setItem(
-                                    "ptcgp-card-db-extra-friend-ids",
-                                    injectExtraFriendIds,
-                                );
-                            } catch (_) {}
+                            friendPick = check;
+                            saveInstancePickerFriendState(friendPick);
                         }
                         cleanup({
                             winTitle: value,
                             sendFriendRequest: sendFR,
-                            injectExtraFriendIds,
+                            selectedFriendIds: friendPick.selectedFriendIds,
+                            favoriteFriendIds: friendPick.favoriteFriendIds,
+                            favoriteFriendLabels: friendPick.favoriteFriendLabels,
+                            injectExtraFriendIds: friendPick.injectExtraFriendIds,
                         });
                     }
                     function onCancel() {
@@ -9170,17 +9106,35 @@
                         try {
                             const data = await fetchMumuInstances({ force });
                             if (friendGrid) {
-                                const iniExtras =
-                                    data && data.injectExtraFriendIds != null
-                                        ? String(data.injectExtraFriendIds)
-                                        : "";
-                                applyDashboardExtraFriendInputs(iniExtras);
-                                try {
-                                    localStorage.setItem(
-                                        "ptcgp-card-db-extra-friend-ids",
-                                        iniExtras,
-                                    );
-                                } catch (_) {}
+                                const mergedPayload = {
+                                    ok: true,
+                                    favoriteFriendIds:
+                                        data && data.favoriteFriendIds != null
+                                            ? String(data.favoriteFriendIds)
+                                            : data &&
+                                                data.injectExtraFriendIds != null
+                                              ? String(data.injectExtraFriendIds)
+                                              : "",
+                                    favoriteFriendLabels:
+                                        data && data.favoriteFriendLabels != null
+                                            ? String(data.favoriteFriendLabels)
+                                            : "",
+                                    injectSelectedFriendIds:
+                                        data &&
+                                        data.injectSelectedFriendIds != null
+                                            ? String(data.injectSelectedFriendIds)
+                                            : data &&
+                                                data.injectExtraFriendIds != null
+                                              ? String(data.injectExtraFriendIds)
+                                              : "",
+                                };
+                                loadInstancePickerFriendSettings(mergedPayload)
+                                    .then((settings) => {
+                                        applyInstancePickerFriendSettings(
+                                            settings,
+                                        );
+                                    })
+                                    .catch(() => {});
                             }
                             const list = Array.isArray(data.instances)
                                 ? data.instances
@@ -15005,10 +14959,21 @@
                 if (!pick) return;
                 const winTitle = pick.winTitle;
                 const sendFriendRequest = !!pick.sendFriendRequest;
-                const injectExtraFriendIds =
-                    pick.injectExtraFriendIds != null
-                        ? String(pick.injectExtraFriendIds)
+                const selectedFriendIds =
+                    pick.selectedFriendIds != null
+                        ? String(pick.selectedFriendIds)
+                        : pick.injectExtraFriendIds != null
+                          ? String(pick.injectExtraFriendIds)
+                          : "";
+                const favoriteFriendIds =
+                    pick.favoriteFriendIds != null
+                        ? String(pick.favoriteFriendIds)
                         : "";
+                const favoriteFriendLabels =
+                    pick.favoriteFriendLabels != null
+                        ? String(pick.favoriteFriendLabels)
+                        : "";
+                const injectExtraFriendIds = selectedFriendIds;
                 const original = btn.textContent;
                 btn.disabled = true;
                 btn.setAttribute("aria-busy", "true");
@@ -15028,6 +14993,9 @@
                             fileName: resolvedFileName,
                             winTitle,
                             sendFriendRequest,
+                            selectedFriendIds,
+                            favoriteFriendIds,
+                            favoriteFriendLabels,
                             injectExtraFriendIds,
                         }),
                     });
@@ -18804,10 +18772,21 @@
                             if (!pick) return;
                             const winTitle = pick.winTitle;
                             const sendFriendRequest = !!pick.sendFriendRequest;
-                            const injectExtraFriendIds =
-                                pick.injectExtraFriendIds != null
-                                    ? String(pick.injectExtraFriendIds)
+                            const selectedFriendIds =
+                                pick.selectedFriendIds != null
+                                    ? String(pick.selectedFriendIds)
+                                    : pick.injectExtraFriendIds != null
+                                      ? String(pick.injectExtraFriendIds)
+                                      : "";
+                            const favoriteFriendIds =
+                                pick.favoriteFriendIds != null
+                                    ? String(pick.favoriteFriendIds)
                                     : "";
+                            const favoriteFriendLabels =
+                                pick.favoriteFriendLabels != null
+                                    ? String(pick.favoriteFriendLabels)
+                                    : "";
+                            const injectExtraFriendIds = selectedFriendIds;
                             const original = btn.textContent;
                             btn.disabled = true;
                             btn.setAttribute("aria-busy", "true");
@@ -18829,6 +18808,9 @@
                                         fileName,
                                         winTitle,
                                         sendFriendRequest,
+                                        selectedFriendIds,
+                                        favoriteFriendIds,
+                                        favoriteFriendLabels,
                                         injectExtraFriendIds,
                                     }),
                                 });
