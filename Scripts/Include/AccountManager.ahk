@@ -412,7 +412,6 @@ saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag :
     ; GodPacks/SpecificCards/Trades backups use a different filename and must not
     ; overwrite metadata.fileName (CardDatabase trades resolve XML via Saved).
     if (file = "All" && xmlFile != "" && filePath != "") {
-        FileGetTime, savedModTime, %filePath%, M
         accountMeta := AccountMetadata_Get(session.get("scriptName"), xmlFile, filePath)
 
         accountMeta["packCount"] := session.get("accountOpenPacks")
@@ -424,10 +423,12 @@ saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag :
         for flag, value in flags {
             if (!accountMeta["flags"].HasKey(flag))
                 accountMeta["flags"][flag] := AccountMetadata_NewFlag(0)
+            oldValue := accountMeta["flags"][flag]["value"]
             accountMeta["flags"][flag]["value"] := value ? 1 : 0
-            accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
+            if (oldValue != accountMeta["flags"][flag]["value"] || accountMeta["flags"][flag]["setAt"] = "")
+                accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
             if (flag = "T" && value) {
-                validUntil := savedModTime
+                validUntil := accountMeta["flags"][flag]["setAt"]
                 validUntil += 5, Days
                 accountMeta["flags"][flag]["validUntil"] := validUntil
             } else if (!value) {
@@ -574,9 +575,10 @@ getMetaData() {
     }
 
     if (session.get("missionDoneList")["accountHasPackInTesting"]) {
-        validUntil := accountMeta["flags"]["T"]["validUntil"]
-        if (validUntil = "" && FileExist(accountPath)) {
-            FileGetTime, validUntil, %accountPath%, M
+        tFlag := accountMeta["flags"]["T"]
+        validUntil := tFlag["validUntil"]
+        if (validUntil = "" && tFlag["setAt"] != "") {
+            validUntil := tFlag["setAt"]
             validUntil += 5, Days
         }
         if(validUntil != "" && A_Now >= validUntil) {
@@ -599,10 +601,6 @@ setMetaData() {
         return
 
     accountPath := saveDir . "\" . accountFileName
-    originalModTime := ""
-    if (FileExist(accountPath))
-        FileGetTime, originalModTime, %accountPath%, M
-
     accountMeta := AccountMetadata_Get(session.get("scriptName"), accountFileName, accountPath)
     flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
         , "X": session.get("missionDoneList")["specialMissionsDone"]
@@ -616,8 +614,8 @@ setMetaData() {
         accountMeta["flags"][flag]["value"] := value ? 1 : 0
         if (oldValue != accountMeta["flags"][flag]["value"])
             accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
-        if (flag = "T" && value && originalModTime != "") {
-            validUntil := originalModTime
+        if (flag = "T" && value && accountMeta["flags"][flag]["setAt"] != "") {
+            validUntil := accountMeta["flags"][flag]["setAt"]
             validUntil += 5, Days
             accountMeta["flags"][flag]["validUntil"] := validUntil
         } else if (!value) {

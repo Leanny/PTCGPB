@@ -811,13 +811,17 @@ fn card_marks_object_is_empty(value: &Value) -> bool {
 }
 
 fn hoist_card_marks_from_metadata(obj: &mut Map<String, Value>) {
-    let Some(metadata) = obj.get_mut("metadata").and_then(Value::as_object_mut) else {
-        return;
-    };
-    for key in ["tradedCards", "sharedCards"] {
-        let Some(legacy) = metadata.remove(key) else {
-            continue;
+    let moved_marks = {
+        let Some(metadata) = obj.get_mut("metadata").and_then(Value::as_object_mut) else {
+            return;
         };
+        ["tradedCards", "sharedCards"]
+            .into_iter()
+            .filter_map(|key| metadata.remove(key).map(|legacy| (key, legacy)))
+            .collect::<Vec<_>>()
+    };
+
+    for (key, legacy) in moved_marks {
         let root_empty = obj
             .get(key)
             .map(card_marks_object_is_empty)
