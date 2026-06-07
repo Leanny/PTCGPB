@@ -1796,18 +1796,8 @@ Save:
             return
     }
 
-    isIncorrectEventSetting := false
-    if(isSevtFileExist() && !botConfig.get("claimSpecialMissions")){
-        isIncorrectEventSetting := true
-        MsgBox, 4, Setting Recommendation, A .sevt file was found, but the 'Claim Special Mission' setting is currently disabled.`n`nWould you like to enable and apply this setting now?
-        IfMsgBox, Yes
-            botConfig.set("claimSpecialMissions", 1, "ToolsAndSystem")
-    }
-    else if(!isSevtFileExist() && botConfig.get("claimSpecialMissions")){
-        isIncorrectEventSetting := true
-        MsgBox, 48, Notice, The 'Claim Special Mission' option is enabled, but the required .sevt file is missing, so the event cannot be recognized.`n`nThis setting will be automatically disabled.
-        botConfig.set("claimSpecialMissions", 0, "ToolsAndSystem")
-    }
+    if (PromptClaimSpecialMissionsSevtMismatch())
+        botConfig.saveConfigToSettings("ALL")
 
     if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo")) {
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
