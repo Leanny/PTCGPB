@@ -246,8 +246,8 @@ AddFriends(renew := false, getFC := false) {
                         break
                     }
                     else if(interceptErrorCheck("ADD")){
-                        skipCurrentID := true
-                        LogToFile("Skipping friend ID after ADD error | index=" . friendIDIdx)
+                        ; LogToFile("Rate limit hit while adding friend; retrying same ID | index=" . friendIDIdx . " | id=" . value)
+                        isContinue := true
                         break
                     }
                     else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
@@ -278,8 +278,8 @@ AddFriends(renew := false, getFC := false) {
                 break
             }
             else if(interceptErrorCheck("ADD")) {
-                skipCurrentID := true
-                LogToFile("Skipping friend ID after ADD error | index=" . friendIDIdx)
+                ; LogToFile("Rate limit hit while adding friend; retrying same ID | index=" . friendIDIdx . " | id=" . value)
+                isContinue := true
                 break
             }
             else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
