@@ -54,12 +54,12 @@ Loop {
         nowEpoch := A_NowUTC
         EnvSub, nowEpoch, 1970, seconds
 
-        if(A_TickCount - lastReduceMemory > 120000) {
-            LogInfo("Memory reduction process start.", "Monitor.txt")
-            ReduceVMMemory()
-            LogInfo("Memory reduction process complete.", "Monitor.txt")
-            lastReduceMemory := A_TickCount
-        }
+        ; if(A_TickCount - lastReduceMemory > 120000) {
+        ;     LogInfo("Memory reduction process start.", "Monitor.txt")
+        ;     ReduceVMMemory()
+        ;     LogInfo("Memory reduction process complete.", "Monitor.txt")
+        ;     lastReduceMemory := A_TickCount
+        ; }
 
         instanceNum := Format("{:u}", A_Index)
 
