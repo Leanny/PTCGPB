@@ -4333,19 +4333,23 @@ PackOpening(tenPackOpening := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        Delay(1)
+        Delay(4)
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
+            Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
             break
         } else {
             adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
@@ -4529,17 +4533,21 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        Delay(1)
+        Delay(4)
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
+            Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 494) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
             adbClick_wbb(146, 494) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else {
             adbClick_wbb(146, 494) ;146, 494
+            Delay(1)
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for ConfirmPack`n(" . failSafeTime . "/45 seconds)")
