@@ -12,6 +12,8 @@ use std::process::Command as ProcessCommand;
 use std::thread;
 use std::time::{Duration as StdDuration, Instant, SystemTime};
 
+mod dashboard_index;
+
 #[derive(Parser)]
 #[command(
     name = "carddb",
@@ -148,6 +150,16 @@ enum Command {
         #[arg(long)]
         source_bytes: u64,
     },
+    BuildDashboardIndex {
+        #[arg(long)]
+        signature: Option<String>,
+        #[arg(long)]
+        source_count: Option<usize>,
+        #[arg(long)]
+        source_bytes: Option<u64>,
+    },
+    EnsureDashboardIndex,
+    SnapshotAccounts,
 }
 
 fn main() {
@@ -322,22 +334,49 @@ fn run(cli: Cli) -> Result<()> {
             signature,
             source_count,
             source_bytes,
-        } => build_dashboard_cache(
-            &cli.root,
-            &output,
-            &meta,
-            &signature,
+        } => {
+            build_dashboard_cache(
+                &cli.root,
+                &output,
+                &meta,
+                &signature,
+                source_count,
+                source_bytes,
+            )?;
+            dashboard_index::build_dashboard_index(
+                &cli.root,
+                Some(signature.as_str()),
+                Some(source_count),
+                Some(source_bytes),
+            )?;
+            Ok(())
+        }
+        Command::BuildDashboardIndex {
+            signature,
             source_count,
             source_bytes,
-        ),
+        } => {
+            dashboard_index::build_dashboard_index(
+                &cli.root,
+                signature.as_deref(),
+                source_count,
+                source_bytes,
+            )?;
+            Ok(())
+        }
+        Command::EnsureDashboardIndex => {
+            dashboard_index::ensure_dashboard_index(&cli.root)?;
+            Ok(())
+        }
+        Command::SnapshotAccounts => snapshot_accounts(&cli.root),
     }
 }
 
-fn cards_dir(root: &Path) -> PathBuf {
+pub(crate) fn cards_dir(root: &Path) -> PathBuf {
     root.join("Accounts").join("Cards")
 }
 
-fn account_files_dir(root: &Path) -> PathBuf {
+pub(crate) fn account_files_dir(root: &Path) -> PathBuf {
     cards_dir(root).join("accounts")
 }
 
@@ -407,14 +446,14 @@ fn write_clear_flag_progress(root: &Path, percent: u8, message: &str) -> Result<
     Ok(())
 }
 
-fn safe_file_name(value: &str) -> String {
+pub(crate) fn safe_file_name(value: &str) -> String {
     value
         .chars()
         .map(|c| if "\\/:*?\"<>|".contains(c) { '_' } else { c })
         .collect()
 }
 
-fn account_file_path(root: &Path, account_key: &str) -> PathBuf {
+pub(crate) fn account_file_path(root: &Path, account_key: &str) -> PathBuf {
     account_files_dir(root).join(format!("{}.json", safe_file_name(account_key)))
 }
 
@@ -443,24 +482,36 @@ fn collect_dashboard_json_paths(dir: &Path, bucket: &str, paths: &mut Vec<(Strin
     Ok(())
 }
 
-fn build_dashboard_cache(
-    root: &Path,
-    output: &Path,
-    meta: &Path,
-    signature: &str,
-    source_count: usize,
-    source_bytes: u64,
-) -> Result<()> {
+pub(crate) fn gather_dashboard_paths(root: &Path) -> Result<Vec<(String, PathBuf)>> {
     let mut paths = Vec::new();
     collect_dashboard_json_paths(&account_files_dir(root), "accounts", &mut paths)?;
     collect_dashboard_json_paths(&collections_dir(root), "collections", &mut paths)?;
     paths.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(paths)
+}
 
+fn dashboard_manifest_stats(paths: &[(String, PathBuf)]) -> Result<(usize, u64)> {
+    let mut source_count = 0usize;
+    let mut source_bytes = 0u64;
+    for (_, path) in paths {
+        let metadata = fs::metadata(path).with_context(|| format!("Could not stat {:?}", path))?;
+        source_count += 1;
+        source_bytes = source_bytes.saturating_add(metadata.len());
+    }
+    Ok((source_count, source_bytes))
+}
+
+fn build_dashboard_payload(
+    paths: &[(String, PathBuf)],
+    signature: &str,
+    source_count: usize,
+    source_bytes: u64,
+) -> Result<(Value, Value)> {
     let mut accounts = Vec::with_capacity(paths.len());
     let mut skipped = Vec::new();
 
     for (source_file_name, path) in paths {
-        match load_dashboard_account_document(&path, &source_file_name) {
+        match load_dashboard_account_document(path, source_file_name) {
             Ok(doc) => accounts.push(doc),
             Err(err) => skipped.push(json!({
                 "file": source_file_name,
@@ -488,6 +539,34 @@ fn build_dashboard_cache(
         "generatedAt": Utc::now().to_rfc3339(),
         "generator": "carddb",
     });
+    Ok((payload, meta_payload))
+}
+
+pub(crate) fn write_file_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let file_name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| "output.json".to_string());
+    let tmp = path.with_file_name(format!("{file_name}.tmp"));
+    fs::write(&tmp, bytes)?;
+    fs::rename(&tmp, path).with_context(|| format!("Could not move {:?} to {:?}", tmp, path))?;
+    Ok(())
+}
+
+fn build_dashboard_cache(
+    root: &Path,
+    output: &Path,
+    meta: &Path,
+    signature: &str,
+    source_count: usize,
+    source_bytes: u64,
+) -> Result<()> {
+    let paths = gather_dashboard_paths(root)?;
+    let (payload, meta_payload) =
+        build_dashboard_payload(&paths, signature, source_count, source_bytes)?;
 
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
@@ -501,7 +580,44 @@ fn build_dashboard_cache(
     Ok(())
 }
 
-fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value> {
+fn snapshot_accounts(root: &Path) -> Result<()> {
+    let paths = gather_dashboard_paths(root)?;
+    let (source_count, source_bytes) = dashboard_manifest_stats(&paths)?;
+    let (payload, mut meta_payload) =
+        build_dashboard_payload(&paths, "snapshot", source_count, source_bytes)?;
+    let account_count = payload
+        .get("accountCount")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let skipped_count = payload
+        .get("skippedCount")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+
+    if let Some(meta) = meta_payload.as_object_mut() {
+        meta.insert("kind".to_string(), json!("archive-snapshot"));
+    }
+
+    let archive_dir = cards_dir(root)
+        .join("database_cache")
+        .join("archive");
+    let output = archive_dir.join("accounts-data.snapshot.json");
+    let meta_path = archive_dir.join("accounts-data.snapshot.meta.json");
+
+    write_file_atomic(&output, &serde_json::to_vec(&payload)?)?;
+    write_file_atomic(&meta_path, &serde_json::to_vec(&meta_payload)?)?;
+
+    append_carddb_log(
+        root,
+        &format!(
+            "snapshot_accounts wrote {account_count} accounts ({skipped_count} skipped) to {:?}",
+            output
+        ),
+    );
+    Ok(())
+}
+
+pub(crate) fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value> {
     let text = fs::read_to_string(path).with_context(|| format!("Could not read {:?}", path))?;
     let mut value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
         .with_context(|| format!("Could not parse {:?}", path))?;
@@ -532,6 +648,13 @@ fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value
     if obj.get("registeredCards").map_or(true, Value::is_null) {
         obj.insert("registeredCards".to_owned(), json!([]));
     }
+    if obj.get("tradedCards").map_or(true, Value::is_null) {
+        obj.insert("tradedCards".to_owned(), json!({}));
+    }
+    if obj.get("sharedCards").map_or(true, Value::is_null) {
+        obj.insert("sharedCards".to_owned(), json!({}));
+    }
+    hoist_card_marks_from_metadata(obj);
     obj.insert("sourceFileName".to_owned(), json!(file_name));
     if is_collection_path(path) {
         obj.insert("sourceType".to_owned(), json!("collection"));
@@ -796,6 +919,35 @@ fn compact_store_for_write(store: &Value) -> Value {
     output
 }
 
+fn card_marks_object_is_empty(value: &Value) -> bool {
+    value
+        .as_object()
+        .map(Map::is_empty)
+        .unwrap_or(true)
+}
+
+fn hoist_card_marks_from_metadata(obj: &mut Map<String, Value>) {
+    let moved_marks = {
+        let Some(metadata) = obj.get_mut("metadata").and_then(Value::as_object_mut) else {
+            return;
+        };
+        ["tradedCards", "sharedCards"]
+            .into_iter()
+            .filter_map(|key| metadata.remove(key).map(|legacy| (key, legacy)))
+            .collect::<Vec<_>>()
+    };
+
+    for (key, legacy) in moved_marks {
+        let root_empty = obj
+            .get(key)
+            .map(card_marks_object_is_empty)
+            .unwrap_or(true);
+        if root_empty && !card_marks_object_is_empty(&legacy) {
+            obj.insert(key.to_owned(), legacy);
+        }
+    }
+}
+
 fn compact_account_for_write(account: &mut Value) {
     let Some(obj) = account.as_object_mut() else {
         return;
@@ -1022,6 +1174,13 @@ fn load_account_document(path: &Path, device_account: &str) -> Result<Value> {
         obj.entry("metadata".to_owned())
             .or_insert_with(|| json!({}));
         obj.entry("pulls".to_owned()).or_insert_with(|| json!([]));
+        obj.entry("registeredCards")
+            .or_insert_with(|| json!([]));
+        obj.entry("tradedCards")
+            .or_insert_with(|| json!({}));
+        obj.entry("sharedCards")
+            .or_insert_with(|| json!({}));
+        hoist_card_marks_from_metadata(obj);
         return Ok(value);
     }
 
@@ -1029,7 +1188,9 @@ fn load_account_document(path: &Path, device_account: &str) -> Result<Value> {
         "deviceAccount": device_account,
         "metadata": {},
         "pulls": [],
-        "registeredCards": []
+        "registeredCards": [],
+        "tradedCards": {},
+        "sharedCards": {}
     }))
 }
 
@@ -1055,8 +1216,11 @@ fn format_account(root: &Path, device_account: &str) -> Result<()> {
     }
 
     let mut doc = load_account_document(&path, device_account)?;
-    if let Some(metadata) = doc.get_mut("metadata") {
-        compact_account_for_write(metadata);
+    if let Some(obj) = doc.as_object_mut() {
+        hoist_card_marks_from_metadata(obj);
+        if let Some(metadata) = doc.get_mut("metadata") {
+            compact_account_for_write(metadata);
+        }
     }
     write_account_document(root, device_account, &doc)
 }
@@ -1938,6 +2102,13 @@ fn sort_candidates(candidates: &mut Vec<Candidate>, sort_method: &str) {
 }
 
 fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
+    if let Err(err) = snapshot_accounts(root) {
+        append_carddb_log(
+            root,
+            &format!("snapshot_accounts before schedule_accounts failed: {err:#}"),
+        );
+    }
+
     let store = ensure_metadata(root)?;
     let save_dir = saved_dir(root).join(&options.instance);
     fs::create_dir_all(&save_dir)?;
@@ -3132,7 +3303,8 @@ fn append_pull(
         "pack": pack,
         "cards": cards,
     });
-    append_pull_to_account_file(root, device_account, pull)
+    append_pull_to_account_file(root, device_account, pull)?;
+    dashboard_index::invalidate_dashboard_index(root)
 }
 
 #[cfg(test)]
