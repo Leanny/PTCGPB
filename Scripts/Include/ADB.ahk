@@ -494,19 +494,91 @@ closePTCGPApp(){
     DelayH(100)
 }
 
-isCurrentScreenHome(){
+isPTCGPAppInFocus() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
-    result := CmdRet(adbCommand . " shell dumpsys window | grep -E 'mCurrentFocus'")
-    ADB_LogTrace("isCurrentScreenHome focus=" . Trim(result))
-    if (!InStr(result, "jp.pokemon.pokemontcgp")){
+    result := CmdRet(adbCommand . " shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'")
+    if (result = "")
+        result := CmdRet(adbCommand . " shell dumpsys window | grep -E 'mCurrentFocus'")
+    ADB_LogTrace("isPTCGPAppInFocus focus=" . Trim(result))
+    return InStr(result, "jp.pokemon.pokemontcgp")
+}
+
+isCurrentScreenHome(){
+    prof := Prof_Scope(A_ThisFunc)
+    if (!isPTCGPAppInFocus()) {
         Sleep, 250
         return true
     }
-    else
+    return false
+}
+
+bringPTCGPAppToForeground() {
+    prof := Prof_Scope(A_ThisFunc)
+    ADB_LogTrace("bringPTCGPAppToForeground")
+    adbWriteRaw("am start -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x20000000")
+    DelayH(100)
+    waitUntilActivatePTCGPApp()
+}
+
+; Instance scripts define restartGameInstance later in the same host script.
+; PTCGPB.ahk and other thin hosts only include ADB.ahk, so resolve dynamically.
+TriggerGameRestart(reason, RL := true) {
+    prof := Prof_Scope(A_ThisFunc)
+    restartFn := Func("restartGameInstance")
+    if (restartFn) {
+        if (RL = false || RL = 0)
+            restartFn.Call(reason, false)
+        else if (RL != true && RL != "")
+            restartFn.Call(reason, RL)
+        else
+            restartFn.Call(reason)
+        return true
+    }
+
+    LogWarn("[" . A_ScriptName . "] TriggerGameRestart fallback: " . reason, "ADB.txt")
+    closePTCGPApp()
+    Sleep, 3000
+    startPTCGPApp()
+    return false
+}
+
+; Returns true when a restart was triggered and the caller should stop searching.
+; bootPhase=true enables focus recovery; use only during waitForAppBootScreen().
+handleAppHealthDuringSearch(imageName, bootPhase := false) {
+    prof := Prof_Scope(A_ThisFunc)
+    static refocusFailures := 0
+
+    if (isTerminatePTCGPAppByADBShell()) {
+        refocusFailures := 0
+        TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
+        return true
+    }
+
+    if (!bootPhase)
         return false
+
+    if (!isPTCGPAppInFocus()) {
+        LogInfo("App running but not in focus during boot; bringing to foreground", "ADB.txt")
+        bringPTCGPAppToForeground()
+        Sleep, 1500
+        if (!isPTCGPAppInFocus()) {
+            refocusFailures++
+            if (refocusFailures >= 3) {
+                refocusFailures := 0
+                TriggerGameRestart("Stuck at " . imageName . "... (App lost focus)")
+                return true
+            }
+        } else {
+            refocusFailures := 0
+        }
+    } else {
+        refocusFailures := 0
+    }
+
+    return false
 }
 
 isTerminatePTCGPAppByADBShell() {

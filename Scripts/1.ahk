@@ -255,6 +255,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     CreateStatusMessage("Account is stuck! Restarting and unfriending...")
     session.set("friended", true)
     CreateStatusMessage("Stuck account still has friends. Unfriending accounts...")
+    waitForAppBootScreen()
     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
     if(session.get("setSpeed") = 3)
         FindImageAndClick("Common_SpeedMod3x", 187, 172)
@@ -419,6 +420,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
 
+        waitForAppBootScreen()
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
         if(session.get("setSpeed") = 3)
             FindImageAndClick("Common_SpeedMod3x", 187, 172)
@@ -1055,9 +1057,10 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         }
     }
 
-    stateResult := isTerminatePTCGPAppByADBShell()
-    if(stateResult){
-        restartGameInstance("Stuck at " . imageName . "... (App terminated)")
+    if (isTerminatePTCGPAppByADBShell()) {
+        Gdip_DisposeImage(pBitmap)
+        TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
+        return confirmed
     }
 
     if(imageName = "Missions") { ; may input extra ESC and stuck at exit game
@@ -1210,9 +1213,10 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             }
         }
 
-        stateResult := isTerminatePTCGPAppByADBShell()
-        if(stateResult){
-            restartGameInstance("Stuck at " . imageName . "... (found App3.png)")
+        if (isTerminatePTCGPAppByADBShell()) {
+            Gdip_DisposeImage(pBitmap)
+            TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
+            return false
         }
 
         if(imageName = "Social" || imageName = "Country" || imageName = "Account2" || imageName = "Account") { ;only look for deleted account on start up.
