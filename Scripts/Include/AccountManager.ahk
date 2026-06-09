@@ -632,14 +632,20 @@ setMetaData() {
 HasFlagInMetadata(fileName, flag) {
     global session
 
-    if (IsObject(session) && session.get("scriptName") != "") {
-        metadataFound := false
-        metadataValue := AccountMetadata_GetFlag(session.get("scriptName"), fileName, flag, metadataFound)
-        if (metadataFound)
-            return metadataValue
+    if (!(IsObject(session) && session.get("scriptName") != ""))
+        return false
+
+    filePath := ""
+    if (session.get("accountFileName") = fileName && session.get("loadedAccount") != "")
+        filePath := session.get("loadedAccount")
+    else {
+        filePath := A_ScriptDir . "\..\Accounts\Saved\" . session.get("scriptName") . "\" . fileName
+        if (!FileExist(filePath))
+            filePath := ""
     }
 
-    return false
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), fileName, filePath)
+    return AccountEligibility_FlagIsSet(accountMeta, flag)
 }
 
 AccountEligibility_HoursSince(timestamp) {
