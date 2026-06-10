@@ -50,7 +50,7 @@ AccountMetadata_HelperPath() {
     return getScriptBaseFolder() . "\Helper\carddb.exe"
 }
 
-AccountMetadata_SnapshotIntervalHours := 6
+AccountMetadata_SnapshotIntervalHours := 1
 
 AccountMetadata_SnapshotAccounts(async := true) {
     helperPath := AccountMetadata_HelperPath()
