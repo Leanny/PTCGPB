@@ -160,6 +160,7 @@ enum Command {
     },
     EnsureDashboardIndex,
     SnapshotAccounts,
+    RepairAccountsFromSnapshot,
 }
 
 fn main() {
@@ -369,6 +370,7 @@ fn run(cli: Cli) -> Result<()> {
             Ok(())
         }
         Command::SnapshotAccounts => snapshot_accounts(&cli.root),
+        Command::RepairAccountsFromSnapshot => repair_accounts_from_snapshot(&cli.root),
     }
 }
 
@@ -490,17 +492,6 @@ pub(crate) fn gather_dashboard_paths(root: &Path) -> Result<Vec<(String, PathBuf
     Ok(paths)
 }
 
-fn dashboard_manifest_stats(paths: &[(String, PathBuf)]) -> Result<(usize, u64)> {
-    let mut source_count = 0usize;
-    let mut source_bytes = 0u64;
-    for (_, path) in paths {
-        let metadata = fs::metadata(path).with_context(|| format!("Could not stat {:?}", path))?;
-        source_count += 1;
-        source_bytes = source_bytes.saturating_add(metadata.len());
-    }
-    Ok((source_count, source_bytes))
-}
-
 fn build_dashboard_payload(
     paths: &[(String, PathBuf)],
     signature: &str,
@@ -575,16 +566,29 @@ fn build_dashboard_cache(
         fs::create_dir_all(parent)?;
     }
 
-    fs::write(output, serde_json::to_vec(&payload)?)?;
-    fs::write(meta, serde_json::to_vec(&meta_payload)?)?;
+    write_file_atomic(output, &serde_json::to_vec(&payload)?)?;
+    write_file_atomic(meta, &serde_json::to_vec(&meta_payload)?)?;
     Ok(())
 }
 
+fn dashboard_accounts_cache_files(root: &Path) -> (PathBuf, PathBuf) {
+    let cache_dir = dashboard_index::dashboard_cache_dir(root);
+    (
+        cache_dir.join("accounts-data.cache.json"),
+        cache_dir.join("accounts-data.cache.meta.json"),
+    )
+}
+
+fn dashboard_accounts_cache_path(root: &Path) -> PathBuf {
+    dashboard_accounts_cache_files(root).0
+}
+
 fn snapshot_accounts(root: &Path) -> Result<()> {
+    let (signature, source_count, source_bytes) =
+        dashboard_index::compute_dashboard_manifest_signature(root)?;
     let paths = gather_dashboard_paths(root)?;
-    let (source_count, source_bytes) = dashboard_manifest_stats(&paths)?;
-    let (payload, mut meta_payload) =
-        build_dashboard_payload(&paths, "snapshot", source_count, source_bytes)?;
+    let (payload, meta_payload) =
+        build_dashboard_payload(&paths, &signature, source_count, source_bytes)?;
     let account_count = payload
         .get("accountCount")
         .and_then(Value::as_u64)
@@ -594,16 +598,7 @@ fn snapshot_accounts(root: &Path) -> Result<()> {
         .and_then(Value::as_u64)
         .unwrap_or(0);
 
-    if let Some(meta) = meta_payload.as_object_mut() {
-        meta.insert("kind".to_string(), json!("archive-snapshot"));
-    }
-
-    let archive_dir = cards_dir(root)
-        .join("database_cache")
-        .join("archive");
-    let output = archive_dir.join("accounts-data.snapshot.json");
-    let meta_path = archive_dir.join("accounts-data.snapshot.meta.json");
-
+    let (output, meta_path) = dashboard_accounts_cache_files(root);
     write_file_atomic(&output, &serde_json::to_vec(&payload)?)?;
     write_file_atomic(&meta_path, &serde_json::to_vec(&meta_payload)?)?;
 
@@ -614,6 +609,167 @@ fn snapshot_accounts(root: &Path) -> Result<()> {
             output
         ),
     );
+    Ok(())
+}
+
+fn load_dashboard_cache_account_lookup(root: &Path) -> Result<HashMap<String, Value>> {
+    let source = dashboard_accounts_cache_path(root);
+    if !source.exists() {
+        anyhow::bail!(
+            "No dashboard accounts cache found at {:?}",
+            source
+        );
+    }
+
+    let payload: Value = serde_json::from_slice(
+        &fs::read(&source).with_context(|| format!("Could not read {:?}", source))?,
+    )
+    .with_context(|| format!("Could not parse dashboard cache JSON {:?}", source))?;
+    let accounts = payload
+        .get("accounts")
+        .and_then(Value::as_array)
+        .context("Snapshot payload is missing accounts[]")?;
+
+    let mut lookup = HashMap::new();
+    for account in accounts {
+        let key = account
+            .get("deviceAccount")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_owned);
+        let Some(key) = key else {
+            continue;
+        };
+        lookup.insert(key, account.clone());
+    }
+    Ok(lookup)
+}
+
+fn is_account_json_corrupted(path: &Path) -> Result<bool> {
+    let bytes = fs::read(path).with_context(|| format!("Could not read {:?}", path))?;
+    if bytes.is_empty() {
+        return Ok(true);
+    }
+
+    let sample_len = bytes.len().min(4096);
+    if bytes[..sample_len].iter().all(|byte| *byte == 0) {
+        return Ok(true);
+    }
+
+    let text = std::str::from_utf8(&bytes).unwrap_or("");
+    Ok(serde_json::from_str::<Value>(text.trim_start_matches('\u{feff}')).is_err())
+}
+
+fn backup_corrupted_account_file(root: &Path, path: &Path, device_account: &str) -> Result<()> {
+    let backup_dir = account_files_dir(root).join("_repair_backup");
+    fs::create_dir_all(&backup_dir)?;
+    let stamp = Utc::now().format("%Y%m%d_%H%M%S");
+    let backup_path = backup_dir.join(format!("{device_account}_{stamp}.corrupted"));
+    fs::copy(path, &backup_path)
+        .with_context(|| format!("Could not back up {:?} to {:?}", path, backup_path))?;
+    Ok(())
+}
+
+fn repair_accounts_from_snapshot(root: &Path) -> Result<()> {
+    let source = dashboard_accounts_cache_path(root);
+    if !source.exists() {
+        append_carddb_log(
+            root,
+            "repair_accounts_from_snapshot: no dashboard cache available, skipped",
+        );
+        return Ok(());
+    }
+
+    let lookup = load_dashboard_cache_account_lookup(root)?;
+    let accounts_dir = account_files_dir(root);
+    if !accounts_dir.exists() {
+        append_carddb_log(root, "repair_accounts_from_snapshot: accounts directory missing");
+        return Ok(());
+    }
+
+    let mut scanned = 0usize;
+    let mut corrupted = 0usize;
+    let mut repaired = 0usize;
+    let mut missing = 0usize;
+    let mut failed = 0usize;
+
+    for entry in fs::read_dir(&accounts_dir).with_context(|| format!("Could not read {:?}", accounts_dir))?
+    {
+        let path = entry?.path();
+        if !path.is_file() {
+            continue;
+        }
+        if !path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+        {
+            continue;
+        }
+        if path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".json.tmp"))
+        {
+            continue;
+        }
+
+        scanned += 1;
+        if !is_account_json_corrupted(&path)? {
+            continue;
+        }
+
+        corrupted += 1;
+        let device_account = account_key_from_file(&path).unwrap_or_default();
+        if device_account.is_empty() {
+            failed += 1;
+            append_carddb_log(
+                root,
+                &format!("repair_accounts_from_snapshot skipped corrupt file without key: {:?}", path),
+            );
+            continue;
+        }
+
+        let Some(snapshot_doc) = lookup.get(&device_account) else {
+            missing += 1;
+            append_carddb_log(
+                root,
+                &format!(
+                    "repair_accounts_from_snapshot could not restore {device_account}: not in dashboard cache"
+                ),
+            );
+            continue;
+        };
+
+        if let Err(err) = backup_corrupted_account_file(root, &path, &device_account) {
+            append_carddb_log(
+                root,
+                &format!(
+                    "repair_accounts_from_snapshot backup failed for {device_account}: {err:#}"
+                ),
+            );
+        }
+
+        write_account_document(root, &device_account, snapshot_doc)?;
+        if let Err(err) = format_account(root, &device_account) {
+            failed += 1;
+            append_carddb_log(
+                root,
+                &format!(
+                    "repair_accounts_from_snapshot format failed for {device_account}: {err:#}"
+                ),
+            );
+            continue;
+        }
+        repaired += 1;
+    }
+
+    let summary = format!(
+        "repair_accounts_from_snapshot scanned={scanned} corrupted={corrupted} repaired={repaired} missing_from_cache={missing} failed={failed} source={:?}",
+        dashboard_accounts_cache_path(root)
+    );
+    append_carddb_log(root, &summary);
+    println!("{summary}");
     Ok(())
 }
 

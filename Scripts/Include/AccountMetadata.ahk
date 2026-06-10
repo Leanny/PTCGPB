@@ -50,6 +50,30 @@ AccountMetadata_HelperPath() {
     return getScriptBaseFolder() . "\Helper\carddb.exe"
 }
 
+AccountMetadata_SnapshotIntervalHours := 6
+
+AccountMetadata_SnapshotAccounts(async := true) {
+    helperPath := AccountMetadata_HelperPath()
+    if (!FileExist(helperPath))
+        return false
+    root := getScriptBaseFolder()
+    command := """" . helperPath . """ --root """ . root . """ snapshot-accounts"
+    if (async)
+        Run, %command%, %root%, Hide
+    else
+        RunWait, %command%, %root%, Hide
+    return !ErrorLevel
+}
+
+AccountMetadata_RepairAccountsFromSnapshot() {
+    helperPath := AccountMetadata_HelperPath()
+    if (!FileExist(helperPath))
+        return false
+    root := getScriptBaseFolder()
+    RunWait, % """" . helperPath . """ --root """ . root . """ repair-accounts-from-snapshot", %root%, Hide
+    return !ErrorLevel
+}
+
 AccountMetadata_CurrentInstance() {
     global session
 
@@ -1462,7 +1486,6 @@ AccountMetadata_GetFlag(instance, fileName, flag, ByRef found) {
         }
     }
 
-    AccountMetadata_ReleaseLock(hMutex)
     return false
 }
 

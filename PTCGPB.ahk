@@ -383,6 +383,9 @@ NextStep:
 
     Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
 
+    AccountMetadata_SnapshotAccounts()
+    SetTimer, AccountMetadata_PeriodicSnapshot, % (AccountMetadata_SnapshotIntervalHours * 3600000)
+
 Return
 
 mainSettings:
@@ -1728,6 +1731,7 @@ Save:
 
     Gui, 1:Destroy
 
+    AccountMetadata_RepairAccountsFromSnapshot()
     AccountMetadata_Ensure()
     StartBot()
 return
@@ -1737,6 +1741,10 @@ BalanceXMLs:
     Gui, Submit, NoHide
     if (!SaveAllSettings())
         return
+
+    Progress, M B1 FS10 ZH0 FM10 WM700 W480, Scanning account JSON for corruption..., XML Balance, XML Balance
+    AccountMetadata_RepairAccountsFromSnapshot()
+    Progress, Off
 
     if(botConfig.get("Instances")>0) {
         helperPath := AccountMetadata_HelperPath()
@@ -2817,6 +2825,10 @@ ErrorHandler(exception) {
     ExitApp, 1
     return true
 }
+
+AccountMetadata_PeriodicSnapshot:
+    AccountMetadata_SnapshotAccounts()
+return
 
 ~+F7::
     SendAllInstancesOfflineStatus()
