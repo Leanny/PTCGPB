@@ -156,6 +156,18 @@ if(session.get("isDead")){
 startPTCGPApp()
 waitUntilActivatePTCGPApp()
 
+; Dismiss in-game data download dialogs if the app is still syncing
+session.set("failSafe", A_TickCount)
+Loop {
+    if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, , , true))
+        break
+    if (!DismissCreateDownloadScreens())
+        break
+    Delay(1)
+    if ((A_TickCount - session.get("failSafe")) // 1000 >= 90)
+        break
+}
+
 if(botConfig.get("heartBeat"))
     IniWrite, 1, %A_ScriptDir%\..\HeartBeat.ini, HeartBeat, Main
 FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 150)
@@ -184,6 +196,7 @@ Loop {
 
     if(botConfig.get("heartBeat"))
         IniWrite, 1, %A_ScriptDir%\..\HeartBeat.ini, HeartBeat, Main
+    DismissCreateDownloadScreens()
     Delay(1)
     FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30)
     FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
@@ -228,6 +241,8 @@ if(firstRun) {
                     adbClick(139, 440)  ; Click X to close error
                     Sleep, 4000
                     SafeReload("Main startup error")
+                } else if(DismissCreateDownloadScreens()) {
+                    ; In-game data download dialog dismissed
                 } else if(requestAlreadyClosed || clickButton) {
                     okClickSpacing := botConfig.get("Delay") * 2
                     if (okClickSpacing < 700)
@@ -359,6 +374,9 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
     Loop { ; Main loop
         Sleep, 100
 
+        if (!confirmed)
+            DismissCreateDownloadScreens()
+
         if(click) {
             ElapsedClickTime := A_TickCount - clickTime
             if(ElapsedClickTime > sleepTime) {
@@ -427,6 +445,20 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
 
     }
     return confirmed
+}
+
+; Dismiss Pokémon TCG Pocket setup/download dialogs during account sync.
+; Returns true when a download screen was detected and clicked through.
+DismissCreateDownloadScreens(notShowFinding := true) {
+    if (FindOrLoseImage("Create_DownloadAlertWindow", 0, 0, 20, notShowFinding)) {
+        adbClick_wbb(203, 364)
+        return true
+    }
+    if (FindOrLoseImage("Create_DownloadComplete", 0, 0, 20, notShowFinding)) {
+        adbClick_wbb(140, 370)
+        return true
+    }
+    return false
 }
 
 resetWindows(){
@@ -1179,6 +1211,7 @@ FavoriteVipFriends() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        DismissCreateDownloadScreens()
         adbClick(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
@@ -1284,6 +1317,7 @@ FavoriteVipFriends() {
                             interceptProc := false
                             session.set("failSafe", A_TickCount)
                             Loop {
+                                DismissCreateDownloadScreens()
                                 adbClick_wbb(143, 518)
                                 if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0))
                                     break
@@ -1393,6 +1427,7 @@ FavoriteVipFriends() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
+        DismissCreateDownloadScreens()
         adbClick_wbb(143, 518)
         Delay(3)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
@@ -1411,6 +1446,7 @@ RemoveNonVipFriends() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        DismissCreateDownloadScreens()
         adbClick(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
@@ -1589,6 +1625,7 @@ RemoveNonVipFriends() {
                     }
                     session.set("failSafe", A_TickCount)
                     Loop {
+                        DismissCreateDownloadScreens()
                         adbClick_wbb(143, 518)
                         if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0))
                             break

@@ -139,6 +139,9 @@ AddFriends(renew := false, getFC := false) {
         if (DismissFriendFlowBlockingPopup("Waiting for Social"))
             continue
 
+        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+            break
+
         adbClick_wbb(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)) {
             break
@@ -319,6 +322,8 @@ AddFriends(renew := false, getFC := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
+        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+            break
         adbClick_wbb(143, 518)
         Delay(3)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
@@ -435,6 +440,9 @@ RemoveFriends() {
     Loop {
         if (DismissFriendFlowBlockingPopup("Waiting for Social"))
             continue
+
+        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+            break
 
         adbClick_wbb(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
