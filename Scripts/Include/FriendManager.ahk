@@ -844,9 +844,11 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             adbClick_wbb(38, 460)
         }
         else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime, , true)) {
-            ; If friends list screen: Click Search button
-            adbClick_wbb(240, 120)
-            Delay(1)
+            if (isKeepSearch) {
+                adbClick_wbb(240, 120)
+                Delay(1)
+            } else
+                break
         }
         else if(FindOrLoseImage("Friend_SearchFriendButton", 0, failSafeTime, , true)) {
             if(!isKeepSearch){
