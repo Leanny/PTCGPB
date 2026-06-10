@@ -374,9 +374,6 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
     Loop { ; Main loop
         Sleep, 100
 
-        if (!confirmed)
-            DismissCreateDownloadScreens()
-
         if(click) {
             ElapsedClickTime := A_TickCount - clickTime
             if(ElapsedClickTime > sleepTime) {
@@ -1211,7 +1208,6 @@ FavoriteVipFriends() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        DismissCreateDownloadScreens()
         adbClick(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
@@ -1317,7 +1313,6 @@ FavoriteVipFriends() {
                             interceptProc := false
                             session.set("failSafe", A_TickCount)
                             Loop {
-                                DismissCreateDownloadScreens()
                                 adbClick_wbb(143, 518)
                                 if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0))
                                     break
@@ -1427,7 +1422,6 @@ FavoriteVipFriends() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
-        DismissCreateDownloadScreens()
         adbClick_wbb(143, 518)
         Delay(3)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
@@ -1446,7 +1440,6 @@ RemoveNonVipFriends() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        DismissCreateDownloadScreens()
         adbClick(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
@@ -1625,7 +1618,6 @@ RemoveNonVipFriends() {
                     }
                     session.set("failSafe", A_TickCount)
                     Loop {
-                        DismissCreateDownloadScreens()
                         adbClick_wbb(143, 518)
                         if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0))
                             break
