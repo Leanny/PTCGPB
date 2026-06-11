@@ -139,11 +139,11 @@ AddFriends(renew := false, getFC := false) {
         if (DismissFriendFlowBlockingPopup("Waiting for Social"))
             continue
 
-        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if (IsSocialTabActiveOnHub(failSafeTime))
             break
 
         adbClick_wbb(143, 518)
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)) {
+        if(IsSocialTabActiveOnHub(failSafeTime)) {
             break
         }
         else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
@@ -322,11 +322,11 @@ AddFriends(renew := false, getFC := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
-        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if (IsSocialTabActiveOnHub(failSafeTime))
             break
         adbClick_wbb(143, 518)
         Delay(3)
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if(IsSocialTabActiveOnHub(failSafeTime))
             break
         else if(FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, failSafeTime))
             adbClick_wbb(80, 365)
@@ -441,11 +441,11 @@ RemoveFriends() {
         if (DismissFriendFlowBlockingPopup("Waiting for Social"))
             continue
 
-        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if (IsSocialTabActiveOnHub(failSafeTime))
             break
 
         adbClick_wbb(143, 518)
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if(IsSocialTabActiveOnHub(failSafeTime))
             break
         else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
             adbClick_wbb(137, 480)
@@ -817,6 +817,26 @@ DismissFriendFlowBlockingPopup(context := "") {
 
 IsSocialHubReadyForFriends() {
     return FindOrLoseImage("Friend_SocialHubFriendButton", 0, , 20, true)
+}
+
+IsSocialTabActiveOnHub(failSafeTime := 0) {
+    return FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)
+        && IsSocialHubReadyForFriends()
+}
+
+ReturnToSocialHubIfNeeded() {
+    if (IsSocialHubReadyForFriends())
+        return
+
+    adbClick_wbb(143, 518)
+    waitStart := A_TickCount
+    Loop {
+        if (IsSocialHubReadyForFriends())
+            return
+        if ((A_TickCount - waitStart) // 1000 >= 10)
+            return
+        Delay(0.5)
+    }
 }
 
 GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
