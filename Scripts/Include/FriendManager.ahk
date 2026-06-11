@@ -657,8 +657,6 @@ ReEnterSocial(prevAction){
     }
     else if(prevAction = "REMOVE"){
         GoToFriendsList(false, true)
-        FindImageAndClick("Friend_FriendListSubmenu", 22, 464, , 10)
-        Delay(1)
     }
 }
 ;-------------------------------------------------------------------------------
@@ -821,30 +819,6 @@ IsSocialHubReadyForFriends() {
     return FindOrLoseImage("Friend_SocialHubFriendButton", 0, , 20, true)
 }
 
-IsOnFriendListScreen() {
-    if (FindOrLoseImage("Friend_SearchFriendButton", 0, , , true))
-        return false
-    return FindOrLoseImage("Friend_AddButtonInFriendList", 0, , , true)
-}
-
-EnterFriendListFromSocial(failSafeTime := 0) {
-    if (DismissFriendFlowBlockingPopup("Entering friend list"))
-        return false
-
-    if (IsOnFriendListScreen())
-        return true
-
-    if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime, , true)) {
-        if (FindOrLoseImage("Common_ColorChangeButton2", 0, , 80))
-            adbClick_wbb(200, 80)
-        if (IsSocialHubReadyForFriends())
-            adbClick_wbb(38, 460)
-        Delay(0.5)
-    }
-
-    return IsOnFriendListScreen()
-}
-
 GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
     global session
 
@@ -869,12 +843,10 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             ; If main screen(social): Click friends button
             adbClick_wbb(38, 460)
         }
-        else if(IsOnFriendListScreen()) {
-            if (isKeepSearch) {
-                adbClick_wbb(240, 120)
-                Delay(1)
-            } else
-                break
+        else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime, , true)) {
+            ; If friends list screen: Click Search button
+            adbClick_wbb(240, 120)
+            Delay(1)
         }
         else if(FindOrLoseImage("Friend_SearchFriendButton", 0, failSafeTime, , true)) {
             if(!isKeepSearch){
@@ -885,7 +857,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
                     if(FindOrLoseImage("Friend_SearchFriendButton", 0, failSafeTime, , true)) {
                         adbInputEvent("111") ;send ESC
                     }
-                    else if(IsOnFriendListScreen()) {
+                    else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime)) {
                         mainLoopBreak := true
                         break
                     }
@@ -909,8 +881,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
                     continue
                 else if(!TryDismissSocialFirstTutorial(failSafeTime))
                     adbClick_wbb(155, 425)
-            } else if (EnterFriendListFromSocial(failSafeTime))
-                break
+            }
         }
         Delay(0.25)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
