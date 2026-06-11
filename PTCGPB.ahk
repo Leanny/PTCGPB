@@ -2482,7 +2482,7 @@ HelpTT_OnMouseMove(wParam, lParam, msg, hwnd) {
         HelpTT_HideWindow()
     SetTimer, HelpTT_Hide, Off
     if (ctrl != "" && g_HelpTT.HasKey(ctrl))
-        SetTimer, HelpTT_Show, -350
+        SetTimer, HelpTT_Show, -500
     else
         SetTimer, HelpTT_Show, Off
 }
