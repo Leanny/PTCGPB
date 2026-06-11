@@ -256,10 +256,23 @@ CardDetection_UseSavedAccountFriendInfo(ByRef username, ByRef friendCode) {
 
     if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
         return false
-    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+    if (!session.get("injectMethod") || session.get("accountFileName") = "")
         return false
 
-    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+    instance := session.get("scriptName")
+    fileName := session.get("accountFileName")
+    deviceAccount := session.get("deviceAccount")
+    if (deviceAccount != "")
+        accountMeta := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
+    else {
+        filePath := session.get("loadedAccount")
+        if (!filePath || !FileExist(filePath)) {
+            filePath := A_ScriptDir . "\..\Accounts\Saved\" . instance . "\" . fileName
+            if (!FileExist(filePath))
+                filePath := ""
+        }
+        accountMeta := AccountMetadata_Get(instance, fileName, filePath)
+    }
     savedFriendCode := RegExReplace(accountMeta["friendCode"], "\D", "")
     if (!RegExMatch(savedFriendCode, "^\d{16}$"))
         return false
@@ -354,13 +367,6 @@ FoundStars(star, cards := "") {
     if (isWishlist && wishlistMatches.MaxIndex() > 0)
         logMessage .= "Wishlist: " . Wishlist_FormatNames(wishlistMatches) . "\n"
     logMessage .= "File name: " . accountFile . "\nBacking up to the Accounts\\SpecificCards folder and continuing..."
-    if (isWishlist) {
-        mentionId := botConfig.get("discordUserId")
-        if (mentionId = "")
-            mentionId := session.get("discordUserId")
-        if (mentionId != "")
-            logMessage .= "\n<@" . mentionId . ">"
-    }
     LogToDiscord(logMessage, screenShot, true, (DiscordShouldSendAccountXml() ? accountFullPath : ""), fcScreenshot)
     LogInfo(StrReplace(logMessage, "\n", " "), "GPlog.txt")
 }
