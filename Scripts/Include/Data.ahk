@@ -5,6 +5,7 @@ parsePackData(){
 
     mainScreenPackList := {}
     pokemonPackObj := {}
+    pokemonPackOrder := []
     
     packDataPath := getScriptBaseFolder() . "\Data\packdata.dat"
     FileRead, packRawData, %packDataPath%
@@ -52,12 +53,14 @@ parsePackData(){
             splitData := StrSplit(packValue, "|")
 
             pokemonPackObj[splitData[1]] := {"PackID":splitData[1], "Series":splitData[2], "NumOfPackInSet":splitData[3], "PositionInExtension":splitData[4], "YPosInExtension":splitData[5], "DragType":splitData[6]}
+            pokemonPackOrder.Push(splitData[1])
             lastPackID := splitData[1]
             continue
         }
     }
 
     session.set("pokemonPackObj", pokemonPackObj)
+    session.set("pokemonPackOrder", pokemonPackOrder)
     session.set("mainScreenPackList", mainScreenPackList)
 
     return lastPackID

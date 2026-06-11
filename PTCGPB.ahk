@@ -55,10 +55,12 @@ global GUI_WIDTH := 750
 global GUI_HEIGHT := 418
 global MainGuiName
 
+
 global ProcessedIDs := {}
 global botMetadata := {}
 
 OnMessage(0x4A, "ReceiveData")
+OnMessage(0x0112, "PTCGPB_OnWmSysCommand")
 
 if not A_IsAdmin
 {
@@ -95,7 +97,7 @@ if (g_mainsPref = "" || (g_mainsPref + 0) <= 0)
     g_mainsPref := 1
 global g_prevDeleteMethod := Trim(botConfig.get("deleteMethod"))
 
-SetTimer, ShowSwipeSpeedToolTip, 50
+; Swipe-speed focus tooltip replaced by the generic hover help system (HelpTT_Init).
 
 hasInvalidScale := false
 monitorScaleList := GetAllMonitorScales()
@@ -177,6 +179,24 @@ UpdateHourglassPackCountVisibility(deleteMethod := "") {
     GuiControl, %packCountVisible%, ui_spendHourglassPackCount
 }
 
+; Remove WS_MAXIMIZEBOX so the window cannot be maximized / pseudo-fullscreen from the title bar.
+PTCGPB_DisableMainWindowMaximize(hwnd) {
+    if (!hwnd)
+        return
+    WinSet, Style, -0x10000, ahk_id %hwnd%
+}
+
+; Block SC_MAXIMIZE (Aero Snap to top, Win+Up, etc.). WinSet alone is not enough on modern Windows.
+PTCGPB_OnWmSysCommand(wParam, lParam, msg, hwnd) {
+    global MainGuiName
+    if (!MainGuiName || hwnd != MainGuiName)
+        return
+    cmd := wParam & 0xFFF0
+    if (cmd = 0xF030) { ; SC_MAXIMIZE
+        return 0
+    }
+}
+
 BotLanguage := botConfig.get("BotLanguage")
 if (!botConfig.get("IsLanguageSet")) {
     Gui, Add, Text,, Select Language
@@ -228,7 +248,7 @@ NextStep:
             IniWrite, 0, %A_LoopFileFullPath%, Metrics, InjectionCycleCount
     }
 
-    Gui,+HWNDSGUI +Resize
+    Gui,+HWNDSGUI -Resize
     Gui, Color, 1E1E1E, 333333
     Gui, Font, s10 cWhite, Segoe UI
     MainGuiName := SGUI
@@ -434,9 +454,13 @@ NextStep:
     Gui, Add, Button, gSave vui_StartBotButton x520 y352 w210 h34, Start Bot
 
     Gui, Font, s7 cGray
-    Gui, Add, Text, x530 y398 w190 Center BackgroundTrans, CC BY-NC 4.0 international license
+    Gui, Add, Text, x530 y398 w190 Center BackgroundTrans cGray, CC BY-NC 4.0 international license
+
+    HelpTT_Init()
 
     Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
+    WinRestore, Arturo's PTCGP BOT
+    PTCGPB_DisableMainWindowMaximize(MainGuiName)
 
 Return
 
@@ -613,10 +637,10 @@ UpdateDiscordSettingsButtonText() {
 
     if (activeWebhook = "") {
         statusText := activeProfile . " webhook missing"
-        fontColor := "cFF6666"
+        fontColor := "cRed"
     } else {
         statusText := activeProfile . " Discord configured"
-        fontColor := "cLime"
+        fontColor := "cGreen"
     }
 
     Gui, Font, s8 %fontColor%, Segoe UI
@@ -844,6 +868,7 @@ UpdatePackSelectionButtonText() {
     Gui, Font, s%fontSize% cWhite, Segoe UI
     GuiControl,, ui_PackSelectionButton, %buttonText%
     GuiControl, Font, ui_PackSelectionButton
+    Gui, Font, s10 cWhite, Segoe UI
 }
 
 ShowPackSelection:
@@ -862,14 +887,21 @@ ShowPackSelection:
     maxHeight := 35
     lastSeriesXPos := 10
 
-    seriesList := {}
-    For idx, packInfo in session.get("pokemonPackObj") {
-        packSeriesValue := packInfo["Series"]
-        seriesList[packSeriesValue] := true
+    pokemonPackOrder := session.get("pokemonPackOrder")
+    pokemonPackObj := session.get("pokemonPackObj")
+
+    seriesList := []
+    seriesSeen := {}
+    For orderIdx, packID in pokemonPackOrder {
+        packSeriesValue := pokemonPackObj[packID]["Series"]
+        if (!seriesSeen.HasKey(packSeriesValue)) {
+            seriesSeen[packSeriesValue] := true
+            seriesList.Push(packSeriesValue)
+        }
     }
 
     seriesLoopIdx := 1
-    For seriesValue, notUsedValue in seriesList {
+    For seriesIdx, seriesValue in seriesList {
         if(seriesValue == "U")
             Continue
 
@@ -877,11 +909,11 @@ ShowPackSelection:
         packYPos := yInitSeries
         Gui, PackSelect:Add, Text, % "x" . seriesXPos . " y10 cWhite", % seriesValue . "-Series"
 
-        For idx, packInfo in session.get("pokemonPackObj") {
+        For orderIdx, packID in pokemonPackOrder {
+            packInfo := pokemonPackObj[packID]
             if(packInfo["Series"] != seriesValue)
                 continue
 
-            packID := packInfo.PackID
             viewPackName := dict["Txt_" . packID] ? dict["Txt_" . packID] : packID
             isChecked := BotConfig.get(packID) ? "Checked" : ""
 
@@ -899,11 +931,11 @@ ShowPackSelection:
 
     ; Uncategorized(For future)
     uncategorizedList := []
-    For idx, packInfo in session.get("pokemonPackObj") {
-        if(packInfo["Series"] != "U")
+    For orderIdx, packID in pokemonPackOrder {
+        if(pokemonPackObj[packID]["Series"] != "U")
             continue
 
-        uncategorizedList.Push(packInfo["PackID"])
+        uncategorizedList.Push(packID)
     }
 
     if(uncategorizedList.MaxIndex() > 0){
@@ -1094,7 +1126,7 @@ UpdateGroupRerollButtonText() {
         statusText .= " + Roles"
     statusText .= " | IDs " . idsStatus . " VIP " . vipStatus
 
-    Gui, Font, s7 cLime, Segoe UI
+    Gui, Font, s7 cGreen, Segoe UI
     GuiControl, Font, ui_GroupRerollButton
     GuiControl,, ui_GroupRerollButton, %statusText%
 }
@@ -1265,7 +1297,7 @@ UpdateS4TButtonText() {
             statusText .= " +" . (enabledOptions.Length() - 1)
     }
 
-    Gui, Font, s8 cLime, Segoe UI
+    Gui, Font, s8 cGreen, Segoe UI
     GuiControl, Font, ui_S4TButton
     GuiControl,, ui_S4TButton, %statusText%
 }
@@ -1313,7 +1345,7 @@ ShowS4TSettings:
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tWP") ? "Checked" : "") " vui_s4tWP_Popup x15 y" . yPos . " cWhite", % dict["Txt_s4tWP"]
     yPos += 20
     Gui, S4TSettingsSelect:Add, Text, x15 y%yPos% %sectionColor%, % dict["Txt_s4tWPMinCards"]
-    Gui, S4TSettingsSelect:Add, Edit, cFDFDFD w40 x135 y%yPos% h20 vui_s4tWPMinCards_Popup -E0x200 Background2A2A2A Center cWhite, % botConfig.get("s4tWPMinCards")
+    Gui, S4TSettingsSelect:Add, Edit, cWhite w40 x135 y%yPos% h20 vui_s4tWPMinCards_Popup -E0x200 Background2A2A2A Center, % botConfig.get("s4tWPMinCards")
     yPos += 30
     if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+") {
         GuiControl, S4TSettingsSelect:Hide, ui_s4tWP_Popup
@@ -2300,19 +2332,227 @@ CheckForUpdates:
     CheckForUpdate()
 return
 
-; =================== Logic - Swipe speed hint (focus + ToolTip) ===================
-ShowSwipeSpeedToolTip:
-    GuiControlGet, currentFocus, FocusV
+; =================== Logic - Hover help tooltips ===================
+; Generic hover-help system: register a help text per control (by its associated
+; v-variable name, or by its text for controls without one) and show it as a
+; ToolTip when the mouse rests on the control. Texts can be overridden per
+; language by adding "Help_<key>" entries to Data\dictionary_<lang>.dat; the
+; English fallback passed to HelpTT_Add is used otherwise.
 
-    if (currentFocus = "ui_swipeSpeed") {
-        MouseGetPos, mouseX, mouseY
-        global dict
-        message := dict["RecommandSwipeSpeedNoModMenu"] . "`n" . dict["RecommandSwipeSpeedUseModMenu"] . "`n" . dict["HideSwipeToolTip"]
-        ShowCustomToolTip(message, (mouseX + 15), (mouseY + 20))
-    } else {
-        HideCustomToolTip()
+HelpTT_Init() {
+    global g_HelpTT := {}
+    global g_HelpTT_Last := ""
+    global g_HelpTT_Visible := 0
+    global dict
+
+    ; --- Main window: Friend ID / Instance Settings
+    HelpTT_Add("ui_FriendID", "FriendID", "Your main account's Friend ID (16 digits, no dashes or spaces).`nReroll instances use it to send friend requests to your main for God Pack testing.")
+    HelpTT_Add("ui_Instances", "Instances", "Number of MuMu instances the bot runs in parallel (Main excluded).`nIn the MuMu Multi-Instance Manager, name the instances exactly '1', '2', '3', ...:`nthe bot finds each window by its exact title.")
+    HelpTT_Add("ui_Columns", "Columns", "Number of columns used when arranging instance windows on screen.")
+    HelpTT_Add("ui_instanceStartDelay", "InstanceStartDelay", "Seconds to wait between starting one instance script and the next.`nIncrease this if instances overload your PC when starting together.")
+    HelpTT_Add("ui_runMain", "runMain", "When enabled, the bot uses your Main account(s).`nThe Main's MuMu instance must be named exactly 'Main'.")
+    HelpTT_Add("ui_Mains", "Mains", "Number of Main instances to run.`nName their MuMu instances exactly 'Main', 'Main2', 'Main3', ...")
+
+    ; --- Main window: Bot Settings
+    HelpTT_Add("ui_deleteMethod", "deleteMethod", "Bot mode:`n• Create Bots (13P): creates brand-new accounts, opens their packs and saves them as XML.`n• Inject 13P+: loads saved accounts, opens their available packs, then marks them as used.`n• Inject Wonderpick 96P+: loads accounts with at least 'Min Packs' packs, friends your Main(s) and opens packs for God Pack testing; unfriends at the end.`n• Inject Rewards: loads saved accounts only to claim rewards (event missions, gifts) without opening packs; accounts stay available for the other modes.")
+    HelpTT_Add("ui_injectWonderpickMinPacks", "injectWonderpickMinPacks", "Minimum number of packs a saved account must have to be injected in Wonderpick mode (70-999, default 96).")
+    HelpTT_Add("ui_packMethod", "packMethod", "When enabled, the bot opens packs one at a time, removing and re-adding friends between each pack.")
+    HelpTT_Add("ui_openExtraPack", "openExtraPack", "When enabled, the bot opens one extra pack after the two free ones.")
+    HelpTT_Add("ui_spendHourGlass", "spendHourGlass", "When enabled, the bot spends the account's hourglasses to open additional packs.")
+    HelpTT_Add("ui_hourglassTenPackOpening", "hourglassTenPackOpening", "When enabled, the bot uses the 10-pack opening mode while spending hourglasses.")
+    HelpTT_Add("ui_spendHourglassPackCount", "spendHourglassPackCount", "Number of packs to open when spending hourglasses.`n0 = open as many as the hourglasses allow.")
+    HelpTT_Add("ui_SortByDropdown", "SortBy", "Order in which saved accounts are queued for injection (based on account metadata):`n• Oldest/Newest First: by the date the account last pulled a pack.`n• Fewest/Most Packs First: by the account's pack count.`n• Oldest Last Login: accounts not logged into for the longest time first.")
+    HelpTT_Add("ui_AccountName", "AccountName", "Name prefix given to newly created bot accounts.")
+
+    ; --- Main window: Time Settings
+    HelpTT_Add("ui_Delay", "Delay", "Global delay between bot actions, in milliseconds.`nHigher = slower but more reliable (suggested: 250ms).")
+    HelpTT_Add("ui_swipeSpeed", "swipeSpeed", "Duration of the card swipe gesture, in milliseconds.`n" . dict["RecommandSwipeSpeedNoModMenu"] . "`n" . dict["RecommandSwipeSpeedUseModMenu"])
+    HelpTT_Add("ui_waitTime", "waitTime", "Seconds to wait after sending friend requests before continuing, giving time for them to be accepted.")
+
+    ; --- Main window: section buttons & actions
+    HelpTT_Add("ui_PackSelectionButton", "PackSelection", "Opens pack selection to choose which booster packs (expansions) the bot opens.")
+    HelpTT_Add("ui_CardDetectionButton", "CardDetection", "Opens card detection settings to choose which pulls count as worth keeping in Inject Wonderpick mode.")
+    HelpTT_Add("ui_S4TButton", "S4T", "Opens Save for Trade settings to get Discord notifications when an account pulls tradeable cards of the rarities you select.")
+    HelpTT_Add("ui_GroupRerollButton", "GroupReroll", "Opens group reroll settings: shared ids.txt URLs and automatic God Pack testing.")
+    HelpTT_Add("ui_DiscordSettingsButton", "DiscordSettings", "Opens Discord settings: webhooks, user IDs and heartbeat used for notifications.")
+    HelpTT_Add("ui_StartBotButton", "btn_start", "Saves all settings and starts the instance scripts.")
+    HelpTT_Add(dict["btn_balance"], "btn_balance", "Redistributes saved account XML files evenly across the instance folders,`nso every instance has accounts to work on.")
+    HelpTT_Add(dict["btn_mumu"], "btn_mumu", "Starts all MuMu Player instances.")
+    HelpTT_Add(dict["btn_arrange"], "btn_arrange", "Arranges MuMu instance windows on the selected monitor using the column count on the left.")
+    HelpTT_Add("Open Card Database", "OpenCardDatabase", "Opens the local card database dashboard (collection overview of saved accounts).")
+
+    ; --- Main window: icons (Picture controls are keyed by their image path)
+    HelpTT_Add(A_ScriptDir . "\GUI\Images\discord-icon.png", "discordIcon", "Opens the PTCGPB Discord server.")
+    HelpTT_Add(A_ScriptDir . "\GUI\Images\help-icon.png", "helpIcon", "Opens the online guide in your browser.")
+    HelpTT_Add("ui_ToolsPicture", "toolsIcon", "Opens Tools && System settings:`nmonitor and MuMu options, OCR language, log level and extra tools.")
+
+    ; --- Popup: InjectWP Card Detection
+    HelpTT_Add("ui_minStars_Popup", "minStars", "Minimum number of 2-star cards a God Pack must contain to count as valid.")
+    HelpTT_Add("ui_FullArtCheck_Popup", "FullArtCheck", "When enabled, saves the account and notifies on Discord when a pack contains a 2-star Full Art card.")
+    HelpTT_Add("ui_TrainerCheck_Popup", "TrainerCheck", "When enabled, saves the account and notifies on Discord when a pack contains a 2-star Trainer card.")
+    HelpTT_Add("ui_RainbowCheck_Popup", "RainbowCheck", "When enabled, saves the account and notifies on Discord when a pack contains a 2-star Rainbow card.")
+    HelpTT_Add("ui_PseudoGodPack_Popup", "PseudoGodPack", "When enabled, saves the account and notifies on Discord when a pack contains two 2-star cards ('pseudo God Pack').")
+    HelpTT_Add("ui_WishlistCheck_Popup", "WishlistCheck", "When enabled, saves the account and notifies on Discord when a pack contains a card from your wishlist (set in the Card Database).")
+    HelpTT_Add("ui_InvalidCheck_Popup", "InvalidCheck", "When enabled, suppresses Discord notifications for God Packs detected as invalid.`nThey are still logged and backed up.")
+
+    ; --- Popup: Group Reroll
+    HelpTT_Add("ui_groupRerollEnabled_Popup", "groupRerollEnabled", "When enabled, rerolls as part of a group: instances download the group's shared friend ID list (ids.txt)`nand your Main runs GP tests for the group's God Packs.")
+    HelpTT_Add("ui_mainIdsURL_Popup", "mainIdsURL", "URL from which instances download ids.txt (the group's shared friend ID list).")
+    HelpTT_Add("ui_vipIdsURL_Popup", "vipIdsURL", "URL from which the Main downloads vip_ids.txt.`nVIPs are accounts that found God Packs: the Main favorites them and never unfriends them during GP tests.")
+    HelpTT_Add("ui_autoUseGPTest_Popup", "autoUseGPTest", "When enabled, automatically starts a GP test on the Main at a regular interval.")
+    HelpTT_Add("ui_TestTime_Popup", "TestTime", "Seconds between automatic GP tests (default 3600 = 1 hour).")
+    HelpTT_Add("ui_gpTestMode_Popup", "gpTestMode", "GP test mode:`n• Standard: normal GP test.`n• Unopened Pack: only if the account still has an unopened booster pack (see the warning shown when selecting it).")
+    HelpTT_Add("ui_gpTestWaitTime_Popup", "gpTestWaitTime", "During a GP test, seconds the Main waits for instances to remove their friends`nbefore it removes non-VIP friends (default 150).")
+
+    ; --- Popup: Save for Trade
+    HelpTT_Add("ui_s4tEnabled_Popup", "s4tEnabled", "When enabled, saves the account and notifies on Discord when it pulls tradeable cards of the rarities selected below.")
+    HelpTT_Add("ui_s4tWP_Popup", "s4tWP", "When enabled, only reports packs worth wonderpicking from your Main;`npacks with fewer than 'Min. Cards' tradeable cards are skipped.")
+    HelpTT_Add("ui_s4tWPMinCards_Popup", "s4tWPMinCards", "Minimum tradeable cards a pack must contain to be reported when 'Wonder Pick' is enabled (1 or 2).")
+    HelpTT_Add("ui_s4tKeepSyntheticScreenshots_Popup", "s4tKeepSyntheticScreenshots", "When enabled, keeps synthetic pack screenshots in the Screenshots folder after sending them to Discord`n(otherwise they are deleted right after sending).")
+    HelpTT_Add("ui_s4tUseSyntheticScreenshots_Popup", "s4tUseSyntheticScreenshots", "When enabled, builds pack screenshots from card images instead of capturing the screen when possible (faster and more reliable).")
+    HelpTT_Add("ui_ocrShinedust_Popup", "ocrShinedust", "When enabled, reads the account's shinedust amount via OCR and stores it in the account metadata.")
+
+    ; --- Popup: Discord Settings
+    HelpTT_Add("ui_soloDiscordUserId_Popup", "discordUserId", "Your Discord user ID for solo reroll posts; the bot pings this ID when it posts a result.")
+    HelpTT_Add("ui_soloDiscordWebhookURL_Popup", "discordWebhookURL", "Webhook URL of the Discord channel where solo reroll results are posted.")
+    HelpTT_Add("ui_soloSendAccountXml_Popup", "sendAccountXml", "When enabled, attaches the account's XML file to solo reroll Discord posts.")
+    HelpTT_Add("ui_groupDiscordUserId_Popup", "groupRerollDiscordUserId", "Your Discord user ID for group reroll posts.")
+    HelpTT_Add("ui_groupDiscordWebhookURL_Popup", "groupRerollDiscordWebhookURL", "Webhook URL of your group's Discord channel for God Pack posts.")
+    HelpTT_Add("ui_groupSendAccountXml_Popup", "groupRerollSendAccountXml", "When enabled, attaches the account's XML file to group reroll Discord posts.")
+    HelpTT_Add("ui_s4tDiscordUserId_Popup", "s4tDiscordUserId", "Your Discord user ID for Save for Trade posts.")
+    HelpTT_Add("ui_s4tDiscordWebhookURL_Popup", "s4tDiscordWebhookURL", "Webhook URL of the Discord channel where Save for Trade results are posted.")
+    HelpTT_Add("ui_s4tSendAccountXml_Popup", "s4tSendAccountXml", "When enabled, attaches the account's XML file to Save for Trade Discord posts.")
+    HelpTT_Add("ui_heartBeat_Popup", "heartBeat", "When enabled, posts a status report to Discord every 'HB Delay' minutes:`nwhich instances are online/offline, total packs opened and packs per minute.")
+    HelpTT_Add("ui_heartBeatName_Popup", "heartBeatName", "Name shown at the top of heartbeat messages.")
+    HelpTT_Add("ui_heartBeatWebhookURL_Popup", "heartBeatWebhookURL", "Webhook URL for your own (solo) heartbeat messages.")
+    HelpTT_Add("ui_heartBeatOwnerWebHookURL_Popup", "heartBeatOwnerWebHookURL", "Webhook URL for the detailed heartbeat: adds per-instance pack counts and last-update times.`nAlso receives owner alerts (card recognition failures, instance restart warnings).")
+    HelpTT_Add("ui_groupHeartBeatWebhookURL_Popup", "groupRerollHeartBeatWebhookURL", "Webhook URL for your group's shared heartbeat channel.")
+    HelpTT_Add("ui_heartBeatDelay_Popup", "heartBeatDelay", "Minutes between heartbeat messages.")
+
+    ; --- Popup: Tools & System
+    HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
+    HelpTT_Add("ui_claimDailyMission_Popup", "claimDailyMission", "When enabled, claims the daily mission reward of 4 hourglasses on each account.")
+    HelpTT_Add("ui_receiveGift_Popup", "receiveGift", "When enabled, opens received gifts on each account.")
+    HelpTT_Add("ui_slowMotion_Popup", "slowMotion", "When enabled, skips ModMenu speed buttons (1x/2x/3x). Use only if you run the game without speedModMenu.`nLeave off when the game is sped up with the ModMenu.")
+    HelpTT_Add("ui_UseSoloIdsFile_Popup", "useSoloIdsFile", "When enabled, solo reroll instances add friends from ids.txt in the bot's folder`n(one 16-digit Friend ID per line) instead of only the Friend ID field.")
+    HelpTT_Add("ui_saveAccountFriendInfo_Popup", "saveAccountFriendInfo", "When enabled, saves each account's in-game name and friend code into its metadata.")
+    HelpTT_Add("ui_claimSpecialMissions_Popup", "claimSpecialMissions", "When enabled, claims the rewards of special event missions on each account.")
+    HelpTT_Add("ui_wonderpickForEventMissions_Popup", "wonderpickForEventMissions", "When enabled, performs wonderpicks when an event mission requires them.")
+    HelpTT_Add("ui_SelectedMonitorIndex_Popup", "SelectedMonitorIndex", "Monitor on which instance windows are arranged.")
+    HelpTT_Add("ui_RowGap_Popup", "RowGap", "Vertical gap in pixels between rows of instance windows.")
+    HelpTT_Add("ui_folderPath_Popup", "folderPath", "Folder that contains the 'MuMuPlayer-12' folder, not the MuMuPlayer-12 folder itself.`nDefault: C:\Program Files\Netease")
+    HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
+    HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")
+    HelpTT_Add("ui_instanceLaunchDelay_Popup", "instanceLaunchDelay", "Seconds to wait between launching one MuMu instance and the next.")
+    HelpTT_Add("ui_autoLaunchMonitor_Popup", "autoLaunchMonitor", "When enabled, opens the Monitor when the bot starts.`nThe Monitor watches all instances and restarts any that get stuck.")
+    HelpTT_Add("ui_startCockpitWithBot_Popup", "startCockpitWithBot", "When enabled, opens the Cockpit when the bot starts.`nThe Cockpit is a live dashboard with the status and metrics of all running instances.")
+    HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits Accounts data (XML and JSON) to git automatically every hour.")
+    HelpTT_Add("ui_logLevel_Popup", "logLevel", "Verbosity of the log files: error < warn < info < debug < trace.`nUse 'info' normally; 'debug'/'trace' only when investigating problems.")
+
+    ; --- Popup: Tools & System buttons (no v-variable, keyed by their text)
+    HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
+    HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
+    HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
+    HelpTT_Add("XML pack counts", "xmlPackCounts", "Shows a summary of saved account XMLs (counts and packs per instance).")
+    HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
+
+    OnMessage(0x200, "HelpTT_OnMouseMove")
+}
+
+HelpTT_Add(ctrlId, helpKey, fallbackText) {
+    global g_HelpTT, dict
+    if (ctrlId = "")
+        return
+    helpText := ""
+    if (IsObject(dict) && dict.HasKey("Help_" . helpKey))
+        helpText := dict["Help_" . helpKey]
+    if (helpText = "")
+        helpText := fallbackText
+    if (helpText != "")
+        g_HelpTT[ctrlId] := helpText
+}
+
+HelpTT_OnMouseMove(wParam, lParam, msg, hwnd) {
+    global g_HelpTT, g_HelpTT_Last, g_HelpTT_Visible
+    ctrl := A_GuiControl
+    if (ctrl = g_HelpTT_Last)
+        return
+    g_HelpTT_Last := ctrl
+    if (g_HelpTT_Visible)
+        HelpTT_HideWindow()
+    SetTimer, HelpTT_Hide, Off
+    if (ctrl != "" && g_HelpTT.HasKey(ctrl))
+        SetTimer, HelpTT_Show, -350
+    else
+        SetTimer, HelpTT_Show, Off
+}
+
+HelpTT_Show:
+    if (g_HelpTT_Last != "" && g_HelpTT.HasKey(g_HelpTT_Last)) {
+        HelpTT_ShowWindow(g_HelpTT[g_HelpTT_Last])
+        SetTimer, HelpTT_Hide, -15000
     }
 return
+
+HelpTT_Hide:
+    HelpTT_HideWindow()
+return
+
+; Dark-themed tooltip window matching the app style: no focus stealing
+; (WS_EX_NOACTIVATE) and click-through (WS_EX_TRANSPARENT).
+HelpTT_ShowWindow(text) {
+    global g_HelpTT_Visible
+
+    hHelpTTWin := 0
+    widthOpt := ""
+    Loop, 2 {
+        Gui, HelpTTWin:Destroy
+        Gui, HelpTTWin:New, +AlwaysOnTop -Caption +ToolWindow +Border +HwndhHelpTTWin +E0x08000020
+        Gui, HelpTTWin:Margin, 12, 9
+        Gui, HelpTTWin:Color, 23272E
+        Gui, HelpTTWin:Font, s9 cD8DEE9, Segoe UI
+        Gui, HelpTTWin:Add, Text, BackgroundTrans %widthOpt%, %text%
+        Gui, HelpTTWin:Show, Hide
+        WinGetPos,,, ttW, ttH, ahk_id %hHelpTTWin%
+        if (ttW <= 540 || widthOpt != "")
+            break
+        widthOpt := "w520" ; wrap overly wide tooltips on a second pass
+    }
+
+    ; Clamp to the work area of the monitor the mouse is on
+    MouseGetPos, mx, my
+    SysGet, monCount, MonitorCount
+    waLeft := 0, waTop := 0, waRight := A_ScreenWidth, waBottom := A_ScreenHeight
+    Loop, %monCount% {
+        SysGet, wa, MonitorWorkArea, %A_Index%
+        if (mx >= waLeft && mx <= waRight && my >= waTop && my <= waBottom)
+            break
+    }
+    x := mx + 14
+    y := my + 20
+    if (x + ttW > waRight)
+        x := waRight - ttW - 6
+    if (y + ttH > waBottom)
+        y := my - ttH - 12
+    if (x < waLeft)
+        x := waLeft + 6
+    if (y < waTop)
+        y := waTop + 6
+
+    ; Rounded corners on Windows 11 (silently ignored on older systems)
+    cornerPref := 3
+    DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", hHelpTTWin, "UInt", 33, "Int*", cornerPref, "UInt", 4)
+
+    Gui, HelpTTWin:Show, x%x% y%y% NA
+    WinSet, Transparent, 245, ahk_id %hHelpTTWin%
+    g_HelpTT_Visible := 1
+}
+
+HelpTT_HideWindow() {
+    global g_HelpTT_Visible
+    Gui, HelpTTWin:Destroy
+    g_HelpTT_Visible := 0
+}
 
 ; =================== Logic - Save all settings - LEGACY ===================
 SaveAllSettings() {
