@@ -96,6 +96,8 @@ Txt_InjectRange:範圍：
 Txt_packMethod:シングルパックモード
 Txt_nukeAccount:リスト削除
 Txt_spendHourGlass:砂時計使用
+Txt_hourglassTenPackOpening:10パックモード使用
+Txt_spendHourglassPackCount:開封数(0 = 全て)
 Txt_openExtraPack:追加パックを開く
 Txt_claimSpecialMissions:イベント
 SortByText:注入序列：

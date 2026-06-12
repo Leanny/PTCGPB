@@ -35,6 +35,7 @@ pToken := Gdip_Startup()
 #Include SpecialEvent.ahk
 #Include Crinity_UnofficialPatch.ahk
 #Include PTCGPHelper.ahk
+#Include HourglassSpend.ahk
 
 InitializeHiddenConsole()
 
@@ -1847,6 +1848,7 @@ InitPackOpening(full := false) {
     if (!EnsurePTCGPBHelperInstalled())
         return false
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
+    adbWriteRaw("rm -f /data/ptcgp/result.log")
     adbWriteRaw("pkill -f /data/ptcgp/ptcgpb")
 
     SavePackOpeningMissionUserPrefsSnapshot("pre")
@@ -1899,6 +1901,28 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
     return { kind: kind, remotePath: remotePath, localPath: localPath, exists: exists }
 }
 
+PullPackOpeningResultLog(failedDir, uniquePrefix) {
+    global session
+
+    if !FileExist(failedDir)
+        FileCreateDir, %failedDir%
+
+    remotePath := "/data/ptcgp/result.log"
+    sdcardPath := "/sdcard/" . uniquePrefix . "_result.log"
+    localPath := failedDir . "\" . uniquePrefix . "_result.log"
+
+    if (FileExist(localPath))
+        FileDelete, %localPath%
+
+    adbWriteRaw("rm -f " . sdcardPath)
+    adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
+    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    adbWriteRaw("rm -f " . sdcardPath)
+
+    exists := FileExist(localPath) ? true : false
+    return { kind: "result.log", remotePath: remotePath, localPath: localPath, exists: exists }
+}
+
 ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback mechanism") {
     global session, botConfig
 
@@ -1908,8 +1932,9 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
 
     preSnapshot := PullPackOpeningMissionUserPrefsSnapshot("pre", failedDir, uniquePrefix)
     postSnapshot := PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
+    resultLog := PullPackOpeningResultLog(failedDir, uniquePrefix)
 
-    message := reason . "\nVersion: 0.12.0\nPlease submit these files for the bug report as well."
+    message := reason . "\nVersion: 0.13.0\nPlease submit these files for the bug report as well."
     for _, snapshot in [preSnapshot, postSnapshot] {
         localPathForMessage := StrReplace(snapshot.localPath, "\", "/")
         if (snapshot.exists) {
@@ -1919,6 +1944,15 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
             message .= "\n" . snapshot.kind . ": missing (remote " . snapshot.remotePath . " was not available)"
             LogWarn("Card recognition failure " . snapshot.kind . " MissionUserPrefs missing: " . snapshot.remotePath, "debug_cards.txt")
         }
+    }
+
+    resultLogPathForMessage := StrReplace(resultLog.localPath, "\", "/")
+    if (resultLog.exists) {
+        message .= "\n" . resultLog.kind . ": " . resultLogPathForMessage
+        LogWarn("Card recognition failure result.log saved: " . resultLog.localPath, "debug_cards.txt")
+    } else {
+        message .= "\n" . resultLog.kind . ": missing (remote " . resultLog.remotePath . " was not available)"
+        LogWarn("Card recognition failure result.log missing: " . resultLog.remotePath, "debug_cards.txt")
     }
 
     ownerWebhookURL := botConfig.get("heartBeatOwnerWebHookURL")
@@ -2108,6 +2142,7 @@ RecoverPack() {
     post := PackOpeningMissionUserPrefsSnapshotPath("post")
 
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
+    adbWriteRaw("rm -f /data/ptcgp/result.log")
     adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
 
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
@@ -4957,102 +4992,6 @@ DoWonderPick() {
         CreateStatusMessage("Waiting for WonderPick`n(" . failSafeTime . "/45 seconds)")
     }
     return true
-}
-
-SpendAllHourglass() {
-    global botConfig, session
-
-    if (botConfig.get("deleteMethod") = "Inject 13P+") {
-        SpendAllHourglassInject13P()
-        return
-    }
-
-    ; GoToMain()
-    ; GetAllRewards(false, true)
-    GoToMain()
-
-    SelectPack("HGPack")
-    if(session.get("cantOpenMorePacks"))
-        return
-
-    PackOpening()
-    if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
-        return
-
-    ; Keep opening packs until we can't anymore
-    while (!session.get("cantOpenMorePacks") && (session.get("friendIDs") || botConfig.get("FriendID") != "" || session.get("accountOpenPacks") < session.get("maxAccountPackNum"))) {
-        if(session.get("packMethod")) {
-            session.set("friendsAdded", PackMethod_RenewFriends())
-            if (!PackMethod_ConsumeStayOnPackScreen()) {
-                GoToMain()
-                SelectPack("HGPack")
-            }
-            if(session.get("cantOpenMorePacks"))
-                break
-            PackOpening()
-        } else {
-            HourglassOpening(true)
-        }
-
-        if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
-            break
-    }
-}
-
-CanContinuePackOpening() {
-    global botConfig, session
-    return !session.get("cantOpenMorePacks") && (session.get("friendIDs") || botConfig.get("FriendID") != "" || session.get("accountOpenPacks") < session.get("maxAccountPackNum"))
-}
-
-ResetTenPackFallbackState() {
-    global session
-
-    if (FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0, 0)) {
-        adbInputEvent("111")
-        Delay(1)
-    }
-    session.set("cantOpenMorePacks", 0)
-}
-
-SpendAllHourglassInject13P() {
-    global botConfig, session
-
-    GoToMain()
-    session.set("cantOpenMorePacks", 0)
-
-    SelectPack("HGPack10")
-    if (!session.get("cantOpenMorePacks")) {
-        session.set("expectedPackOpenCount", 10)
-        PackOpening(true)
-        session.set("expectedPackOpenCount", 1)
-    }
-
-    while (CanContinuePackOpening()) {
-        session.set("expectedPackOpenCount", 10)
-        HourglassOpening(true, true, true)
-        session.set("expectedPackOpenCount", 1)
-    }
-
-    if (!session.get("cantOpenMorePacks"))
-        return
-
-    ResetTenPackFallbackState()
-
-    if (!CanContinuePackOpening())
-        return
-
-    GoToMain()
-    SelectPack("HGPack")
-    if(session.get("cantOpenMorePacks"))
-        return
-
-    PackOpening()
-    if(!CanContinuePackOpening())
-        return
-
-    while (CanContinuePackOpening()) {
-        HourglassOpening(true)
-    }
 }
 
 ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {

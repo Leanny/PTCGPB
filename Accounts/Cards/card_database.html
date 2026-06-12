@@ -2032,20 +2032,11 @@
             }
 
             @media (prefers-reduced-motion: no-preference) {
-                #rows
-                    :is(
-                        .catalog-library-main,
-                        .catalog-layout > .catalog-side,
-                        .multi-search-picker-main,
-                        .multi-card-search,
-                        .multi-search-results,
-                        .catalog-controls-panel,
-                        .db-row,
-                        .view-skeleton,
-                        .empty.panel,
-                        .wishlist-page,
-                        .collection-library-main
-                    ),
+                #rows {
+                    transition: opacity var(--view-switch-fade-duration)
+                        var(--view-switch-fade-ease);
+                }
+
                 #toolbarSection,
                 #statsSection,
                 #dbWorkspaceControlsSticky {
@@ -2053,45 +2044,24 @@
                         var(--view-switch-fade-ease);
                 }
 
-                #rows.view-switch-out
-                    :is(
-                        .catalog-library-main,
-                        .catalog-layout > .catalog-side,
-                        .multi-search-picker-main,
-                        .multi-card-search,
-                        .multi-search-results,
-                        .catalog-controls-panel,
-                        .db-row,
-                        .view-skeleton,
-                        .empty.panel,
-                        .wishlist-page,
-                        .collection-library-main
-                    ),
+                #rows.view-switch-out,
                 #toolbarSection.view-switch-out,
                 #statsSection.view-switch-out,
                 #dbWorkspaceControlsSticky.view-switch-out {
                     opacity: var(--view-switch-fade-opacity);
                 }
 
-                #rows.view-switch-in
-                    :is(
-                        .catalog-library-main,
-                        .catalog-layout > .catalog-side,
-                        .multi-search-picker-main,
-                        .multi-card-search,
-                        .multi-search-results,
-                        .catalog-controls-panel,
-                        .db-row,
-                        .view-skeleton,
-                        .empty.panel,
-                        .wishlist-page,
-                        .collection-library-main
-                    ),
+                #rows.view-switch-in,
                 #toolbarSection.view-switch-in,
                 #statsSection.view-switch-in,
                 #dbWorkspaceControlsSticky.view-switch-in {
                     transition: none;
                     opacity: var(--view-switch-fade-opacity);
+                }
+
+                #rows.view-switch-out,
+                #rows.view-switch-in {
+                    will-change: opacity;
                 }
             }
 
@@ -3076,6 +3046,10 @@
                 cursor: pointer;
             }
 
+            .cards-grid > .card-tile[data-catalog-navigate-card] {
+                cursor: pointer;
+            }
+
             .card-tile {
                 min-width: 0;
                 display: flex;
@@ -3134,29 +3108,34 @@
                 z-index: 1;
             }
 
-            .cards-grid > .card-tile:hover {
-                transform: translateY(-4px);
+            .cards-grid > .card-tile {
+                transition:
+                    transform 150ms ease,
+                    border-color 150ms ease;
+            }
+
+            @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+                .cards-grid > .card-tile:hover {
+                    transform: translateY(-3px);
+                }
             }
 
             .card-tile:hover {
                 border-color: var(--accent);
-                box-shadow:
-                    0 16px 34px rgba(0, 0, 0, 0.34),
-                    0 0 0 1px rgba(142, 180, 255, 0.22),
-                    0 0 26px rgba(142, 180, 255, 0.18);
+            }
+
+            @media (hover: hover) {
+                .card-tile:hover {
+                    box-shadow:
+                        0 10px 22px rgba(0, 0, 0, 0.28),
+                        0 0 0 1px rgba(142, 180, 255, 0.2);
+                }
             }
 
             .catalog-card-btn .card-tile {
                 transition:
-                    border-color 170ms ease,
-                    box-shadow 170ms ease;
-            }
-
-            .cards-grid > .card-tile {
-                transition:
-                    transform 170ms ease,
-                    border-color 170ms ease,
-                    box-shadow 170ms ease;
+                    border-color 150ms ease,
+                    transform 150ms ease;
             }
 
             [data-theme="light"] .card-tile {
@@ -4293,9 +4272,21 @@
                 grid-row: 1;
             }
 
-            .multi-search-page > .multi-search-filter-backdrop {
+            .multi-search-picker-column {
                 grid-column: 1;
                 grid-row: 2;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                row-gap: var(--page-panel-stack-y);
+                align-content: start;
+                align-items: start;
+                min-width: 0;
+                isolation: isolate;
+            }
+
+            .multi-search-picker-column > .multi-search-filter-backdrop {
+                grid-column: 1;
+                grid-row: 1;
                 height: 0;
                 position: sticky;
                 top: var(
@@ -4307,7 +4298,7 @@
                 align-self: start;
             }
 
-            .multi-search-page > .multi-search-filter-backdrop::before {
+            .multi-search-picker-column > .multi-search-filter-backdrop::before {
                 content: "";
                 position: absolute;
                 left: 0;
@@ -4323,23 +4314,25 @@
                 pointer-events: none;
             }
 
-            .multi-search-page > .catalog-controls {
+            .multi-search-picker-column > .catalog-controls {
                 grid-column: 1;
-                grid-row: 2;
+                grid-row: 1;
             }
 
-            .multi-search-page > .multi-search-picker-main {
+            .multi-search-picker-column > .multi-search-picker-main {
                 grid-column: 1;
-                grid-row: 3;
+                grid-row: 2;
                 position: relative;
                 z-index: 0;
             }
 
             .multi-search-page > .multi-search-results {
                 grid-column: 2;
-                grid-row: 2 / span 2;
+                grid-row: 2;
                 position: relative;
                 z-index: 41;
+                align-self: stretch;
+                min-height: 0;
             }
 
             .catalog-library-main,
@@ -4364,8 +4357,6 @@
                 .multi-search-picker-main {
                     transition:
                         opacity var(--expansion-picker-fade-duration)
-                            var(--expansion-picker-fade-ease),
-                        transform var(--expansion-picker-fade-duration)
                             var(--expansion-picker-fade-ease);
                 }
 
@@ -4373,7 +4364,6 @@
                 .collection-library-main.expansion-picker-out,
                 .multi-search-picker-main.expansion-picker-out {
                     opacity: var(--expansion-picker-fade-opacity);
-                    transform: translateY(6px);
                 }
 
                 .catalog-library-main.expansion-picker-in,
@@ -4381,7 +4371,6 @@
                 .multi-search-picker-main.expansion-picker-in {
                     transition: none;
                     opacity: var(--expansion-picker-fade-opacity);
-                    transform: translateY(-6px);
                 }
 
                 .catalog-side-update-body,
@@ -4403,7 +4392,7 @@
             }
 
             .catalog-library-picker .catalog-controls,
-            .multi-search-page > .catalog-controls {
+            .multi-search-picker-column > .catalog-controls {
                 position: sticky;
                 z-index: 41;
                 align-self: start;
@@ -4414,7 +4403,7 @@
                 top: var(--sticky-below-tabs);
             }
 
-            .multi-search-page > .catalog-controls {
+            .multi-search-picker-column > .catalog-controls {
                 top: var(
                     --multi-search-sticky-secondary-top,
                     calc(var(--sticky-below-tabs, 82px) + 240px)
@@ -4422,7 +4411,7 @@
             }
 
             .catalog-library-picker .catalog-controls > .catalog-controls-panel,
-            .multi-search-page > .catalog-controls > .catalog-controls-panel {
+            .multi-search-picker-column > .catalog-controls > .catalog-controls-panel {
                 background: var(--panel);
                 box-shadow:
                     0 10px 24px rgba(0, 0, 0, 0.28),
@@ -4434,7 +4423,7 @@
                 .catalog-controls
                 > .catalog-controls-panel,
             [data-theme="light"]
-                .multi-search-page
+                .multi-search-picker-column
                 > .catalog-controls
                 > .catalog-controls-panel {
                 box-shadow:
@@ -4448,7 +4437,7 @@
             .collection-page
                 .catalog-controls
                 > .catalog-controls-panel--compact,
-            .multi-search-page
+            .multi-search-picker-column
                 > .catalog-controls
                 > .catalog-controls-panel--compact {
                 display: flex;
@@ -4466,7 +4455,7 @@
                 padding: 14px 14px 16px;
             }
             .catalog-library-picker .catalog-controls > .panel,
-            .multi-search-page > .catalog-controls > .panel {
+            .multi-search-picker-column > .catalog-controls > .panel {
                 min-height: 0;
             }
             .catalog-controls-row {
@@ -5262,6 +5251,7 @@
             }
 
             .multi-search-results .multi-results-sticky.catalog-side {
+                position: sticky;
                 top: var(
                     --multi-search-sticky-secondary-top,
                     calc(var(--sticky-below-tabs, 82px) + 240px)
@@ -6213,6 +6203,11 @@
             @media (max-width: 1100px) {
                 .multi-search-page {
                     grid-template-columns: 1fr;
+                }
+
+                .multi-search-picker-column {
+                    grid-column: 1;
+                    grid-row: auto;
                 }
 
                 .multi-search-page > .multi-search-results {
@@ -7901,6 +7896,13 @@
             const DASHBOARD_PING_PATH = "/__dashboard/ping";
             const DASHBOARD_SHUTDOWN_PATH = "/__dashboard/shutdown";
             const DASHBOARD_WISHLIST_PATH = "/__dashboard/wishlist";
+            const DASHBOARD_ACCOUNT_SHINEDUST_DEDUCT_PATH =
+                "/__dashboard/account-shinedust/deduct";
+            const DASHBOARD_ACCOUNT_CARD_MARKS_PATH =
+                "/__dashboard/account-card-marks";
+            const DASHBOARD_ACCOUNT_JSON_OPEN_PATH =
+                "/__dashboard/account-json/open";
+            const TRADE_CARD_ID_RE = /^(PK|TR)_\d{2}_\d{6}(_\d{2})?$/;
             const DASHBOARD_CARD_IMAGES_STATUS_PATH =
                 "/__dashboard/card-images/status";
             const DASHBOARD_CARD_IMAGES_PREFETCH_PATH =
@@ -7959,6 +7961,12 @@
                 return PAGE_SIZE_OPTIONS.includes(saved)
                     ? saved
                     : INITIAL_LIMIT;
+            }
+
+            function filterAccountOverviewVisibleEntries(entries) {
+                return entries.filter(
+                    (entry) => (Number(entry?.count) || 0) > 0,
+                );
             }
 
             const RARITY_ICON_BASE_URL =
@@ -8275,6 +8283,8 @@
                 catalogPullHistoryRowsRef: null,
                 catalogPullHistoryRowIndex: null,
                 catalogTradeMetaVersion: 0,
+                catalogTradeShareIndex: null,
+                catalogTradeShareIndexVersion: -1,
                 catalogWarmupHandle: 0,
                 selectedCatalogAccount: "",
                 catalogPullHistoryAccount: "",
@@ -8418,6 +8428,30 @@
                 });
             }
 
+            let _coalescedLayoutFrame = 0;
+            const _coalescedLayoutFns = new Set();
+            function scheduleCoalescedLayout(fn) {
+                if (typeof fn !== "function") return;
+                _coalescedLayoutFns.add(fn);
+                if (_coalescedLayoutFrame) return;
+                _coalescedLayoutFrame = requestAnimationFrame(() => {
+                    _coalescedLayoutFrame = 0;
+                    const fns = [..._coalescedLayoutFns];
+                    _coalescedLayoutFns.clear();
+                    for (const run of fns) run();
+                });
+            }
+
+            function syncMultiSearchStickyLayoutMetricsSoon() {
+                scheduleCoalescedLayout(syncMultiSearchStickyLayoutMetrics);
+            }
+
+            function syncSectionSwitcherStackHeightSoon(options = {}) {
+                scheduleCoalescedLayout(() =>
+                    syncSectionSwitcherStackHeight(options),
+                );
+            }
+
             let _catalogFooterLightIdleHandle = null;
             let _catalogFooterLightCountsPending = null;
             let _catalogFooterLightIdleIsRic = false;
@@ -8472,6 +8506,8 @@
             }
 
             const DB_VIEWS = ["rows", "accounts", "traded", "shared"];
+            const CATALOG_VIEWS = ["allcards", "multisearch"];
+            const CACHEABLE_VIEWS = [...DB_VIEWS, ...CATALOG_VIEWS];
             const STANDALONE_VIEWS = [
                 "allcards",
                 "multisearch",
@@ -8492,23 +8528,102 @@
                 _viewDomCache.clear();
                 el.rows.style.minHeight = "";
             }
+            function isCatalogViewCacheEntryValid(entry) {
+                return (
+                    entry &&
+                    entry.catalogTradeMetaVersion ===
+                        state.catalogTradeMetaVersion &&
+                    entry.rowsRef === state.rows
+                );
+            }
+            function isAllCardsViewCacheEntryValid(entry) {
+                if (!isCatalogViewCacheEntryValid(entry)) return false;
+                if (entry.selectedCatalogCardId === undefined) return false;
+                const rarityKey = [...state.catalogSelectedRarities]
+                    .sort()
+                    .join("\0");
+                return (
+                    entry.selectedCatalogCardId ===
+                        state.selectedCatalogCardId &&
+                    entry.catalogExpansionFilter ===
+                        state.catalogExpansionFilter &&
+                    entry.catalogCardSearch === state.catalogCardSearch &&
+                    entry.catalogSelectedRaritiesKey === rarityKey
+                );
+            }
+            function peekViewDomCache(view) {
+                if (!view || !CACHEABLE_VIEWS.includes(view)) return false;
+                const cached = _viewDomCache.get(view);
+                if (!cached) return false;
+                if (
+                    CATALOG_VIEWS.includes(view) &&
+                    !isCatalogViewCacheEntryValid(cached)
+                )
+                    return false;
+                if (view === "allcards" && !isAllCardsViewCacheEntryValid(cached))
+                    return false;
+                return true;
+            }
             function captureViewDom(view) {
-                if (!view || !DB_VIEWS.includes(view)) return;
+                if (!view || !CACHEABLE_VIEWS.includes(view)) return;
                 if (el.rows.dataset.viewState === "skeleton") return;
                 const fragment = document.createDocumentFragment();
                 while (el.rows.firstChild)
                     fragment.appendChild(el.rows.firstChild);
-                _viewDomCache.set(view, {
+                const entry = {
                     fragment,
                     resultNote: el.resultNote.textContent,
                     showMoreHidden: el.showMoreBtn.classList.contains("hidden"),
                     showMoreLabel: el.showMoreBtn.textContent,
                     displayLimit: state.displayLimit,
+                };
+                if (CATALOG_VIEWS.includes(view)) {
+                    entry.catalogTradeMetaVersion =
+                        state.catalogTradeMetaVersion;
+                    entry.rowsRef = state.rows;
+                    if (view === "allcards") {
+                        entry.selectedCatalogCardId =
+                            state.selectedCatalogCardId;
+                        entry.catalogExpansionFilter =
+                            state.catalogExpansionFilter;
+                        entry.catalogCardSearch = state.catalogCardSearch;
+                        entry.catalogSelectedRaritiesKey = [
+                            ...state.catalogSelectedRarities,
+                        ]
+                            .sort()
+                            .join("\0");
+                    }
+                }
+                _viewDomCache.set(view, entry);
+            }
+            function restoreCatalogViewSideEffects(view) {
+                if (view !== "multisearch") return;
+                requestAnimationFrame(() => {
+                    syncMultiSearchStickyLayoutMetricsSoon();
+                    attachMultiSearchStickyLayoutWatch();
                 });
             }
             function restoreViewDom(view) {
                 const cached = _viewDomCache.get(view);
                 if (!cached) return false;
+                if (
+                    CATALOG_VIEWS.includes(view) &&
+                    !isCatalogViewCacheEntryValid(cached)
+                ) {
+                    _viewDomCache.delete(view);
+                    return false;
+                }
+                if (view === "allcards" && !isAllCardsViewCacheEntryValid(cached)) {
+                    _viewDomCache.delete(view);
+                    return false;
+                }
+                if (
+                    view === "multisearch" &&
+                    !cached.fragment.querySelector(".multi-search-picker-column")
+                ) {
+                    _viewDomCache.delete(view);
+                    return false;
+                }
                 _viewDomCache.delete(view);
                 el.rows.textContent = "";
                 delete el.rows.dataset.viewState;
@@ -8520,6 +8635,7 @@
                 );
                 el.showMoreBtn.textContent = cached.showMoreLabel;
                 state.displayLimit = cached.displayLimit;
+                restoreCatalogViewSideEffects(view);
                 return true;
             }
             function showViewSkeleton(view) {
@@ -9231,6 +9347,318 @@
                 return account + "::" + cardId;
             }
 
+            function isValidTradeCardId(cardId) {
+                return TRADE_CARD_ID_RE.test(String(cardId || "").trim());
+            }
+
+            function getDeviceAccountFromDocument(doc) {
+                if (!doc || typeof doc !== "object") return "";
+                const sourceType = String(
+                    readObjectValue(doc, ["sourceType", "SourceType"]) || "",
+                ).trim();
+                const sourceFileName = String(
+                    readObjectValue(doc, [
+                        "sourceFileName",
+                        "SourceFileName",
+                    ]) || "",
+                ).trim();
+                const isCollection =
+                    sourceType === "collection" ||
+                    sourceFileName.startsWith("collections/");
+                if (isCollection) return "";
+                return String(
+                    readObjectValue(doc, [
+                        "deviceAccount",
+                        "DeviceAccount",
+                        "account",
+                        "Account",
+                    ]) || "",
+                ).trim();
+            }
+
+            function collectTradedCardsForAccount(account) {
+                const tradedCards = {};
+                const prefix = account + "::";
+                for (const key of state.tradedSet) {
+                    if (!key.startsWith(prefix)) continue;
+                    const cardId = key.slice(prefix.length);
+                    if (!isValidTradeCardId(cardId)) continue;
+                    const raw = state.tradedMeta.get(key);
+                    tradedCards[cardId] = serializeTradeMeta(
+                        normalizeTradeMeta(raw),
+                    );
+                }
+                return tradedCards;
+            }
+
+            function serializeSharedMeta(raw) {
+                const count =
+                    raw && Number.isFinite(raw.count) && raw.count > 0
+                        ? raw.count
+                        : undefined;
+                const timestampMs =
+                    raw && Number.isFinite(raw.timestampMs)
+                        ? raw.timestampMs
+                        : 0;
+                const out = { timestampMs: Number(timestampMs) || 0 };
+                if (count) out.count = count;
+                return out;
+            }
+
+            function normalizeSharedMeta(raw) {
+                if (!raw || typeof raw !== "object") {
+                    return { timestampMs: 0, count: undefined };
+                }
+                const count =
+                    Number.isFinite(raw.count) && raw.count > 0
+                        ? raw.count
+                        : undefined;
+                return {
+                    timestampMs: Number.isFinite(raw.timestampMs)
+                        ? raw.timestampMs
+                        : 0,
+                    count,
+                };
+            }
+
+            function collectSharedCardsForAccount(account) {
+                const sharedCards = {};
+                const prefix = account + "::";
+                for (const key of state.sharedSet) {
+                    if (!key.startsWith(prefix)) continue;
+                    const cardId = key.slice(prefix.length);
+                    if (!isValidTradeCardId(cardId)) continue;
+                    sharedCards[cardId] = serializeSharedMeta(
+                        state.sharedMeta.get(key),
+                    );
+                }
+                return sharedCards;
+            }
+
+            const _persistCardMarksSavers = new Map();
+
+            function canPersistCardMarksToDisk() {
+                return !!state.csvLoaded;
+            }
+
+            async function persistAccountCardMarks(account) {
+                if (!account || !canPersistCardMarksToDisk()) {
+                    return { ok: false, skipped: true };
+                }
+                try {
+                    const res = await fetch(DASHBOARD_ACCOUNT_CARD_MARKS_PATH, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            deviceAccount: account,
+                            tradedCards:
+                                collectTradedCardsForAccount(account),
+                            sharedCards:
+                                collectSharedCardsForAccount(account),
+                        }),
+                    });
+                    let data = {};
+                    try {
+                        data = await res.json();
+                    } catch (_) {}
+                    return {
+                        ok: !!(res.ok && data.ok),
+                        error:
+                            data.error ||
+                            (!res.ok ? `HTTP ${res.status}` : ""),
+                    };
+                } catch (err) {
+                    return {
+                        ok: false,
+                        error: String(err && err.message ? err.message : err),
+                    };
+                }
+            }
+
+            function schedulePersistAccountCardMarks(account) {
+                if (!account || !canPersistCardMarksToDisk()) return;
+                let saver = _persistCardMarksSavers.get(account);
+                if (!saver) {
+                    saver = makeDebouncedSaver(
+                        () => {
+                            void persistAccountCardMarks(account);
+                        },
+                        450,
+                    );
+                    _persistCardMarksSavers.set(account, saver);
+                }
+                saver();
+            }
+
+            function metadataHasCardMarksField(metadata, fieldNames) {
+                if (!metadata || typeof metadata !== "object") return false;
+                const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+                for (const name of names) {
+                    if (Object.prototype.hasOwnProperty.call(metadata, name))
+                        return true;
+                }
+                return false;
+            }
+
+            function readAccountCardMarksObject(doc, fieldNames) {
+                const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+                const pickNonEmptyMarks = (node) => {
+                    if (
+                        !node ||
+                        typeof node !== "object" ||
+                        Array.isArray(node)
+                    ) {
+                        return null;
+                    }
+                    return Object.keys(node).length ? node : null;
+                };
+                for (const name of names) {
+                    const root = pickNonEmptyMarks(readObjectValue(doc, [name]));
+                    if (root) return root;
+                }
+                const metadata =
+                    readObjectValue(doc, ["metadata", "Metadata"]) || {};
+                for (const name of names) {
+                    const legacy = pickNonEmptyMarks(
+                        readObjectValue(metadata, [name]),
+                    );
+                    if (legacy) return legacy;
+                }
+                return null;
+            }
+
+            function documentHasCardMarksField(doc, fieldNames) {
+                return !!readAccountCardMarksObject(doc, fieldNames);
+            }
+
+            function clearTradedMarksForAccount(account) {
+                const prefix = account + "::";
+                for (const key of [...state.tradedSet]) {
+                    if (!key.startsWith(prefix)) continue;
+                    state.tradedSet.delete(key);
+                    state.tradedMeta.delete(key);
+                }
+            }
+
+            function clearSharedMarksForAccount(account) {
+                const prefix = account + "::";
+                for (const key of [...state.sharedSet]) {
+                    if (!key.startsWith(prefix)) continue;
+                    state.sharedSet.delete(key);
+                    state.sharedMeta.delete(key);
+                }
+            }
+
+            function commitTradedStateChange(account) {
+                if (account) schedulePersistAccountCardMarks(account);
+            }
+
+            function commitSharedStateChange(account) {
+                if (account) schedulePersistAccountCardMarks(account);
+            }
+
+            function hydrateCardMarksFromAccountDocuments(documents) {
+                if (!Array.isArray(documents) || !documents.length) return 0;
+                let imported = 0;
+                for (const doc of documents) {
+                    const account = getDeviceAccountFromDocument(doc);
+                    if (!account) continue;
+                    if (
+                        documentHasCardMarksField(doc, [
+                            "tradedCards",
+                            "TradedCards",
+                        ])
+                    ) {
+                        clearTradedMarksForAccount(account);
+                        const tradedCards = readAccountCardMarksObject(doc, [
+                            "tradedCards",
+                            "TradedCards",
+                        ]);
+                        if (tradedCards) {
+                            for (const cardId of Object.keys(tradedCards)) {
+                                if (!isValidTradeCardId(cardId)) continue;
+                                const key = tradedKey(account, cardId);
+                                state.tradedSet.add(key);
+                                state.tradedMeta.set(
+                                    key,
+                                    serializeTradeMeta(
+                                        normalizeTradeMeta(
+                                            tradedCards[cardId],
+                                        ),
+                                    ),
+                                );
+                                imported++;
+                            }
+                        }
+                    }
+
+                    if (
+                        documentHasCardMarksField(doc, [
+                            "sharedCards",
+                            "SharedCards",
+                        ])
+                    ) {
+                        clearSharedMarksForAccount(account);
+                        const sharedCards = readAccountCardMarksObject(doc, [
+                            "sharedCards",
+                            "SharedCards",
+                        ]);
+                        if (sharedCards) {
+                            for (const cardId of Object.keys(sharedCards)) {
+                                if (!isValidTradeCardId(cardId)) continue;
+                                const key = tradedKey(account, cardId);
+                                state.sharedSet.add(key);
+                                state.sharedMeta.set(
+                                    key,
+                                    serializeSharedMeta(
+                                        normalizeSharedMeta(
+                                            sharedCards[cardId],
+                                        ),
+                                    ),
+                                );
+                                imported++;
+                            }
+                        }
+                    }
+                }
+                invalidateCatalogAccountCounts();
+                return imported;
+            }
+
+            async function migrateCardMarksToAccountFiles(documents) {
+                if (!canPersistCardMarksToDisk()) return;
+                const accounts = new Set();
+                for (const doc of documents || []) {
+                    const account = getDeviceAccountFromDocument(doc);
+                    if (account) accounts.add(account);
+                }
+                if (!accounts.size) return;
+                const touched = new Set();
+                for (const key of state.tradedSet) {
+                    const sep = key.indexOf("::");
+                    if (sep < 0) continue;
+                    const account = key.slice(0, sep);
+                    if (accounts.has(account)) touched.add(account);
+                }
+                for (const key of state.sharedSet) {
+                    const sep = key.indexOf("::");
+                    if (sep < 0) continue;
+                    const account = key.slice(0, sep);
+                    if (accounts.has(account)) touched.add(account);
+                }
+                for (const account of touched) {
+                    await persistAccountCardMarks(account);
+                    await waitMs(40);
+                }
+            }
+
+            function loadLegacyCardMarksFromLocalStorage() {
+                loadTradedState();
+                loadTradedMeta();
+                loadSharedState();
+                loadSharedMeta();
+            }
+
             function loadTradedState() {
                 try {
                     const raw = localStorage.getItem(LS_TRADED);
@@ -9291,7 +9719,6 @@
                     nowTraded = false;
                     if (state.tradedMeta.has(key)) {
                         state.tradedMeta.delete(key);
-                        saveTradedMeta();
                         clearAccountOverviewCache();
                     }
                 } else {
@@ -9301,13 +9728,11 @@
                             timestampMs: Date.now(),
                             count: 1,
                         });
-                        saveTradedMeta();
                     }
                     nowTraded = true;
                 }
-                saveTradedState();
+                commitTradedStateChange(account);
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
                 return nowTraded;
             }
 
@@ -9337,11 +9762,9 @@
                     existing.timestampMs = Date.now();
                 }
                 state.tradedMeta.set(key, existing);
-                saveTradedState();
-                saveTradedMeta();
+                commitTradedStateChange(account);
                 clearAccountOverviewCache();
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
                 return newCount;
             }
 
@@ -9353,12 +9776,10 @@
                     state.tradedSet.delete(key);
                     if (state.tradedMeta.has(key)) {
                         state.tradedMeta.delete(key);
-                        saveTradedMeta();
                         clearAccountOverviewCache();
                         invalidateCatalogAccountCounts();
                     }
-                    saveTradedState();
-                    invalidateViewDomCache();
+                    commitTradedStateChange(account);
                     return true;
                 }
                 const norm = normalizeTradeMeta(state.tradedMeta.get(key));
@@ -9377,11 +9798,9 @@
                 }
                 norm.timestampMs = maxTs;
                 state.tradedMeta.set(key, serializeTradeMeta(norm));
-                saveTradedMeta();
-                saveTradedState();
+                commitTradedStateChange(account);
                 clearAccountOverviewCache();
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
                 return true;
             }
 
@@ -9554,11 +9973,9 @@
                         timestampMs: Date.now(),
                         count: 1,
                     });
-                    saveSharedMeta();
                 }
-                saveSharedState();
+                commitSharedStateChange(account);
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
             }
 
             function getSharedCount(account, cardId) {
@@ -9568,6 +9985,30 @@
                 if (meta && Number.isFinite(meta.count) && meta.count > 0)
                     return meta.count;
                 return 1;
+            }
+
+            function getRemainingCopyCount(account, cardId, pulledCount) {
+                const pulled = Number(pulledCount) || 0;
+                if (!account || pulled <= 0) return pulled;
+                return Math.max(
+                    0,
+                    pulled -
+                        getTradedCount(account, cardId) -
+                        getSharedCount(account, cardId),
+                );
+            }
+
+            function getAccountAvailableCopyTotal(accountName, cardsMap) {
+                if (!accountName || !cardsMap) return 0;
+                let total = 0;
+                for (const [cardId, count] of cardsMap) {
+                    total += getRemainingCopyCount(
+                        accountName,
+                        cardId,
+                        count,
+                    );
+                }
+                return total;
             }
 
             function addSharedCopy(account, cardId) {
@@ -9583,10 +10024,8 @@
                     existing.timestampMs = Date.now();
                 }
                 state.sharedMeta.set(key, existing);
-                saveSharedState();
-                saveSharedMeta();
+                commitSharedStateChange(account);
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
                 return newCount;
             }
 
@@ -9595,11 +10034,9 @@
                 state.sharedSet.delete(key);
                 if (state.sharedMeta.has(key)) {
                     state.sharedMeta.delete(key);
-                    saveSharedMeta();
                 }
-                saveSharedState();
+                commitSharedStateChange(account);
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
             }
 
             function removeOneSharedCopy(account, cardId) {
@@ -9614,10 +10051,8 @@
                 const existing = { ...prev };
                 existing.count = count - 1;
                 state.sharedMeta.set(key, existing);
-                saveSharedMeta();
-                saveSharedState();
+                commitSharedStateChange(account);
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
                 return true;
             }
 
@@ -9674,10 +10109,9 @@
                     return;
                 }
                 state.tradedMeta.delete(key);
-                saveTradedMeta();
+                commitTradedStateChange(account);
                 clearAccountOverviewCache();
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
             }
 
             function getTradeMeta(account, cardId) {
@@ -9766,10 +10200,9 @@
                 }
                 norm.timestampMs = maxTs;
                 state.tradedMeta.set(key, serializeTradeMeta(norm));
-                saveTradedMeta();
+                commitTradedStateChange(account);
                 clearAccountOverviewCache();
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
             }
 
             function removeTradedPairingAt(account, cardId, pairingIndex) {
@@ -9785,8 +10218,6 @@
                 if (nextCount <= 0) {
                     state.tradedSet.delete(key);
                     state.tradedMeta.delete(key);
-                    saveTradedMeta();
-                    saveTradedState();
                 } else {
                     norm.count = nextCount;
                     let maxTs = 0;
@@ -9796,18 +10227,15 @@
                     }
                     norm.timestampMs = maxTs;
                     state.tradedMeta.set(key, serializeTradeMeta(norm));
-                    saveTradedMeta();
-                    saveTradedState();
                 }
+                commitTradedStateChange(account);
                 clearAccountOverviewCache();
                 invalidateCatalogAccountCounts();
-                invalidateViewDomCache();
                 return true;
             }
 
             function getTradeableRarities(rarity) {
                 const r = Number(rarity);
-                if (r === 100 || r === 200) return new Set([100, 200]);
                 if (r === 600 || r === 700) return new Set([600, 700]);
                 if (r === 800 || r === 900 || !Number.isFinite(r))
                     return new Set();
@@ -9870,6 +10298,216 @@
                             card && card.info,
                         ),
                     0,
+                );
+            }
+
+            function formatShinedustDeductionSuffix(dustResult) {
+                if (!dustResult || dustResult.skipped || !(dustResult.deducted > 0))
+                    return "";
+                let text = ` Deducted ${formatNumber(dustResult.deducted)} Shinedust`;
+                if (
+                    Number.isFinite(dustResult.previous) &&
+                    Number.isFinite(dustResult.value)
+                ) {
+                    text += ` (${formatNumber(dustResult.previous)} → ${formatNumber(dustResult.value)})`;
+                }
+                return text + ".";
+            }
+
+            function formatShinedustDeductionWarning(dustResult) {
+                if (!dustResult || dustResult.ok || dustResult.skipped)
+                    return "";
+                const cost =
+                    Number.isFinite(dustResult.cost) && dustResult.cost > 0
+                        ? formatNumber(dustResult.cost)
+                        : "";
+                const detail = String(dustResult.error || "").trim();
+                let text = " Could not update Shinedust on disk";
+                if (cost) text += ` (${cost} trade cost)`;
+                if (detail) text += `: ${detail}`;
+                return text + ".";
+            }
+
+            function formatShinedustRefundSuffix(dustResult) {
+                if (!dustResult || dustResult.skipped || !(dustResult.credited > 0))
+                    return "";
+                let text = ` Refunded ${formatNumber(dustResult.credited)} Shinedust`;
+                if (
+                    Number.isFinite(dustResult.previous) &&
+                    Number.isFinite(dustResult.value)
+                ) {
+                    text += ` (${formatNumber(dustResult.previous)} → ${formatNumber(dustResult.value)})`;
+                }
+                return text + ".";
+            }
+
+            function formatShinedustRefundWarning(dustResult) {
+                if (!dustResult || dustResult.ok || dustResult.skipped)
+                    return "";
+                const cost =
+                    Number.isFinite(dustResult.cost) && dustResult.cost > 0
+                        ? formatNumber(dustResult.cost)
+                        : "";
+                const detail = String(dustResult.error || "").trim();
+                let text = " Could not refund Shinedust on disk";
+                if (cost) text += ` (${cost} trade cost)`;
+                if (detail) text += `: ${detail}`;
+                return text + ".";
+            }
+
+            function formatCardMarksPersistWarning(persistResult) {
+                if (!persistResult || persistResult.ok || persistResult.skipped)
+                    return "";
+                const detail = String(persistResult.error || "").trim();
+                return detail
+                    ? ` Card marks could not be saved to account JSON: ${detail}.`
+                    : " Card marks could not be saved to account JSON.";
+            }
+
+            const formatTradePersistWarning = formatCardMarksPersistWarning;
+
+            async function deductShinedustForTrade(account, cardId) {
+                const cost = getTradeShinedustCost(
+                    cardId,
+                    getCardInfo(cardId),
+                );
+                if (!(cost > 0) || !account) {
+                    return { ok: true, skipped: true, cost: 0, deducted: 0 };
+                }
+                try {
+                    const res = await fetch(
+                        DASHBOARD_ACCOUNT_SHINEDUST_DEDUCT_PATH,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                deviceAccount: account,
+                                deduct: cost,
+                            }),
+                        },
+                    );
+                    let data = {};
+                    try {
+                        data = await res.json();
+                    } catch (_) {}
+                    if (!res.ok || !data.ok) {
+                        return {
+                            ok: false,
+                            cost,
+                            deducted: 0,
+                            error:
+                                (data && data.error) ||
+                                `HTTP ${res.status || "error"}`,
+                        };
+                    }
+                    if (Number.isFinite(data.value)) {
+                        state.accountShinedustMap.set(
+                            account,
+                            Math.round(data.value),
+                        );
+                        clearAccountOverviewCache();
+                        invalidateCatalogAccountCounts();
+                    }
+                    return {
+                        ok: true,
+                        skipped: !!data.skipped,
+                        cost,
+                        deducted: Number(data.deducted) || 0,
+                        previous: Number(data.previous),
+                        value: Number(data.value),
+                        reason: data.reason || "",
+                    };
+                } catch (err) {
+                    return {
+                        ok: false,
+                        cost,
+                        deducted: 0,
+                        error: String(err && err.message ? err.message : err),
+                    };
+                }
+            }
+
+            async function refundShinedustForTrade(account, cardId) {
+                const cost = getTradeShinedustCost(
+                    cardId,
+                    getCardInfo(cardId),
+                );
+                if (!(cost > 0) || !account) {
+                    return { ok: true, skipped: true, cost: 0, credited: 0 };
+                }
+                try {
+                    const res = await fetch(
+                        DASHBOARD_ACCOUNT_SHINEDUST_DEDUCT_PATH,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                deviceAccount: account,
+                                credit: cost,
+                            }),
+                        },
+                    );
+                    let data = {};
+                    try {
+                        data = await res.json();
+                    } catch (_) {}
+                    if (!res.ok || !data.ok) {
+                        return {
+                            ok: false,
+                            cost,
+                            credited: 0,
+                            error:
+                                (data && data.error) ||
+                                `HTTP ${res.status || "error"}`,
+                        };
+                    }
+                    if (Number.isFinite(data.value)) {
+                        state.accountShinedustMap.set(
+                            account,
+                            Math.round(data.value),
+                        );
+                        clearAccountOverviewCache();
+                        invalidateCatalogAccountCounts();
+                    }
+                    return {
+                        ok: true,
+                        skipped: !!data.skipped,
+                        cost,
+                        credited: Number(data.credited) || 0,
+                        previous: Number(data.previous),
+                        value: Number(data.value),
+                        reason: data.reason || "",
+                    };
+                } catch (err) {
+                    return {
+                        ok: false,
+                        cost,
+                        credited: 0,
+                        error: String(err && err.message ? err.message : err),
+                    };
+                }
+            }
+
+            async function finalizeUndoTradedCopy(account, cardId) {
+                const persistResult = await persistAccountCardMarks(account);
+                const dustResult = await refundShinedustForTrade(account, cardId);
+                return { persistResult, dustResult };
+            }
+
+            async function undoOneTradedCopy(account, cardId) {
+                if (!removeOneTradedCopy(account, cardId)) return null;
+                return finalizeUndoTradedCopy(account, cardId);
+            }
+
+            function formatUndoTradedCopyFeedback(dustResult, persistResult) {
+                return (
+                    formatShinedustRefundSuffix(dustResult) +
+                    formatShinedustRefundWarning(dustResult) +
+                    formatTradePersistWarning(persistResult)
                 );
             }
 
@@ -10142,6 +10780,85 @@
                         onToggle(account);
                     });
                 });
+            }
+
+            function renderAccountFileLabelWithCopyHtml(account, rawFileLabel) {
+                const mapped = String(rawFileLabel || "").trim();
+                const preferredRaw = mapped || account;
+                const preferredShort = buildFileLabelMeta(preferredRaw);
+                if (!mapped) return escapeHtml(account);
+                return (
+                    `<span title="${escapeHtml(preferredRaw)}">${escapeHtml(preferredShort || preferredRaw)}</span>` +
+                    `<button type="button" class="copy-btn" data-copy-file="${escapeHtml(preferredRaw)}" data-account-label-for="${escapeHtml(account)}">Copy</button>`
+                );
+            }
+
+            function renderOpenAccountMetadataButtonHtml(account) {
+                return `<button type="button" data-open-account-metadata="${escapeHtml(account)}">Open Metadata</button>`;
+            }
+
+            async function openAccountMetadata(account) {
+                if (!account) {
+                    return { ok: false, error: "Missing account." };
+                }
+                try {
+                    const res = await fetch(DASHBOARD_ACCOUNT_JSON_OPEN_PATH, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ deviceAccount: account }),
+                    });
+                    let data = {};
+                    try {
+                        data = await res.json();
+                    } catch (_) {}
+                    if (!res.ok || !data.ok) {
+                        return {
+                            ok: false,
+                            error:
+                                (data && data.error) ||
+                                `HTTP ${res.status || "error"}`,
+                        };
+                    }
+                    return { ok: true, path: data.path || "" };
+                } catch (err) {
+                    return {
+                        ok: false,
+                        error: String(err && err.message ? err.message : err),
+                    };
+                }
+            }
+
+            async function runCopyFileButtonFeedback(
+                copyBtn,
+                rawName,
+                statusAccount,
+            ) {
+                if (!copyBtn || !rawName) return;
+                const defaultLabel = copyBtn.textContent || "Copy";
+                copyBtn.disabled = true;
+                const copied = await copyToClipboard(rawName);
+                if (statusAccount) {
+                    appendStatus(
+                        copied
+                            ? `Copied filename for ${statusAccount}: ${rawName}`
+                            : `Could not copy filename for ${statusAccount}.`,
+                    );
+                }
+                if (copied) {
+                    copyBtn.classList.add("copied");
+                    copyBtn.textContent = "Copied";
+                    setTimeout(() => {
+                        copyBtn.classList.remove("copied");
+                        copyBtn.textContent = defaultLabel;
+                        copyBtn.disabled = false;
+                    }, 1000);
+                } else {
+                    copyBtn.textContent = "Retry";
+                    setTimeout(() => {
+                        copyBtn.textContent = defaultLabel;
+                        copyBtn.disabled = false;
+                    }, 1200);
+                }
             }
 
             function renderAccountRowHeadHtml(
@@ -12353,8 +13070,23 @@
                 state.selectedRarities = new Set(state.allRarities);
                 state.selectedCardTypes = new Set(ALL_CARD_TYPES);
 
+                await migrateCardMarksToAccountFiles(documents);
+                hydrateCardMarksFromAccountDocuments(documents);
+                clearAccountOverviewCache();
+
                 buildFilterCheckboxes();
                 applyFiltersAndRender();
+                const prewarmCatalogModel = () => {
+                    ensureCatalogTradeShareIndex();
+                    if (!isCatalogModelWarm()) buildCatalogBaseModel();
+                };
+                if ("requestIdleCallback" in window) {
+                    requestIdleCallback(prewarmCatalogModel, {
+                        timeout: 1200,
+                    });
+                } else {
+                    setTimeout(prewarmCatalogModel, 0);
+                }
                 scheduleCatalogWarmup();
                 const missingMetaNote =
                     parseResult.tradeMissingProfileMetaCount > 0
@@ -13989,7 +14721,16 @@
                             { html: true },
                         );
                         if (!ok) return;
-                        removeOneTradedCopy(accountUnpair, gave);
+                        const undoResult = await undoOneTradedCopy(
+                            accountUnpair,
+                            gave,
+                        );
+                        if (!undoResult) return;
+                        showToast(
+                            `Removed one traded copy.${formatUndoTradedCopyFeedback(undoResult.dustResult, undoResult.persistResult)}`,
+                            "success",
+                            3000,
+                        );
                         renderTradedView();
                         return;
                     }
@@ -14006,7 +14747,16 @@
                         { html: true },
                     );
                     if (!ok) return;
-                    removeTradedPairingAt(accountUnpair, gave, idx);
+                    if (!removeTradedPairingAt(accountUnpair, gave, idx)) return;
+                    const undoResult = await finalizeUndoTradedCopy(
+                        accountUnpair,
+                        gave,
+                    );
+                    showToast(
+                        `Removed trade pairing.${formatUndoTradedCopyFeedback(undoResult.dustResult, undoResult.persistResult)}`,
+                        "success",
+                        3000,
+                    );
                     renderTradedView();
                 });
                 return article;
@@ -14129,10 +14879,74 @@
                 return allIds;
             }
 
+            function invalidateMarkedViewsDomCache() {
+                _viewDomCache.delete("traded");
+                _viewDomCache.delete("shared");
+                _viewDomCache.delete("accounts");
+            }
+
             function invalidateCatalogAccountCounts() {
                 state.catalogTradeMetaVersion++;
                 state.catalogAccountCountsCache = null;
                 state.catalogBaseModelCache = null;
+                state.catalogTradeShareIndex = null;
+                state.catalogTradeShareIndexVersion = -1;
+                invalidateMarkedViewsDomCache();
+                for (const view of CATALOG_VIEWS) {
+                    const cached = _viewDomCache.get(view);
+                    if (
+                        cached &&
+                        !isCatalogViewCacheEntryValid(cached)
+                    ) {
+                        _viewDomCache.delete(view);
+                    }
+                }
+            }
+
+            function isCatalogModelWarm() {
+                return !!(
+                    state.catalogBaseModelCache &&
+                    state.catalogBaseModelRowsRef === state.rows &&
+                    state.catalogBaseModelCardmasterRef === state.cardmaster &&
+                    state.catalogBaseModelLocalisationRef ===
+                        state.localisation &&
+                    state.catalogBaseModelTradeMetaVersion ===
+                        state.catalogTradeMetaVersion &&
+                    state.cardmaster &&
+                    state.localisation &&
+                    state.cardmap
+                );
+            }
+
+            function ensureCatalogTradeShareIndex() {
+                if (
+                    state.catalogTradeShareIndex &&
+                    state.catalogTradeShareIndexVersion ===
+                        state.catalogTradeMetaVersion
+                ) {
+                    return state.catalogTradeShareIndex;
+                }
+                const index = new Map();
+                for (const key of state.tradedSet) {
+                    const meta = state.tradedMeta.get(key);
+                    let traded = 1;
+                    if (meta && Number.isFinite(meta.count) && meta.count > 0)
+                        traded = meta.count;
+                    index.set(key, { traded, shared: 0 });
+                }
+                for (const key of state.sharedSet) {
+                    const meta = state.sharedMeta.get(key);
+                    let shared = 1;
+                    if (meta && Number.isFinite(meta.count) && meta.count > 0)
+                        shared = meta.count;
+                    const prev = index.get(key);
+                    if (prev) prev.shared = shared;
+                    else index.set(key, { traded: 0, shared });
+                }
+                state.catalogTradeShareIndex = index;
+                state.catalogTradeShareIndexVersion =
+                    state.catalogTradeMetaVersion;
+                return index;
             }
 
             function getCatalogRarityKeys(allIds) {
@@ -14153,13 +14967,20 @@
                 return keys;
             }
 
-            function getAvailableCopyCount(cardId, accountCounts) {
+            function getAvailableCopyCount(
+                cardId,
+                accountCounts,
+                tradeIndex,
+            ) {
+                const marksIndex =
+                    tradeIndex || ensureCatalogTradeShareIndex();
                 let totalCopies = 0;
                 for (const [account, count] of accountCounts) {
+                    const marks = marksIndex.get(tradedKey(account, cardId));
                     const remaining =
                         count -
-                        getTradedCount(account, cardId) -
-                        getSharedCount(account, cardId);
+                        (marks ? marks.traded : 0) -
+                        (marks ? marks.shared : 0);
                     if (remaining <= 0) continue;
                     totalCopies += remaining;
                 }
@@ -14182,6 +15003,7 @@
                 const allIds = getAllKnownCardIds();
                 const { cardToAccounts, accountFirstSeenMs } =
                     buildCardAccountCounts();
+                const tradeIndex = ensureCatalogTradeShareIndex();
                 const sections = new Map();
                 const byCardId = new Map();
                 let availableCards = 0;
@@ -14200,6 +15022,7 @@
                     const totalCopies = getAvailableCopyCount(
                         cardId,
                         accountCounts,
+                        tradeIndex,
                     );
                     if (totalCopies > 0) {
                         availableCards++;
@@ -14261,7 +15084,10 @@
                 cardId,
                 accountCounts,
                 accountFirstSeenMs,
+                tradeIndex,
             ) {
+                const marksIndex =
+                    tradeIndex || ensureCatalogTradeShareIndex();
                 const accountRows = [];
                 const pullHistory = getCatalogPullHistorySummary(cardId);
                 const accountPullStats =
@@ -14269,10 +15095,11 @@
                         ? pullHistory.accountStats
                         : new Map();
                 for (const [account, count] of accountCounts) {
+                    const marks = marksIndex.get(tradedKey(account, cardId));
                     const remaining =
                         count -
-                        getTradedCount(account, cardId) -
-                        getSharedCount(account, cardId);
+                        (marks ? marks.traded : 0) -
+                        (marks ? marks.shared : 0);
                     if (remaining <= 0) continue;
                     const pullStats = accountPullStats.get(account) || {};
                     accountRows.push({
@@ -14505,16 +15332,22 @@
                 selectedCards,
                 cardToAccounts,
                 accountFirstSeenMs,
+                tradeIndex,
             ) {
+                const marksIndex =
+                    tradeIndex || ensureCatalogTradeShareIndex();
                 const rowsByAccount = new Map();
                 for (const card of selectedCards) {
                     const accountCounts =
                         cardToAccounts.get(card.id) || new Map();
                     for (const [account, count] of accountCounts) {
+                        const marks = marksIndex.get(
+                            tradedKey(account, card.id),
+                        );
                         const remaining =
                             count -
-                            getTradedCount(account, card.id) -
-                            getSharedCount(account, card.id);
+                            (marks ? marks.traded : 0) -
+                            (marks ? marks.shared : 0);
                         if (remaining <= 0) continue;
                         let row = rowsByAccount.get(account);
                         if (!row) {
@@ -14622,11 +15455,10 @@
                     .map((row) => {
                         const rawFileLabel =
                             state.accountFileLabelMap.get(row.account) || "";
-                        const preferredRaw = rawFileLabel || row.account;
-                        const preferredShort = buildFileLabelMeta(preferredRaw);
-                        const accountNameLabel = rawFileLabel
-                            ? `<span title="${escapeHtml(preferredRaw)}">${escapeHtml(preferredShort || preferredRaw)}</span>`
-                            : escapeHtml(row.account);
+                        const accountNameLabel = renderAccountFileLabelWithCopyHtml(
+                            row.account,
+                            rawFileLabel,
+                        );
                         const isSelectedAccount =
                             row.account === state.multiSelectedAccount;
                         const shinedustTitle =
@@ -14759,7 +15591,7 @@
                                 )
                               ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
                               : "";
-                        return `<div class="multi-result-item${isSelectedAccount ? " selected pinned" : ""}" data-multi-result-account="${escapeHtml(row.account)}"><div class="multi-result-head"><div class="multi-result-head-top">${renderAccountRowHeadHtml(row.account, accountNameLabel, isSelectedAccount)}<div class="multi-score">${formatNumber(row.matchedUnique)}/${formatNumber(selectedCount)}</div></div>${renderCatalogAccountMetaHtml({ copies: row.totalCopies, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays, shinedustTitle })}</div>${matchedHtml ? `<div class="multi-card-mini-list">${matchedHtml}</div>` : ""}${missingCards.length ? `<div class="multi-card-mini-list">${missingHtml}${extraMissing}</div>` : ""}<div class="multi-result-actions"><button type="button" data-copy-account="${escapeHtml(preferredRaw)}">Copy account</button>${startTradeBtn}</div></div>`;
+                        return `<div class="multi-result-item${isSelectedAccount ? " selected pinned" : ""}" data-multi-result-account="${escapeHtml(row.account)}"><div class="multi-result-head"><div class="multi-result-head-top">${renderAccountRowHeadHtml(row.account, accountNameLabel, isSelectedAccount)}<div class="multi-score">${formatNumber(row.matchedUnique)}/${formatNumber(selectedCount)}</div></div>${renderCatalogAccountMetaHtml({ copies: row.totalCopies, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays, shinedustTitle })}</div>${matchedHtml ? `<div class="multi-card-mini-list">${matchedHtml}</div>` : ""}${missingCards.length ? `<div class="multi-card-mini-list">${missingHtml}${extraMissing}</div>` : ""}<div class="multi-result-actions">${renderOpenAccountMetadataButtonHtml(row.account)}${startTradeBtn}</div></div>`;
                     })
                     .join("");
                 const clipped =
@@ -14917,11 +15749,7 @@
                 );
             }
 
-            async function markSelectedCardTraded(
-                account,
-                cardId,
-                renderAfter,
-            ) {
+            async function markSelectedCardTraded(account, cardId) {
                 if (!account || !cardId) return;
                 const preferredAccountName =
                     state.accountFileLabelMap.get(account) || account;
@@ -14929,33 +15757,45 @@
                 if (!result) {
                     return;
                 }
-                addTradedCopy(account, cardId);
-                let partnerReceivedId = "";
                 if (result.receivedCardId) {
                     const ok = await showConfirm(
                         `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cardId)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(preferredAccountName)}.`,
                         { html: true },
                     );
-                    if (ok) {
-                        setTradeMeta(account, cardId, {
-                            receivedCardId: result.receivedCardId,
-                            timestampMs: Date.now(),
-                        });
-                        partnerReceivedId = result.receivedCardId;
-                        showToast(
-                            `Recorded trade: ${formatCardLabel(cardId)} → ${formatCardLabel(result.receivedCardId)}`,
-                            "success",
-                            4000,
-                            { html: true },
-                        );
-                    } else {
-                        showToast("Marked as traded.", "success", 2500);
+                    if (!ok) {
+                        return;
                     }
-                } else {
-                    showToast("Marked as traded.", "success", 2500);
                 }
-                if (typeof renderAfter === "function")
-                    renderAfter(partnerReceivedId);
+                addTradedCopy(account, cardId);
+                let partnerReceivedId = "";
+                if (result.receivedCardId) {
+                    setTradeMeta(account, cardId, {
+                        receivedCardId: result.receivedCardId,
+                        timestampMs: Date.now(),
+                    });
+                    partnerReceivedId = result.receivedCardId;
+                }
+                const persistResult = await persistAccountCardMarks(account);
+                const dustResult = await deductShinedustForTrade(
+                    account,
+                    cardId,
+                );
+                const persistWarn = formatTradePersistWarning(persistResult);
+                if (result.receivedCardId) {
+                    showToast(
+                        `Recorded trade: ${formatCardLabel(cardId)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                        "success",
+                        4000,
+                        { html: true },
+                    );
+                } else {
+                    showToast(
+                        `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                        "success",
+                        2500,
+                    );
+                }
+                refreshDashboardAfterTradeMarks(cardId, partnerReceivedId);
             }
 
             async function startTradeForMultiAccount(
@@ -15113,6 +15953,8 @@
                                 b.setAttribute("aria-pressed", "false");
                             });
                         rebuildMultiSelectionUI();
+                        if (state.view === "multisearch")
+                            refreshMultiSearchPickerOnly();
                     });
             }
 
@@ -15134,18 +15976,57 @@
                     applyMultiAccountPinToggle(account);
                 });
                 el.rows
-                    .querySelectorAll("[data-copy-account]")
+                    .querySelectorAll("[data-copy-file]")
                     .forEach((btn) => {
-                        btn.addEventListener("click", async () => {
+                        if (__catalogSideAttachedElements.has(btn)) return;
+                        __catalogSideAttachedElements.add(btn);
+                        btn.addEventListener("click", async (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const rawName =
+                                btn.getAttribute("data-copy-file") || "";
                             const account =
-                                btn.getAttribute("data-copy-account") || "";
+                                btn.getAttribute("data-account-label-for") ||
+                                "";
+                            if (!rawName) return;
+                            await runCopyFileButtonFeedback(
+                                btn,
+                                rawName,
+                                account,
+                            );
+                        });
+                    });
+                el.rows
+                    .querySelectorAll("[data-open-account-metadata]")
+                    .forEach((btn) => {
+                        if (__catalogSideAttachedElements.has(btn)) return;
+                        __catalogSideAttachedElements.add(btn);
+                        btn.addEventListener("click", async (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const account =
+                                btn.getAttribute(
+                                    "data-open-account-metadata",
+                                ) || "";
                             if (!account) return;
-                            const ok = await copyToClipboard(account);
-                            const old = btn.textContent;
-                            btn.textContent = ok ? "Copied" : "Retry";
-                            setTimeout(() => {
-                                btn.textContent = old;
-                            }, 900);
+                            const result = await openAccountMetadata(account);
+                            if (result.ok) {
+                                const pathNote = result.path
+                                    ? ` (${result.path})`
+                                    : "";
+                                showToast(
+                                    `Opened account metadata${pathNote}.`,
+                                    "success",
+                                    2800,
+                                );
+                            } else {
+                                showToast(
+                                    result.error ||
+                                        "Could not open account metadata.",
+                                    "warn",
+                                    3500,
+                                );
+                            }
                         });
                     });
                 el.rows
@@ -15163,10 +16044,7 @@
                                 btn.getAttribute(
                                     "data-multi-mark-traded-card",
                                 ) || "";
-                            if (account) state.multiSelectedAccount = account;
-                            await markSelectedCardTraded(account, cardId, () =>
-                                deferRender(renderMultiCardSearchView),
-                            );
+                            await markSelectedCardTraded(account, cardId);
                         });
                     });
                 el.rows
@@ -15185,16 +16063,24 @@
                                     "data-multi-mark-shared-card",
                                 ) || "";
                             if (!account || !cardId) return;
-                            if (account) state.multiSelectedAccount = account;
                             const preferredAccountName =
                                 state.accountFileLabelMap.get(account) ||
                                 account;
                             showConfirm(
                                 `Mark ${formatCardLabel(cardId)} as shared for ${escapeHtml(preferredAccountName)}?`,
                                 { html: true },
-                            ).then((confirmed) => {
+                            ).then(async (confirmed) => {
                                 if (!confirmed) return;
                                 addSharedCopy(account, cardId);
+                                const persistResult =
+                                    await persistAccountCardMarks(account);
+                                const persistWarn =
+                                    formatCardMarksPersistWarning(
+                                        persistResult,
+                                    );
+                                if (persistWarn) {
+                                    showToast(persistWarn.trim(), "warn", 3500);
+                                }
                                 deferRender(renderMultiCardSearchView);
                             });
                         });
@@ -15210,7 +16096,6 @@
                                 btn.getAttribute(
                                     "data-multi-start-trade-account",
                                 ) || "";
-                            if (account) state.multiSelectedAccount = account;
                             const fileName =
                                 btn.getAttribute(
                                     "data-multi-start-trade-file",
@@ -15323,7 +16208,9 @@
                         workspaceTabResizeObserver = null;
                     }
                     workspaceTabResizeObserver = new ResizeObserver(() => {
-                        syncWorkspaceTabIndicator({ instant: true });
+                        scheduleCoalescedLayout(() =>
+                            syncWorkspaceTabIndicator({ instant: true }),
+                        );
                     });
                     workspaceTabResizeObserver.observe(tabsBar);
                 }
@@ -15341,7 +16228,7 @@
                     instant: options.instant === true,
                 });
                 if (state.view === "multisearch")
-                    syncMultiSearchStickyLayoutMetrics();
+                    syncMultiSearchStickyLayoutMetricsSoon();
             }
 
             function attachSectionSwitcherStickyMetrics() {
@@ -15357,7 +16244,7 @@
                     }
                     sectionSwitcherStickyResizeObserver = new ResizeObserver(
                         () => {
-                            syncSectionSwitcherStackHeight({ instant: true });
+                            syncSectionSwitcherStackHeightSoon({ instant: true });
                         },
                     );
                     sectionSwitcherStickyResizeObserver.observe(sw);
@@ -15379,6 +16266,23 @@
                     multiSearchStickyResizeObserver.disconnect();
                     multiSearchStickyResizeObserver = null;
                 }
+            }
+
+            function isMultiSearchExpansionListView(model) {
+                const isAllExpansions =
+                    state.multiExpansionFilter === "__all__";
+                const hasCardSearch =
+                    String(state.multiCardSearch || "").trim() !== "";
+                const hasRaritySelection =
+                    !model.allRaritiesSelected &&
+                    state.multiSelectedRarities.size > 0;
+                const hasWishlistFilter = state.multiWishlistOnly;
+                return (
+                    isAllExpansions &&
+                    !hasCardSearch &&
+                    !hasRaritySelection &&
+                    !hasWishlistFilter
+                );
             }
 
             function syncMultiSearchStickySecondaryTop() {
@@ -15520,7 +16424,7 @@
                 if (vv) {
                     multiSearchStickyVvResizeHandler = () => {
                         if (state.view === "multisearch")
-                            syncMultiSearchStickyLayoutMetrics();
+                            syncMultiSearchStickyLayoutMetricsSoon();
                     };
                     vv.addEventListener(
                         "resize",
@@ -15531,7 +16435,7 @@
 
                 if (typeof ResizeObserver === "undefined") return;
                 multiSearchStickyResizeObserver = new ResizeObserver(() => {
-                    syncMultiSearchStickyLayoutMetrics();
+                    syncMultiSearchStickyLayoutMetricsSoon();
                 });
                 multiSearchStickyResizeObserver.observe(selected);
                 const stickyPanel = document.querySelector(
@@ -15540,10 +16444,13 @@
                 if (stickyPanel)
                     multiSearchStickyResizeObserver.observe(stickyPanel);
                 const controlsEl = page.querySelector(".catalog-controls");
-                const mainCol = page.querySelector(".multi-search-picker-main");
+                const pickerColumn = page.querySelector(
+                    ".multi-search-picker-column",
+                );
                 if (controlsEl)
                     multiSearchStickyResizeObserver.observe(controlsEl);
-                if (mainCol) multiSearchStickyResizeObserver.observe(mainCol);
+                if (pickerColumn)
+                    multiSearchStickyResizeObserver.observe(pickerColumn);
             }
 
             function rebuildMultiSelectionUI(options) {
@@ -15635,17 +16542,8 @@
             function renderMultiSearchSectionsFromModel(model) {
                 const isAllExpansions =
                     state.multiExpansionFilter === "__all__";
-                const hasCardSearch =
-                    String(state.multiCardSearch || "").trim() !== "";
-                const hasRaritySelection =
-                    !model.allRaritiesSelected &&
-                    state.multiSelectedRarities.size > 0;
-                const hasWishlistFilter = state.multiWishlistOnly;
                 const showingExpansionList =
-                    isAllExpansions &&
-                    !hasCardSearch &&
-                    !hasRaritySelection &&
-                    !hasWishlistFilter;
+                    isMultiSearchExpansionListView(model);
                 const renderedSections = model.filteredSections;
                 const hasVisibleCards = renderedSections.length > 0;
 
@@ -15792,8 +16690,11 @@
                     return;
 
                 const page = el.rows.querySelector(".multi-search-page");
+                const pickerColumn = page?.querySelector(
+                    ".multi-search-picker-column",
+                );
                 const mainEl = page?.querySelector(".multi-search-picker-main");
-                if (!page || !mainEl) {
+                if (!page || !mainEl || !pickerColumn) {
                     renderMultiCardSearchView();
                     return;
                 }
@@ -15856,13 +16757,9 @@
 
                 const sectionsHtml = renderMultiSearchSectionsFromModel(model);
                 const hasControls = page.querySelector(".catalog-controls");
+                mainEl.style.minHeight = "";
 
-                let pickerMainHeightLockEl = null;
                 if (mainEl && hasControls) {
-                    pickerMainHeightLockEl = mainEl;
-                    const prevMainH = mainEl.getBoundingClientRect().height;
-                    if (prevMainH > 2)
-                        mainEl.style.minHeight = `${Math.ceil(prevMainH)}px`;
                     mainEl.innerHTML = sectionsHtml;
                     syncMultiPickerControlsFromState();
                     _attachMultiSearchPickerSectionListeners(model);
@@ -15896,10 +16793,9 @@
                 syncMultiSearchStickyLayoutMetrics();
 
                 requestAnimationFrame(() => {
-                    if (pickerMainHeightLockEl)
-                        pickerMainHeightLockEl.style.minHeight = "";
+                    mainEl.style.minHeight = "";
                     restorePickerScroll();
-                    syncMultiSearchStickyLayoutMetrics();
+                    syncMultiSearchStickyLayoutMetricsSoon();
                     attachMultiSearchStickyLayoutWatch();
                     const searchInput =
                         document.getElementById("multiCardSearch");
@@ -16157,7 +17053,7 @@
                     selectedCards,
                     accountRows,
                 );
-                el.rows.innerHTML = `<div class="multi-search-page">${selectedHtml}<div class="multi-search-filter-backdrop" aria-hidden="true"></div>${controlsHtml}<div class="multi-search-picker-main">${sectionsHtml}</div>${resultsHtml}</div>`;
+                el.rows.innerHTML = `<div class="multi-search-page">${selectedHtml}<div class="multi-search-picker-column"><div class="multi-search-filter-backdrop" aria-hidden="true"></div>${controlsHtml}<div class="multi-search-picker-main">${sectionsHtml}</div></div>${resultsHtml}</div>`;
 
                 void el.rows.offsetHeight;
                 {
@@ -16343,6 +17239,7 @@
                     btn.addEventListener("click", (event) => {
                         if (event.target.closest(".catalog-account-actions"))
                             return;
+                        if (event.target.closest(".copy-btn")) return;
                         if (event.target.closest("[data-pin-account]")) return;
                         if (
                             event.target.closest(
@@ -16399,17 +17296,50 @@
                     });
                 });
 
-                visit("[data-copy-account]", (btn) => {
-                    btn.addEventListener("click", async () => {
+                visit("[data-copy-file]", (btn) => {
+                    btn.addEventListener("click", async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const rawName =
+                            btn.getAttribute("data-copy-file") || "";
                         const account =
-                            btn.getAttribute("data-copy-account") || "";
+                            btn.getAttribute("data-account-label-for") ||
+                            "";
+                        if (!rawName) return;
+                        await runCopyFileButtonFeedback(
+                            btn,
+                            rawName,
+                            account,
+                        );
+                    });
+                });
+
+                visit("[data-open-account-metadata]", (btn) => {
+                    btn.addEventListener("click", async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const account =
+                            btn.getAttribute("data-open-account-metadata") ||
+                            "";
                         if (!account) return;
-                        const ok = await copyToClipboard(account);
-                        const old = btn.textContent;
-                        btn.textContent = ok ? "Copied" : "Retry";
-                        setTimeout(() => {
-                            btn.textContent = old;
-                        }, 900);
+                        const result = await openAccountMetadata(account);
+                        if (result.ok) {
+                            const pathNote = result.path
+                                ? ` (${result.path})`
+                                : "";
+                            showToast(
+                                `Opened account metadata${pathNote}.`,
+                                "success",
+                                2800,
+                            );
+                        } else {
+                            showToast(
+                                result.error ||
+                                    "Could not open account metadata.",
+                                "warn",
+                                3500,
+                            );
+                        }
                     });
                 });
 
@@ -16423,17 +17353,7 @@
                             const cardId =
                                 btn.getAttribute("data-mark-traded-card") || "";
                             if (!account || !cardId) return;
-                            await markSelectedCardTraded(
-                                account,
-                                cardId,
-                                (partnerId) =>
-                                    deferRender(() =>
-                                        refreshCatalogLibraryTradeShareLight(
-                                            cardId,
-                                            partnerId || "",
-                                        ),
-                                    ),
-                            );
+                            await markSelectedCardTraded(account, cardId);
                         });
                     },
                 );
@@ -16454,9 +17374,18 @@
                             showConfirm(
                                 `Mark ${formatCardLabel(cardId)} as shared for ${escapeHtml(preferredAccountName)}?`,
                                 { html: true },
-                            ).then((confirmed) => {
+                            ).then(async (confirmed) => {
                                 if (!confirmed) return;
                                 addSharedCopy(account, cardId);
+                                const persistResult =
+                                    await persistAccountCardMarks(account);
+                                const persistWarn =
+                                    formatCardMarksPersistWarning(
+                                        persistResult,
+                                    );
+                                if (persistWarn) {
+                                    showToast(persistWarn.trim(), "warn", 3500);
+                                }
                                 deferRender(() =>
                                     refreshCatalogLibraryTradeShareLight(
                                         cardId,
@@ -16712,17 +17641,11 @@
                               isPromoCard(selected.id);
                           const mappedFileName =
                               state.accountFileLabelMap.get(row.account) || "";
-                          const preferredRaw = mappedFileName || row.account;
-                          const preferredShort =
-                              buildFileLabelMeta(preferredRaw);
                           const accountNameLabel =
-                              preferredRaw !== row.account
-                                  ? `<span title="${escapeHtml(
-                                        preferredRaw,
-                                    )}">${escapeHtml(
-                                        preferredShort || preferredRaw,
-                                    )}</span>`
-                                  : escapeHtml(row.account);
+                              renderAccountFileLabelWithCopyHtml(
+                                  row.account,
+                                  mappedFileName,
+                              );
                           const accountTradeBlocked = isKnownTradeBlocked(row);
                           const tradeBtn = noTrade
                               ? ""
@@ -16775,9 +17698,7 @@
                               : "";
                           return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(
                               row.account,
-                          )}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned, historyButton)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}${historyHtml}<div class="catalog-account-actions"><button type="button" data-copy-account="${escapeHtml(
-                              preferredRaw,
-                          )}">Copy account</button>${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
+                          )}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned, historyButton)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}${historyHtml}<div class="catalog-account-actions">${renderOpenAccountMetadataButtonHtml(row.account)}${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
                       })
                     : null;
 
@@ -16889,6 +17810,7 @@
 
             function scheduleCatalogWarmup() {
                 if (state.catalogWarmupHandle) return;
+                if (isCatalogModelWarm()) return;
                 const run = () => {
                     state.catalogWarmupHandle = 0;
                     if (
@@ -16898,7 +17820,8 @@
                         !state.cardmap
                     )
                         return;
-                    buildCatalogBaseModel();
+                    ensureCatalogTradeShareIndex();
+                    if (!isCatalogModelWarm()) buildCatalogBaseModel();
                     ensureCatalogPullHistoryIndex();
                 };
 
@@ -17063,6 +17986,11 @@
                 state.selectedCatalogCardId = cardId;
                 state.selectedCatalogAccount = "";
                 state.catalogPullHistoryAccount = "";
+                _viewDomCache.delete("allcards");
+                if (state.view === "allcards") {
+                    deferRender(renderAllCardsView);
+                    return;
+                }
                 setView("allcards");
             }
 
@@ -17861,14 +18789,11 @@
                               const mappedFileName =
                                   state.accountFileLabelMap.get(row.account) ||
                                   "";
-                              const preferredRaw =
-                                  mappedFileName || row.account;
-                              const preferredShort =
-                                  buildFileLabelMeta(preferredRaw);
                               const accountNameLabel =
-                                  preferredRaw !== row.account
-                                      ? `<span title="${escapeHtml(preferredRaw)}">${escapeHtml(preferredShort || preferredRaw)}</span>`
-                                      : escapeHtml(row.account);
+                                  renderAccountFileLabelWithCopyHtml(
+                                      row.account,
+                                      mappedFileName,
+                                  );
                               const accountTradeBlocked =
                                   isKnownTradeBlocked(row);
                               const tradeBtn = noTrade
@@ -17907,7 +18832,7 @@
                                         row.account,
                                     )
                                   : "";
-                              return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(row.account)}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned, historyButton)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}${historyHtml}<div class="catalog-account-actions"><button type="button" data-copy-account="${escapeHtml(preferredRaw)}">Copy account</button>${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
+                              return `<div class="catalog-account-item${isPinned ? " selected pinned" : ""}" data-select-catalog-account="${escapeHtml(row.account)}" role="button" tabindex="0" aria-pressed="${isPinned ? "true" : "false"}" aria-label="${isPinned ? "Unpin account" : "Pin account"}">${renderAccountRowHeadHtml(row.account, accountNameLabel, isPinned, historyButton)}${renderCatalogAccountMetaHtml({ copies: row.count, shinedust: row.shinedust, instance: row.instance, ageDays: row.ageDays })}${historyHtml}<div class="catalog-account-actions">${renderOpenAccountMetadataButtonHtml(row.account)}${tradeBtn}${sharedBtn}${startTradeBtn}</div></div>`;
                           })
                         : null;
 
@@ -18219,6 +19144,26 @@
                     });
             }
 
+            function refreshDashboardAfterTradeMarks(
+                gaveCardId,
+                partnerReceivedId,
+            ) {
+                const gave = gaveCardId || "";
+                const partner = partnerReceivedId || "";
+                invalidateMarkedViewsDomCache();
+                if (state.view === "traded") {
+                    renderTradedView();
+                } else if (state.view === "accounts") {
+                    renderAccountOverview();
+                } else if (state.view === "multisearch") {
+                    deferRender(renderMultiCardSearchView);
+                } else if (state.view === "allcards") {
+                    deferRender(() =>
+                        refreshCatalogLibraryTradeShareLight(gave, partner),
+                    );
+                }
+            }
+
             function refreshCatalogLibraryTradeShareLight(
                 gaveCardId,
                 partnerReceivedId,
@@ -18258,7 +19203,11 @@
                 scheduleCatalogFooterLightRefresh(counts);
             }
 
-            function refreshCatalogLibraryMainOnly() {
+            function refreshCatalogLibraryExpansionOnly() {
+                refreshCatalogLibraryMainOnly({ skipSidePanel: true });
+            }
+
+            function refreshCatalogLibraryMainOnly(options) {
                 if (state.view !== "allcards") return;
                 cancelCatalogFooterLightIdle();
                 if (!state.cardmaster || !state.localisation || !state.cardmap)
@@ -18344,11 +19293,18 @@
                 void layout.offsetHeight;
                 restoreCatalogScroll();
 
-                renderCatalogSidePanel({
-                    patchOnly:
-                        !!sidePatchCardId &&
-                        sidePatchCardId === state.selectedCatalogCardId,
-                });
+                const skipSidePanel =
+                    options &&
+                    options.skipSidePanel &&
+                    sidePatchCardId &&
+                    sidePatchCardId === state.selectedCatalogCardId;
+                if (!skipSidePanel) {
+                    renderCatalogSidePanel({
+                        patchOnly:
+                            !!sidePatchCardId &&
+                            sidePatchCardId === state.selectedCatalogCardId,
+                    });
+                }
                 restoreCatalogScroll();
 
                 requestAnimationFrame(() => {
@@ -18483,7 +19439,7 @@
                             if (!code) return;
                             state.catalogExpansionFilter = code;
                             withCatalogExpansionTransition(
-                                refreshCatalogLibraryMainOnly,
+                                refreshCatalogLibraryExpansionOnly,
                             );
                         });
                     });
@@ -18496,7 +19452,7 @@
                                 return;
                             state.catalogExpansionFilter = "__all__";
                             withCatalogExpansionTransition(
-                                refreshCatalogLibraryMainOnly,
+                                refreshCatalogLibraryExpansionOnly,
                             );
                         });
                     });
@@ -18510,7 +19466,7 @@
                     expansionSelect.addEventListener("change", () => {
                         state.catalogExpansionFilter = expansionSelect.value;
                         withCatalogExpansionTransition(
-                            refreshCatalogLibraryMainOnly,
+                            refreshCatalogLibraryExpansionOnly,
                         );
                     });
 
@@ -18547,7 +19503,7 @@
                         if (state.catalogExpansionFilter === "__all__") return;
                         state.catalogExpansionFilter = "__all__";
                         withCatalogExpansionTransition(
-                            refreshCatalogLibraryMainOnly,
+                            refreshCatalogLibraryExpansionOnly,
                         );
                     });
 
@@ -18696,22 +19652,6 @@
                 }
 
                 el.rows
-                    .querySelectorAll("[data-copy-account]")
-                    .forEach((btn) => {
-                        btn.addEventListener("click", async () => {
-                            const account =
-                                btn.getAttribute("data-copy-account") || "";
-                            if (!account) return;
-                            const ok = await copyToClipboard(account);
-                            const old = btn.textContent;
-                            btn.textContent = ok ? "Copied" : "Retry";
-                            setTimeout(() => {
-                                btn.textContent = old;
-                            }, 900);
-                        });
-                    });
-
-                el.rows
                     .querySelectorAll(
                         "[data-mark-traded-account][data-mark-traded-card]",
                     )
@@ -18723,17 +19663,7 @@
                             const cardId =
                                 btn.getAttribute("data-mark-traded-card") || "";
                             if (!account || !cardId) return;
-                            await markSelectedCardTraded(
-                                account,
-                                cardId,
-                                (partnerId) =>
-                                    deferRender(() =>
-                                        refreshCatalogLibraryTradeShareLight(
-                                            cardId,
-                                            partnerId || "",
-                                        ),
-                                    ),
-                            );
+                            await markSelectedCardTraded(account, cardId);
                         });
                     });
 
@@ -18749,16 +19679,24 @@
                             const cardId =
                                 btn.getAttribute("data-mark-shared-card") || "";
                             if (!account || !cardId) return;
-                            const cardName = getCardInfo(cardId).name || cardId;
                             const preferredAccountName =
                                 state.accountFileLabelMap.get(account) ||
                                 account;
                             showConfirm(
                                 `Mark ${formatCardLabel(cardId)} as shared for ${escapeHtml(preferredAccountName)}?`,
                                 { html: true },
-                            ).then((confirmed) => {
+                            ).then(async (confirmed) => {
                                 if (!confirmed) return;
                                 addSharedCopy(account, cardId);
+                                const persistResult =
+                                    await persistAccountCardMarks(account);
+                                const persistWarn =
+                                    formatCardMarksPersistWarning(
+                                        persistResult,
+                                    );
+                                if (persistWarn) {
+                                    showToast(persistWarn.trim(), "warn", 3500);
+                                }
                                 deferRender(() =>
                                     refreshCatalogLibraryTradeShareLight(
                                         cardId,
@@ -19197,9 +20135,15 @@
                 const cards =
                     account.cards instanceof Map ? account.cards : new Map();
                 for (const [id, count] of cards) {
-                    entries.push({
+                    const remaining = getRemainingCopyCount(
+                        account.account,
                         id,
                         count,
+                    );
+                    entries.push({
+                        id,
+                        count: remaining,
+                        pulledCount: count,
                         info: getCardInfo(id),
                     });
                 }
@@ -20552,9 +21496,19 @@
                     account.visibleCardCount ?? account.totalCards;
                 const visibleUnique =
                     account.visibleUniqueCards ?? account.uniqueCards;
+                const pulledTotal = account.totalCards;
+                const availableTotal = getAccountAvailableCopyTotal(
+                    account.account,
+                    account.cards,
+                );
+                const copiesForMeta = cardFiltersActive
+                    ? (account.visibleCardCount ?? availableTotal)
+                    : availableTotal;
                 const countLabel = cardFiltersActive
-                    ? `${formatNumber(visibleCount)} ${pluralWord(visibleCount, "card", "cards")} shown · ${formatNumber(account.totalCards)} total`
-                    : `${formatNumber(account.totalCards)} total ${pluralWord(account.totalCards, "card", "cards")}`;
+                    ? `${formatNumber(visibleCount)} ${pluralWord(visibleCount, "card", "cards")} shown · ${formatNumber(pulledTotal)} pulled`
+                    : availableTotal !== pulledTotal
+                      ? `${formatNumber(availableTotal)} available · ${formatNumber(pulledTotal)} pulled`
+                      : `${formatNumber(pulledTotal)} total ${pluralWord(pulledTotal, "card", "cards")}`;
                 const uniqueLabel = cardFiltersActive
                     ? `${formatNumber(visibleUnique)} unique shown · ${formatNumber(account.uniqueCards)} total`
                     : `${formatNumber(account.uniqueCards)} unique ${pluralWord(account.uniqueCards, "card ID", "card IDs")}`;
@@ -20578,7 +21532,12 @@
                 const copyBtn = rowHead.querySelector("[data-copy-file]");
                 const getVisibleEntriesForGrid = () =>
                     sortCardEntriesByRarity(
-                        getAccountVisibleCardEntries(account, cardFilterConfig),
+                        filterAccountOverviewVisibleEntries(
+                            getAccountVisibleCardEntries(
+                                account,
+                                cardFilterConfig,
+                            ),
+                        ),
                     );
                 if (expanded) {
                     article.classList.add("is-row-expanded");
@@ -20637,9 +21596,6 @@
 
                 const metadata =
                     state.accountMetadataMap.get(account.account) || {};
-                const copiesForMeta = cardFiltersActive
-                    ? (account.visibleCardCount ?? account.totalCards)
-                    : account.totalCards;
                 const createdFormatted = formatMetadataTimestamp(
                     metadata.createdAt,
                 );
@@ -20726,6 +21682,9 @@
                 const disableTrade = !!options.disableTrade;
                 for (const item of items) {
                     const id = options.entries ? item.id : item;
+                    const pulledCount = options.entries
+                        ? Number(item.pulledCount ?? item.count) || 0
+                        : 0;
                     const count = options.entries ? item.count : 0;
                     const card = options.entries ? item.info : getCardInfo(id);
                     const imgPart = card.imageUrl
@@ -20740,11 +21699,15 @@
                             ? getSharedCount(account, id)
                             : getTradedCount(account, id);
                     }
-                    const qtyPart = options.showQuantity
-                        ? `<div class="qty">×${formatNumber(count)}</div>`
+                    const qtyValue = options.showQuantity
+                        ? count
                         : copyCount > 1
-                          ? `<div class="qty">×${formatNumber(copyCount)}</div>`
-                          : "";
+                          ? copyCount
+                          : 0;
+                    const qtyPart =
+                        options.showQuantity || qtyValue > 1
+                            ? `<div class="qty">×${formatNumber(qtyValue)}</div>`
+                            : "";
                     const noTrade =
                         card.rarityValue === 800 ||
                         card.rarityValue === 900 ||
@@ -20785,18 +21748,17 @@
                             ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="${escapeHtml(sharedRemoveTitle)}">\u2715</button>`
                             : "";
                     parts.push(
-                        `<div class="card-tile${tradedClass}${sharedClass}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(id, card))}</span></div></div>`,
+                        `<div class="card-tile${tradedClass}${sharedClass}" data-catalog-navigate-card="${escapeHtml(id)}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(id, card))}</span></div></div>`,
                     );
                 }
                 const grid = document.createElement("div");
                 grid.className = "cards-grid";
                 grid.innerHTML = parts.join("");
-                if (account) {
-                    grid.addEventListener("click", (e) => {
-                        const sharedBtn = e.target.closest(
-                            "[data-shared-remove-account]",
-                        );
-                        if (sharedBtn) {
+                grid.addEventListener("click", async (e) => {
+                    const sharedBtn = e.target.closest(
+                        "[data-shared-remove-account]",
+                    );
+                    if (sharedBtn && account) {
                             const acc =
                                 sharedBtn.getAttribute(
                                     "data-shared-remove-account",
@@ -20827,13 +21789,22 @@
                                     else refreshCatalogLibraryMainOnly();
                                 },
                             );
-                            return;
-                        }
-                        const btn = e.target.closest(".traded-btn");
-                        if (!btn) return;
-                        if (disableTrade) return;
-                        const acc = btn.dataset.account;
-                        const cid = btn.dataset.cardId;
+                        return;
+                    }
+                    const btn = e.target.closest(".traded-btn");
+                    if (!btn || !account || disableTrade) {
+                        const navTile = e.target.closest(
+                            "[data-catalog-navigate-card]",
+                        );
+                        if (!navTile) return;
+                        const navCardId =
+                            navTile.getAttribute("data-catalog-navigate-card") ||
+                            "";
+                        if (navCardId) navigateCatalogFromWishlistCard(navCardId);
+                        return;
+                    }
+                    const acc = btn.dataset.account;
+                    const cid = btn.dataset.cardId;
                         if (!acc || !cid) return;
                         const tile = btn.closest(".card-tile");
                         const alreadyTraded = isTraded(acc, cid);
@@ -20844,9 +21815,29 @@
                                     ? `Remove one traded copy of ${formatCardLabel(cid)}? (${formatNumber(tradedTotal)} marked; ${formatNumber(tradedTotal - 1)} will remain.)`
                                     : `Remove ${formatCardLabel(cid)} from traded cards?`;
                             showConfirm(tradedMsg, { html: true }).then(
-                                (confirmed) => {
+                                async (confirmed) => {
                                     if (!confirmed) return;
-                                    removeOneTradedCopy(acc, cid);
+                                    const undoResult = await undoOneTradedCopy(
+                                        acc,
+                                        cid,
+                                    );
+                                    if (!undoResult) return;
+                                    const undoFeedback =
+                                        formatUndoTradedCopyFeedback(
+                                            undoResult.dustResult,
+                                            undoResult.persistResult,
+                                        );
+                                    if (undoFeedback) {
+                                        showToast(
+                                            `Removed from traded.${undoFeedback}`,
+                                            undoFeedback.includes(
+                                                "Could not",
+                                            )
+                                                ? "warning"
+                                                : "success",
+                                            3000,
+                                        );
+                                    }
                                     tile.classList.toggle(
                                         "traded",
                                         isTraded(acc, cid),
@@ -20865,52 +21856,61 @@
                             );
                             return;
                         }
-                        const nowTraded = toggleTraded(acc, cid);
-                        tile.classList.toggle("traded", isTraded(acc, cid));
-                        if (nowTraded) {
-                            let partnerReceivedId = "";
-                            pickReceivedCard(acc, cid)
-                                .then(async (result) => {
-                                    if (result && result.receivedCardId) {
-                                        const accLabel =
-                                            state.accountFileLabelMap.get(
-                                                acc,
-                                            ) || acc;
-                                        const ok = await showConfirm(
-                                            `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cid)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(accLabel)}.`,
-                                            { html: true },
-                                        );
-                                        if (ok) {
-                                            setTradeMeta(acc, cid, {
-                                                receivedCardId:
-                                                    result.receivedCardId,
-                                                timestampMs: Date.now(),
-                                            });
-                                            partnerReceivedId =
-                                                result.receivedCardId;
-                                            showToast(
-                                                `Recorded trade: ${formatCardLabel(cid)} → ${formatCardLabel(result.receivedCardId)}`,
-                                                "success",
-                                                4000,
-                                                { html: true },
-                                            );
-                                            if (state.view === "traded")
-                                                renderTradedView();
-                                        }
-                                    }
-                                })
-                                .finally(() => {
-                                    if (state.view === "allcards")
-                                        deferRender(() =>
-                                            refreshCatalogLibraryTradeShareLight(
-                                                cid,
-                                                partnerReceivedId,
-                                            ),
-                                        );
-                                });
+                        const result = await pickReceivedCard(acc, cid);
+                        if (!result) {
+                            return;
                         }
-                    });
-                }
+                        if (result.receivedCardId) {
+                            const accLabel =
+                                state.accountFileLabelMap.get(acc) || acc;
+                            const ok = await showConfirm(
+                                `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cid)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(accLabel)}.`,
+                                { html: true },
+                            );
+                            if (!ok) {
+                                return;
+                            }
+                        }
+                        const nowTraded = toggleTraded(acc, cid);
+                        if (!nowTraded) {
+                            return;
+                        }
+                        tile.classList.toggle("traded", isTraded(acc, cid));
+                        let partnerReceivedId = "";
+                        if (result.receivedCardId) {
+                            setTradeMeta(acc, cid, {
+                                receivedCardId: result.receivedCardId,
+                                timestampMs: Date.now(),
+                            });
+                            partnerReceivedId = result.receivedCardId;
+                        }
+                        const persistResult =
+                            await persistAccountCardMarks(acc);
+                        const dustResult = await deductShinedustForTrade(
+                            acc,
+                            cid,
+                        );
+                        const persistWarn =
+                            formatTradePersistWarning(persistResult);
+                        if (result.receivedCardId) {
+                            showToast(
+                                `Recorded trade: ${formatCardLabel(cid)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                                "success",
+                                4000,
+                                { html: true },
+                            );
+                        } else if (dustResult || persistWarn) {
+                            showToast(
+                                `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                                "success",
+                                2500,
+                            );
+                        }
+                        refreshDashboardAfterTradeMarks(
+                            cid,
+                            partnerReceivedId,
+                        );
+                });
                 return grid;
             }
 
@@ -20953,6 +21953,11 @@
             function runWithExpansionPickerCrossfade(mainEl, run) {
                 if (!mainEl || prefersReducedMotion()) {
                     run();
+                    if (state.view === "multisearch") {
+                        requestAnimationFrame(() => {
+                            syncMultiSearchStickyLayoutMetricsSoon();
+                        });
+                    }
                     return;
                 }
                 clearExpansionPickerPhase(mainEl);
@@ -20966,6 +21971,8 @@
                         requestAnimationFrame(() => {
                             requestAnimationFrame(() => {
                                 mainEl.classList.remove("expansion-picker-in");
+                                if (state.view === "multisearch")
+                                    syncMultiSearchStickyLayoutMetricsSoon();
                             });
                         });
                     }
@@ -21127,6 +22134,8 @@
                 }
                 viewSwitchEnterGeneration += 1;
                 clearViewSwitchPhase();
+                if (state.view === "multisearch")
+                    disconnectMultiSearchStickyLayoutWatch();
                 setViewSwitchPhase("out");
                 window.setTimeout(() => {
                     const holdEnter = run() === true;
@@ -21226,15 +22235,15 @@
             }
 
             function applyViewSwitch(view, previousView) {
-                const wasDb = DB_VIEWS.includes(previousView);
-                const isDb = DB_VIEWS.includes(view);
+                const wasCacheable = CACHEABLE_VIEWS.includes(previousView);
+                const isCacheable = CACHEABLE_VIEWS.includes(view);
                 const lockedHeight = el.rows.offsetHeight;
                 if (lockedHeight > 0)
                     el.rows.style.minHeight = `${lockedHeight}px`;
-                if (wasDb) captureViewDom(previousView);
-                state.view = view;
+                if (wasCacheable) captureViewDom(previousView);
                 if (previousView === "multisearch" && view !== "multisearch")
                     disconnectMultiSearchStickyLayoutWatch();
+                state.view = view;
                 el.rowViewTab.classList.toggle("active", view === "rows");
                 el.accountViewTab.classList.toggle(
                     "active",
@@ -21264,21 +22273,22 @@
                         "hidden",
                         inStandaloneTool,
                     );
-                if ((inLibrary || inMultiSearch) && previousView !== view) {
+                const inCatalog = inLibrary || inMultiSearch;
+                if (inCatalog && previousView !== view && !peekViewDomCache(view)) {
                     scheduleCatalogWarmup();
-                    renderCatalogPlaceholder();
+                    if (!isCatalogModelWarm()) renderCatalogPlaceholder();
                 } else if (inWishlist && previousView !== view) {
                     renderWishlistPlaceholder();
                 }
                 const releaseHeightLock = () => {
                     el.rows.style.minHeight = "";
                 };
-                if (isDb && restoreViewDom(view)) {
+                if (isCacheable && restoreViewDom(view)) {
                     releaseHeightLock();
                     return false;
                 }
                 state.displayLimit = state.pageSize;
-                if (isDb) showViewSkeleton(view);
+                if (DB_VIEWS.includes(view)) showViewSkeleton(view);
                 deferRender(() => {
                     renderCurrent();
                     releaseHeightLock();
@@ -21638,10 +22648,7 @@
                 state.cardCollectionNumberMap =
                     buildCardCollectionNumberIndex(rawCardmapCache);
             }
-            loadTradedState();
-            loadTradedMeta();
-            loadSharedState();
-            loadSharedMeta();
+            loadLegacyCardMarksFromLocalStorage();
             loadWishlist();
             backfillMissingTradedTimestamps();
             backfillMissingSharedTimestamps();

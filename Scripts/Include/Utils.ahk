@@ -1125,7 +1125,28 @@ isSevtFileExist(){
         FileCount++
     }
     
-    return FileCount
+    return FileCount > 0
+}
+
+PromptClaimSpecialMissionsSevtMismatch(){
+    global botConfig
+
+    settingChanged := false
+
+    if (isSevtFileExist() && !botConfig.get("claimSpecialMissions")) {
+        MsgBox, 4, Setting Recommendation, A .sevt file was found, but the 'Claim Special Mission' setting is currently disabled.`n`nWould you like to enable and apply this setting now?
+        IfMsgBox, Yes
+        {
+            botConfig.set("claimSpecialMissions", 1, "ToolsAndSystem")
+            settingChanged := true
+        }
+    } else if (!isSevtFileExist() && botConfig.get("claimSpecialMissions")) {
+        MsgBox, 48, Notice, The 'Claim Special Mission' option is enabled, but the required .sevt file is missing, so the event cannot be recognized.`n`nThis setting will be automatically disabled.
+        botConfig.set("claimSpecialMissions", 0, "ToolsAndSystem")
+        settingChanged := true
+    }
+
+    return settingChanged
 }
 
 getKeyList(obj, type := "LIST"){
