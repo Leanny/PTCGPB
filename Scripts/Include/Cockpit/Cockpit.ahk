@@ -10,7 +10,7 @@
 ;   F5         -> force refresh
 ;===============================================================================
 
-#SingleInstance, force
+#SingleInstance, off ; one instance per mode (dashboard / --injection-queue), enforced manually below
 #NoEnv
 #KeyHistory 0
 SetBatchLines, -1
@@ -102,6 +102,7 @@ global INST_SEG_W_STK := 94
 global INST_SEG_W_IDLE := 84
 global INST_SEG_W_DEAD := 88
 global g_instSingleMode := true
+global g_dragTimersPaused := false
 global g_cockpitMainTabIdx := 1           ; Instances=1, Recent events=2 (skip expensive tab updates while hidden)
 global g_instLayoutLineCache := ""        ; avoids redundant Moves in Cockpit_LayoutInstancesSingle
 Loop, 12
@@ -112,6 +113,24 @@ botConfig.loadSettingsToConfig("ALL")
 g_lvAllColKeys := Cockpit_DefaultColumnKeys()
 if (Cockpit_HasArg("--injection-queue"))
     g_ageStandalone := true
+; Dashboard and Injection Queue run as separate processes of this same script,
+; so #SingleInstance is off and uniqueness is enforced per mode here.
+otherPid := Cockpit_FindOtherInstancePid(g_ageStandalone)
+if (otherPid) {
+    if (g_ageStandalone) {
+        WinActivate, Injection Queue ahk_class AutoHotkeyGUI
+        ExitApp
+    }
+    ; Replace the previous dashboard (old #SingleInstance force behavior),
+    ; without touching a running Injection Queue process.
+    DetectHiddenWindows, On
+    WinClose, ahk_pid %otherPid%,, 2
+    DetectHiddenWindows, Off
+    Process, WaitClose, %otherPid%, 3
+    Process, Exist, %otherPid%
+    if (ErrorLevel)
+        Process, Close, %otherPid%
+}
 if (!g_ageStandalone && !Cockpit_IsLaunchAllowed()) {
     MsgBox, 48, PTCGPB Cockpit, Start the bot from PTCGPB first.
     ExitApp
@@ -119,6 +138,10 @@ if (!g_ageStandalone && !Cockpit_IsLaunchAllowed()) {
 OnMessage(0x111, "Cockpit_OnCommand")
 OnMessage(0x20, "Cockpit_OnSetCursor")
 OnMessage(0x0112, "Cockpit_OnWmSysCommand")
+; Window drag enters a modal move loop that still dispatches WM_TIMER: each
+; Agg/Refresh tick would freeze the drag. Pause both timers while dragging.
+OnMessage(0x0231, "Cockpit_OnEnterSizeMove") ; WM_ENTERSIZEMOVE
+OnMessage(0x0232, "Cockpit_OnExitSizeMove")  ; WM_EXITSIZEMOVE
 Menu, CockpitRowMenu, Add, Open Instance Log, Cockpit_MenuOpenLog
 Menu, CockpitRowMenu, Add,,
 Menu, CockpitRowMenu, Add, Open Account Folder, Cockpit_MenuOpenAccountFolder
@@ -150,7 +173,7 @@ if (g_ageStandalone) {
         Gui, CockpitAge:Show, x%ax% y%ay% w680 h%g_ageWindowH%, Injection Queue
     }
     else
-        Gui, CockpitAge:Show, Center w680 h%g_ageWindowH%, Injection Queue
+        Gui, CockpitAge:Show, w680 h%g_ageWindowH%, Injection Queue
 } else {
     Cockpit_BuildGui()
     Agg_InitEngine()
@@ -336,6 +359,20 @@ Cockpit_AddPair(text, x, y, vname) {
 Cockpit_HasArg(flag) {
     cmd := DllCall("GetCommandLine", "Str")
     return InStr(cmd, flag) ? true : false
+}
+
+; PID of another AutoHotkey process running this script in the given mode
+; (wantQueue: 1 = --injection-queue, 0 = dashboard), or 0 if none.
+Cockpit_FindOtherInstancePid(wantQueue) {
+    myPid := DllCall("GetCurrentProcessId")
+    query := "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name LIKE '%autohotkey%' AND CommandLine LIKE '%Cockpit.ahk%'"
+    for proc in ComObjGet("winmgmts:").ExecQuery(query) {
+        if (proc.ProcessId = myPid)
+            continue
+        if ((InStr(proc.CommandLine, "--injection-queue") ? 1 : 0) = (wantQueue ? 1 : 0))
+            return proc.ProcessId
+    }
+    return 0
 }
 
 Cockpit_IsLaunchAllowed() {
@@ -2073,6 +2110,25 @@ Cockpit_OnCommand(wParam, lParam, msg, hwnd) {
     }
 }
 
+Cockpit_OnEnterSizeMove(wParam, lParam, msg, hwnd) {
+    global g_ageStandalone, g_dragTimersPaused
+    if (g_ageStandalone) ; queue process has no periodic timers
+        return
+    g_dragTimersPaused := true
+    SetTimer, Agg_Tick, Off
+    SetTimer, Cockpit_RefreshTicker, Off
+}
+
+Cockpit_OnExitSizeMove(wParam, lParam, msg, hwnd) {
+    global g_ageStandalone, g_dragTimersPaused
+    if (g_ageStandalone || !g_dragTimersPaused)
+        return
+    g_dragTimersPaused := false
+    ; RefreshTicker reschedules itself every 1000 ms once kicked.
+    SetTimer, Cockpit_RefreshTicker, % -250
+    SetTimer, Agg_Tick, % 1000
+}
+
 Cockpit_OnSetCursor(wParam, lParam, msg, hwnd) {
     global EV_HWND
     if (wParam = EV_HWND) {
@@ -2301,22 +2357,13 @@ Cockpit_OpenCardDatabase:
 return
 
 Cockpit_OpenAgeView:
-    global botConfig, g_ageWindowH
+    global botConfig
     botConfig.loadSettingsToConfig("ALL")
     if (botConfig.get("deleteMethod") = "Create Bots (13P)")
         return
-    Cockpit_AgeEnsureGui()
-    Gui, CockpitAge:Show, Hide w680 h%g_ageWindowH%, Injection Queue
-    Cockpit_AgeRefresh()
-    agePos := Cockpit_LoadWindowPosition("Age")
-    if (agePos.ok) {
-        ax := agePos.x
-        ay := agePos.y
-        Gui, CockpitAge:Show, x%ax% y%ay% w680 h%g_ageWindowH%, Injection Queue
-    }
-    else
-        Gui, CockpitAge:Show, w680 h%g_ageWindowH%, Injection Queue
-    SetTimer, Cockpit_AgeAutoRefresh, Off
+    ; Separate process: the queue UI must not share this process with Agg_Tick,
+    ; which starves it. If one is already running it self-activates and exits.
+    Run, "%A_AhkPath%" "%A_ScriptFullPath%" --injection-queue
 return
 
 Cockpit_AgeAutoRefresh:
