@@ -44,6 +44,7 @@ loadAccount() {
     session.set("accountHasPackInfo", 0)
     session.set("currentLoadedAccountIndex", 0)
     session.set("language", "")
+    session.set("accountFriendInfoChecked", "")
 
     if FileExist(outputTxt) {
         cycle := 0
