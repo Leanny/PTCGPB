@@ -603,6 +603,7 @@ RemoveFriends() {
     CreateStatusMessage("Friend removal completed. Processed " . friendsProcessed . " friends. Returning to main...",,,, false)
     LogInfo("RemoveFriends complete | account=" . cleanupAccount . " | processed=" . friendsProcessed . " | DeadCheckBeforeClear=" . DeadCheck)
     writeLastActivityEpoch(session.get("scriptName"), 4000)
+    DeadCheck := 0
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
     ClearFriendCleanupPending()
     session.set("friended", false)
@@ -1023,7 +1024,6 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
 
     if (session.get("accountFriendInfoChecked") = deviceAccount)
         return false
-    session.set("accountFriendInfoChecked", deviceAccount)
 
     CreateStatusMessage("Retrieving account info`nChecking saved metadata...",,,, false)
 
@@ -1037,6 +1037,7 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
     if (existingName != "" && existingName != "Unknown" && RegExMatch(existingFriendCode, "^\d{16}$")) {
         session.set("accountName", existingName)
         session.set("friendCode", existingFriendCode)
+        session.set("accountFriendInfoChecked", deviceAccount)
         return true
     }
 
@@ -1076,6 +1077,7 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
     if (saved) {
         session.set("accountName", accountMeta["accountName"])
         session.set("friendCode", accountMeta["friendCode"])
+        session.set("accountFriendInfoChecked", deviceAccount)
         CreateStatusMessage("Retrieving account info`nSaved name and Friend Code",,,, false)
         LogInfo("Saved account friend info for " . accountFileName)
     } else {
