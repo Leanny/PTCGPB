@@ -16,6 +16,31 @@
 ;===============================================================================
 
 ;-------------------------------------------------------------------------------
+; Schedule lock - serialize carddb schedule-accounts across instances
+;-------------------------------------------------------------------------------
+CreateAccountListSchedule_AcquireLock(timeoutMs := 0) {
+    lockName := "Global\PTCGPB_ScheduleAccounts"
+    hMutex := DllCall("CreateMutex", "Ptr", 0, "Int", false, "Str", lockName, "Ptr")
+    if (!hMutex)
+        return 0
+
+    waitMs := timeoutMs ? timeoutMs : 0xFFFFFFFF
+    waitResult := DllCall("WaitForSingleObject", "Ptr", hMutex, "UInt", waitMs, "UInt")
+    if (waitResult != 0 && waitResult != 0x80) {
+        DllCall("CloseHandle", "Ptr", hMutex)
+        return 0
+    }
+    return hMutex
+}
+
+CreateAccountListSchedule_ReleaseLock(hMutex) {
+    if (!hMutex)
+        return
+    DllCall("ReleaseMutex", "Ptr", hMutex)
+    DllCall("CloseHandle", "Ptr", hMutex)
+}
+
+;-------------------------------------------------------------------------------
 ; loadAccount - Load an account XML file into the game
 ;-------------------------------------------------------------------------------
 loadAccount() {
@@ -408,31 +433,31 @@ saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag :
     EnvSub, now, 1970, seconds
     IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
 
-    if (xmlFile != "" && filePath != "") {
-        FileGetTime, savedModTime, %filePath%, M
+    ; Only update account JSON metadata for canonical Saved-folder writes.
+    ; GodPacks/SpecificCards/Trades backups use a different filename and must not
+    ; overwrite metadata.fileName (CardDatabase trades resolve XML via Saved).
+    if (file = "All" && xmlFile != "" && filePath != "") {
         accountMeta := AccountMetadata_Get(session.get("scriptName"), xmlFile, filePath)
-        if (file = "All")
-            accountMeta["packCount"] := session.get("accountOpenPacks")
-        else
-            accountMeta["packCount"] := AccountMetadata_ExtractPackCount(xmlFile)
-        if (file = "All") {
-            flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
-                , "X": session.get("missionDoneList")["specialMissionsDone"]
-                , "T": session.get("missionDoneList")["accountHasPackInTesting"]
-                , "R": session.get("missionDoneList")["receivedGiftDone"]}
 
-            for flag, value in flags {
-                if (!accountMeta["flags"].HasKey(flag))
-                    accountMeta["flags"][flag] := AccountMetadata_NewFlag(0)
-                accountMeta["flags"][flag]["value"] := value ? 1 : 0
+        accountMeta["packCount"] := session.get("accountOpenPacks")
+        flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
+            , "X": session.get("missionDoneList")["specialMissionsDone"]
+            , "T": session.get("missionDoneList")["accountHasPackInTesting"]
+            , "R": session.get("missionDoneList")["receivedGiftDone"]}
+
+        for flag, value in flags {
+            if (!accountMeta["flags"].HasKey(flag))
+                accountMeta["flags"][flag] := AccountMetadata_NewFlag(0)
+            oldValue := accountMeta["flags"][flag]["value"]
+            accountMeta["flags"][flag]["value"] := value ? 1 : 0
+            if (oldValue != accountMeta["flags"][flag]["value"] || accountMeta["flags"][flag]["setAt"] = "")
                 accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
-                if (flag = "T" && value) {
-                    validUntil := savedModTime
-                    validUntil += 5, Days
-                    accountMeta["flags"][flag]["validUntil"] := validUntil
-                } else if (!value) {
-                    accountMeta["flags"][flag]["validUntil"] := ""
-                }
+            if (flag = "T" && value) {
+                validUntil := accountMeta["flags"][flag]["setAt"]
+                validUntil += 5, Days
+                accountMeta["flags"][flag]["validUntil"] := validUntil
+            } else if (!value) {
+                accountMeta["flags"][flag]["validUntil"] := ""
             }
         }
 
@@ -575,9 +600,10 @@ getMetaData() {
     }
 
     if (session.get("missionDoneList")["accountHasPackInTesting"]) {
-        validUntil := accountMeta["flags"]["T"]["validUntil"]
-        if (validUntil = "" && FileExist(accountPath)) {
-            FileGetTime, validUntil, %accountPath%, M
+        tFlag := accountMeta["flags"]["T"]
+        validUntil := tFlag["validUntil"]
+        if (validUntil = "" && tFlag["setAt"] != "") {
+            validUntil := tFlag["setAt"]
             validUntil += 5, Days
         }
         if(validUntil != "" && A_Now >= validUntil) {
@@ -600,10 +626,6 @@ setMetaData() {
         return
 
     accountPath := saveDir . "\" . accountFileName
-    originalModTime := ""
-    if (FileExist(accountPath))
-        FileGetTime, originalModTime, %accountPath%, M
-
     accountMeta := AccountMetadata_Get(session.get("scriptName"), accountFileName, accountPath)
     flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
         , "X": session.get("missionDoneList")["specialMissionsDone"]
@@ -617,8 +639,8 @@ setMetaData() {
         accountMeta["flags"][flag]["value"] := value ? 1 : 0
         if (oldValue != accountMeta["flags"][flag]["value"])
             accountMeta["flags"][flag]["setAt"] := value ? AccountMetadata_Now() : ""
-        if (flag = "T" && value && originalModTime != "") {
-            validUntil := originalModTime
+        if (flag = "T" && value && accountMeta["flags"][flag]["setAt"] != "") {
+            validUntil := accountMeta["flags"][flag]["setAt"]
             validUntil += 5, Days
             accountMeta["flags"][flag]["validUntil"] := validUntil
         } else if (!value) {
@@ -635,14 +657,20 @@ setMetaData() {
 HasFlagInMetadata(fileName, flag) {
     global session
 
-    if (IsObject(session) && session.get("scriptName") != "") {
-        metadataFound := false
-        metadataValue := AccountMetadata_GetFlag(session.get("scriptName"), fileName, flag, metadataFound)
-        if (metadataFound)
-            return metadataValue
+    if (!(IsObject(session) && session.get("scriptName") != ""))
+        return false
+
+    filePath := ""
+    if (session.get("accountFileName") = fileName && session.get("loadedAccount") != "")
+        filePath := session.get("loadedAccount")
+    else {
+        filePath := A_ScriptDir . "\..\Accounts\Saved\" . session.get("scriptName") . "\" . fileName
+        if (!FileExist(filePath))
+            filePath := ""
     }
 
-    return false
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), fileName, filePath)
+    return AccountEligibility_FlagIsSet(accountMeta, flag)
 }
 
 AccountEligibility_HoursSince(timestamp) {
@@ -954,7 +982,13 @@ CreateAccountList(instance) {
     if (forceRegeneration)
         command .= " --force-clear-used"
 
+    hScheduleLock := CreateAccountListSchedule_AcquireLock()
+    if (!hScheduleLock) {
+        LogError("Could not acquire schedule lock for instance " . instance)
+        return
+    }
     RunWait, %command%,, Hide
+    CreateAccountListSchedule_ReleaseLock(hScheduleLock)
     if (ErrorLevel)
         LogError("carddb schedule-accounts failed for instance " . instance)
 }
