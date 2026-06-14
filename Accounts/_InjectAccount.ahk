@@ -13,39 +13,58 @@ IniRead, winTitle, InjectAccount.ini, UserSettings, winTitle, 1
 IniRead, fileName, InjectAccount.ini, UserSettings, fileName, name
 IniRead, selectedFilePath, InjectAccount.ini, UserSettings, selectedFilePath, ""
 IniRead, sendFriendRequestAfterInject, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject, 0
+IniRead, favoriteFriendIDsIni, InjectAccount.ini, UserSettings, favoriteFriendIDs,
+if (favoriteFriendIDsIni = "ERROR")
+    favoriteFriendIDsIni := ""
+IniRead, favoriteFriendLabelsIni, InjectAccount.ini, UserSettings, favoriteFriendLabels,
+if (favoriteFriendLabelsIni = "ERROR")
+    favoriteFriendLabelsIni := ""
+IniRead, injectSelectedFriendIDsIni, InjectAccount.ini, UserSettings, injectSelectedFriendIDs,
+if (injectSelectedFriendIDsIni = "ERROR")
+    injectSelectedFriendIDsIni := ""
 IniRead, injectExtraFriendIDsIni, InjectAccount.ini, UserSettings, injectExtraFriendIDs,
 if (injectExtraFriendIDsIni = "ERROR")
     injectExtraFriendIDsIni := ""
+if (favoriteFriendIDsIni = "" && injectExtraFriendIDsIni != "") {
+    favoriteFriendIDsIni := injectExtraFriendIDsIni
+    if (injectSelectedFriendIDsIni = "")
+        injectSelectedFriendIDsIni := injectExtraFriendIDsIni
+}
 
 settingsIniFriend := A_ScriptDir . "\..\Settings.ini"
 IniRead, folderPath, %settingsIniFriend%, ToolsAndSystem, folderPath, C:\Program Files\Netease
-IniRead, injectFriendPrimary, %settingsIniFriend%, General, FriendID, ERROR
-if (injectFriendPrimary = "ERROR")
-    injectFriendPrimary := ""
 
-injectFriend2 := ""
-injectFriend3 := ""
-injectFriend4 := ""
-injectFriend5 := ""
-injectFriend6 := ""
-injectFriend7 := ""
-injectFriend8 := ""
-injectFriend9 := ""
-injectFriend10 := ""
-injectExtraCsv := injectExtraFriendIDsIni
-StringReplace, injectExtraCsv, injectExtraCsv, |, `,, All
-slotN := 0
-Loop, Parse, injectExtraCsv, `,
-{
-    id := Trim(A_LoopField)
-    if (id = "")
-        continue
-    slotN += 1
-    if (slotN > 9)
-        break
-    vn := "injectFriend" . (slotN + 1)
-    %vn% := id
-}
+favPick1 := 0
+favPick2 := 0
+favPick3 := 0
+favPick4 := 0
+favPick5 := 0
+favPick6 := 0
+favPick7 := 0
+favPick8 := 0
+favPick9 := 0
+favPick10 := 0
+favId1 := ""
+favId2 := ""
+favId3 := ""
+favId4 := ""
+favId5 := ""
+favId6 := ""
+favId7 := ""
+favId8 := ""
+favId9 := ""
+favId10 := ""
+favLabel1 := ""
+favLabel2 := ""
+favLabel3 := ""
+favLabel4 := ""
+favLabel5 := ""
+favLabel6 := ""
+favLabel7 := ""
+favLabel8 := ""
+favLabel9 := ""
+favLabel10 := ""
+LoadInjectFavoriteGuiState(favoriteFriendIDsIni, favoriteFriendLabelsIni, injectSelectedFriendIDsIni)
 
 ; --- Headless mode (called from the Card Dashboard HTML server) ---------
 headless := false
@@ -67,6 +86,7 @@ if (headless)
 ; -------------------------------------------------------------------------
 
 ; Set a custom font and size for better appearance
+Gui, Destroy
 Gui, Font, s10, Segoe UI
 Gui, Color, 1E1E1E  ; Dark background color
 Gui, Font, cDCDCDC  ; Light text color
@@ -105,42 +125,109 @@ Gui, Add, Button, x+10 yp w100 gBrowseFile, Browse
 Gui, Add, Text, x10 y+15 w450 cDCDCDC, MuMu Folder same as main script (C:\Program Files\Netease)
 Gui, Add, Edit, x10 y+5 vfolderPath w450 c000000 BackgroundFFFFFF, %folderPath%
 
-; Friend request option
+; Friend request options — 2 columns aligned to MuMu folder field (x10 + w450)
 friendCheckText := "Send friend request(s) after inject"
-Gui, Add, Checkbox, x10 y+12 vsendFriendRequestAfterInject Checked%sendFriendRequestAfterInject% cDCDCDC, %friendCheckText%
-Gui, Add, Text, x10 y+8 w450 cGray, Friend IDs (max 10)
-Gui, Add, Text, x10 y+6 w14 Right +0x200 section, 1
-Gui, Add, Edit, x28 ys-2 w200 h22 vinjectFriendPrimary ReadOnly Disabled cDCDCDC Background303030, %injectFriendPrimary%
-Gui, Add, Text, x238 ys w20 Right +0x200, 2
-Gui, Add, Edit, x260 ys-2 w200 h22 vinjectFriend2 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend2%
-Gui, Add, Text, x10 y+8 w14 Right +0x200 section, 3
-Gui, Add, Edit, x28 ys-2 w200 h22 vinjectFriend3 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend3%
-Gui, Add, Text, x238 ys w20 Right +0x200, 4
-Gui, Add, Edit, x260 ys-2 w200 h22 vinjectFriend4 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend4%
-Gui, Add, Text, x10 y+8 w14 Right +0x200 section, 5
-Gui, Add, Edit, x28 ys-2 w200 h22 vinjectFriend5 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend5%
-Gui, Add, Text, x238 ys w20 Right +0x200, 6
-Gui, Add, Edit, x260 ys-2 w200 h22 vinjectFriend6 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend6%
-Gui, Add, Text, x10 y+8 w14 Right +0x200 section, 7
-Gui, Add, Edit, x28 ys-2 w200 h22 vinjectFriend7 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend7%
-Gui, Add, Text, x238 ys w20 Right +0x200, 8
-Gui, Add, Edit, x260 ys-2 w200 h22 vinjectFriend8 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend8%
-Gui, Add, Text, x10 y+8 w14 Right +0x200 section, 9
-Gui, Add, Edit, x28 ys-2 w200 h22 vinjectFriend9 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend9%
-Gui, Add, Text, x238 ys w20 Right +0x200, 10
-Gui, Add, Edit, x260 ys-2 w200 h22 vinjectFriend10 Number Limit16 c000000 BackgroundFFFFFF, %injectFriend10%
+sendFriendCheckOpt := sendFriendRequestAfterInject ? "Checked" : ""
+Gui, Add, Checkbox, x10 y+12 vsendFriendRequestAfterInject %sendFriendCheckOpt% cDCDCDC, %friendCheckText%
+Gui, Add, Text, x10 y+8 w450 cGray, Friends (saved). Check to send on this inject (max 10):
+favGridX := 10
+favGridW := 450
+favGridRight := favGridX + favGridW
+favColGap := 16
+favColW := (favGridW - favColGap) // 2
+favC1EndX := favGridX + favColW
+favEditH := 22
+favChkH := 13
+favChkW := 13
+favChkYOffset := (favEditH - favChkH) // 2
+favNameOff := 16
+favNameW := 71
+favFieldGap := 4
+favC1ChkX := favGridX
+favC1NameX := favGridX + favNameOff
+favC1IdX := favC1NameX + favNameW + favFieldGap
+favC1IdW := favC1EndX - favC1IdX
+favC2ChkX := favC1EndX + favColGap
+favC2NameX := favC2ChkX + favNameOff
+favC2IdX := favC2NameX + favNameW + favFieldGap
+favC2IdW := favGridRight - favC2IdX
+Gui, Font, s8 cGray
+Gui, Add, Text, x%favC1NameX% y+4 w%favNameW% Center, Name
+Gui, Add, Text, x%favC1IdX% yp w%favC1IdW% Center, Friend ID
+Gui, Add, Text, x%favC2NameX% yp w%favNameW% Center, Name
+Gui, Add, Text, x%favC2IdX% yp w%favC2IdW% Center, Friend ID
+Gui, Font, s10 cDCDCDC
+Loop, 5 {
+    leftIdx := A_Index
+    rightIdx := A_Index + 5
+    labelVarL := "favLabel" . leftIdx
+    idVarL := "favId" . leftIdx
+    labelVarR := "favLabel" . rightIdx
+    idVarR := "favId" . rightIdx
+    pickVarL := "favPick" . leftIdx
+    pickVarR := "favPick" . rightIdx
+    pickOptL := %pickVarL% ? "Checked" : ""
+    pickOptR := %pickVarR% ? "Checked" : ""
+    ctrlLabelL := "FavLabel" . leftIdx
+    ctrlIdL := "FavId" . leftIdx
+    ctrlPickL := "FavPick" . leftIdx
+    ctrlLabelR := "FavLabel" . rightIdx
+    ctrlIdR := "FavId" . rightIdx
+    ctrlPickR := "FavPick" . rightIdx
+    labelValL := %labelVarL%
+    idValL := %idVarL%
+    labelValR := %labelVarR%
+    idValR := %idVarR%
+    Gui, Add, Edit, x%favC1NameX% y+4 w%favNameW% h%favEditH% v%ctrlLabelL% c000000 BackgroundFFFFFF, %labelValL%
+    Gui, Add, Checkbox, x%favC1ChkX% yp+%favChkYOffset% w%favChkW% h%favChkH% v%ctrlPickL% %pickOptL% cDCDCDC
+    Gui, Add, Edit, x%favC1IdX% yp-%favChkYOffset% w%favC1IdW% h%favEditH% v%ctrlIdL% Number Limit16 c000000 BackgroundFFFFFF, %idValL%
+    Gui, Add, Edit, x%favC2NameX% yp w%favNameW% h%favEditH% v%ctrlLabelR% c000000 BackgroundFFFFFF, %labelValR%
+    Gui, Add, Checkbox, x%favC2ChkX% yp+%favChkYOffset% w%favChkW% h%favChkH% v%ctrlPickR% %pickOptR% cDCDCDC
+    Gui, Add, Edit, x%favC2IdX% yp-%favChkYOffset% w%favC2IdW% h%favEditH% v%ctrlIdR% Number Limit16 c000000 BackgroundFFFFFF, %idValR%
+}
 
-; Add another separator
-Gui, Add, Text, x10 y+12 w450 h1 0x10 c3F3F3F ; Darker separator
+Gui, Add, Text, x10 y+8 w450 h1 0x10 c3F3F3F
 
-Gui, Add, Text, x10 y+10 w450 vInjectStatusText c8FD18A, Ready.
-Gui, Add, Progress, x10 y+6 w450 h8 vInjectProgress c4AAE3A Background303030, 0
-Gui, Add, Button, x130 y+16 w100 h40 vSubmitBtn gSaveSettings cBlue, Submit
+Gui, Add, Text, x10 y+6 w450 vInjectStatusText c8FD18A, Ready.
+Gui, Add, Progress, x10 y+4 w450 h8 vInjectProgress c4AAE3A Background303030, 0
+Gui, Add, Button, x130 y+8 w100 h40 vSubmitBtn gSaveSettings cBlue, Submit
 Gui, Add, Button, x+10 yp w100 h40 vRunInstanceBtn gRunInstance cGreen, Run Instance
 
-; Show the GUI with a proper size
-Gui, Show, w484 h628, Arturo's Account Injection Tool ;'
+Gui, Show, w470 AutoSize, Arturo's Account Injection Tool ;'
+ApplyInjectFriendEditPlaceholders()
 Return
+
+SetEditCueBanner(hwnd, bannerText) {
+    static EM_SETCUEBANNER := 0x1501
+    if (!hwnd)
+        return
+    DllCall("SendMessageW", "Ptr", hwnd, "UInt", EM_SETCUEBANNER, "Ptr", 1, "WStr", bannerText)
+}
+
+RegisterInjectFriendPlaceholder(ctrlName, placeholderText, currentValue) {
+    if (Trim(currentValue) != "")
+        return
+    GuiControlGet, hwnd, Hwnd, %ctrlName%
+    SetEditCueBanner(hwnd, placeholderText)
+}
+
+NormalizeInjectFriendEditValue(val, placeholder) {
+    val := Trim(val)
+    if (val = "" || val = placeholder)
+        return ""
+    return val
+}
+
+ApplyInjectFriendEditPlaceholders() {
+    Loop, 10 {
+        ctrlLabel := "FavLabel" . A_Index
+        ctrlId := "FavId" . A_Index
+        GuiControlGet, labelVal, , %ctrlLabel%
+        GuiControlGet, idVal, , %ctrlId%
+        RegisterInjectFriendPlaceholder(ctrlLabel, "Name", labelVal)
+        RegisterInjectFriendPlaceholder(ctrlId, "16-digit Friend ID", idVal)
+    }
+}
 
 OnGuiClose:
 ExitApp
@@ -162,33 +249,23 @@ SaveSettings:
     if (injectInProgress)
         return
     Gui, Submit, NoHide
-    if (!ValidateInjectFriendSlots())
+    if (!ValidateInjectFavoriteFriends())
         return
-    extraFriendIDs := injectFriendSlotsToCsv()
-    settingsIni := A_ScriptDir . "\..\Settings.ini"
-    IniRead, prSid, %settingsIni%, General, FriendID, ERROR
-    mergedN := FriendRequestMergedCount(prSid, extraFriendIDs)
-    if (mergedN > 10) {
-        MsgBox, 48, Friend codes, Maximum 10 friend codes total (Settings.ini FriendID + optional extras in this window).`n`nYou have: %mergedN%.
-        return
+    if (sendFriendRequestAfterInject) {
+        resolvedN := FriendRequestResolvedCount(InjectSelectedFriendIdsToCsv())
+        if (resolvedN < 1) {
+            MsgBox, 48, Friends, Send friend requests is enabled but no friends are checked.`n`nCheck at least one friend to send.
+            return
+        }
+        if (resolvedN > 10) {
+            MsgBox, 48, Friends, Maximum 10 friends per inject.`n`nYou have: %resolvedN%.
+            return
+        }
     }
     injectInProgress := 1
     SetInjectUiBusy(true)
     UpdateInjectUi("Saving settings...", 5)
-    ; Removed: Gui, Destroy
-    IniWrite, %winTitle%, InjectAccount.ini, UserSettings, winTitle
-    IniWrite, %fileName%, InjectAccount.ini, UserSettings, fileName
-    IniWrite, %folderPath%, %settingsIniFriend%, ToolsAndSystem, folderPath
-    IniWrite, %selectedFilePath%, InjectAccount.ini, UserSettings, selectedFilePath
-    IniWrite, %sendFriendRequestAfterInject%, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject
-    extraFriendForIni := extraFriendIDs
-    Loop {
-        if (!InStr(extraFriendForIni, ",,"))
-            break
-        StringReplace, extraFriendForIni, extraFriendForIni, `,,`,, All
-    }
-    extraFriendForIni := Trim(extraFriendForIni, " `t,")
-    IniWrite, %extraFriendForIni%, InjectAccount.ini, UserSettings, injectExtraFriendIDs
+    SaveInjectFriendIniSettings()
 ; fall through into RunInjectFlow
 
 RunInjectFlow:
@@ -282,6 +359,8 @@ RunInjectFlow:
     ; friend-request flow only.
     if (sendFriendRequestAfterInject) {
         UpdateInjectUi("Sending friend request(s)...", 92)
+        resolvedList := BuildResolvedFriendRequestList(InjectSelectedFriendIdsToCsv())
+        IniWrite, %resolvedList%, InjectAccount.ini, UserSettings, injectFriendRequestIds
         sendFRScript := A_ScriptDir . "\_SendFriendRequest.ahk"
         if (FileExist(sendFRScript)) {
             RunWait, %A_AhkPath% "%sendFRScript%" "%winTitle%" "%folderPath%"
@@ -579,11 +658,94 @@ FriendListHasId(list, id) {
 }
 
 injectFriendSlotsToCsv() {
-    global injectFriend2, injectFriend3, injectFriend4, injectFriend5, injectFriend6, injectFriend7, injectFriend8, injectFriend9, injectFriend10
-    arr := [Trim(injectFriend2), Trim(injectFriend3), Trim(injectFriend4), Trim(injectFriend5), Trim(injectFriend6), Trim(injectFriend7), Trim(injectFriend8), Trim(injectFriend9), Trim(injectFriend10)]
+    return FavoriteFriendIdsToCsv()
+}
+
+ValidateInjectFriendSlots() {
+    return ValidateInjectFavoriteFriends()
+}
+
+SaveInjectFriendIniSettings() {
+    global winTitle, fileName, folderPath, selectedFilePath, sendFriendRequestAfterInject, settingsIniFriend
+    IniWrite, %winTitle%, InjectAccount.ini, UserSettings, winTitle
+    IniWrite, %fileName%, InjectAccount.ini, UserSettings, fileName
+    IniWrite, %folderPath%, %settingsIniFriend%, ToolsAndSystem, folderPath
+    IniWrite, %selectedFilePath%, InjectAccount.ini, UserSettings, selectedFilePath
+    IniWrite, %sendFriendRequestAfterInject%, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject
+    favoriteCsv := FavoriteFriendIdsToCsv()
+    labelsPipe := FavoriteFriendLabelsToPipe()
+    selectedCsv := InjectSelectedFriendIdsToCsv()
+    resolvedList := BuildResolvedFriendRequestList(selectedCsv)
+    IniWrite, %favoriteCsv%, InjectAccount.ini, UserSettings, favoriteFriendIDs
+    IniWrite, %labelsPipe%, InjectAccount.ini, UserSettings, favoriteFriendLabels
+    IniWrite, %selectedCsv%, InjectAccount.ini, UserSettings, injectSelectedFriendIDs
+    IniWrite, %selectedCsv%, InjectAccount.ini, UserSettings, injectExtraFriendIDs
+    IniWrite, %resolvedList%, InjectAccount.ini, UserSettings, injectFriendRequestIds
+}
+
+LoadInjectFavoriteGuiState(favoriteIdsCsv, favoriteLabelsPipe, selectedIdsCsv) {
+    global favPick1, favPick2, favPick3, favPick4, favPick5, favPick6, favPick7, favPick8, favPick9, favPick10
+    global favId1, favId2, favId3, favId4, favId5, favId6, favId7, favId8, favId9, favId10
+    global favLabel1, favLabel2, favLabel3, favLabel4, favLabel5, favLabel6, favLabel7, favLabel8, favLabel9, favLabel10
+
+    ids := ParseInjectFriendCsvToArray(favoriteIdsCsv)
+    labels := ParseInjectFriendLabelsPipe(favoriteLabelsPipe)
+    selected := ParseInjectFriendCsvToArray(selectedIdsCsv)
+    selectedHasAny := selected.MaxIndex() ? true : false
+
+    Loop, 10 {
+        id := ids[A_Index] ? ids[A_Index] : ""
+        label := labels[A_Index] ? labels[A_Index] : ""
+        idVar := "favId" . A_Index
+        labelVar := "favLabel" . A_Index
+        pickVar := "favPick" . A_Index
+        %idVar% := id
+        %labelVar% := label
+        pick := 0
+        if (id != "") {
+            if (!selectedHasAny || FriendListHasId(selected, id))
+                pick := 1
+        }
+        %pickVar% := pick
+    }
+}
+
+ParseInjectFriendCsvToArray(rawCsv) {
+    arr := []
+    cleaned := RegExReplace(rawCsv, "[\r\n]+", ",")
+    cleaned := RegExReplace(cleaned, "\|+", ",")
+    cleaned := RegExReplace(cleaned, "[\t; ]+", ",")
+    Loop {
+        if (!InStr(cleaned, ",,"))
+            break
+        StringReplace, cleaned, cleaned, `,,`,, All
+    }
+    cleaned := Trim(cleaned, " `t,")
+    Loop, Parse, cleaned, `,
+    {
+        id := Trim(A_LoopField)
+        if (id = "")
+            continue
+        arr.Push(id)
+    }
+    return arr
+}
+
+ParseInjectFriendLabelsPipe(rawPipe) {
+    arr := []
+    Loop, Parse, rawPipe, |
+    {
+        arr.Push(Trim(A_LoopField))
+    }
+    return arr
+}
+
+FavoriteFriendIdsToCsv() {
+    global favId1, favId2, favId3, favId4, favId5, favId6, favId7, favId8, favId9, favId10
+    arr := [Trim(favId1), Trim(favId2), Trim(favId3), Trim(favId4), Trim(favId5), Trim(favId6), Trim(favId7), Trim(favId8), Trim(favId9), Trim(favId10)]
     out := ""
     Loop % arr.MaxIndex() {
-        val := arr[A_Index]
+        val := NormalizeInjectFriendEditValue(arr[A_Index], "16-digit Friend ID")
         if (val = "")
             continue
         if (out != "")
@@ -593,29 +755,62 @@ injectFriendSlotsToCsv() {
     return out
 }
 
-ValidateInjectFriendSlots() {
-    global injectFriend2, injectFriend3, injectFriend4, injectFriend5, injectFriend6, injectFriend7, injectFriend8, injectFriend9, injectFriend10
-    vals := [injectFriend2, injectFriend3, injectFriend4, injectFriend5, injectFriend6, injectFriend7, injectFriend8, injectFriend9, injectFriend10]
-    Loop % vals.MaxIndex() {
-        slot := A_Index + 1
-        v := Trim(vals[A_Index])
+FavoriteFriendLabelsToPipe() {
+    global favLabel1, favLabel2, favLabel3, favLabel4, favLabel5, favLabel6, favLabel7, favLabel8, favLabel9, favLabel10
+    global favId1, favId2, favId3, favId4, favId5, favId6, favId7, favId8, favId9, favId10
+    labels := [Trim(favLabel1), Trim(favLabel2), Trim(favLabel3), Trim(favLabel4), Trim(favLabel5), Trim(favLabel6), Trim(favLabel7), Trim(favLabel8), Trim(favLabel9), Trim(favLabel10)]
+    ids := [Trim(favId1), Trim(favId2), Trim(favId3), Trim(favId4), Trim(favId5), Trim(favId6), Trim(favId7), Trim(favId8), Trim(favId9), Trim(favId10)]
+    out := ""
+    Loop % ids.MaxIndex() {
+        id := NormalizeInjectFriendEditValue(ids[A_Index], "16-digit Friend ID")
+        if (id = "")
+            continue
+        label := NormalizeInjectFriendEditValue(labels[A_Index], "Name")
+        label := StrReplace(label, "|", " ")
+        if (out != "")
+            out .= "|"
+        out .= label
+    }
+    return out
+}
+
+InjectSelectedFriendIdsToCsv() {
+    global FavPick1, FavPick2, FavPick3, FavPick4, FavPick5, FavPick6, FavPick7, FavPick8, FavPick9, FavPick10
+    global FavId1, FavId2, FavId3, FavId4, FavId5, FavId6, FavId7, FavId8, FavId9, FavId10
+    out := ""
+    Loop, 10 {
+        pickVar := "FavPick" . A_Index
+        idVar := "FavId" . A_Index
+        if (!%pickVar%)
+            continue
+        id := NormalizeInjectFriendEditValue(Trim(%idVar%), "16-digit Friend ID")
+        if (id = "")
+            continue
+        if (out != "")
+            out .= ","
+        out .= id
+    }
+    return out
+}
+
+ValidateInjectFavoriteFriends() {
+    global FavId1, FavId2, FavId3, FavId4, FavId5, FavId6, FavId7, FavId8, FavId9, FavId10
+    Loop, 10 {
+        idVar := "FavId" . A_Index
+        v := NormalizeInjectFriendEditValue(Trim(%idVar%), "16-digit Friend ID")
         if (v = "")
             continue
         if (!RegExMatch(v, "^\d{16}$")) {
-            MsgBox, 48, Friend codes, Slot %slot% must contain exactly 16 digits (numbers only).
+            MsgBox, 48, Friends, Friend row %A_Index% must contain exactly 16 digits (numbers only).
             return false
         }
     }
     return true
 }
 
-; Count unique 16-digit friend codes after merging Settings.ini FriendID + optional extra field (same rules as _SendFriendRequest.ahk).
-FriendRequestMergedCount(primaryRaw, extraGuiText) {
+BuildResolvedFriendRequestList(selectedCsv) {
     list := []
-    sid := Trim(primaryRaw)
-    if (sid != "" && sid != "ERROR" && RegExMatch(sid, "^\d{16}$"))
-        list.Push(sid)
-    cleaned := RegExReplace(extraGuiText, "[\r\n]+", ",")
+    cleaned := RegExReplace(selectedCsv, "[\r\n]+", ",")
     cleaned := RegExReplace(cleaned, "\|+", ",")
     cleaned := RegExReplace(cleaned, "[\t; ]+", ",")
     Loop {
@@ -632,6 +827,23 @@ FriendRequestMergedCount(primaryRaw, extraGuiText) {
         if (!FriendListHasId(list, id))
             list.Push(id)
     }
+    out := ""
+    maxN := list.MaxIndex() ? list.MaxIndex() : 0
+    if (maxN > 10)
+        maxN := 10
+    Loop, %maxN% {
+        if (out != "")
+            out .= ","
+        out .= list[A_Index]
+    }
+    return out
+}
+
+FriendRequestResolvedCount(selectedCsv) {
+    resolved := BuildResolvedFriendRequestList(selectedCsv)
+    if (resolved = "")
+        return 0
+    list := ParseInjectFriendCsvToArray(resolved)
     return list.MaxIndex() ? list.MaxIndex() : 0
 }
 
@@ -648,30 +860,12 @@ RunInstance:
     SetInjectUiBusy(true)
     UpdateInjectUi("Starting selected instance...", 12)
     Gui, Submit, NoHide
-    if (!ValidateInjectFriendSlots()) {
+    if (!ValidateInjectFavoriteFriends()) {
         SetInjectUiBusy(false)
         injectInProgress := 0
         return
     }
-    extraFriendIDs := injectFriendSlotsToCsv()
-    settingsIni := A_ScriptDir . "\..\Settings.ini"
-    IniRead, prSid, %settingsIni%, General, FriendID, ERROR
-    mergedN := FriendRequestMergedCount(prSid, extraFriendIDs)
-    if (mergedN > 10) {
-        MsgBox, 48, Friend codes, Maximum 10 friend codes total (Settings.ini FriendID + optional extras in this window).`n`nYou have: %mergedN%.
-        SetInjectUiBusy(false)
-        injectInProgress := 0
-        return
-    }
-    extraFriendForIni := extraFriendIDs
-    Loop {
-        if (!InStr(extraFriendForIni, ",,"))
-            break
-        StringReplace, extraFriendForIni, extraFriendForIni, `,,`,, All
-    }
-    extraFriendForIni := Trim(extraFriendForIni, " `t,")
-    IniWrite, %extraFriendForIni%, InjectAccount.ini, UserSettings, injectExtraFriendIDs
-    IniWrite, %sendFriendRequestAfterInject%, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject
+    SaveInjectFriendIniSettings()
     mumuFolder := getMumuFolder(folderPath)
     ; Find the instance number matching the selected name
     instanceNum := ""

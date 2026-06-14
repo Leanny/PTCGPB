@@ -255,10 +255,51 @@ function Normalize-InjectExtraFriendIdsText {
             ForEach-Object { $_.Trim() } |
             Where-Object { $_ -ne "" } |
             ForEach-Object { $_ -replace "[=\[\]\r\n]", "" } |
-            Where-Object { $_ -ne "" }
+            Where-Object { $_ -match '^\d{16}$' }
     )
     if ($parts.Count -eq 0) { return "" }
     return ($parts -join ",")
+}
+
+
+function Get-InjectFriendSettingsFromIni {
+    param([Parameter(Mandatory = $true)][string]$IniPath)
+    $settings = Read-IniSection -IniPath $IniPath -Section "UserSettings"
+    $favoriteFriendIds = ""
+    if ($settings.ContainsKey("favoriteFriendIDs")) {
+        $favoriteFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["favoriteFriendIDs"])
+    }
+    $injectExtraFriendIds = ""
+    if ($settings.ContainsKey("injectExtraFriendIDs")) {
+        $injectExtraFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["injectExtraFriendIDs"])
+    }
+    if ([string]::IsNullOrWhiteSpace($favoriteFriendIds) -and -not [string]::IsNullOrWhiteSpace($injectExtraFriendIds)) {
+        $favoriteFriendIds = $injectExtraFriendIds
+    }
+    $injectSelectedFriendIds = ""
+    if ($settings.ContainsKey("injectSelectedFriendIDs")) {
+        $injectSelectedFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["injectSelectedFriendIDs"])
+    }
+    if ([string]::IsNullOrWhiteSpace($injectSelectedFriendIds) -and -not [string]::IsNullOrWhiteSpace($injectExtraFriendIds)) {
+        $injectSelectedFriendIds = $injectExtraFriendIds
+    }
+    $favoriteFriendLabels = ""
+    if ($settings.ContainsKey("favoriteFriendLabels")) {
+        $favoriteFriendLabels = [string]$settings["favoriteFriendLabels"]
+    }
+    return [pscustomobject]@{
+        favoriteFriendIds = $favoriteFriendIds
+        favoriteFriendLabels = $favoriteFriendLabels
+        injectSelectedFriendIds = $injectSelectedFriendIds
+        injectExtraFriendIds = $injectExtraFriendIds
+    }
+}
+
+function Build-InjectFriendRequestIds {
+    param(
+        [AllowNull()][AllowEmptyString()][string]$SelectedFriendIds
+    )
+    return (Normalize-InjectExtraFriendIdsText -Text ([string]$SelectedFriendIds))
 }
 
 function Resolve-AutoHotkeyExe {
@@ -410,16 +451,16 @@ function Invoke-ListInstances {
         return
     }
     $instances = Get-MumuInstances -BaseFolder $folderPath
-    $injectExtraFriendIds = ""
-    if ($settings.ContainsKey("injectExtraFriendIDs")) {
-        $injectExtraFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["injectExtraFriendIDs"])
-    }
+    $friendSettings = Get-InjectFriendSettingsFromIni -IniPath $iniPath
     Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
         ok = $true
         folderPath = $folderPath
         folderPathSource = $folderConfig.Source
         defaultInstance = if ($settings.ContainsKey("winTitle")) { $settings["winTitle"] } else { "" }
-        injectExtraFriendIds = $injectExtraFriendIds
+        injectExtraFriendIds = $friendSettings.injectExtraFriendIds
+        favoriteFriendIds = $friendSettings.favoriteFriendIds
+        favoriteFriendLabels = $friendSettings.favoriteFriendLabels
+        injectSelectedFriendIds = $friendSettings.injectSelectedFriendIds
         instances = $instances
     }
 }
@@ -528,6 +569,28 @@ function Invoke-InjectAccount {
     if ($null -ne $payload.sendFriendRequest) {
         try { $sendFriendRequest = [bool]$payload.sendFriendRequest } catch { $sendFriendRequest = $false }
     }
+    $selectedFriendIds = ""
+    $selectedProp = $payload.PSObject.Properties["selectedFriendIds"]
+    if ($null -ne $selectedProp) {
+        $selectedFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$selectedProp.Value)
+    }
+    $favoriteFriendIds = ""
+    $favoriteProp = $payload.PSObject.Properties["favoriteFriendIds"]
+    if ($null -ne $favoriteProp) {
+        $favoriteFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$favoriteProp.Value)
+    }
+    $favoriteFriendLabels = ""
+    $favoriteLabelsProp = $payload.PSObject.Properties["favoriteFriendLabels"]
+    if ($null -ne $favoriteLabelsProp) {
+        $favoriteFriendLabels = [string]$favoriteLabelsProp.Value
+        $favoriteFriendLabels = ($favoriteFriendLabels -replace "[\r\n=]", " ").Trim()
+    }
+    if ([string]::IsNullOrWhiteSpace($selectedFriendIds)) {
+        $injectExtraProp = $payload.PSObject.Properties["injectExtraFriendIds"]
+        if ($null -ne $injectExtraProp) {
+            $selectedFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$injectExtraProp.Value)
+        }
+    }
     if ([string]::IsNullOrWhiteSpace($account)) {
         Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "The 'account' field is required." }
         return
@@ -556,14 +619,21 @@ function Invoke-InjectAccount {
     # fileName must be without extension (the AHK script appends .xml at runtime).
     $fileNameNoExt = [System.IO.Path]::GetFileNameWithoutExtension($xmlPath)
 
+    $resolvedFriendRequestIds = Build-InjectFriendRequestIds -SelectedFriendIds $selectedFriendIds
+
     $iniValues = @{
         fileName = $fileNameNoExt
         selectedFilePath = $xmlPath
         sendFriendRequestAfterInject = if ($sendFriendRequest) { 1 } else { 0 }
+        injectSelectedFriendIDs = $selectedFriendIds
+        injectExtraFriendIDs = $selectedFriendIds
+        injectFriendRequestIds = $resolvedFriendRequestIds
     }
-    $injectExtraProp = $payload.PSObject.Properties["injectExtraFriendIds"]
-    if ($null -ne $injectExtraProp) {
-        $iniValues["injectExtraFriendIDs"] = Normalize-InjectExtraFriendIdsText -Text ([string]$injectExtraProp.Value)
+    if (-not [string]::IsNullOrWhiteSpace($favoriteFriendIds)) {
+        $iniValues["favoriteFriendIDs"] = $favoriteFriendIds
+    }
+    if ($null -ne $favoriteLabelsProp) {
+        $iniValues["favoriteFriendLabels"] = $favoriteFriendLabels
     }
     if (-not [string]::IsNullOrWhiteSpace($winTitle)) {
         # Reject anything weird so we don't write garbage that breaks the ini.
@@ -808,6 +878,113 @@ function New-DashboardAccountsPayload {
         AccountCount = $accountCount
         SkippedCount = $skipped.Count
     }
+}
+
+function Invoke-DashboardIndexBuilder {
+    $carddbPath = Join-Path $resolvedRoot "Helper\carddb.exe"
+    if (-not (Test-Path -LiteralPath $carddbPath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        & $carddbPath @("--root", $resolvedRoot, "ensure-dashboard-index") 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+function Test-DashboardIndexCache {
+    param(
+        [Parameter(Mandatory = $true)][string]$MetaPath,
+        [Parameter(Mandatory = $true)]$Manifest
+    )
+
+    if (-not (Test-Path -LiteralPath $MetaPath -PathType Leaf)) { return $false }
+
+    try {
+        $metaText = [System.IO.File]::ReadAllText($MetaPath)
+        $meta = $metaText | ConvertFrom-Json
+        return [string]$meta.signature -eq [string]$Manifest.Signature
+    } catch {
+        return $false
+    }
+}
+
+function Invoke-LoadAccountsSummary {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $cacheDir = Join-Path $cardsDir "database_cache"
+    $summaryPath = Join-Path $cacheDir "accounts-summary.json"
+    $indexMetaPath = Join-Path $cacheDir "dashboard-index.meta.json"
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+
+    $accountsDataDir = Join-Path $cardsDir "accounts"
+    $collectionsDataDir = Join-Path $cardsDir "collections"
+    $manifest = Get-DashboardAccountManifest -AccountsDataDir $accountsDataDir -CollectionsDataDir $collectionsDataDir
+
+    if (-not (Test-DashboardIndexCache -MetaPath $indexMetaPath -Manifest $manifest)) {
+        [void](Invoke-DashboardIndexBuilder)
+    }
+
+    if (Test-Path -LiteralPath $summaryPath -PathType Leaf) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($summaryPath)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
+            return
+        } catch {
+            # Fall through and rebuild.
+        }
+    }
+
+    if (Invoke-DashboardIndexBuilder) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($summaryPath)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
+            return
+        } catch {}
+    }
+
+    Write-JsonResponse -Context $Context -StatusCode 503 -Payload @{ ok = $false; error = "Dashboard index unavailable." }
+}
+
+function Invoke-LoadDashboardRows {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $cacheDir = Join-Path $cardsDir "database_cache"
+    $rowsPath = Join-Path $cacheDir "dashboard-rows.jsonl"
+    $indexMetaPath = Join-Path $cacheDir "dashboard-index.meta.json"
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+
+    $accountsDataDir = Join-Path $cardsDir "accounts"
+    $collectionsDataDir = Join-Path $cardsDir "collections"
+    $manifest = Get-DashboardAccountManifest -AccountsDataDir $accountsDataDir -CollectionsDataDir $collectionsDataDir
+
+    if (-not (Test-DashboardIndexCache -MetaPath $indexMetaPath -Manifest $manifest)) {
+        [void](Invoke-DashboardIndexBuilder)
+    }
+
+    if (Test-Path -LiteralPath $rowsPath -PathType Leaf) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($rowsPath)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/x-ndjson; charset=utf-8"
+            return
+        } catch {
+            # Fall through and rebuild.
+        }
+    }
+
+    if (Invoke-DashboardIndexBuilder) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($rowsPath)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/x-ndjson; charset=utf-8"
+            return
+        } catch {}
+    }
+
+    Write-JsonResponse -Context $Context -StatusCode 503 -Payload @{ ok = $false; error = "Dashboard rows unavailable." }
 }
 
 function Invoke-DashboardCacheBuilder {
@@ -2618,17 +2795,15 @@ try {
                 Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
                 continue
             }
-            $settingsPath = Join-Path $resolvedRoot "Settings.ini"
-            $fid = ""
-            if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
-                $sec = Read-IniSection -IniPath $settingsPath -Section "General"
-                if ($sec.ContainsKey("FriendID")) {
-                    $fid = [string]$sec["FriendID"]
-                }
-                $fid = $fid.Trim()
-                if ($fid -ieq "ERROR") { $fid = "" }
+            $accountsDir = Join-Path $resolvedRoot "Accounts"
+            $iniPath = Join-Path $accountsDir "InjectAccount.ini"
+            $friendSettings = Get-InjectFriendSettingsFromIni -IniPath $iniPath
+            Write-JsonResponse -Context $context -StatusCode 200 -Payload @{
+                ok = $true
+                favoriteFriendIds = $friendSettings.favoriteFriendIds
+                favoriteFriendLabels = $friendSettings.favoriteFriendLabels
+                injectSelectedFriendIds = $friendSettings.injectSelectedFriendIds
             }
-            Write-JsonResponse -Context $context -StatusCode 200 -Payload @{ ok = $true; friendId = $fid }
             continue
         }
 
@@ -2652,6 +2827,32 @@ try {
             }
             try {
                 Invoke-LoadAccountData -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/accounts-summary" -and $request.HttpMethod -eq "GET") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-LoadAccountsSummary -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/dashboard-rows" -and $request.HttpMethod -eq "GET") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-LoadDashboardRows -Context $context
             } catch {
                 Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
             }

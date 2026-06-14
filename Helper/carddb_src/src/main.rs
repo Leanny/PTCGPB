@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Local, NaiveDateTime, TimeZone, Utc};
 use clap::{Parser, Subcommand};
 use serde_json::{json, Map, Value};
+use sha2::{Digest, Sha256};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
@@ -11,6 +12,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 use std::thread;
 use std::time::{Duration as StdDuration, Instant, SystemTime};
+
+mod dashboard_index;
 
 #[derive(Parser)]
 #[command(
@@ -148,6 +151,17 @@ enum Command {
         #[arg(long)]
         source_bytes: u64,
     },
+    BuildDashboardIndex {
+        #[arg(long)]
+        signature: Option<String>,
+        #[arg(long)]
+        source_count: Option<usize>,
+        #[arg(long)]
+        source_bytes: Option<u64>,
+    },
+    EnsureDashboardIndex,
+    SnapshotAccounts,
+    RepairAccountsFromSnapshot,
 }
 
 fn main() {
@@ -322,22 +336,50 @@ fn run(cli: Cli) -> Result<()> {
             signature,
             source_count,
             source_bytes,
-        } => build_dashboard_cache(
-            &cli.root,
-            &output,
-            &meta,
-            &signature,
+        } => {
+            build_dashboard_cache(
+                &cli.root,
+                &output,
+                &meta,
+                &signature,
+                source_count,
+                source_bytes,
+            )?;
+            dashboard_index::build_dashboard_index(
+                &cli.root,
+                Some(signature.as_str()),
+                Some(source_count),
+                Some(source_bytes),
+            )?;
+            Ok(())
+        }
+        Command::BuildDashboardIndex {
+            signature,
             source_count,
             source_bytes,
-        ),
+        } => {
+            dashboard_index::build_dashboard_index(
+                &cli.root,
+                signature.as_deref(),
+                source_count,
+                source_bytes,
+            )?;
+            Ok(())
+        }
+        Command::EnsureDashboardIndex => {
+            dashboard_index::ensure_dashboard_index(&cli.root)?;
+            Ok(())
+        }
+        Command::SnapshotAccounts => snapshot_accounts(&cli.root),
+        Command::RepairAccountsFromSnapshot => repair_accounts_from_snapshot(&cli.root),
     }
 }
 
-fn cards_dir(root: &Path) -> PathBuf {
+pub(crate) fn cards_dir(root: &Path) -> PathBuf {
     root.join("Accounts").join("Cards")
 }
 
-fn account_files_dir(root: &Path) -> PathBuf {
+pub(crate) fn account_files_dir(root: &Path) -> PathBuf {
     cards_dir(root).join("accounts")
 }
 
@@ -407,14 +449,14 @@ fn write_clear_flag_progress(root: &Path, percent: u8, message: &str) -> Result<
     Ok(())
 }
 
-fn safe_file_name(value: &str) -> String {
+pub(crate) fn safe_file_name(value: &str) -> String {
     value
         .chars()
         .map(|c| if "\\/:*?\"<>|".contains(c) { '_' } else { c })
         .collect()
 }
 
-fn account_file_path(root: &Path, account_key: &str) -> PathBuf {
+pub(crate) fn account_file_path(root: &Path, account_key: &str) -> PathBuf {
     account_files_dir(root).join(format!("{}.json", safe_file_name(account_key)))
 }
 
@@ -443,24 +485,25 @@ fn collect_dashboard_json_paths(dir: &Path, bucket: &str, paths: &mut Vec<(Strin
     Ok(())
 }
 
-fn build_dashboard_cache(
-    root: &Path,
-    output: &Path,
-    meta: &Path,
-    signature: &str,
-    source_count: usize,
-    source_bytes: u64,
-) -> Result<()> {
+pub(crate) fn gather_dashboard_paths(root: &Path) -> Result<Vec<(String, PathBuf)>> {
     let mut paths = Vec::new();
     collect_dashboard_json_paths(&account_files_dir(root), "accounts", &mut paths)?;
     collect_dashboard_json_paths(&collections_dir(root), "collections", &mut paths)?;
     paths.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(paths)
+}
 
+fn build_dashboard_payload(
+    paths: &[(String, PathBuf)],
+    signature: &str,
+    source_count: usize,
+    source_bytes: u64,
+) -> Result<(Value, Value)> {
     let mut accounts = Vec::with_capacity(paths.len());
     let mut skipped = Vec::new();
 
     for (source_file_name, path) in paths {
-        match load_dashboard_account_document(&path, &source_file_name) {
+        match load_dashboard_account_document(path, source_file_name) {
             Ok(doc) => accounts.push(doc),
             Err(err) => skipped.push(json!({
                 "file": source_file_name,
@@ -488,6 +531,34 @@ fn build_dashboard_cache(
         "generatedAt": Utc::now().to_rfc3339(),
         "generator": "carddb",
     });
+    Ok((payload, meta_payload))
+}
+
+pub(crate) fn write_file_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let file_name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| "output.json".to_string());
+    let tmp = path.with_file_name(format!("{file_name}.tmp"));
+    fs::write(&tmp, bytes)?;
+    fs::rename(&tmp, path).with_context(|| format!("Could not move {:?} to {:?}", tmp, path))?;
+    Ok(())
+}
+
+fn build_dashboard_cache(
+    root: &Path,
+    output: &Path,
+    meta: &Path,
+    signature: &str,
+    source_count: usize,
+    source_bytes: u64,
+) -> Result<()> {
+    let paths = gather_dashboard_paths(root)?;
+    let (payload, meta_payload) =
+        build_dashboard_payload(&paths, signature, source_count, source_bytes)?;
 
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
@@ -496,12 +567,564 @@ fn build_dashboard_cache(
         fs::create_dir_all(parent)?;
     }
 
-    fs::write(output, serde_json::to_vec(&payload)?)?;
-    fs::write(meta, serde_json::to_vec(&meta_payload)?)?;
+    write_file_atomic(output, &serde_json::to_vec(&payload)?)?;
+    write_file_atomic(meta, &serde_json::to_vec(&meta_payload)?)?;
     Ok(())
 }
 
-fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value> {
+fn dashboard_accounts_cache_files(root: &Path) -> (PathBuf, PathBuf) {
+    let cache_dir = dashboard_index::dashboard_cache_dir(root);
+    (
+        cache_dir.join("accounts-data.cache.json"),
+        cache_dir.join("accounts-data.cache.meta.json"),
+    )
+}
+
+fn dashboard_accounts_cache_path(root: &Path) -> PathBuf {
+    dashboard_accounts_cache_files(root).0
+}
+
+fn repair_archive_files(root: &Path) -> (PathBuf, PathBuf) {
+    let archive_dir = dashboard_index::dashboard_cache_dir(root).join("archive");
+    (
+        archive_dir.join("accounts-repair.archive.json"),
+        archive_dir.join("accounts-repair.archive.meta.json"),
+    )
+}
+
+fn repair_archive_path(root: &Path) -> PathBuf {
+    repair_archive_files(root).0
+}
+
+fn legacy_repair_snapshot_path(root: &Path) -> PathBuf {
+    dashboard_index::dashboard_cache_dir(root)
+        .join("archive")
+        .join("accounts-data.snapshot.json")
+}
+
+fn repair_archive_lookup_from_accounts(accounts: &[Value]) -> HashMap<String, Value> {
+    let mut lookup = HashMap::new();
+    for account in accounts {
+        let key = account
+            .get("deviceAccount")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_owned);
+        let Some(key) = key else {
+            continue;
+        };
+        lookup.insert(key, account.clone());
+    }
+    lookup
+}
+
+struct LazyRepairArchiveLookup {
+    root: PathBuf,
+    lookup: Option<HashMap<String, Value>>,
+}
+
+impl LazyRepairArchiveLookup {
+    fn new(root: &Path) -> Self {
+        Self {
+            root: root.to_path_buf(),
+            lookup: None,
+        }
+    }
+
+    fn get(&mut self, device_account: &str) -> Option<Value> {
+        if device_account.trim().is_empty() {
+            return None;
+        }
+        if self.lookup.is_none() {
+            self.lookup = Some(load_repair_archive_lookup(&self.root).unwrap_or_default());
+        }
+        self.lookup
+            .as_ref()
+            .and_then(|lookup| lookup.get(device_account).cloned())
+    }
+}
+
+fn compute_repair_scan_signature(root: &Path) -> Result<(String, usize, u64)> {
+    let accounts_dir = account_files_dir(root);
+    let mut entries = Vec::new();
+
+    if accounts_dir.exists() {
+        for entry in
+            fs::read_dir(&accounts_dir).with_context(|| format!("Could not read {:?}", accounts_dir))?
+        {
+            let path = entry?.path();
+            if !path.is_file() {
+                continue;
+            }
+            if !path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+            {
+                continue;
+            }
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with(".json.tmp"))
+            {
+                continue;
+            }
+
+            let metadata = fs::metadata(&path)?;
+            let name = path
+                .file_name()
+                .map(|value| value.to_string_lossy().to_string())
+                .unwrap_or_default();
+            entries.push((name, metadata.len()));
+        }
+    }
+
+    entries.sort_unstable();
+    let mut manifest = String::new();
+    let mut source_count = 0usize;
+    let mut source_bytes = 0u64;
+
+    for (name, len) in entries {
+        source_count += 1;
+        source_bytes = source_bytes.saturating_add(len);
+        manifest.push_str(&name);
+        manifest.push('|');
+        manifest.push_str(&len.to_string());
+        manifest.push('\n');
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(manifest.as_bytes());
+    let signature = format!("{:x}", hasher.finalize());
+    Ok((signature, source_count, source_bytes))
+}
+
+fn load_repair_archive_lookup(root: &Path) -> Result<HashMap<String, Value>> {
+    let source = repair_archive_path(root);
+    if !source.exists() {
+        return Ok(HashMap::new());
+    }
+
+    let payload: Value = serde_json::from_slice(
+        &fs::read(&source).with_context(|| format!("Could not read {:?}", source))?,
+    )
+    .with_context(|| format!("Could not parse repair archive JSON {:?}", source))?;
+    let accounts = payload
+        .get("accounts")
+        .and_then(Value::as_array)
+        .context("Repair archive payload is missing accounts[]")?;
+    Ok(repair_archive_lookup_from_accounts(accounts))
+}
+
+fn seed_repair_archive_lookup(
+    root: &Path,
+    lookup: &mut HashMap<String, Value>,
+) -> Result<usize> {
+    let mut seeded = 0usize;
+
+    for source in [legacy_repair_snapshot_path(root)] {
+        if !source.exists() {
+            continue;
+        }
+
+        let payload: Value = match serde_json::from_slice(
+            &fs::read(&source).with_context(|| format!("Could not read {:?}", source))?,
+        ) {
+            Ok(payload) => payload,
+            Err(err) => {
+                append_carddb_log(
+                    root,
+                    &format!("seed_repair_archive skipped {:?}: {err:#}", source),
+                );
+                continue;
+            }
+        };
+        let Some(accounts) = payload.get("accounts").and_then(Value::as_array) else {
+            continue;
+        };
+
+        for account in accounts {
+            let key = account
+                .get("deviceAccount")
+                .and_then(Value::as_str)
+                .filter(|value| !value.trim().is_empty())
+                .map(str::to_owned);
+            let Some(key) = key else {
+                continue;
+            };
+            if lookup.insert(key, account.clone()).is_none() {
+                seeded += 1;
+            }
+        }
+    }
+
+    if let Ok(dashboard_lookup) = load_dashboard_cache_account_lookup(root) {
+        for (key, account) in dashboard_lookup {
+            if lookup.insert(key, account).is_none() {
+                seeded += 1;
+            }
+        }
+    }
+
+    Ok(seeded)
+}
+
+fn merge_repair_archive_from_payload(root: &Path, payload: &Value, signature: &str) -> Result<()> {
+    let (_, meta_path) = repair_archive_files(root);
+    if meta_path.exists() {
+        if let Ok(text) = fs::read_to_string(&meta_path) {
+            if let Ok(old_meta) = serde_json::from_str::<Value>(&text) {
+                if old_meta.get("signature").and_then(Value::as_str) == Some(signature) {
+                    append_carddb_log(
+                        root,
+                        "merge_repair_archive skipped; signature unchanged",
+                    );
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    let accounts = payload
+        .get("accounts")
+        .and_then(Value::as_array)
+        .context("Dashboard payload is missing accounts[]")?;
+
+    let mut lookup = load_repair_archive_lookup(root)?;
+    let seeded = if lookup.is_empty() {
+        seed_repair_archive_lookup(root, &mut lookup)?
+    } else {
+        0
+    };
+
+    let mut updated = 0usize;
+    for account in accounts {
+        let key = account
+            .get("deviceAccount")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_owned);
+        let Some(key) = key else {
+            continue;
+        };
+        lookup.insert(key, account.clone());
+        updated += 1;
+    }
+
+    let mut archive_accounts: Vec<Value> = lookup.into_values().collect();
+    archive_accounts.sort_by(|left, right| {
+        let left_key = left
+            .get("deviceAccount")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let right_key = right
+            .get("deviceAccount")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        left_key.cmp(right_key)
+    });
+
+    let account_count = archive_accounts.len();
+    let archive_payload = json!({
+        "ok": true,
+        "source": "repair-archive",
+        "accountCount": account_count,
+        "accounts": archive_accounts,
+    });
+    let meta_payload = {
+        let mut meta_payload = json!({
+            "signature": signature,
+            "accountCount": account_count,
+            "updatedFromSnapshot": updated,
+            "seededFromBootstrap": seeded,
+            "generatedAt": Utc::now().to_rfc3339(),
+            "generator": "carddb",
+        });
+        let old_meta = read_repair_archive_meta(root).unwrap_or_else(|_| json!({}));
+        for key in ["lastRepairSignature", "lastRepairCorrupted", "lastRepairAt"] {
+            if let Some(value) = old_meta.get(key) {
+                meta_payload[key] = value.clone();
+            }
+        }
+        meta_payload
+    };
+
+    let (output, meta_path) = repair_archive_files(root);
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    write_file_atomic(&output, &serde_json::to_vec(&archive_payload)?)?;
+    write_file_atomic(&meta_path, &serde_json::to_vec(&meta_payload)?)?;
+
+    append_carddb_log(
+        root,
+        &format!(
+            "merge_repair_archive wrote {account_count} accounts (updated={updated}, seeded={seeded}) to {:?}",
+            output
+        ),
+    );
+    Ok(())
+}
+
+fn metadata_from_account_document(doc: &Value) -> Value {
+    doc.get("metadata")
+        .filter(|value| value.is_object())
+        .cloned()
+        .unwrap_or_else(|| json!({}))
+}
+
+fn snapshot_accounts(root: &Path) -> Result<()> {
+    let (signature, source_count, source_bytes) =
+        dashboard_index::compute_dashboard_manifest_signature(root)?;
+    let paths = gather_dashboard_paths(root)?;
+    let (payload, meta_payload) =
+        build_dashboard_payload(&paths, &signature, source_count, source_bytes)?;
+    let account_count = payload
+        .get("accountCount")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let skipped_count = payload
+        .get("skippedCount")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+
+    let (output, meta_path) = dashboard_accounts_cache_files(root);
+    write_file_atomic(&output, &serde_json::to_vec(&payload)?)?;
+    write_file_atomic(&meta_path, &serde_json::to_vec(&meta_payload)?)?;
+
+    append_carddb_log(
+        root,
+        &format!(
+            "snapshot_accounts wrote {account_count} accounts ({skipped_count} skipped) to {:?}",
+            output
+        ),
+    );
+    if let Err(err) = merge_repair_archive_from_payload(root, &payload, &signature) {
+        append_carddb_log(root, &format!("merge_repair_archive after snapshot failed: {err:#}"));
+    }
+    Ok(())
+}
+
+fn load_dashboard_cache_account_lookup(root: &Path) -> Result<HashMap<String, Value>> {
+    let source = dashboard_accounts_cache_path(root);
+    if !source.exists() {
+        anyhow::bail!(
+            "No dashboard accounts cache found at {:?}",
+            source
+        );
+    }
+
+    let payload: Value = serde_json::from_slice(
+        &fs::read(&source).with_context(|| format!("Could not read {:?}", source))?,
+    )
+    .with_context(|| format!("Could not parse dashboard cache JSON {:?}", source))?;
+    let accounts = payload
+        .get("accounts")
+        .and_then(Value::as_array)
+        .context("Snapshot payload is missing accounts[]")?;
+
+    let mut lookup = HashMap::new();
+    for account in accounts {
+        let key = account
+            .get("deviceAccount")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_owned);
+        let Some(key) = key else {
+            continue;
+        };
+        lookup.insert(key, account.clone());
+    }
+    Ok(lookup)
+}
+
+fn is_account_json_corrupted(path: &Path) -> Result<bool> {
+    let bytes = fs::read(path).with_context(|| format!("Could not read {:?}", path))?;
+    if bytes.is_empty() {
+        return Ok(true);
+    }
+
+    let sample_len = bytes.len().min(4096);
+    if bytes[..sample_len].iter().all(|byte| *byte == 0) {
+        return Ok(true);
+    }
+
+    let text = std::str::from_utf8(&bytes).unwrap_or("");
+    Ok(serde_json::from_str::<Value>(text.trim_start_matches('\u{feff}')).is_err())
+}
+
+fn read_repair_archive_meta(root: &Path) -> Result<Value> {
+    let (_, meta_path) = repair_archive_files(root);
+    if !meta_path.exists() {
+        return Ok(json!({}));
+    }
+    let text = fs::read_to_string(&meta_path).with_context(|| format!("Could not read {:?}", meta_path))?;
+    Ok(serde_json::from_str(&text).unwrap_or_else(|_| json!({})))
+}
+
+fn write_repair_scan_state(root: &Path, signature: &str, corrupted: usize) -> Result<()> {
+    let (_, meta_path) = repair_archive_files(root);
+    let mut meta = read_repair_archive_meta(root)?;
+    let Some(obj) = meta.as_object_mut() else {
+        return Ok(());
+    };
+    obj.insert("lastRepairSignature".to_owned(), json!(signature));
+    obj.insert("lastRepairCorrupted".to_owned(), json!(corrupted));
+    obj.insert(
+        "lastRepairAt".to_owned(),
+        json!(Utc::now().to_rfc3339()),
+    );
+    if let Some(parent) = meta_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    write_file_atomic(&meta_path, &serde_json::to_vec(&meta)?)?;
+    Ok(())
+}
+
+fn should_skip_repair_scan(root: &Path, signature: &str) -> Result<bool> {
+    let meta = read_repair_archive_meta(root)?;
+    Ok(meta
+        .get("lastRepairSignature")
+        .and_then(Value::as_str)
+        .is_some_and(|stored| stored == signature)
+        && meta
+            .get("lastRepairCorrupted")
+            .and_then(Value::as_u64)
+            .unwrap_or(1) == 0)
+}
+
+fn backup_corrupted_account_file(root: &Path, path: &Path, device_account: &str) -> Result<()> {
+    let backup_dir = account_files_dir(root).join("_repair_backup");
+    fs::create_dir_all(&backup_dir)?;
+    let stamp = Utc::now().format("%Y%m%d_%H%M%S");
+    let backup_path = backup_dir.join(format!("{device_account}_{stamp}.corrupted"));
+    fs::copy(path, &backup_path)
+        .with_context(|| format!("Could not back up {:?} to {:?}", path, backup_path))?;
+    Ok(())
+}
+
+fn repair_accounts_from_snapshot(root: &Path) -> Result<()> {
+    let (signature, _, _) = compute_repair_scan_signature(root)?;
+    if should_skip_repair_scan(root, &signature)? {
+        let summary = format!(
+            "repair_accounts_from_snapshot skipped; signature unchanged and last scan had 0 corrupted source={:?}",
+            repair_archive_path(root)
+        );
+        append_carddb_log(root, &summary);
+        println!("{summary}");
+        return Ok(());
+    }
+
+    let source = repair_archive_path(root);
+    let accounts_dir = account_files_dir(root);
+    if !accounts_dir.exists() {
+        append_carddb_log(root, "repair_accounts_from_snapshot: accounts directory missing");
+        return Ok(());
+    }
+
+    let mut scanned = 0usize;
+    let mut corrupted = 0usize;
+    let mut repaired = 0usize;
+    let mut missing = 0usize;
+    let mut failed = 0usize;
+    let mut repair_lookup: Option<HashMap<String, Value>> = None;
+
+    for entry in fs::read_dir(&accounts_dir).with_context(|| format!("Could not read {:?}", accounts_dir))?
+    {
+        let path = entry?.path();
+        if !path.is_file() {
+            continue;
+        }
+        if !path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+        {
+            continue;
+        }
+        if path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".json.tmp"))
+        {
+            continue;
+        }
+
+        scanned += 1;
+        if !is_account_json_corrupted(&path)? {
+            continue;
+        }
+
+        corrupted += 1;
+        let device_account = account_key_from_file(&path).unwrap_or_default();
+        if device_account.is_empty() {
+            failed += 1;
+            append_carddb_log(
+                root,
+                &format!("repair_accounts_from_snapshot skipped corrupt file without key: {:?}", path),
+            );
+            continue;
+        }
+
+        if repair_lookup.is_none() {
+            repair_lookup = if source.exists() {
+                Some(load_repair_archive_lookup(root)?)
+            } else {
+                append_carddb_log(
+                    root,
+                    "repair_accounts_from_snapshot: corrupt files found but no repair archive available",
+                );
+                Some(HashMap::new())
+            };
+        }
+        let lookup = repair_lookup.as_ref().expect("repair lookup loaded");
+
+        let Some(snapshot_doc) = lookup.get(&device_account) else {
+            missing += 1;
+            append_carddb_log(
+                root,
+                &format!(
+                    "repair_accounts_from_snapshot could not restore {device_account}: not in repair archive"
+                ),
+            );
+            continue;
+        };
+
+        if let Err(err) = backup_corrupted_account_file(root, &path, &device_account) {
+            append_carddb_log(
+                root,
+                &format!(
+                    "repair_accounts_from_snapshot backup failed for {device_account}: {err:#}"
+                ),
+            );
+        }
+
+        write_account_document(root, &device_account, snapshot_doc)?;
+        if let Err(err) = format_account(root, &device_account) {
+            failed += 1;
+            append_carddb_log(
+                root,
+                &format!(
+                    "repair_accounts_from_snapshot format failed for {device_account}: {err:#}"
+                ),
+            );
+            continue;
+        }
+        repaired += 1;
+    }
+
+    let summary = format!(
+        "repair_accounts_from_snapshot scanned={scanned} corrupted={corrupted} repaired={repaired} missing_from_archive={missing} failed={failed} source={:?}",
+        repair_archive_path(root)
+    );
+    append_carddb_log(root, &summary);
+    write_repair_scan_state(root, &signature, corrupted)?;
+    println!("{summary}");
+    Ok(())
+}
+
+pub(crate) fn load_dashboard_account_document(path: &Path, file_name: &str) -> Result<Value> {
     let text = fs::read_to_string(path).with_context(|| format!("Could not read {:?}", path))?;
     let mut value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
         .with_context(|| format!("Could not parse {:?}", path))?;
@@ -1046,6 +1669,17 @@ fn account_files_exist(root: &Path) -> bool {
 
 fn load_account_document(path: &Path, device_account: &str) -> Result<Value> {
     if path.exists() {
+        if is_account_json_corrupted(path)? {
+            return Ok(json!({
+                "deviceAccount": device_account,
+                "metadata": {},
+                "pulls": [],
+                "registeredCards": [],
+                "tradedCards": {},
+                "sharedCards": {}
+            }));
+        }
+
         let text = fs::read_to_string(path)?;
         let mut value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
             .with_context(|| format!("Could not parse {:?}", path))?;
@@ -1392,19 +2026,7 @@ fn ensure_metadata(root: &Path) -> Result<Value> {
     merge_card_db(root)?;
 
     if account_files_exist(root) {
-        let mut store = load_account_files_store(root)?;
-        if metadata_path.exists() {
-            if !had_account_files && fs::metadata(&metadata_path)?.len() > 0 {
-                if show_progress {
-                    write_migration_progress(root, 45, "Importing legacy metadata")?;
-                }
-                let legacy_store = load_store(&metadata_path)?;
-                merge_store(&mut store, &legacy_store);
-                if show_progress {
-                    write_migration_progress(root, 70, "Writing account files")?;
-                }
-                write_account_files_from_store(root, &store)?;
-            }
+        if legacy_metadata_exists {
             if show_progress {
                 write_migration_progress(root, 90, "Archiving legacy metadata")?;
             }
@@ -1413,7 +2035,7 @@ fn ensure_metadata(root: &Path) -> Result<Value> {
         if show_progress {
             write_migration_progress(root, 100, "Account data migration complete")?;
         }
-        return Ok(store);
+        return Ok(json!({ "accounts": {} }));
     }
 
     let mut store = if metadata_path.exists() && fs::metadata(&metadata_path)?.len() > 0 {
@@ -1985,8 +2607,99 @@ fn sort_candidates(candidates: &mut Vec<Candidate>, sort_method: &str) {
     }
 }
 
+fn account_metadata_for_schedule(
+    root: &Path,
+    instance: &str,
+    file_name: &str,
+    xml_path: &Path,
+    device_account: &str,
+    repair_lookup: &mut LazyRepairArchiveLookup,
+) -> Value {
+    let mut metadata = if !device_account.is_empty() {
+        let account_path = account_file_path(root, device_account);
+        if account_path.exists() {
+            if let Ok((_key, meta)) = load_account_file(&account_path, device_account) {
+                meta
+            } else if let Some(account) = repair_lookup.get(device_account) {
+                metadata_from_account_document(&account)
+            } else {
+                new_account(instance, file_name, xml_path)
+            }
+        } else {
+            new_account(instance, file_name, xml_path)
+        }
+    } else {
+        new_account(instance, file_name, xml_path)
+    };
+
+    if let Some(obj) = metadata.as_object_mut() {
+        if obj
+            .get("instance")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .is_empty()
+        {
+            obj.insert("instance".to_owned(), json!(instance));
+        }
+        if obj
+            .get("fileName")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .is_empty()
+        {
+            obj.insert("fileName".to_owned(), json!(file_name));
+        }
+    }
+
+    metadata
+}
+
+fn load_store_for_instance_schedule(root: &Path, instance: &str) -> Result<Value> {
+    let save_dir = saved_dir(root).join(instance);
+    let mut store = json!({ "accounts": {} });
+    let accounts = store["accounts"].as_object_mut().expect("accounts object");
+    let mut repair_lookup = LazyRepairArchiveLookup::new(root);
+
+    if !save_dir.exists() {
+        return Ok(ensure_store(store));
+    }
+
+    for entry in fs::read_dir(&save_dir).with_context(|| format!("Could not read {:?}", save_dir))? {
+        let path = entry?.path();
+        if !path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("xml"))
+        {
+            continue;
+        }
+
+        let file_name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let device_account = extract_device_account_from_xml(&path);
+        let metadata = account_metadata_for_schedule(
+            root,
+            instance,
+            &file_name,
+            &path,
+            &device_account,
+            &mut repair_lookup,
+        );
+        let key = if !device_account.is_empty() {
+            device_account
+        } else {
+            format!("legacy:{instance}/{file_name}")
+        };
+        accounts.insert(key, metadata);
+    }
+
+    Ok(ensure_store(store))
+}
+
 fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
-    let store = ensure_metadata(root)?;
+    let store = load_store_for_instance_schedule(root, &options.instance)?;
     let save_dir = saved_dir(root).join(&options.instance);
     fs::create_dir_all(&save_dir)?;
 
@@ -2294,7 +3007,34 @@ fn pack_counts_by_file(store: &Value) -> HashMap<String, i64> {
     result
 }
 
+fn load_account_metadata_for_xml(
+    root: &Path,
+    device_account: &str,
+    file_name: &str,
+    xml_path: &Path,
+    repair_lookup: &mut Option<HashMap<String, Value>>,
+) -> Value {
+    let account_path = account_file_path(root, device_account);
+    if account_path.exists() {
+        if let Ok((_key, metadata)) = load_account_file(&account_path, device_account) {
+            return metadata;
+        }
+    }
+
+    if repair_lookup.is_none() {
+        *repair_lookup = load_repair_archive_lookup(root).ok();
+    }
+    if let Some(lookup) = repair_lookup.as_ref() {
+        if let Some(doc) = lookup.get(device_account) {
+            return metadata_from_account_document(doc);
+        }
+    }
+
+    new_account("", file_name, xml_path)
+}
+
 fn load_account_files_for_xmls(root: &Path, xmls: &[(String, PathBuf)]) -> Result<Value> {
+    let mut repair_lookup: Option<HashMap<String, Value>> = None;
     let mut store = json!({ "accounts": {} });
     let accounts = store["accounts"].as_object_mut().expect("accounts object");
     let mut seen = HashSet::new();
@@ -2305,13 +3045,13 @@ fn load_account_files_for_xmls(root: &Path, xmls: &[(String, PathBuf)]) -> Resul
             continue;
         }
 
-        let account_path = account_file_path(root, &device_account);
-        let metadata = if account_path.exists() {
-            let (_key, metadata) = load_account_file(&account_path, &device_account)?;
-            metadata
-        } else {
-            new_account("", file_name, path)
-        };
+        let metadata = load_account_metadata_for_xml(
+            root,
+            &device_account,
+            file_name,
+            path,
+            &mut repair_lookup,
+        );
         accounts.insert(device_account, metadata);
     }
 
@@ -3180,7 +3920,8 @@ fn append_pull(
         "pack": pack,
         "cards": cards,
     });
-    append_pull_to_account_file(root, device_account, pull)
+    append_pull_to_account_file(root, device_account, pull)?;
+    dashboard_index::invalidate_dashboard_index(root)
 }
 
 #[cfg(test)]

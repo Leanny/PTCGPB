@@ -16,6 +16,31 @@
 ;===============================================================================
 
 ;-------------------------------------------------------------------------------
+; Schedule lock - serialize carddb schedule-accounts across instances
+;-------------------------------------------------------------------------------
+CreateAccountListSchedule_AcquireLock(timeoutMs := 0) {
+    lockName := "Global\PTCGPB_ScheduleAccounts"
+    hMutex := DllCall("CreateMutex", "Ptr", 0, "Int", false, "Str", lockName, "Ptr")
+    if (!hMutex)
+        return 0
+
+    waitMs := timeoutMs ? timeoutMs : 0xFFFFFFFF
+    waitResult := DllCall("WaitForSingleObject", "Ptr", hMutex, "UInt", waitMs, "UInt")
+    if (waitResult != 0 && waitResult != 0x80) {
+        DllCall("CloseHandle", "Ptr", hMutex)
+        return 0
+    }
+    return hMutex
+}
+
+CreateAccountListSchedule_ReleaseLock(hMutex) {
+    if (!hMutex)
+        return
+    DllCall("ReleaseMutex", "Ptr", hMutex)
+    DllCall("CloseHandle", "Ptr", hMutex)
+}
+
+;-------------------------------------------------------------------------------
 ; loadAccount - Load an account XML file into the game
 ;-------------------------------------------------------------------------------
 loadAccount() {
@@ -958,7 +983,13 @@ CreateAccountList(instance) {
     if (forceRegeneration)
         command .= " --force-clear-used"
 
+    hScheduleLock := CreateAccountListSchedule_AcquireLock()
+    if (!hScheduleLock) {
+        LogError("Could not acquire schedule lock for instance " . instance)
+        return
+    }
     RunWait, %command%,, Hide
+    CreateAccountListSchedule_ReleaseLock(hScheduleLock)
     if (ErrorLevel)
         LogError("carddb schedule-accounts failed for instance " . instance)
 }
