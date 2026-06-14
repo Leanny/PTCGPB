@@ -215,6 +215,7 @@ needlesDict.Add(new Needle("Create_DownloadAlertWindow", "Confirm", new Coordina
 needlesDict.Add(new Needle("Create_DownloadComplete", "Complete", new Coordinate(215, 369, 233, 397)))
 needlesDict.Add(new Needle("Create_CinematicBackground", "Cinematic", new Coordinate(0, 40, 7, 47)))
 needlesDict.Add(new Needle("Create_WelcomePopup", "Welcome", new Coordinate(72, 234, 125, 239)))
+needlesDict.Add(new Needle("Boot_Welcome", "Welcome", new Coordinate(70, 278, 140, 295)))
 needlesDict.Add(new Needle("Create_NameInputIcon", "Name", new Coordinate(190, 241, 209, 257)))
 needlesDict.Add(new Needle("Create_DeactivatedOKButton", "OK", new Coordinate(0, 455, 30, 500)))
 needlesDict.Add(new Needle("Create_PackReturnButtonIcon", "Return", new Coordinate(127, 501, 147, 509)))

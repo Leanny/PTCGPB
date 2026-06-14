@@ -96,6 +96,8 @@ Txt_InjectRange:範圍：
 Txt_packMethod:單包模式
 Txt_nukeAccount:清單刪除
 Txt_spendHourGlass:使用所有沙漏
+Txt_hourglassTenPackOpening:使用10包模式
+Txt_spendHourglassPackCount:開包數(0 = 全部)
 Txt_openExtraPack:額外多開一包
 Txt_claimSpecialMissions:領取特殊任務
 SortByText:注入排序：

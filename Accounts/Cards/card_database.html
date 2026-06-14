@@ -20183,6 +20183,28 @@
                         );
                     });
 
+                const expansionClearBtn = document.getElementById(
+                    "catalogExpansionClear",
+                );
+                if (expansionClearBtn)
+                    expansionClearBtn.addEventListener("click", () => {
+                        if (state.catalogExpansionFilter === "__all__") return;
+                        state.catalogExpansionFilter = "__all__";
+                        withCatalogExpansionTransition(
+                            refreshCatalogLibraryExpansionOnly,
+                        );
+                    });
+
+                const cardClearBtn =
+                    document.getElementById("catalogCardClear");
+                if (cardClearBtn)
+                    cardClearBtn.addEventListener("click", () => {
+                        if (!state.catalogCardSearch) return;
+                        state.catalogCardSearch = "";
+                        debouncedCatalogRender.cancel();
+                        refreshCatalogLibraryMainOnly();
+                    });
+
                 const wishlistOnly = document.getElementById(
                     "catalogWishlistOnly",
                 );
@@ -20316,6 +20338,164 @@
                 } else {
                     scheduleRestore();
                 }
+
+                el.rows
+                    .querySelectorAll(
+                        "[data-mark-traded-account][data-mark-traded-card]",
+                    )
+                    .forEach((btn) => {
+                        btn.addEventListener("click", async () => {
+                            const account =
+                                btn.getAttribute("data-mark-traded-account") ||
+                                "";
+                            const cardId =
+                                btn.getAttribute("data-mark-traded-card") || "";
+                            if (!account || !cardId) return;
+                            await markSelectedCardTraded(account, cardId);
+                        });
+                    });
+
+                el.rows
+                    .querySelectorAll(
+                        "[data-mark-shared-account][data-mark-shared-card]",
+                    )
+                    .forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                            const account =
+                                btn.getAttribute("data-mark-shared-account") ||
+                                "";
+                            const cardId =
+                                btn.getAttribute("data-mark-shared-card") || "";
+                            if (!account || !cardId) return;
+                            const preferredAccountName =
+                                state.accountFileLabelMap.get(account) ||
+                                account;
+                            showConfirm(
+                                `Mark ${formatCardLabel(cardId)} as shared for ${escapeHtml(preferredAccountName)}?`,
+                                { html: true },
+                            ).then(async (confirmed) => {
+                                if (!confirmed) return;
+                                addSharedCopy(account, cardId);
+                                const persistResult =
+                                    await persistAccountCardMarks(account);
+                                const persistWarn =
+                                    formatCardMarksPersistWarning(
+                                        persistResult,
+                                    );
+                                if (persistWarn) {
+                                    showToast(persistWarn.trim(), "warn", 3500);
+                                }
+                                deferRender(() =>
+                                    refreshCatalogLibraryTradeShareLight(
+                                        cardId,
+                                        "",
+                                    ),
+                                );
+                            });
+                        });
+                    });
+
+                el.rows
+                    .querySelectorAll(
+                        "[data-start-trade-account][data-start-trade-card]",
+                    )
+                    .forEach((btn) => {
+                        btn.addEventListener("click", async () => {
+                            if (btn.disabled) return;
+                            const account =
+                                btn.getAttribute("data-start-trade-account") ||
+                                "";
+                            const cardId =
+                                btn.getAttribute("data-start-trade-card") || "";
+                            const fileName =
+                                btn.getAttribute("data-start-trade-file") ||
+                                state.accountFileLabelMap.get(account) ||
+                                "";
+                            if (!account || !cardId) {
+                                showToast(
+                                    "Cannot start trade: missing account mapping.",
+                                    "warn",
+                                );
+                                return;
+                            }
+                            const fileSummary = fileName
+                                ? escapeHtml(fileName)
+                                : `<em>Auto-resolve from device account ${escapeHtml(account)}</em>`;
+                            const cardName = getCardInfo(cardId).name || cardId;
+                            const summary =
+                                `<div>Card: ${formatCardLabel(cardId)}</div>` +
+                                `<div>File: ${fileSummary}</div>` +
+                                `<div style="margin-top:0.6em">Select the MuMu instance that will receive the account.</div>`;
+                            const pick = await pickMumuInstance({ summary });
+                            if (!pick) return;
+                            const winTitle = pick.winTitle;
+                            const sendFriendRequest = !!pick.sendFriendRequest;
+                            const injectExtraFriendIds =
+                                pick.injectExtraFriendIds != null
+                                    ? String(pick.injectExtraFriendIds)
+                                    : "";
+                            const original = btn.textContent;
+                            btn.disabled = true;
+                            btn.setAttribute("aria-busy", "true");
+                            btn.textContent = "Launching\u2026";
+                            const pending = showToast(
+                                `Injecting ${formatCardLabel(cardId)} into ${escapeHtml(winTitle)}\u2026`,
+                                "info",
+                                0,
+                                { html: true },
+                            );
+                            try {
+                                const res = await fetch("/__dashboard/inject", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        account,
+                                        fileName,
+                                        winTitle,
+                                        sendFriendRequest,
+                                        injectExtraFriendIds,
+                                    }),
+                                });
+                                let payload = null;
+                                try {
+                                    payload = await res.json();
+                                } catch (_) {
+                                    payload = null;
+                                }
+                                pending();
+                                if (!res.ok || !payload || !payload.ok) {
+                                    const msg =
+                                        (payload && payload.error) ||
+                                        `HTTP ${res.status} ${res.statusText || ""}`.trim();
+                                    showToast(
+                                        `Failed to start trade: ${msg}`,
+                                        "error",
+                                        8000,
+                                    );
+                                    return;
+                                }
+                                showToast(
+                                    `Inject started for ${formatCardLabel(cardId)} on ${escapeHtml(winTitle)}.\nFile: ${escapeHtml(payload.file || fileName)}`,
+                                    "success",
+                                    7000,
+                                    { html: true },
+                                );
+                            } catch (err) {
+                                pending();
+                                showToast(
+                                    `Failed to start trade: ${err && err.message ? err.message : err}\nMake sure the dashboard server is running (start_card_dashboard.bat).`,
+                                    "error",
+                                    9000,
+                                );
+                            } finally {
+                                btn.disabled = false;
+                                btn.removeAttribute("aria-busy");
+                                btn.textContent = original;
+                            }
+                        });
+                    });
             }
 
             function rowIsExpanded(row) {

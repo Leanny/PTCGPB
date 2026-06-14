@@ -34,6 +34,57 @@ processPrivacyAgreement()
     adbClick(138, 479)
 }
 
+waitForAppBootScreen() {
+    global session
+
+    bootTimeoutSec := 90
+    session.set("failSafe", A_TickCount)
+    CreateStatusMessage("Waiting for app boot screen...",,,, false)
+    LogInfo("Boot gate: waiting for startup screen", "ADB.txt")
+
+    lastStatusSec := -1
+    Loop {
+        if (handleAppHealthDuringSearch("boot", true))
+            return false
+
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (FindOrLoseImage("Boot_Welcome", 0, failSafeTime, 30, true)) {
+            LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
+            return true
+        }
+        if (FindOrLoseImage("Create_CinematicBackground", 0, , , true)) {
+            LogInfo("Boot gate: Cinematic screen ready", "ADB.txt")
+            return true
+        }
+        if (FindOrLoseImage("Create_DownloadComplete", 0, , , true)
+            || FindOrLoseImage("Create_DownloadAlertWindow", 0, , , true)
+            || FindOrLoseImage("Create_NintendoLink", 0, , , true)) {
+            LogInfo("Boot gate: setup/download screen ready", "ADB.txt")
+            return true
+        }
+        if (FindOrLoseImage("Common_ShopButtonInMain", 0, , , true)
+            || FindOrLoseImage("Pack_PackPointButton", 0, , , true)
+            || FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, , , true)
+            || FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, , , true)) {
+            LogInfo("Boot gate: main screen ready (skipped Welcome)", "ADB.txt")
+            return true
+        }
+
+        if (failSafeTime != lastStatusSec) {
+            lastStatusSec := failSafeTime
+            CreateStatusMessage("Waiting for boot screen...`n(" . failSafeTime . "/" . bootTimeoutSec . "s)",,,, false)
+        }
+
+        if (failSafeTime >= bootTimeoutSec) {
+            LogWarn("Boot gate: timeout after " . bootTimeoutSec . "s", "ADB.txt")
+            TriggerGameRestart("Stuck at boot screen...")
+            return false
+        }
+
+        Sleep, 500
+    }
+}
+
 getPackCoordXInHome(){
     global botConfig, session
 
@@ -101,6 +152,9 @@ startPreProcess(methodType){
     failSafeTime := 0
     Loop, {
         skipGenericButtonFallback := false
+
+        if (handleAppHealthDuringSearch(findImageName))
+            break
 
         if(methodType = "Inject Wonderpick 96P+" && DismissFriendFlowBlockingPopup("Entering Social"))
             continue
