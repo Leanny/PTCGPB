@@ -1907,7 +1907,7 @@ class FriendAccount {
 GetFriendAccountsFromFile(filePath, ByRef includesIdsAndNames) {
     ; ------------------------------------------------------------------------------
     ; The function also determines if the file includes both IDs and names for each friend account.
-    ; Friend accounts are only added to the output list if star and pack requirements are met.
+    ; Every VIP list entry is included; minStars applies only to GP validation on reroll instances.
     ;
     ; Parameters:
     ;   filePath (String)           - The path to the file to read.
@@ -1916,7 +1916,6 @@ GetFriendAccountsFromFile(filePath, ByRef includesIdsAndNames) {
     ; Returns:
     ;   (Array) - An array of FriendAccount objects, parsed from the file.
     ; ------------------------------------------------------------------------------
-    global botConfig
     friendList := []  ; Create an empty array
     includesIdsAndNames := false
 
@@ -1940,15 +1939,12 @@ GetFriendAccountsFromFile(filePath, ByRef includesIdsAndNames) {
         if InStr(line, " | ") {
             parts := StrSplit(line, " | ") ; Split by " | "
 
-            ; Check for ID and Name parts
             friendCode := Trim(parts[1])
             friendName := Trim(parts[2])
             if (friendCode != "" && friendName != "")
                 includesIdsAndNames := true
 
-            ; Extract the number before "/" in TwoStarCount
-            twoStarCount := RegExReplace(parts[3], "\D.*", "")  ; Remove everything after the first non-digit
-
+            twoStarCount := RegExReplace(parts[3], "\D.*", "")  ; stars before "/" in e.g. 4/5
             packName := Trim(parts[4])
         } else {
             friendCode := Trim(line)
@@ -1958,12 +1954,13 @@ GetFriendAccountsFromFile(filePath, ByRef includesIdsAndNames) {
         if (friendCode = "" && friendName = "")
             continue
 
-        ; Trim spaces and create a FriendAccount object
         if (twoStarCount == ""
-            || (packName != "Shining" && twoStarCount >= botConfig.get("minStars"))
-            || (packName == "" && (twoStarCount >= botConfig.get("minStars"))) ) {
-            friend := new FriendAccount(friendCode, friendName)
-            friendList.Push(friend)  ; Add to array
+            || packName != "Shining"
+            || packName == "") {
+            friendList.Push(new FriendAccount(friendCode, friendName))
+        } else if (packName == "Shining") {
+            ; Shining-pack VIPs: separate from the minStars gate (shiny-pack rules apply on reroll).
+            friendList.Push(new FriendAccount(friendCode, friendName))
         }
     }
     return friendList
