@@ -255,6 +255,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     CreateStatusMessage("Account is stuck! Restarting and unfriending...")
     session.set("friended", true)
     CreateStatusMessage("Stuck account still has friends. Unfriending accounts...")
+    waitForAppBootScreen()
     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
     if(session.get("setSpeed") = 3)
         FindImageAndClick("Common_SpeedMod3x", 187, 172)
@@ -419,6 +420,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
 
+        waitForAppBootScreen()
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
         if(session.get("setSpeed") = 3)
             FindImageAndClick("Common_SpeedMod3x", 187, 172)
@@ -1055,9 +1057,10 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         }
     }
 
-    stateResult := isTerminatePTCGPAppByADBShell()
-    if(stateResult){
-        restartGameInstance("Stuck at " . imageName . "... (App terminated)")
+    if (isTerminatePTCGPAppByADBShell()) {
+        Gdip_DisposeImage(pBitmap)
+        TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
+        return confirmed
     }
 
     if(imageName = "Missions") { ; may input extra ESC and stuck at exit game
@@ -1210,9 +1213,10 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             }
         }
 
-        stateResult := isTerminatePTCGPAppByADBShell()
-        if(stateResult){
-            restartGameInstance("Stuck at " . imageName . "... (found App3.png)")
+        if (isTerminatePTCGPAppByADBShell()) {
+            Gdip_DisposeImage(pBitmap)
+            TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
+            return false
         }
 
         if(imageName = "Social" || imageName = "Country" || imageName = "Account2" || imageName = "Account") { ;only look for deleted account on start up.
@@ -4333,19 +4337,23 @@ PackOpening(tenPackOpening := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        Delay(1)
+        Delay(4)
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
+            Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
             break
         } else {
             adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
@@ -4529,17 +4537,21 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        Delay(1)
+        Delay(4)
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
+            Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(146, 494) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
             adbClick_wbb(146, 494) ;146, 494
+            Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else {
             adbClick_wbb(146, 494) ;146, 494
+            Delay(1)
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for ConfirmPack`n(" . failSafeTime . "/45 seconds)")
