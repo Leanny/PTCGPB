@@ -55,7 +55,6 @@ global GUI_WIDTH := 750
 global GUI_HEIGHT := 418
 global MainGuiName
 
-
 global ProcessedIDs := {}
 global botMetadata := {}
 
@@ -99,28 +98,44 @@ global g_prevDeleteMethod := Trim(botConfig.get("deleteMethod"))
 
 ; Swipe-speed focus tooltip replaced by the generic hover help system (HelpTT_Init).
 
-hasInvalidScale := false
-monitorScaleList := GetAllMonitorScales()
-For idx, scaleValue in monitorScaleList {
-    if(scaleValue != 100){
-        hasInvalidScale := true
-        break
+PTCGPB_EnsureUserEnvironmentVariable("QT_ENABLE_HIGHDPI_SCALING", "0")
+
+PTCGPB_EnsureUserEnvironmentVariable(name, value) {
+    RegRead, persistedValue, HKEY_CURRENT_USER\Environment, %name%
+    if (!ErrorLevel && persistedValue = value) {
+        EnvSet, %name%, %value%
+        return false
     }
+
+    RegWrite, REG_SZ, HKEY_CURRENT_USER\Environment, %name%, %value%
+    if (ErrorLevel) {
+        MsgBox, 48, Environment Variable Update Failed, Failed to update %name%.`n`nPlease set %name%=%value% in your user environment variables.
+        return false
+    }
+
+    EnvSet, %name%, %value%
+    result := 0
+    DllCall("SendMessageTimeout"
+        , "Ptr", 0xFFFF
+        , "UInt", 0x1A
+        , "Ptr", 0
+        , "Str", "Environment"
+        , "UInt", 0x2
+        , "UInt", 5000
+        , "Ptr*", result)
+    MsgBox, 64, Scale Configuration, Updated scale configuration. Mumu Player will now be closed to ensure it is applied correctly.
+    PTCGPB_KillProcessByName("MuMuPlayer.exe")
+    PTCGPB_KillProcessByName("MuMuNxMain.exe")
+    return true
 }
 
-if (hasInvalidScale) {
-    msgTitle := "Display Scale Warning"
-    msgText := "WARNING: Display scale issue detected!`n`n"
-        . "To ensure the program works correctly, ALL monitors must be set to 100% scale in Windows settings.`n`n"
-        . "Please change your display scale to 100% and restart the program.`n`n"
-        . "[!] If you are ABSOLUTELY SURE all your monitors are already at 100% (script detection error), you can choose to ignore this warning.`n`n"
-        . "Do you want to ignore this warning and continue anyway?"
-
-    MsgBox, 308, %msgTitle%, %msgText%
-
-    IfMsgBox, No
-    {
-        ExitApp
+PTCGPB_KillProcessByName(processName) {
+    Loop {
+        Process, Exist, %processName%
+        if (!ErrorLevel)
+            break
+        Process, Close, %ErrorLevel%
+        Sleep, 100
     }
 }
 
