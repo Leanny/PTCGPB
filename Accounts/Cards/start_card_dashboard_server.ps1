@@ -2094,6 +2094,8 @@ function Invoke-SetAccountCardMarks {
         return
     }
 
+    Invoke-InvalidateAccountCardMarksCache
+
     Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
         ok = $true
         deviceAccount = $deviceAccount
@@ -2106,6 +2108,174 @@ function Invoke-SetAccountCardMarks {
 function Invoke-SetAccountTradeMarks {
     param([Parameter(Mandatory = $true)]$Context)
     Invoke-SetAccountCardMarks -Context $Context
+}
+
+function Get-AccountCardMarksCachePaths {
+    $cacheDir = Join-Path $resolvedRoot "Accounts\Cards\database_cache"
+    return [pscustomobject]@{
+        Cache = Join-Path $cacheDir "account-card-marks.v2.cache.json"
+        Meta = Join-Path $cacheDir "account-card-marks.v2.cache.meta.json"
+    }
+}
+
+function Invoke-InvalidateAccountCardMarksCache {
+    $paths = Get-AccountCardMarksCachePaths
+    foreach ($path in @($paths.Cache, $paths.Meta)) {
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Test-AccountJsonHasCardMarks {
+    param([Parameter(Mandatory = $true)][hashtable]$Doc)
+
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
+    $traded = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'tradedCards'
+    $shared = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'sharedCards'
+    return (
+        ($traded -and $traded.Count -gt 0) -or
+        ($shared -and $shared.Count -gt 0)
+    )
+}
+
+function Export-AccountCardMarksEntryFromFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][hashtable]$Doc
+    )
+
+    $serializer = Get-AccountJsonSerializer
+    $text = [System.IO.File]::ReadAllText($Path)
+    $entry = @{
+        deviceAccount = [string]$Doc['deviceAccount']
+    }
+
+    $tradedJson = Get-JsonPropertyValueSubstring -Text $text -PropertyName 'tradedCards'
+    if (-not [string]::IsNullOrWhiteSpace($tradedJson)) {
+        $tradedTrim = $tradedJson.Trim()
+        if ($tradedTrim -ne '{}' -and $tradedTrim -ne 'null') {
+            $tradedObj = $serializer.DeserializeObject($tradedTrim)
+            if ($null -ne $tradedObj) {
+                $entry['tradedCards'] = $tradedObj
+            }
+        }
+    }
+
+    $sharedJson = Get-JsonPropertyValueSubstring -Text $text -PropertyName 'sharedCards'
+    if (-not [string]::IsNullOrWhiteSpace($sharedJson)) {
+        $sharedTrim = $sharedJson.Trim()
+        if ($sharedTrim -ne '{}' -and $sharedTrim -ne 'null') {
+            $sharedObj = $serializer.DeserializeObject($sharedTrim)
+            if ($null -ne $sharedObj) {
+                $entry['sharedCards'] = $sharedObj
+            }
+        }
+    }
+
+    return $entry
+}
+
+function Export-AccountCardMarksEntry {
+    param([Parameter(Mandatory = $true)][hashtable]$Doc)
+
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
+    $entry = @{
+        deviceAccount = [string]$Doc['deviceAccount']
+    }
+    $traded = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'tradedCards'
+    if ($traded -and $traded.Count -gt 0) {
+        $tradedOut = @{}
+        foreach ($markEntry in $traded.GetEnumerator()) {
+            $tradedOut[[string]$markEntry.Key] = ConvertTo-JsonHashtable $markEntry.Value
+        }
+        $entry['tradedCards'] = $tradedOut
+    }
+    $shared = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'sharedCards'
+    if ($shared -and $shared.Count -gt 0) {
+        $sharedOut = @{}
+        foreach ($markEntry in $shared.GetEnumerator()) {
+            $sharedOut[[string]$markEntry.Key] = ConvertTo-JsonHashtable $markEntry.Value
+        }
+        $entry['sharedCards'] = $sharedOut
+    }
+    return $entry
+}
+
+function Build-AccountCardMarksPayload {
+    $accountsDir = Join-Path $resolvedRoot "Accounts\Cards\accounts"
+    $accounts = @()
+    if (-not (Test-Path -LiteralPath $accountsDir -PathType Container)) {
+        return @{
+            ok = $true
+            accountCount = 0
+            accounts = @()
+        }
+    }
+
+    $markPattern = '(?ms)"(?:tradedCards|sharedCards)"\s*:\s*\{\s*"'
+    foreach ($file in Get-ChildItem -LiteralPath $accountsDir -Filter "*.json" -File | Sort-Object Name) {
+        try {
+            $text = [System.IO.File]::ReadAllText($file.FullName)
+            if (-not [regex]::IsMatch($text, $markPattern)) {
+                continue
+            }
+            $loaded = Read-AccountJsonDocument -Path $file.FullName
+            if (-not (Test-AccountJsonHasCardMarks -Doc $loaded.Doc)) {
+                continue
+            }
+            $accounts += Export-AccountCardMarksEntryFromFile -Path $file.FullName -Doc $loaded.Doc
+        } catch {
+            continue
+        }
+    }
+
+    return @{
+        ok = $true
+        accountCount = $accounts.Count
+        accounts = $accounts
+    }
+}
+
+function Invoke-GetAccountCardMarks {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $accountsDataDir = Join-Path $cardsDir "accounts"
+    $collectionsDataDir = Join-Path $cardsDir "collections"
+    $manifest = Get-DashboardAccountManifest -AccountsDataDir $accountsDataDir -CollectionsDataDir $collectionsDataDir
+    $paths = Get-AccountCardMarksCachePaths
+    $cacheDir = Split-Path $paths.Cache -Parent
+    if (-not (Test-Path -LiteralPath $cacheDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+    }
+
+    if (Test-DashboardAccountsCache -CachePath $paths.Cache -MetaPath $paths.Meta -Manifest $manifest) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($paths.Cache)
+            Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
+            return
+        } catch {
+            # Fall through and rebuild the cache.
+        }
+    }
+
+    $payload = Build-AccountCardMarksPayload
+    $serializer = Get-AccountJsonSerializer
+    $json = $serializer.Serialize($payload)
+    try {
+        Write-Utf8File -Path $paths.Cache -Text $json
+        $meta = @{
+            signature = $manifest.Signature
+            accountCount = $payload.accountCount
+            generatedAt = (Get-Date).ToUniversalTime().ToString("o")
+        } | ConvertTo-Json -Depth 4 -Compress
+        Write-Utf8File -Path $paths.Meta -Text $meta
+    } catch {
+        # Cache writes are an optimization; the response should still succeed.
+    }
+
+    Write-TextResponse -Context $Context -StatusCode 200 -Body $json -ContentType "application/json; charset=utf-8"
 }
 
 function Invoke-DeductAccountShinedust {
@@ -2905,6 +3075,22 @@ try {
             }
             try {
                 Invoke-OpenAccountJson -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if (
+            ($request.Url.AbsolutePath -eq "/__dashboard/account-trade-marks" -or $request.Url.AbsolutePath -eq "/__dashboard/account-card-marks") -and
+            $request.HttpMethod -eq "GET"
+        ) {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-GetAccountCardMarks -Context $context
             } catch {
                 Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
             }

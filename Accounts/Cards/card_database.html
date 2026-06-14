@@ -9761,6 +9761,148 @@
                 }
             }
 
+            function buildTradeAccountDocumentsFromSummary(summary) {
+                const entries = Array.isArray(summary?.accounts)
+                    ? summary.accounts
+                    : [];
+                const documents = [];
+                for (const entry of entries) {
+                    if (!entry || typeof entry !== "object") continue;
+                    if (
+                        String(entry.sourceType ?? "trade").trim() ===
+                        "collection"
+                    ) {
+                        continue;
+                    }
+                    const account = String(
+                        entry.account ?? entry.deviceAccount ?? "",
+                    ).trim();
+                    if (!account) continue;
+                    documents.push({
+                        deviceAccount: account,
+                        sourceType: "trade",
+                    });
+                }
+                return documents;
+            }
+
+            async function fetchAccountCardMarkDocuments() {
+                const res = await fetch(DASHBOARD_ACCOUNT_CARD_MARKS_PATH, {
+                    cache: "no-store",
+                });
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (_) {}
+                if (!res.ok || !data.ok) {
+                    throw new Error(
+                        (data && data.error) ||
+                            (!res.ok ? `HTTP ${res.status}` : "Request failed"),
+                    );
+                }
+                const accounts = Array.isArray(data.accounts)
+                    ? data.accounts
+                    : [];
+                return accounts
+                    .map((entry) => {
+                        if (!entry || typeof entry !== "object") return null;
+                        const deviceAccount = String(
+                            entry.deviceAccount ?? entry.account ?? "",
+                        ).trim();
+                        if (!deviceAccount) return null;
+                        return {
+                            deviceAccount,
+                            tradedCards: entry.tradedCards,
+                            sharedCards: entry.sharedCards,
+                            sourceType: "trade",
+                        };
+                    })
+                    .filter(Boolean);
+            }
+
+            function extractAccountDocumentsWithCardMarks(documents) {
+                if (!Array.isArray(documents) || !documents.length) return [];
+                const withMarks = [];
+                for (const doc of documents) {
+                    if (!doc || typeof doc !== "object") continue;
+                    if (!getDeviceAccountFromDocument(doc)) continue;
+                    if (
+                        !documentHasCardMarksField(doc, [
+                            "tradedCards",
+                            "TradedCards",
+                        ]) &&
+                        !documentHasCardMarksField(doc, [
+                            "sharedCards",
+                            "SharedCards",
+                        ])
+                    ) {
+                        continue;
+                    }
+                    withMarks.push(doc);
+                }
+                return withMarks;
+            }
+
+            async function loadAccountCardMarkDocumentsWithFallback() {
+                try {
+                    return {
+                        documents: await fetchAccountCardMarkDocuments(),
+                        source: "account-card-marks",
+                    };
+                } catch (err) {
+                    const msg = String(err?.message || err);
+                    if (!/\b404\b/.test(msg) && !/\b405\b/.test(msg)) {
+                        throw err;
+                    }
+                    const payload = await fetchDefaultJsonPayload(
+                        DEFAULT_ACCOUNTS_DATA_PATH,
+                    );
+                    return {
+                        documents: extractAccountDocumentsWithCardMarks(
+                            Array.isArray(payload?.accounts)
+                                ? payload.accounts
+                                : [],
+                        ),
+                        source: "accounts-data-fallback",
+                    };
+                }
+            }
+
+            async function syncCardMarksAfterAccountLoad(documents) {
+                if (!canPersistCardMarksToDisk()) return;
+                await migrateCardMarksToAccountFiles(documents);
+                hydrateCardMarksFromAccountDocuments(documents);
+                invalidateCatalogAccountCounts();
+                clearAccountOverviewCache();
+            }
+
+            async function syncCardMarksAfterCompactLoad(summary) {
+                if (!canPersistCardMarksToDisk()) return;
+                bootBeginStep("card_marks");
+                try {
+                    const tradeDocuments =
+                        buildTradeAccountDocumentsFromSummary(summary);
+                    await migrateCardMarksToAccountFiles(tradeDocuments);
+                    const markLoad =
+                        await loadAccountCardMarkDocumentsWithFallback();
+                    hydrateCardMarksFromAccountDocuments(markLoad.documents);
+                    invalidateCatalogAccountCounts();
+                    clearAccountOverviewCache();
+                    const detailParts = [
+                        `${formatNumber(markLoad.documents.length)} ${pluralWord(markLoad.documents.length, "account", "accounts")} with marks`,
+                    ];
+                    if (markLoad.source === "accounts-data-fallback") {
+                        detailParts.push("legacy fallback");
+                    }
+                    bootEndStep("card_marks", detailParts.join(" · "));
+                } catch (err) {
+                    bootFailStep(
+                        "card_marks",
+                        err?.message || "request failed",
+                    );
+                }
+            }
+
             function loadLegacyCardMarksFromLocalStorage() {
                 loadTradedState();
                 loadTradedMeta();
@@ -10222,6 +10364,39 @@
                                 receivedCardId: String(p.receivedCardId),
                                 timestampMs: Number.isFinite(p.timestampMs)
                                     ? p.timestampMs
+                                    : 0,
+                            });
+                        }
+                    }
+                } else if (
+                    raw.pairings &&
+                    typeof raw.pairings === "object"
+                ) {
+                    const p = raw.pairings;
+                    if (
+                        p.receivedCardId != null &&
+                        String(p.receivedCardId).trim() !== ""
+                    ) {
+                        pairings.push({
+                            receivedCardId: String(p.receivedCardId),
+                            timestampMs: Number.isFinite(p.timestampMs)
+                                ? p.timestampMs
+                                : 0,
+                        });
+                    } else {
+                        for (const key of Object.keys(raw.pairings)) {
+                            const item = raw.pairings[key];
+                            if (!item || typeof item !== "object") continue;
+                            if (
+                                item.receivedCardId == null ||
+                                String(item.receivedCardId).trim() === ""
+                            ) {
+                                continue;
+                            }
+                            pairings.push({
+                                receivedCardId: String(item.receivedCardId),
+                                timestampMs: Number.isFinite(item.timestampMs)
+                                    ? item.timestampMs
                                     : 0,
                             });
                         }
@@ -11269,6 +11444,10 @@
                     label: "Processing pull rows",
                     shortLabel: "Row processing",
                 },
+                card_marks: {
+                    label: "Loading traded and shared marks",
+                    shortLabel: "Traded/shared marks",
+                },
                 fetch_legacy: {
                     label: "Loading full account data (legacy)",
                     shortLabel: "Legacy bundle",
@@ -11289,6 +11468,7 @@
                 "fetch_rows",
                 "parse_summary",
                 "parse_rows",
+                "card_marks",
                 "fetch_legacy",
                 "parse_accounts",
                 "render_ui",
@@ -11304,6 +11484,7 @@
                 "fetch_rows",
                 "parse_summary",
                 "parse_rows",
+                "card_marks",
             ];
 
             const dashboardBootState = {
@@ -13724,6 +13905,8 @@
                 state.selectedRarities = new Set(state.allRarities);
                 state.selectedCardTypes = new Set(ALL_CARD_TYPES);
 
+                await syncCardMarksAfterCompactLoad(summary);
+
                 clearAccountOverviewCache();
                 bootBeginStep("render_ui");
                 buildFilterCheckboxes();
@@ -13832,9 +14015,7 @@
                 state.selectedRarities = new Set(state.allRarities);
                 state.selectedCardTypes = new Set(ALL_CARD_TYPES);
 
-                await migrateCardMarksToAccountFiles(documents);
-                hydrateCardMarksFromAccountDocuments(documents);
-                clearAccountOverviewCache();
+                await syncCardMarksAfterAccountLoad(documents);
 
                 bootBeginStep("render_ui");
                 buildFilterCheckboxes();
