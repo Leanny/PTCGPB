@@ -255,10 +255,51 @@ function Normalize-InjectExtraFriendIdsText {
             ForEach-Object { $_.Trim() } |
             Where-Object { $_ -ne "" } |
             ForEach-Object { $_ -replace "[=\[\]\r\n]", "" } |
-            Where-Object { $_ -ne "" }
+            Where-Object { $_ -match '^\d{16}$' }
     )
     if ($parts.Count -eq 0) { return "" }
     return ($parts -join ",")
+}
+
+
+function Get-InjectFriendSettingsFromIni {
+    param([Parameter(Mandatory = $true)][string]$IniPath)
+    $settings = Read-IniSection -IniPath $IniPath -Section "UserSettings"
+    $favoriteFriendIds = ""
+    if ($settings.ContainsKey("favoriteFriendIDs")) {
+        $favoriteFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["favoriteFriendIDs"])
+    }
+    $injectExtraFriendIds = ""
+    if ($settings.ContainsKey("injectExtraFriendIDs")) {
+        $injectExtraFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["injectExtraFriendIDs"])
+    }
+    if ([string]::IsNullOrWhiteSpace($favoriteFriendIds) -and -not [string]::IsNullOrWhiteSpace($injectExtraFriendIds)) {
+        $favoriteFriendIds = $injectExtraFriendIds
+    }
+    $injectSelectedFriendIds = ""
+    if ($settings.ContainsKey("injectSelectedFriendIDs")) {
+        $injectSelectedFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["injectSelectedFriendIDs"])
+    }
+    if ([string]::IsNullOrWhiteSpace($injectSelectedFriendIds) -and -not [string]::IsNullOrWhiteSpace($injectExtraFriendIds)) {
+        $injectSelectedFriendIds = $injectExtraFriendIds
+    }
+    $favoriteFriendLabels = ""
+    if ($settings.ContainsKey("favoriteFriendLabels")) {
+        $favoriteFriendLabels = [string]$settings["favoriteFriendLabels"]
+    }
+    return [pscustomobject]@{
+        favoriteFriendIds = $favoriteFriendIds
+        favoriteFriendLabels = $favoriteFriendLabels
+        injectSelectedFriendIds = $injectSelectedFriendIds
+        injectExtraFriendIds = $injectExtraFriendIds
+    }
+}
+
+function Build-InjectFriendRequestIds {
+    param(
+        [AllowNull()][AllowEmptyString()][string]$SelectedFriendIds
+    )
+    return (Normalize-InjectExtraFriendIdsText -Text ([string]$SelectedFriendIds))
 }
 
 function Resolve-AutoHotkeyExe {
@@ -410,16 +451,16 @@ function Invoke-ListInstances {
         return
     }
     $instances = Get-MumuInstances -BaseFolder $folderPath
-    $injectExtraFriendIds = ""
-    if ($settings.ContainsKey("injectExtraFriendIDs")) {
-        $injectExtraFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$settings["injectExtraFriendIDs"])
-    }
+    $friendSettings = Get-InjectFriendSettingsFromIni -IniPath $iniPath
     Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
         ok = $true
         folderPath = $folderPath
         folderPathSource = $folderConfig.Source
         defaultInstance = if ($settings.ContainsKey("winTitle")) { $settings["winTitle"] } else { "" }
-        injectExtraFriendIds = $injectExtraFriendIds
+        injectExtraFriendIds = $friendSettings.injectExtraFriendIds
+        favoriteFriendIds = $friendSettings.favoriteFriendIds
+        favoriteFriendLabels = $friendSettings.favoriteFriendLabels
+        injectSelectedFriendIds = $friendSettings.injectSelectedFriendIds
         instances = $instances
     }
 }
@@ -528,6 +569,28 @@ function Invoke-InjectAccount {
     if ($null -ne $payload.sendFriendRequest) {
         try { $sendFriendRequest = [bool]$payload.sendFriendRequest } catch { $sendFriendRequest = $false }
     }
+    $selectedFriendIds = ""
+    $selectedProp = $payload.PSObject.Properties["selectedFriendIds"]
+    if ($null -ne $selectedProp) {
+        $selectedFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$selectedProp.Value)
+    }
+    $favoriteFriendIds = ""
+    $favoriteProp = $payload.PSObject.Properties["favoriteFriendIds"]
+    if ($null -ne $favoriteProp) {
+        $favoriteFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$favoriteProp.Value)
+    }
+    $favoriteFriendLabels = ""
+    $favoriteLabelsProp = $payload.PSObject.Properties["favoriteFriendLabels"]
+    if ($null -ne $favoriteLabelsProp) {
+        $favoriteFriendLabels = [string]$favoriteLabelsProp.Value
+        $favoriteFriendLabels = ($favoriteFriendLabels -replace "[\r\n=]", " ").Trim()
+    }
+    if ([string]::IsNullOrWhiteSpace($selectedFriendIds)) {
+        $injectExtraProp = $payload.PSObject.Properties["injectExtraFriendIds"]
+        if ($null -ne $injectExtraProp) {
+            $selectedFriendIds = Normalize-InjectExtraFriendIdsText -Text ([string]$injectExtraProp.Value)
+        }
+    }
     if ([string]::IsNullOrWhiteSpace($account)) {
         Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "The 'account' field is required." }
         return
@@ -556,14 +619,21 @@ function Invoke-InjectAccount {
     # fileName must be without extension (the AHK script appends .xml at runtime).
     $fileNameNoExt = [System.IO.Path]::GetFileNameWithoutExtension($xmlPath)
 
+    $resolvedFriendRequestIds = Build-InjectFriendRequestIds -SelectedFriendIds $selectedFriendIds
+
     $iniValues = @{
         fileName = $fileNameNoExt
         selectedFilePath = $xmlPath
         sendFriendRequestAfterInject = if ($sendFriendRequest) { 1 } else { 0 }
+        injectSelectedFriendIDs = $selectedFriendIds
+        injectExtraFriendIDs = $selectedFriendIds
+        injectFriendRequestIds = $resolvedFriendRequestIds
     }
-    $injectExtraProp = $payload.PSObject.Properties["injectExtraFriendIds"]
-    if ($null -ne $injectExtraProp) {
-        $iniValues["injectExtraFriendIDs"] = Normalize-InjectExtraFriendIdsText -Text ([string]$injectExtraProp.Value)
+    if (-not [string]::IsNullOrWhiteSpace($favoriteFriendIds)) {
+        $iniValues["favoriteFriendIDs"] = $favoriteFriendIds
+    }
+    if ($null -ne $favoriteLabelsProp) {
+        $iniValues["favoriteFriendLabels"] = $favoriteFriendLabels
     }
     if (-not [string]::IsNullOrWhiteSpace($winTitle)) {
         # Reject anything weird so we don't write garbage that breaks the ini.
@@ -2725,17 +2795,15 @@ try {
                 Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
                 continue
             }
-            $settingsPath = Join-Path $resolvedRoot "Settings.ini"
-            $fid = ""
-            if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
-                $sec = Read-IniSection -IniPath $settingsPath -Section "General"
-                if ($sec.ContainsKey("FriendID")) {
-                    $fid = [string]$sec["FriendID"]
-                }
-                $fid = $fid.Trim()
-                if ($fid -ieq "ERROR") { $fid = "" }
+            $accountsDir = Join-Path $resolvedRoot "Accounts"
+            $iniPath = Join-Path $accountsDir "InjectAccount.ini"
+            $friendSettings = Get-InjectFriendSettingsFromIni -IniPath $iniPath
+            Write-JsonResponse -Context $context -StatusCode 200 -Payload @{
+                ok = $true
+                favoriteFriendIds = $friendSettings.favoriteFriendIds
+                favoriteFriendLabels = $friendSettings.favoriteFriendLabels
+                injectSelectedFriendIds = $friendSettings.injectSelectedFriendIds
             }
-            Write-JsonResponse -Context $context -StatusCode 200 -Payload @{ ok = $true; friendId = $fid }
             continue
         }
 
