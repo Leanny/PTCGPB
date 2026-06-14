@@ -924,12 +924,13 @@ getScreenHandle(ParentTitle){
 }
 
 FixInstanceScreen(instanceNo){
+    windowMetrics := GetMumuWindowMetrics()
     instanceTitle := instanceNo . " ahk_class Qt5156QWindowIcon"
     SendMessage, 0x0005, 1, 0,, %instanceTitle%
     Sleep, 50
     SendMessage, 0x0005, 0, 0,, %instanceTitle%
     Sleep, 500
-    WinMove, %instanceTitle%, , , , 283, 532
+    WinMove, %instanceTitle%, , , , % windowMetrics.scaleParam, % windowMetrics.rowHeight
 }
 
 getMuMuHwnd(winTitle) {
@@ -1288,11 +1289,157 @@ findAdbPath(targetDir) {
     return ""
 }
 
+GetConfiguredDisplayScale() {
+    global botConfig
+
+    displayScale := ""
+    try {
+        displayScale := botConfig.get("DisplayScale")
+    } catch {
+    }
+
+    if (displayScale = "" || displayScale = "Auto") {
+        selectedMonitorIndex := "1"
+        try {
+            selectedMonitorIndex := RegExReplace(botConfig.get("SelectedMonitorIndex"), ":.*$")
+        } catch {
+        }
+
+        monitorScales := GetAllMonitorScales()
+        if (monitorScales.HasKey(selectedMonitorIndex))
+            return monitorScales[selectedMonitorIndex]
+
+        return 100
+    }
+
+    if (InStr(displayScale, "125"))
+        return 125
+
+    return 100
+}
+
+GetMumuWindowMetrics() {
+    displayScale := GetConfiguredDisplayScale()
+    metrics := {}
+
+    if (displayScale = 125) {
+        if (IsMuMuv5()) {
+            metrics.scaleParam := 283
+            metrics.titleHeight := 50
+        } else {
+            metrics.scaleParam := 277
+            metrics.titleHeight := 45
+        }
+    } else {
+        metrics.scaleParam := 283
+        metrics.titleHeight := 40
+    }
+
+    metrics.rowHeight := metrics.titleHeight + 492
+    metrics.imageSearchYBias := (displayScale = 125) ? metrics.titleHeight - 45 : 0
+    return metrics
+}
+
+GetAdbClickMetrics() {
+    metrics := {}
+
+    if (GetConfiguredDisplayScale() = 125) {
+        metrics.convX := 540/277
+        metrics.convY := 960/489
+        metrics.offset := -44
+    } else {
+        metrics.convX := 540/283
+        metrics.convY := 960/488
+        metrics.offset := -40
+    }
+
+    return metrics
+}
+
+IsMuMuv5() {
+    static cachedIsMuMuv5 := ""
+
+    if (cachedIsMuMuv5 != "")
+        return cachedIsMuMuv5
+
+    mumuFolder := getMuMuFolder()
+    cachedIsMuMuv5 := (mumuFolder != "" && FileExist(mumuFolder . "\nx_main")) ? 1 : 0
+    return cachedIsMuMuv5
+}
+
+ResolveNeedlePath(path) {
+    if (GetConfiguredDisplayScale() != 125)
+        return path
+
+    if (!IsScale125NeedleFallbackAllowed(path))
+        return path
+
+    scale125Path := StrReplace(path, "\Needles\", "\Scale125\")
+    if (scale125Path != path && FileExist(scale125Path))
+        return scale125Path
+
+    return path
+}
+
+IsScale125NeedleFallbackAllowed(path) {
+    SplitPath, path, fileName
+
+    if (fileName = "")
+        return false
+
+    if (IsScale125RarityNeedle(fileName))
+        return true
+
+    static allowedUiNeedles := ""
+    if (!IsObject(allowedUiNeedles)) {
+        allowedUiNeedles := {}
+        ; Shared Needles are the default. These are legacy pixel-sensitive
+        ; Scale 125 UI fallbacks that differ from the shared asset set.
+        for _, allowedName in ["Account.png"
+            , "CloseAlertWindow.png"
+            , "Error.png"
+            , "Friend2.png"
+            , "FriendSearchButton.png"
+            , "GoToTitle.png"
+            , "HardwareReqs.png"
+            , "Hourglass1.png"
+            , "InSubMenu.png"
+            , "Mission_dino2.png"
+            , "noWPenergy.png"
+            , "OK2.png"
+            , "One.png"
+            , "Settings.png"
+            , "speedmodMenu.png"
+            , "SwipeUp.png"
+            , "Three.png"
+            , "Two.png"
+            , "WonderPickRaminItems.png"] {
+            allowedUiNeedles[allowedName] := true
+        }
+    }
+
+    return allowedUiNeedles.HasKey(fileName)
+}
+
+IsScale125RarityNeedle(fileName) {
+    return RegExMatch(fileName, "i)^(1star|3diamond|crown|gimmighoul|immersive|normal|rainbow|shiny1star|ShinyEx_ex_|trainer)\d+\.png$")
+}
+
+GetScaleProfileValue(scale100Value, scale125Value) {
+    return (GetConfiguredDisplayScale() = 125) ? scale125Value : scale100Value
+}
+
 GetAllMonitorScales() {
     scales := {}
-    
+    oldDpiContext := 0
+    try {
+        oldDpiContext := DllCall("User32\SetThreadDpiAwarenessContext", "Ptr", -3, "Ptr")
+    } catch {
+        oldDpiContext := 0
+    }
+
     SysGet, monitorCount, MonitorCount
-    
+
     Loop, %monitorCount% {
         SysGet, Mon, Monitor, %A_Index%
         
@@ -1310,6 +1457,9 @@ GetAllMonitorScales() {
             scales[A_Index] := scalePercent
         }
     }
-    
+
+    if (oldDpiContext)
+        DllCall("User32\SetThreadDpiAwarenessContext", "Ptr", oldDpiContext, "Ptr")
+
     return scales
 }

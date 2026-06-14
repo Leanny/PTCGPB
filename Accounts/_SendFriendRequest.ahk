@@ -126,18 +126,25 @@ if (!hwnd) {
     ExitWithCleanup(2)
 }
 
-; Strip caption + force the canonical 283x532 client size the needle
-; coordinates are calibrated against (matches DirectlyPositionWindow in 1.ahk).
+; Match the main bot's scale-aware MuMu window metrics before image search.
 WinGetPos, wx, wy, ww, wh, ahk_id %hwnd%
 WinGet, curStyle, Style, ahk_id %hwnd%
+windowMetrics := GetMumuWindowMetrics()
+targetWidth := windowMetrics.scaleParam
+targetHeight := windowMetrics.rowHeight
 needsCaptionStrip := (curStyle & 0x00C00000) != 0
-needsResize := (ww != 283 || wh != 532)
+needsResize := (ww != targetWidth || wh != targetHeight)
 if (needsCaptionStrip)
     WinSet, Style, -0xC00000, ahk_id %hwnd%
 if (needsResize)
-    WinMove, ahk_id %hwnd%, , %wx%, %wy%, 283, 532
-if (needsCaptionStrip || needsResize)
+    WinMove, ahk_id %hwnd%, , %wx%, %wy%, %targetWidth%, %targetHeight%
+if (needsCaptionStrip)
+    WinSet, Style, +0xC00000, ahk_id %hwnd%
+if (needsCaptionStrip || needsResize) {
+    WinSet, Redraw, , ahk_id %hwnd%
+    FixInstanceScreen(g_winTitle)
     Sleep, 180
+}
 
 setADBBaseInfo()
 ConnectAdb()
@@ -180,6 +187,8 @@ ExitWithCleanup(allFriendRequestsOk ? 0 : 4)
 GetNeedle(Path) {
     static NeedleBitmaps := Object()
 
+    Path := ResolveNeedlePath(Path)
+
     if (NeedleBitmaps.HasKey(Path))
         return NeedleBitmaps[Path]
 
@@ -191,6 +200,16 @@ GetNeedle(Path) {
     needleObj.needle := pNeedle
     NeedleBitmaps[Path] := needleObj
     return needleObj
+}
+
+Gdip_ImageSearch_wbb(pBitmapHaystack, pNeedle, ByRef OutputList=""
+    , OuterX1=0, OuterY1=0, OuterX2=0, OuterY2=0, Variation=0, Trans=""
+    , SearchDirection=1, Instances=1, LineDelim="`n", CoordDelim=",") {
+    windowMetrics := GetMumuWindowMetrics()
+    yBias := windowMetrics.imageSearchYBias
+    return Gdip_ImageSearch(pBitmapHaystack, pNeedle.needle, OutputList
+        , OuterX1, OuterY1 + yBias, OuterX2, OuterY2 + yBias
+        , Variation, Trans, SearchDirection, Instances, LineDelim, CoordDelim)
 }
 
 findNeedle(needleName, searchVariation := 20) {
@@ -208,7 +227,7 @@ findNeedle(needleName, searchVariation := 20) {
     pNeedle := GetNeedle(Path)
 
     vPosXY := ""
-    vRet := Gdip_ImageSearch(pBitmap, pNeedle.needle, vPosXY
+    vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
         , needleObj.coords.startX, needleObj.coords.startY
         , needleObj.coords.endX,   needleObj.coords.endY
         , searchVariation)
@@ -384,7 +403,12 @@ gotoFriendSearchPanel(timeoutSec := 60) {
             tap(240, 120)
             Sleep, 300
         }
-        else {
+        else if (GetConfiguredDisplayScale() = 125) {
+            if (findNeedle("Friend_SocialTutorialMarker")) {
+                tap(145, 451)
+                Sleep, 300
+            }
+        } else {
             tap(155, 425)
         }
 

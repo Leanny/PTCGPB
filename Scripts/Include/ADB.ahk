@@ -317,6 +317,16 @@ waitUntilActivatePTCGPApp(){
     return true
 }
 
+isPTCGPAppFocused() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    result := CmdRet(adbCommand . " shell dumpsys window | grep -E 'mCurrentFocus'")
+    ADB_LogTrace("isPTCGPAppFocused focus=" . Trim(result))
+    return InStr(result, "jp.pokemon.pokemontcgp")
+}
+
 doesMissionUserPrefsExist() {
     prof := Prof_Scope(A_ThisFunc)
     global session
@@ -439,16 +449,29 @@ startPTCGPApp() {
 
     retryCount := 0
     Loop {
-        if(isTerminatePTCGPApp()) {
-            ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
-            adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-            adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
-            DelayH(100)
+        appTerminated := isTerminatePTCGPApp()
+        if(!appTerminated && isPTCGPAppFocused()) {
+            ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
+            return true
         }
-        if(waitUntilActivatePTCGPApp())
-            break
-        if(++retryCount >= 3)
-            break
+
+        if(appTerminated)
+            adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+
+        ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
+        adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
+        DelayH(100)
+
+        if(waitUntilActivatePTCGPApp()) {
+            ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
+            return true
+        }
+
+        if(++retryCount >= 3) {
+            LogWarn("[" . A_ScriptName . "] startPTCGPApp failed to activate after " . retryCount . " attempts", "ADB.txt")
+            ADB_LogTrace("startPTCGPApp failed retryCount=" . retryCount)
+            return false
+        }
     }
     appPid := getPTCGPAppPid()
     if (IsObject(session))
@@ -751,14 +774,13 @@ waitadb(){
 adbClick(X, Y) {
     prof := Prof_Scope(A_ThisFunc)
     static clickCommands := Object()
-    static convX := 540/283, convY := 960/488, offset := -40
-
-    key := X << 16 | Y
+    metrics := GetAdbClickMetrics()
+    key := X "|" Y "|" metrics.convX "|" metrics.convY "|" metrics.offset
 
     if (!clickCommands.HasKey(key)) {
         clickCommands[key] := Format("input tap {} {}"
-            , Round(X * convX)
-            , Round((Y + offset) * convY))
+            , Round(X * metrics.convX)
+            , Round((Y + metrics.offset) * metrics.convY))
     }
     ADB_LogTrace("adbClick logical=(" . X . "," . Y . ") command=" . clickCommands[key])
     adbWriteRaw(clickCommands[key])

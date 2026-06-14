@@ -185,7 +185,8 @@ Loop {
         sleep, 1000
         OwnerWND := getMuMuHwnd(session.get("winTitle"))
         x4 := x + 4
-        y4 := y + 529
+        windowMetrics := GetMumuWindowMetrics()
+        y4 := y + windowMetrics.rowHeight - 3
         buttonWidth := 50
 
         Gui, New, +Owner%OwnerWND% -AlwaysOnTop +ToolWindow -Caption +LastFound -DPIScale
@@ -1051,7 +1052,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     if (imageName = "CommunityShowcase" || imageName = "Search" || imageName = "inHamburgerMenu" || imageName = "Trade") {
         Path = %imagePath%Tutorial.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 111, 115, 167, 121, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [111, 115, 167, 121], [111, 115, 167, 121], searchVariation)
         if (vRet = 1) {
             adbClick_wbb(145, 451)
         }
@@ -1067,7 +1068,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         Path = %imagePath%Delete2.png
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 118, 353, 135, 390, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [118, 353, 135, 390], [118, 353, 135, 390], searchVariation)
         if (vRet = 1) {
             adbClick_wbb(74, 353)
             Delay(1)
@@ -1085,7 +1086,7 @@ if(imageName = "CommunityShowcase") {
         Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, searchVariation)
+        vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [30, 331, 50, 449], [30, 331, 50, 449], searchVariation)
         if (vRet = 1) {
             adbWriteRaw("rm -rf /data/data/jp.pokemon.pokemontcgp/cache/*") ; clear cache
             waitadb()
@@ -1144,6 +1145,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
     confirmed := false
 
     if(click) {
+        ApplyScale125SpeedModClickPoint(clickx, clicky, needleName)
         adbClick_wbb(clickx, clicky)
         clickTime := A_TickCount
     }
@@ -1207,7 +1209,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if (imageName = "CommunityShowcase" || imageName = "Add" || imageName = "Search") {
             Path = %imagePath%Tutorial.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 111, 115, 167, 121, searchVariation)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [111, 115, 167, 121], [111, 115, 167, 121], searchVariation)
             if (vRet = 1) {
                 adbClick_wbb(145, 451)
             }
@@ -1218,12 +1220,17 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
             return false
         }
+        else if(imageName = "speedmodMenu") {
+            speedmodWaitTime := (A_TickCount - session.get("StartSkipTime")) // 1000
+            if(speedmodWaitTime >= 8 && !isPTCGPAppFocused())
+                restartGameInstance("Stuck at " . imageName . "... (app inactive)")
+        }
 
         if(imageName = "Social" || imageName = "Country" || imageName = "Account2" || imageName = "Account") { ;only look for deleted account on start up.
             Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
             pNeedle := GetNeedle(Path)
             ; ImageSearch within the region
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, searchVariation)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [30, 331, 50, 449], [30, 331, 50, 449], searchVariation)
             if (vRet = 1) {
                 adbWriteRaw("rm -rf /data/data/jp.pokemon.pokemontcgp/cache/*") ; clear cache
                 waitadb()
@@ -1241,7 +1248,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(imageName = "Skip2" || imageName = "Pack" || imageName = "Hourglass2") {
             Path = %imagePath%notenoughitems.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 92, 299, 115, 317, 0)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [92, 299, 115, 317], [92, 299, 115, 317], 0)
             if(vRet = 1) {
                 session.set("cantOpenMorePacks", 1)
                 return 0
@@ -1251,7 +1258,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(imageName = "Mission_dino2" || imageName = "Mission_dino3") {
             Path = %imagePath%1solobattlemission.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 108, 180, 177, 208, 0)
+            vRet := Gdip_ImageSearchProfile_wbb(pBitmap, pNeedle, vPosXY, [108, 180, 177, 208], [108, 180, 177, 208], 0)
             if(vRet = 1) {
                 SetBeginnerMissionsDone()
                 return
@@ -1286,6 +1293,14 @@ if(imageName = "CommunityShowcase") {
     return confirmed
 }
 
+ApplyScale125SpeedModClickPoint(ByRef clickx, ByRef clicky, needleName) {
+    if (GetConfiguredDisplayScale() != 125)
+        return
+
+    if (needleName = "Common_SpeedMod1x" || needleName = "Common_SpeedMod2x" || needleName = "Common_SpeedMod3x")
+        clicky := 176
+}
+
 resetWindows() {
     prof := Prof_Scope(A_ThisFunc)
     DirectlyPositionWindow()
@@ -1295,9 +1310,10 @@ resetWindows() {
 
 DirectlyPositionWindow() {
     prof := Prof_Scope(A_ThisFunc)
-    global botConfig
+    global botConfig, session
 
-    scaleParam := 283
+    windowMetrics := GetMumuWindowMetrics()
+    scaleParam := windowMetrics.scaleParam
     rowGap := botConfig.get("rowGap")
 
     ; Get monitor information
@@ -1313,10 +1329,8 @@ DirectlyPositionWindow() {
         instanceIndex := Title
     }
 
-    titleHeight := 40
-
     borderWidth := 4 - 1
-    rowHeight := titleHeight + 492
+    rowHeight := windowMetrics.rowHeight
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)
@@ -1413,7 +1427,18 @@ restartGameInstance(reason, RL := true) {
         closePTCGPApp()
         Sleep, 100
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
-        startPTCGPApp()
+        startSucceeded := startPTCGPApp()
+        if (!startSucceeded) {
+            CreateStatusMessage("Pocket app did not start. Restarting MuMu...",,,, false)
+            LogWarn("Pocket app did not activate after stuck restart; hard restarting MuMu instance " . session.get("scriptName") . ". Reason: " . reason, "Restart.txt")
+            restartInstance()
+            RefreshAdbConnectionAfterInstanceRestart(45000)
+            AccountMetadata_CloseTempForInstance(session.get("scriptName"))
+            startSucceeded := startPTCGPApp()
+            RestoreMuMuCoverWindow(GetMuMuCoverWindowForMaintenance(session.get("winTitle")), session.get("winTitle"))
+            if (!startSucceeded)
+                LogWarn("Pocket app still did not activate after hard MuMu restart for instance " . session.get("scriptName") . ". Reason: " . reason, "Restart.txt")
+        }
         SendMetadataToPTCGPB(session.get("packsThisRun"))
         LogInfo("Restarted MuMu instance. Reason: " reason)
 
@@ -2815,11 +2840,10 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
         fileName := "packstats_temp.png"
     filePath := fileDir "\" . fileName
 
-    yBias := 40
-    cropX := 18
+    cropX := GetScaleProfileValue(18, 12)
     cropY := 170
-    cropW := 240
-    cropH := 227
+    cropW := GetScaleProfileValue(240, 251)
+    cropH := GetScaleProfileValue(227, 245)
 
     if (fileType = "FRIENDCODE"){
         cropX := 18
@@ -3472,15 +3496,30 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     profNeedle := Prof_Scope(A_ThisFunc . ":" . pNeedle.Name)
     global session
 
-    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1,OuterX2,OuterY2,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
+    windowMetrics := GetMumuWindowMetrics()
+    yBias := windowMetrics.imageSearchYBias
+    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+yBias,OuterX2,OuterY2+yBias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
     if(session.get("dbg_bbox"))
-        bboxAndPause_immage(OuterX1, OuterY1, OuterX2, OuterY2, pNeedle, vret, session.get("dbg_bboxNpause"))
+        bboxAndPause_immage(OuterX1, OuterY1+yBias, OuterX2, OuterY2+yBias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
+}
+
+Gdip_ImageSearchProfile_wbb(pBitmapHaystack, pNeedle, ByRef OutputList=""
+    , coords100="", coords125="", Variation=0, Trans=""
+    , SearchDirection=1, Instances=1, LineDelim="`n", CoordDelim=",") {
+    if (!IsObject(coords125))
+        coords125 := coords100
+
+    coords := GetScaleProfileValue(coords100, coords125)
+    return Gdip_ImageSearch_wbb(pBitmapHaystack, pNeedle, OutputList
+        , coords[1], coords[2], coords[3], coords[4], Variation, Trans
+        , SearchDirection, Instances, LineDelim, CoordDelim)
 }
 
 GetNeedle(Path) {
     prof := Prof_Scope(A_ThisFunc)
     static NeedleBitmaps := Object()
+    Path := ResolveNeedlePath(Path)
 
     if (NeedleBitmaps.HasKey(Path)) {
         return NeedleBitmaps[Path]
@@ -3938,16 +3977,16 @@ ensureMissionUserPrefsExist() {
 
 FindHourglassOpenConfirmation(tenPackOpening, failSafeTime) {
     if (tenPackOpening)
-        return (FindOrLoseImage(67, 446, 83, 468, , "HourglassPack10", 0, failSafeTime) || FindOrLoseImage(45, 446, 60, 465, , "HourGlassAndPokeGoldPack10", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 0, failSafeTime))
+        return (FindOrLoseImage("Pack_Hourglass10ImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_HourglassAndPokeGold10ImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 0, failSafeTime))
 
-    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 0, failSafeTime))
+    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, failSafeTime) || FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 0, failSafeTime))
 }
 
 FindHourglassOpenConfirmationClosed(tenPackOpening, failSafeTime) {
     if (tenPackOpening)
-        return (FindOrLoseImage(67, 446, 83, 468, , "HourglassPack10", 1, failSafeTime) && FindOrLoseImage(45, 446, 60, 465, , "HourGlassAndPokeGoldPack10", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 1, failSafeTime))
+        return (FindOrLoseImage("Pack_Hourglass10ImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGold10ImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 1, failSafeTime))
 
-    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage(66, 447, 84, 465, , "PokeGoldPackNoHourglasses", 1, failSafeTime))
+    return (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 1, failSafeTime) && FindOrLoseImage("Pack_PokeGoldNoHourglassesImageAfterOpenPackClick", 1, failSafeTime))
 }
 
 DismissMainCloseAlertWindow(context := "") {
@@ -4768,8 +4807,6 @@ HandleSingleGiftPackOpening() {
         if(FindOrLoseImage("Gift_ReceivedWindowRightBorder", 0, 1)) {
             break
         } else if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 1)) {
-            break
-        } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
             break
         } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, 1)) {
             adbClick_wbb(247, 500)
