@@ -135,6 +135,7 @@ Loop {
         gitRoot := A_ScriptDir . "\..\.."
         paths := []
         paths.Push({path: "Accounts/Saved", suffix: ".xml"})
+        paths.Push({path: "Accounts/Cards/accounts", suffix: ".json"})
         paths.Push({path: "Screenshots", suffix: ".png"})
         isCommit := CommitAndPushGit(gitRoot, "Monitor.txt", paths)
         if (isCommit) {

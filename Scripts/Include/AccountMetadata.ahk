@@ -932,6 +932,27 @@ AccountMetadata_Get(instance, fileName, filePath := "") {
 
 AccountMetadata_GetPackCountMap() {
     result := {}
+    accountDir := AccountMetadata_AccountDir()
+
+    if (FileExist(accountDir)) {
+        Loop, Files, %accountDir%\*.json, F
+        {
+            FileRead, jsonText, %A_LoopFileFullPath%
+            metadataJson := AccountMetadata_ExtractObjectValue(jsonText, "metadata")
+            if (metadataJson = "")
+                continue
+
+            fileName := AccountMetadata_ParseString(metadataJson, "fileName")
+            if (fileName = "")
+                continue
+
+            packCount := AccountMetadata_ParseNumber(metadataJson, "packCount", 0)
+            result[fileName] := packCount + 0
+        }
+
+        if (result.Count() > 0)
+            return result
+    }
 
     hMutex := AccountMetadata_AcquireLock()
     if (!hMutex)
@@ -956,6 +977,26 @@ AccountMetadata_GetPackCountMap() {
 
 AccountMetadata_GetAccountMap() {
     result := {}
+    accountDir := AccountMetadata_AccountDir()
+
+    if (FileExist(accountDir)) {
+        Loop, Files, %accountDir%\*.json, F
+        {
+            SplitPath, A_LoopFileName,,,, deviceAccount
+            if (deviceAccount = "")
+                continue
+
+            account := AccountMetadata_ReadAccountUnlocked(deviceAccount)
+            fileName := account["fileName"]
+            if (fileName = "")
+                continue
+
+            result[fileName] := account
+        }
+
+        if (result.Count() > 0)
+            return result
+    }
 
     hMutex := AccountMetadata_AcquireLock()
     if (!hMutex)
@@ -1446,23 +1487,16 @@ AccountMetadata_HasFlag(instance, fileName, flag) {
 AccountMetadata_GetFlag(instance, fileName, flag, ByRef found) {
     found := false
 
-    hMutex := AccountMetadata_AcquireLock()
-    if (!hMutex)
-        return false
+    filePath := A_ScriptDir . "\..\Accounts\Saved\" . instance . "\" . fileName
+    if (!FileExist(filePath))
+        filePath := ""
 
-    store := AccountMetadata_ReadStoreUnlocked()
-    key := AccountMetadata_FindKey(store, instance, fileName)
-    if (store["accounts"].HasKey(key)) {
-        account := store["accounts"][key]
-        if (IsObject(account["flags"]) && account["flags"].HasKey(flag)) {
-            found := true
-            value := account["flags"][flag]["value"] ? true : false
-            AccountMetadata_ReleaseLock(hMutex)
-            return value
-        }
+    account := AccountMetadata_Get(instance, fileName, filePath)
+    if (IsObject(account["flags"]) && account["flags"].HasKey(flag)) {
+        found := true
+        return account["flags"][flag]["value"] ? true : false
     }
 
-    AccountMetadata_ReleaseLock(hMutex)
     return false
 }
 
