@@ -139,8 +139,11 @@ AddFriends(renew := false, getFC := false) {
         if (DismissFriendFlowBlockingPopup("Waiting for Social"))
             continue
 
+        if (IsSocialTabActiveOnHub(failSafeTime))
+            break
+
         adbClick_wbb(143, 518)
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)) {
+        if(IsSocialTabActiveOnHub(failSafeTime)) {
             break
         }
         else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
@@ -319,9 +322,11 @@ AddFriends(renew := false, getFC := false) {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
+        if (IsSocialTabActiveOnHub(failSafeTime))
+            break
         adbClick_wbb(143, 518)
         Delay(3)
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if(IsSocialTabActiveOnHub(failSafeTime))
             break
         else if(FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, failSafeTime))
             adbClick_wbb(80, 365)
@@ -436,8 +441,11 @@ RemoveFriends() {
         if (DismissFriendFlowBlockingPopup("Waiting for Social"))
             continue
 
+        if (IsSocialTabActiveOnHub(failSafeTime))
+            break
+
         adbClick_wbb(143, 518)
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
+        if(IsSocialTabActiveOnHub(failSafeTime))
             break
         else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
             adbClick_wbb(137, 480)
@@ -595,6 +603,7 @@ RemoveFriends() {
     CreateStatusMessage("Friend removal completed. Processed " . friendsProcessed . " friends. Returning to main...",,,, false)
     LogInfo("RemoveFriends complete | account=" . cleanupAccount . " | processed=" . friendsProcessed . " | DeadCheckBeforeClear=" . DeadCheck)
     writeLastActivityEpoch(session.get("scriptName"), 4000)
+    DeadCheck := 0
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
     ClearFriendCleanupPending()
     session.set("friended", false)
@@ -811,6 +820,26 @@ IsSocialHubReadyForFriends() {
     return FindOrLoseImage("Friend_SocialHubFriendButton", 0, , 20, true)
 }
 
+IsSocialTabActiveOnHub(failSafeTime := 0) {
+    return FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)
+        && IsSocialHubReadyForFriends()
+}
+
+ReturnToSocialHubIfNeeded() {
+    if (IsSocialHubReadyForFriends())
+        return
+
+    adbClick_wbb(143, 518)
+    waitStart := A_TickCount
+    Loop {
+        if (IsSocialHubReadyForFriends())
+            return
+        if ((A_TickCount - waitStart) // 1000 >= 10)
+            return
+        Delay(0.5)
+    }
+}
+
 GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
     global session
 
@@ -849,7 +878,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
                     if(FindOrLoseImage("Friend_SearchFriendButton", 0, failSafeTime, , true)) {
                         adbInputEvent("111") ;send ESC
                     }
-                    else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime, , true)) {
+                    else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime)) {
                         mainLoopBreak := true
                         break
                     }
@@ -995,7 +1024,6 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
 
     if (session.get("accountFriendInfoChecked") = deviceAccount)
         return false
-    session.set("accountFriendInfoChecked", deviceAccount)
 
     CreateStatusMessage("Retrieving account info`nChecking saved metadata...",,,, false)
 
@@ -1009,6 +1037,7 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
     if (existingName != "" && existingName != "Unknown" && RegExMatch(existingFriendCode, "^\d{16}$")) {
         session.set("accountName", existingName)
         session.set("friendCode", existingFriendCode)
+        session.set("accountFriendInfoChecked", deviceAccount)
         return true
     }
 
@@ -1048,6 +1077,7 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
     if (saved) {
         session.set("accountName", accountMeta["accountName"])
         session.set("friendCode", accountMeta["friendCode"])
+        session.set("accountFriendInfoChecked", deviceAccount)
         CreateStatusMessage("Retrieving account info`nSaved name and Friend Code",,,, false)
         LogInfo("Saved account friend info for " . accountFileName)
     } else {
