@@ -18,6 +18,9 @@
 ;   CockpitState_AddSection(builder, name)
 ;   CockpitState_AddKey(builder, key, value)
 ;   CockpitState_Commit(builder)              -> writes atomically (.tmp -> .ini)
+;   CockpitState_CommitTo(builder, path)      -> same, to an arbitrary INI path
+;   CockpitState_ParseFile(path)              -> { section: {key: value} } in one FileRead
+;   CockpitState_SecGet(sec, key, def)        -> parsed-section lookup with default
 ;
 ;   CockpitState_NowEpoch()                   -> seconds since 1970 (UTC)
 ;
@@ -95,28 +98,63 @@ CockpitState_Read() {
     if (!FileExist(path))
         return state
 
-    state["Schema"]     := CockpitState_GetSection("Schema")
-    state["Global"]     := CockpitState_GetSection("Global")
-    state["Eta"]        := CockpitState_GetSection("Eta")
-    state["Queues"]     := CockpitState_GetSection("Queues")
-    state["Throughput"] := CockpitState_GetSection("Throughput")
-    state["ModeStats"]  := CockpitState_GetSection("ModeStats")
-    state["Runtime"]    := CockpitState_GetSection("Runtime")
-    state["Events"]     := CockpitState_GetSection("Events")
-    state["Alerts"]     := CockpitState_GetSection("Alerts")
-    state["Main"]       := CockpitState_GetSection("Main")
+    parsed := CockpitState_ParseFile(path)
+    for secName, secData in parsed {
+        if (state.HasKey(secName) && secName != "Instances")
+            state[secName] := secData
+    }
 
     instancesConfigured := state["Global"].HasKey("instancesConfigured")
         ? (state["Global"]["instancesConfigured"] + 0) : 0
 
     Loop, % instancesConfigured {
         sec := "Instance:" . A_Index
-        instData := CockpitState_GetSection(sec)
-        if (instData.Count() > 0)
-            state["Instances"].Push(instData)
+        if (parsed.HasKey(sec) && parsed[sec].Count() > 0)
+            state["Instances"].Push(parsed[sec])
     }
 
     return state
+}
+
+; Whole-file INI parse in one FileRead: every IniRead/GetSection call reopens
+; and rescans the entire file, so per-section reads cost O(sections * filesize)
+; per tick. Returns { sectionName: { key: value } }. Quoted values are kept
+; verbatim (no producer of these files writes quotes).
+CockpitState_ParseFile(path) {
+    parsed := {}
+    if (!FileExist(path))
+        return parsed
+    FileRead, content, %path%
+    if (content = "")
+        return parsed
+    cur := ""
+    Loop, Parse, content, `n, `r
+    {
+        line := Trim(A_LoopField)
+        if (line = "" || SubStr(line, 1, 1) = ";")
+            continue
+        if (SubStr(line, 1, 1) = "[") {
+            end := InStr(line, "]")
+            if (end > 2) {
+                cur := SubStr(line, 2, end - 2)
+                if (!parsed.HasKey(cur))
+                    parsed[cur] := {}
+            }
+            continue
+        }
+        if (cur = "")
+            continue
+        eq := InStr(line, "=")
+        if (eq <= 0)
+            continue
+        parsed[cur][RTrim(SubStr(line, 1, eq - 1))] := LTrim(SubStr(line, eq + 1))
+    }
+    return parsed
+}
+
+; sec[key] with default for possibly-missing sections/keys from CockpitState_ParseFile.
+CockpitState_SecGet(sec, key, def := "") {
+    return (IsObject(sec) && sec.HasKey(key)) ? sec[key] : def
 }
 
 ;-------------------------------------------------------------------------------
@@ -145,7 +183,12 @@ CockpitState_AddKeyValues(builder, kvObj) {
 }
 
 CockpitState_Commit(builder) {
-    path := CockpitState_Path()
+    return CockpitState_CommitTo(builder, CockpitState_Path())
+}
+
+; Atomic whole-file write (.tmp -> rename) of a builder to any INI path.
+; One disk write per commit vs one full rewrite+flush per IniWrite call.
+CockpitState_CommitTo(builder, path) {
     tmpPath := path . ".tmp"
 
     SplitPath, path,, dir

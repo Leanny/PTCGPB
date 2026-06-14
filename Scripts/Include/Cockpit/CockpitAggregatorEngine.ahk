@@ -332,18 +332,11 @@ Agg_ReadInstanceIni(N) {
     if (!FileExist(path))
         return info
 
-    IniRead, ls, %path%, Metrics, LastStartEpoch, 0
-    if (ls != "ERROR" && ls != "")
-        info.lastStartEpoch := (ls + 0)
-    IniRead, le, %path%, Metrics, LastEndEpoch, 0
-    if (le != "ERROR" && le != "")
-        info.lastEndEpoch := (le + 0)
-    IniRead, rr, %path%, Metrics, rerolls, 0
-    if (rr != "ERROR" && rr != "")
-        info.rerolls := (rr + 0)
-    IniRead, ca, %path%, Metrics, currentAccount, %A_Space%
-    if (ca != "ERROR" && ca != "")
-        info.currentAccount := ca
+    m := CockpitState_SecGet(CockpitState_ParseFile(path), "Metrics", {})
+    info.lastStartEpoch := CockpitState_SecGet(m, "LastStartEpoch", 0) + 0
+    info.lastEndEpoch := CockpitState_SecGet(m, "LastEndEpoch", 0) + 0
+    info.rerolls := CockpitState_SecGet(m, "rerolls", 0) + 0
+    info.currentAccount := CockpitState_SecGet(m, "currentAccount")
 
     return info
 }
@@ -543,6 +536,10 @@ Agg_EmitEvent(level, scope, instance, category, details) {
         , "level": level, "scope": scope, "instance": instance
         , "category": category, "details": details }
     g_aggState.events.Push(ev)
+    ; Every retained event is reserialized into both state files each tick and
+    ; reparsed by the GUI each second: unbounded growth degrades long sessions.
+    while (g_aggState.events.Length() > 300)
+        g_aggState.events.RemoveAt(1)
 
     if (scope = "inst" && instance > 0 && g_aggState.instances.HasKey(instance)) {
         g_aggState.instances[instance].lastEvent := details
@@ -804,59 +801,69 @@ Agg_ReadSessionMarker() {
 
 Agg_SaveRuntimeState() {
     global g_aggState, g_aggSessionStartEpoch, g_aggSessionId, g_aggLastShiftEpoch, g_aggLastMode
-    path := Agg_RuntimeStatePath()
 
-    IniWrite, %g_aggSessionStartEpoch%, %path%, Runtime, SessionStartEpoch
-    IniWrite, %g_aggSessionId%, %path%, Runtime, SessionId
-    IniWrite, %g_aggLastShiftEpoch%, %path%, Runtime, LastShiftEpoch
-    IniWrite, %g_aggLastMode%, %path%, Runtime, LastMode
-    IniWrite, % (g_aggState.eventCounter + 0), %path%, Runtime, EventCounter
-    IniWrite, % (g_aggState.totalRunsCompleted + 0), %path%, Runtime, TotalRunsCompleted
-    IniWrite, % Metrics_ArrayToCsv(g_aggState.globalRing), %path%, Runtime, GlobalRing
-    IniWrite, % Metrics_ArrayToCsv(g_aggState.trendInjPerHour), %path%, Runtime, TrendInjPerHour
-    IniWrite, % Metrics_ArrayToCsv(g_aggState.trendAvgRunSum), %path%, Runtime, TrendAvgRunSum
-    IniWrite, % Metrics_ArrayToCsv(g_aggState.trendAvgRunCount), %path%, Runtime, TrendAvgRunCount
-    IniWrite, % Metrics_ArrayToCsv(g_aggState.trendStuckRate), %path%, Runtime, TrendStuckRate
+    ; Single atomic rewrite: this runs every tick, and one IniWrite per key
+    ; means one full file rewrite + flush per key (130+ with 8 instances).
+    b := CockpitState_NewBuilder()
 
+    CockpitState_AddSection(b, "Runtime")
+    CockpitState_AddKey(b, "SessionStartEpoch", g_aggSessionStartEpoch)
+    CockpitState_AddKey(b, "SessionId", g_aggSessionId)
+    CockpitState_AddKey(b, "LastShiftEpoch", g_aggLastShiftEpoch)
+    CockpitState_AddKey(b, "LastMode", g_aggLastMode)
+    CockpitState_AddKey(b, "EventCounter", g_aggState.eventCounter + 0)
+    CockpitState_AddKey(b, "TotalRunsCompleted", g_aggState.totalRunsCompleted + 0)
+    CockpitState_AddKey(b, "GlobalRing", Metrics_ArrayToCsv(g_aggState.globalRing))
+    CockpitState_AddKey(b, "TrendInjPerHour", Metrics_ArrayToCsv(g_aggState.trendInjPerHour))
+    CockpitState_AddKey(b, "TrendAvgRunSum", Metrics_ArrayToCsv(g_aggState.trendAvgRunSum))
+    CockpitState_AddKey(b, "TrendAvgRunCount", Metrics_ArrayToCsv(g_aggState.trendAvgRunCount))
+    CockpitState_AddKey(b, "TrendStuckRate", Metrics_ArrayToCsv(g_aggState.trendStuckRate))
+
+    CockpitState_AddSection(b, "ModeRings")
     modeNames := ""
     for mk, ring in g_aggState.modeRings {
         key := RegExReplace(mk, "[^A-Za-z0-9]", "_")
         if (modeNames != "")
             modeNames .= "|"
         modeNames .= key
-        IniWrite, %mk%, %path%, ModeRings, % key . "_Name"
-        IniWrite, % Metrics_ArrayToCsv(ring), %path%, ModeRings, % key . "_Ring"
+        CockpitState_AddKey(b, key . "_Name", mk)
+        CockpitState_AddKey(b, key . "_Ring", Metrics_ArrayToCsv(ring))
     }
-    IniWrite, %modeNames%, %path%, ModeRings, Keys
+    CockpitState_AddKey(b, "Keys", modeNames)
 
+    CockpitState_AddSection(b, "Events")
     evCount := g_aggState.events.Length()
-    IniWrite, %evCount%, %path%, Events, Count
+    CockpitState_AddKey(b, "Count", evCount)
     Loop, %evCount% {
         ev := g_aggState.events[A_Index]
         evLine := ev.id . "|" . ev.epoch . "|" . ev.level . "|" . ev.scope . "|"
             . ev.instance . "|" . ev.category . "|" . ev.details
-        IniWrite, %evLine%, %path%, Events, % "E" . A_Index
+        CockpitState_AddKey(b, "E" . A_Index, evLine)
     }
 
+    CockpitState_AddSection(b, "Alerts")
     for ak, av in g_aggState.alerts
-        IniWrite, %av%, %path%, Alerts, %ak%
+        CockpitState_AddKey(b, ak, av)
 
     for instId, inst in g_aggState.instances {
-        sec := "Instance:" . instId
-        IniWrite, % Metrics_ArrayToCsv(inst.ring), %path%, %sec%, Ring
-        IniWrite, % (inst.lastSeenEnd + 0), %path%, %sec%, LastSeenEnd
-        IniWrite, % (inst.stuckCount + 0), %path%, %sec%, StuckCount
-        IniWrite, % inst.lastStatus, %path%, %sec%, LastStatus
-        IniWrite, % inst.accountFileName, %path%, %sec%, AccountFileName
-        IniWrite, % inst.lastEvent, %path%, %sec%, LastEvent
-        IniWrite, % (inst.lastEventEpoch + 0), %path%, %sec%, LastEventEpoch
-        IniWrite, % (inst.lastLogSize + 0), %path%, %sec%, LastLogSize
-        IniWrite, % (inst.stuckActive ? 1 : 0), %path%, %sec%, StuckActive
-        IniWrite, % (inst.stuckSinceEpoch + 0), %path%, %sec%, StuckSinceEpoch
-        IniWrite, % (inst.livePacks + 0), %path%, %sec%, LivePacks
-        IniWrite, % (inst.totalRunSecCompleted + 0), %path%, %sec%, TotalRunSecCompleted
-        IniWrite, % (inst.gpFoundCount + 0), %path%, %sec%, GpFoundCount
+        CockpitState_AddSection(b, "Instance:" . instId)
+        CockpitState_AddKey(b, "Ring", Metrics_ArrayToCsv(inst.ring))
+        CockpitState_AddKey(b, "LastSeenEnd", inst.lastSeenEnd + 0)
+        CockpitState_AddKey(b, "StuckCount", inst.stuckCount + 0)
+        CockpitState_AddKey(b, "LastStatus", inst.lastStatus)
+        CockpitState_AddKey(b, "AccountFileName", inst.accountFileName)
+        CockpitState_AddKey(b, "LastEvent", inst.lastEvent)
+        CockpitState_AddKey(b, "LastEventEpoch", inst.lastEventEpoch + 0)
+        CockpitState_AddKey(b, "LastLogSize", inst.lastLogSize + 0)
+        CockpitState_AddKey(b, "StuckActive", inst.stuckActive ? 1 : 0)
+        CockpitState_AddKey(b, "StuckSinceEpoch", inst.stuckSinceEpoch + 0)
+        CockpitState_AddKey(b, "LivePacks", inst.livePacks + 0)
+        CockpitState_AddKey(b, "TotalRunSecCompleted", inst.totalRunSecCompleted + 0)
+        CockpitState_AddKey(b, "GpFoundCount", inst.gpFoundCount + 0)
     }
+
+    if (!CockpitState_CommitTo(b, Agg_RuntimeStatePath()))
+        LogWarn("Cockpit in-process aggregator: failed to commit CockpitRuntime.ini", "Aggregator.txt")
 }
 
 Agg_LoadRuntimeState(sessionId) {
@@ -865,55 +872,45 @@ Agg_LoadRuntimeState(sessionId) {
     if (!FileExist(path))
         return false
 
-    IniRead, sid, %path%, Runtime, SessionId, %A_Space%
-    if (sid = "ERROR" || sid = "" || sid != sessionId)
+    ini := CockpitState_ParseFile(path)
+    rt := CockpitState_SecGet(ini, "Runtime", {})
+
+    sid := CockpitState_SecGet(rt, "SessionId")
+    if (sid = "" || sid != sessionId)
         return false
 
-    IniRead, ss, %path%, Runtime, SessionStartEpoch, 0
-    IniRead, lse, %path%, Runtime, LastShiftEpoch, 0
-    IniRead, lm, %path%, Runtime, LastMode, %A_Space%
-    IniRead, ec, %path%, Runtime, EventCounter, 0
-    IniRead, tr, %path%, Runtime, TotalRunsCompleted, 0
-    IniRead, gr, %path%, Runtime, GlobalRing, %A_Space%
-    IniRead, ti, %path%, Runtime, TrendInjPerHour, %A_Space%
-    IniRead, ts, %path%, Runtime, TrendAvgRunSum, %A_Space%
-    IniRead, tc, %path%, Runtime, TrendAvgRunCount, %A_Space%
-    IniRead, tt, %path%, Runtime, TrendStuckRate, %A_Space%
-
     g_aggSessionId := sid
-    g_aggSessionStartEpoch := (ss + 0)
-    g_aggLastShiftEpoch := (lse + 0)
-    g_aggLastMode := (lm = "ERROR") ? "" : lm
-    g_aggState.eventCounter := (ec + 0)
-    g_aggState.totalRunsCompleted := (tr + 0)
-    g_aggState.globalRing := Agg_CsvToNumArray(gr)
-    g_aggState.trendInjPerHour := Agg_FitTrendArray(Agg_CsvToNumArray(ti))
-    g_aggState.trendAvgRunSum := Agg_FitTrendArray(Agg_CsvToNumArray(ts))
-    g_aggState.trendAvgRunCount := Agg_FitTrendArray(Agg_CsvToNumArray(tc))
-    g_aggState.trendStuckRate := Agg_FitTrendArray(Agg_CsvToNumArray(tt))
+    g_aggSessionStartEpoch := CockpitState_SecGet(rt, "SessionStartEpoch", 0) + 0
+    g_aggLastShiftEpoch := CockpitState_SecGet(rt, "LastShiftEpoch", 0) + 0
+    g_aggLastMode := CockpitState_SecGet(rt, "LastMode")
+    g_aggState.eventCounter := CockpitState_SecGet(rt, "EventCounter", 0) + 0
+    g_aggState.totalRunsCompleted := CockpitState_SecGet(rt, "TotalRunsCompleted", 0) + 0
+    g_aggState.globalRing := Agg_CsvToNumArray(CockpitState_SecGet(rt, "GlobalRing"))
+    g_aggState.trendInjPerHour := Agg_FitTrendArray(Agg_CsvToNumArray(CockpitState_SecGet(rt, "TrendInjPerHour")))
+    g_aggState.trendAvgRunSum := Agg_FitTrendArray(Agg_CsvToNumArray(CockpitState_SecGet(rt, "TrendAvgRunSum")))
+    g_aggState.trendAvgRunCount := Agg_FitTrendArray(Agg_CsvToNumArray(CockpitState_SecGet(rt, "TrendAvgRunCount")))
+    g_aggState.trendStuckRate := Agg_FitTrendArray(Agg_CsvToNumArray(CockpitState_SecGet(rt, "TrendStuckRate")))
 
     g_aggState.modeRings := {}
-    IniRead, modeKeys, %path%, ModeRings, Keys, %A_Space%
-    if (modeKeys != "ERROR" && modeKeys != "") {
-        Loop, Parse, modeKeys, |
-        {
-            k := A_LoopField
-            if (k = "")
-                continue
-            IniRead, realName, %path%, ModeRings, % k . "_Name", %A_Space%
-            IniRead, ringCsv, %path%, ModeRings, % k . "_Ring", %A_Space%
-            if (realName = "ERROR" || realName = "")
-                continue
-            g_aggState.modeRings[realName] := Agg_CsvToNumArray(ringCsv)
-        }
+    mr := CockpitState_SecGet(ini, "ModeRings", {})
+    modeKeys := CockpitState_SecGet(mr, "Keys")
+    Loop, Parse, modeKeys, |
+    {
+        k := A_LoopField
+        if (k = "")
+            continue
+        realName := CockpitState_SecGet(mr, k . "_Name")
+        if (realName = "")
+            continue
+        g_aggState.modeRings[realName] := Agg_CsvToNumArray(CockpitState_SecGet(mr, k . "_Ring"))
     }
 
     g_aggState.events := []
-    IniRead, evCount, %path%, Events, Count, 0
-    evCount := evCount + 0
+    evSec := CockpitState_SecGet(ini, "Events", {})
+    evCount := CockpitState_SecGet(evSec, "Count", 0) + 0
     Loop, %evCount% {
-        IniRead, evLine, %path%, Events, % "E" . A_Index, %A_Space%
-        if (evLine = "ERROR" || evLine = "")
+        evLine := CockpitState_SecGet(evSec, "E" . A_Index)
+        if (evLine = "")
             continue
         p := StrSplit(evLine, "|")
         if (p.Length() < 7)
@@ -923,21 +920,8 @@ Agg_LoadRuntimeState(sessionId) {
     }
 
     g_aggState.alerts := {}
-    IniRead, rawAlerts, %path%, Alerts
-    if (rawAlerts != "ERROR" && rawAlerts != "") {
-        Loop, Parse, rawAlerts, `n, `r
-        {
-            line := A_LoopField
-            if (line = "")
-                continue
-            pos := InStr(line, "=")
-            if (pos <= 0)
-                continue
-            k := SubStr(line, 1, pos - 1)
-            v := SubStr(line, pos + 1)
-            g_aggState.alerts[k] := v + 0
-        }
-    }
+    for k, v in CockpitState_SecGet(ini, "Alerts", {})
+        g_aggState.alerts[k] := v + 0
 
     g_aggState.instances := {}
     botConfig.loadSettingsToConfig("ALL")
@@ -946,26 +930,20 @@ Agg_LoadRuntimeState(sessionId) {
         instancesConfigured := 1
     Loop, % instancesConfigured {
         N := A_Index
-        sec := "Instance:" . N
-        IniRead, ringCsv, %path%, %sec%, Ring, %A_Space%
-        IniRead, lse2, %path%, %sec%, LastSeenEnd, 0
-        IniRead, sc, %path%, %sec%, StuckCount, 0
-        IniRead, ls2, %path%, %sec%, LastStatus, %A_Space%
-        IniRead, af, %path%, %sec%, AccountFileName, %A_Space%
-        IniRead, le, %path%, %sec%, LastEvent, %A_Space%
-        IniRead, lee, %path%, %sec%, LastEventEpoch, 0
-        IniRead, lls, %path%, %sec%, LastLogSize, -1
-        IniRead, sa, %path%, %sec%, StuckActive, 0
-        IniRead, sse, %path%, %sec%, StuckSinceEpoch, 0
-        IniRead, lp, %path%, %sec%, LivePacks, -1
-        IniRead, trc, %path%, %sec%, TotalRunSecCompleted, 0
-        IniRead, gpc, %path%, %sec%, GpFoundCount, 0
-        g_aggState.instances[N] := { "ring": Agg_CsvToNumArray(ringCsv), "lastSeenEnd": lse2 + 0
-            , "stuckCount": sc + 0, "lastStatus": (ls2 = "ERROR") ? "" : ls2
-            , "accountFileName": (af = "ERROR") ? "" : af, "lastEvent": (le = "ERROR") ? "" : le
-            , "lastEventEpoch": lee + 0, "lastLogSize": lls + 0
-            , "stuckActive": (sa + 0) ? true : false, "stuckSinceEpoch": sse + 0
-            , "livePacks": lp + 0, "totalRunSecCompleted": trc + 0, "gpFoundCount": gpc + 0 }
+        s := CockpitState_SecGet(ini, "Instance:" . N, {})
+        g_aggState.instances[N] := { "ring": Agg_CsvToNumArray(CockpitState_SecGet(s, "Ring"))
+            , "lastSeenEnd": CockpitState_SecGet(s, "LastSeenEnd", 0) + 0
+            , "stuckCount": CockpitState_SecGet(s, "StuckCount", 0) + 0
+            , "lastStatus": CockpitState_SecGet(s, "LastStatus")
+            , "accountFileName": CockpitState_SecGet(s, "AccountFileName")
+            , "lastEvent": CockpitState_SecGet(s, "LastEvent")
+            , "lastEventEpoch": CockpitState_SecGet(s, "LastEventEpoch", 0) + 0
+            , "lastLogSize": CockpitState_SecGet(s, "LastLogSize", -1) + 0
+            , "stuckActive": (CockpitState_SecGet(s, "StuckActive", 0) + 0) ? true : false
+            , "stuckSinceEpoch": CockpitState_SecGet(s, "StuckSinceEpoch", 0) + 0
+            , "livePacks": CockpitState_SecGet(s, "LivePacks", -1) + 0
+            , "totalRunSecCompleted": CockpitState_SecGet(s, "TotalRunSecCompleted", 0) + 0
+            , "gpFoundCount": CockpitState_SecGet(s, "GpFoundCount", 0) + 0 }
     }
 
     LogInfo("Cockpit in-process Aggregator resumed session " . g_aggSessionId, "Aggregator.txt")
