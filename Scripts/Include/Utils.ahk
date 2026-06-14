@@ -29,7 +29,7 @@ Delay(n) {
 DelayH(ms) {
     prof := Prof_Scope(A_ThisFunc)
     StartTime := A_TickCount
-    
+
     while (A_TickCount - StartTime < ms) {
         Sleep, 10
     }
@@ -710,7 +710,7 @@ GetVRAMByScriptName(scriptName) {
     for objProcess in colProcesses {
         if InStr(objProcess.CommandLine, TargetFolder) {
             TargetPID := objProcess.ProcessId
-            break 
+            break
         }
     }
 
@@ -725,13 +725,13 @@ GetVRAMByScriptName(scriptName) {
 killInstance(instanceNum := "")
 {
     killed := 0
-    
+
     pID := checkInstance(instanceNum)
     if pID {
         Process, Close, %pID%
         killed := killed + 1
     }
-    
+
     return killed
 }
 
@@ -743,14 +743,14 @@ checkInstance(instanceNum := "")
         WinGet, temp_pid, PID, ahk_id %ret%
         return temp_pid
     }
-    
+
     return ""
 }
 
 launchInstance(instanceNum := "")
 {
     mumuFolder := getMuMuFolder()
-    
+
     if(instanceNum != "") {
         mumuNum := getMumuInstanceNum(instanceNum, mumuFolder)
         if(mumuNum != "") {
@@ -782,9 +782,9 @@ getMuMuFolderInConfig(){
     if (RegExMatch(jsonText, "U)""install_dir""\s*:\s*""(.*)""", match)) {
         rawPath := match1
         fullPath := StrReplace(rawPath, "\\", "\")
-        
+
         ;SplitPath, fullPath,, parentDir
-        
+
         if (InStr(FileExist(fullPath), "D")) {
             return fullPath
         } else {
@@ -802,7 +802,7 @@ getMuMuFolder(){
 
     if(!IsNumeric(mumuFolder))
         return mumuFolder
-    
+
     baseFolder := botConfig.get("folderPath")
     subFolderList := ["MuMuPlayerGlobal-12.0", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
 
@@ -811,7 +811,7 @@ getMuMuFolder(){
         if InStr(FileExist(mumuFolder), "D")
             return mumuFolder
     }
-    
+
     MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
     return
 }
@@ -847,7 +847,7 @@ GetGPUMemoryByPDH(pid, bClose := false){
             DllCall("pdh\PdhCloseQuery", "Ptr", hQuery)
         if (hModule)
             DllCall("FreeLibrary", "Ptr", hModule)
-        
+
         hModule := 0, hQuery := 0, hCounter := 0, currentPID := 0
         isExit := true
         return 0.00
@@ -879,13 +879,13 @@ GetGPUMemoryByPDH(pid, bClose := false){
     if (bufferSize > 0) {
         VarSetCapacity(itemBuffer, bufferSize, 0)
         status := DllCall("pdh\PdhGetFormattedCounterArrayW", "Ptr", hCounter, "UInt", PDH_FMT_LARGE, "UInt*", bufferSize, "UInt*", itemCount, "Ptr", &itemBuffer)
-        
+
         if (status == 0) {
             offset := 0
             is64bit := (A_PtrSize == 8)
-            itemSize := is64bit ? 24 : 16       
-            valueOffset := is64bit ? 16 : 8     
-            
+            itemSize := is64bit ? 24 : 16
+            valueOffset := is64bit ? 16 : 8
+
             Loop, %itemCount% {
                 val := NumGet(itemBuffer, offset + valueOffset, "Int64")
                 totalBytes += val
@@ -934,11 +934,11 @@ FixInstanceScreen(instanceNo){
 
 getMuMuHwnd(winTitle) {
     static cachedHwnd := 0
-    
+
     if (cachedHwnd && WinExist("ahk_id " . cachedHwnd)) {
         return cachedHwnd
     }
-    
+
     cachedHwnd := WinExist(winTitle . " ahk_class Qt5156QWindowIcon")
     return cachedHwnd
 }
@@ -946,15 +946,15 @@ getMuMuHwnd(winTitle) {
 FormatMsToAgo(ms) {
     totalSec := ms // 1000
     if (totalSec < 1) return "Just now"
-    
+
     m := totalSec // 60
     s := Mod(totalSec, 60)
-    
+
     result := ""
     if (m > 0)
         result .= m "m "
     result .= s "s ago"
-    
+
     return result
 }
 
@@ -1114,7 +1114,7 @@ from_window(ByRef image) {
 
     return pBitmap
 }
-         
+
 isSevtFileExist(){
     TargetPath := getScriptBaseFolder() . "\SpecialEvents\Events"
 
@@ -1123,7 +1123,7 @@ isSevtFileExist(){
     {
         FileCount++
     }
-    
+
     return FileCount > 0
 }
 
@@ -1192,13 +1192,13 @@ KillAllScripts() {
     Process, Exist, Monitor.ahk
     if (ErrorLevel)
         Process, Close, %ErrorLevel%
-    
+
     Loop, 50 {
         scriptName := A_Index . ".ahk"
         Process, Exist, %scriptName%
         if (ErrorLevel)
             Process, Close, %ErrorLevel%
-        
+
         if (A_Index = 1) {
             Process, Exist, Main.ahk
             if (ErrorLevel)
@@ -1211,7 +1211,7 @@ KillAllScripts() {
                 Process, Close, %ErrorLevel%
         }
     }
-    
+
     Gui, PackStatusGUI:Destroy
 
     Return
@@ -1220,10 +1220,10 @@ KillAllScripts() {
 VersionCompare(v1, v2) {
     cleanV1 := RegExReplace(v1, "[^\d.]")
     cleanV2 := RegExReplace(v2, "[^\d.]")
-    
+
     v1Parts := StrSplit(cleanV1, ".")
     v2Parts := StrSplit(cleanV2, ".")
-    
+
     Loop, % Max(v1Parts.MaxIndex(), v2Parts.MaxIndex()) {
         p1 := v1Parts[A_Index]
         p2 := v2Parts[A_Index]
@@ -1234,15 +1234,15 @@ VersionCompare(v1, v2) {
         if (num1 < num2)
             return -1
     }
-    
+
     isV1Alpha := InStr(v1, "alpha") || InStr(v1, "beta")
     isV2Alpha := InStr(v2, "alpha") || InStr(v2, "beta")
-    
+
     if (isV1Alpha && !isV2Alpha)
         return -1
     if (!isV1Alpha && isV2Alpha)
         return 1
-    
+
     return 0
 }
 
@@ -1279,37 +1279,11 @@ findAdbPath(targetDir) {
     Loop, Files, %targetDir%\*, D
     {
         checkPath := A_LoopFileFullPath . "\adb.exe"
-        
+
         if (FileExist(checkPath)) {
             return checkPath
         }
     }
-    
-    return ""
-}
 
-GetAllMonitorScales() {
-    scales := {}
-    
-    SysGet, monitorCount, MonitorCount
-    
-    Loop, %monitorCount% {
-        SysGet, Mon, Monitor, %A_Index%
-        
-        VarSetCapacity(RECT, 16, 0)
-        NumPut(MonLeft,   RECT, 0,  "Int")
-        NumPut(MonTop,    RECT, 4,  "Int")
-        NumPut(MonRight,  RECT, 8,  "Int")
-        NumPut(MonBottom, RECT, 12, "Int")
-        
-        hMon := DllCall("User32\MonitorFromRect", "Ptr", &RECT, "UInt", 2, "Ptr")
-        hr := DllCall("Shcore\GetDpiForMonitor", "Ptr", hMon, "Int", 0, "UIntP", dpiX, "UIntP", dpiY)
-        
-        if (hr == 0) {
-            scalePercent := Round((dpiX / 96) * 100)
-            scales[A_Index] := scalePercent
-        }
-    }
-    
-    return scales
+    return ""
 }
