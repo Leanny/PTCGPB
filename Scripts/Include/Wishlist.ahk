@@ -28,7 +28,7 @@ Wishlist_EnsureFresh() {
     if (session.get("wishlistMtime") = mtime && IsObject(session.get("wishlistMap")))
         return
 
-    FileRead, jsonText, %path%
+    FileRead, jsonText, %path%, UTF-8
     session.set("wishlistMap", Wishlist_Parse(jsonText))
     session.set("wishlistMtime", mtime)
 }
