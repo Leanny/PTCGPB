@@ -1096,7 +1096,7 @@
                 min-height: 1.35em;
                 margin-top: 6px;
                 color: var(--muted);
-                font-size: 0.9rem;
+                font-size: 0.82rem;
                 line-height: 1.45;
             }
 
@@ -1136,9 +1136,9 @@
             .dashboard-boot-check-item {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
-                min-height: 58px;
-                padding: 10px 11px;
+                gap: 3px;
+                min-height: 50px;
+                padding: 8px 10px;
                 border-radius: 12px;
                 border: 1px solid rgba(142, 180, 255, 0.12);
                 background: rgba(255, 255, 255, 0.04);
@@ -1159,19 +1159,25 @@
 
             .dashboard-boot-check-item[data-status="running"] {
                 opacity: 1;
-                border-color: rgba(176, 240, 208, 0.5);
-                background: linear-gradient(
-                    135deg,
-                    rgba(176, 240, 208, 0.12),
-                    rgba(142, 180, 255, 0.08)
-                );
-                box-shadow: 0 0 0 1px rgba(176, 240, 208, 0.08);
+                border-color: rgba(142, 180, 255, 0.34);
+                background: rgba(142, 180, 255, 0.07);
+                box-shadow: none;
             }
 
             .dashboard-boot-check-item[data-status="done"] {
                 opacity: 1;
-                border-color: rgba(176, 240, 208, 0.32);
-                background: rgba(176, 240, 208, 0.06);
+                border-color: rgba(176, 240, 208, 0.42);
+                background: rgba(255, 255, 255, 0.045);
+            }
+
+            [data-theme="light"] .dashboard-boot-check-item[data-status="running"] {
+                border-color: rgba(26, 79, 184, 0.22);
+                background: rgba(255, 255, 255, 0.92);
+            }
+
+            [data-theme="light"] .dashboard-boot-check-item[data-status="done"] {
+                border-color: rgba(19, 122, 85, 0.28);
+                background: rgba(255, 255, 255, 0.94);
             }
 
             .dashboard-boot-check-item[data-status="skipped"] {
@@ -1217,14 +1223,14 @@
             }
 
             .dashboard-boot-check-label {
-                font-size: 0.78rem;
+                font-size: 0.76rem;
                 font-weight: 800;
                 color: var(--text);
                 line-height: 1.2;
             }
 
             .dashboard-boot-check-time {
-                font-size: 0.72rem;
+                font-size: 0.68rem;
                 font-weight: 800;
                 font-variant-numeric: tabular-nums;
                 color: var(--muted);
@@ -1238,12 +1244,49 @@
 
             .dashboard-boot-check-meta {
                 padding-left: calc(1.15rem + 8px);
-                font-size: 0.72rem;
+                font-size: 0.64rem;
+                font-weight: 600;
                 line-height: 1.35;
-                color: var(--muted);
-                white-space: nowrap;
+                color: rgba(237, 242, 255, 0.86);
+                display: -webkit-box;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
                 overflow: hidden;
-                text-overflow: ellipsis;
+                word-break: break-word;
+            }
+
+            [data-theme="light"] .dashboard-boot-check-meta {
+                color: #2f4568;
+            }
+
+            .dashboard-boot-check-item[data-status="running"] .dashboard-boot-check-meta {
+                color: rgba(237, 242, 255, 0.9);
+            }
+
+            [data-theme="light"]
+                .dashboard-boot-check-item[data-status="running"]
+                .dashboard-boot-check-meta {
+                color: #243a5f;
+            }
+
+            .dashboard-boot-check-item[data-status="done"] .dashboard-boot-check-meta {
+                color: rgba(237, 242, 255, 0.8);
+            }
+
+            [data-theme="light"]
+                .dashboard-boot-check-item[data-status="done"]
+                .dashboard-boot-check-meta {
+                color: #3a4d6c;
+            }
+
+            .dashboard-boot-check-item[data-status="error"] .dashboard-boot-check-meta {
+                color: #ffb4b4;
+            }
+
+            [data-theme="light"]
+                .dashboard-boot-check-item[data-status="error"]
+                .dashboard-boot-check-meta {
+                color: #a12f2f;
             }
 
             .dashboard-boot-check-item[data-status="pending"]
@@ -7014,7 +7057,7 @@
                             id="dashboardBootMessage"
                             class="dashboard-boot-message"
                         >
-                            Loading account data...
+                            Loading account data…
                         </div>
                     </div>
                 </div>
@@ -7240,7 +7283,7 @@
                         aria-live="polite"
                         aria-atomic="false"
                     >
-                        Loading account data...
+                        Loading account data…
                     </div>
                 </div>
             </section>
@@ -9734,7 +9777,11 @@
                 return imported;
             }
 
-            async function migrateLegacyCardMarksOnce(validAccounts) {
+            async function migrateLegacyCardMarksOnce(validAccounts, options = {}) {
+                const onProgress =
+                    typeof options.onProgress === "function"
+                        ? options.onProgress
+                        : null;
                 if (!canPersistCardMarksToDisk()) {
                     return { migrated: 0, cleared: false };
                 }
@@ -9773,6 +9820,11 @@
                     return { migrated: 0, cleared: true };
                 }
 
+                const total = accountsToPost.length;
+                onProgress?.(
+                    `Migrating ${formatNumber(total)} Browser Accounts…`,
+                );
+
                 const concurrency = 10;
                 let migrated = 0;
                 for (
@@ -9787,6 +9839,12 @@
                         ),
                     );
                     migrated += results.filter((result) => result.ok).length;
+                    if (onProgress && total > concurrency) {
+                        const done = Math.min(i + batch.length, total);
+                        onProgress(
+                            `Migrating ${formatNumber(done)}/${formatNumber(total)}`,
+                        );
+                    }
                 }
 
                 clearLegacyCardMarksLocalStorage();
@@ -9956,7 +10014,145 @@
                 return accounts;
             }
 
-            async function fetchAccountCardMarkDocuments() {
+            function normalizeBootMetaCompare(value) {
+                return String(value || "")
+                    .toLowerCase()
+                    .replace(/[.…]+/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            function isBootMetaRedundant(id, detail) {
+                const clean = String(detail || "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                if (!clean) return true;
+                const def = DASHBOARD_BOOT_STEP_DEFS[id] || {};
+                const detailNorm = normalizeBootMetaCompare(clean);
+                const shortNorm = normalizeBootMetaCompare(
+                    def.shortLabel || def.label || id,
+                );
+                const longNorm = normalizeBootMetaCompare(def.label || id);
+                return (
+                    detailNorm === shortNorm ||
+                    detailNorm === longNorm ||
+                    detailNorm === normalizeBootMetaCompare(id)
+                );
+            }
+
+            function bootChecklistMeta(id, entry) {
+                if (entry.status === "skipped") {
+                    const skipped = entry.detail || "Skipped";
+                    return isBootMetaRedundant(id, skipped) ? "" : skipped;
+                }
+                const detail = entry.detail || "";
+                return isBootMetaRedundant(id, detail) ? "" : detail;
+            }
+
+            function formatBootHeroMessage(id, detail = "", options = {}) {
+                const def = DASHBOARD_BOOT_STEP_DEFS[id] || {
+                    label: id,
+                    shortLabel: id,
+                };
+                const clean = String(detail || "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                if (options.failed) {
+                    return clean
+                        ? `Failed — ${clean}`
+                        : `${def.shortLabel || def.label} Failed`;
+                }
+                if (clean) return clean;
+                return def.shortLabel || def.label;
+            }
+
+            function formatCardMarksBuildProgressNote(build, marksFound = 0) {
+                if (!build || build.cacheHit) return "Cached";
+                const found = Number.isFinite(Number(build.marksFound))
+                    ? Number(build.marksFound)
+                    : Number(marksFound) || 0;
+                const durationMs = Number(build.rebuildMs);
+                const duration =
+                    Number.isFinite(durationMs) && durationMs >= 1500
+                        ? formatBootDuration(durationMs)
+                        : "";
+                if (found > 0) {
+                    return duration
+                        ? `Found on ${formatNumber(found)} Accounts · ${duration}`
+                        : `Found on ${formatNumber(found)} Accounts`;
+                }
+                return duration ? `None Marked · ${duration}` : "None Marked";
+            }
+
+            function formatCardMarksLoadSummary(markLoad) {
+                const parts = [];
+                const n = markLoad?.documents?.length || 0;
+                parts.push(
+                    `${formatNumber(n)} ${pluralWord(n, "account", "accounts")} with traded or shared cards`,
+                );
+                const build = markLoad?.build;
+                if (markLoad?.source === "accounts-data-fallback") {
+                    parts.push("Fallback Load");
+                } else if (build?.cacheHit) {
+                    parts.push("Cached");
+                } else if (Number(build?.rebuildMs) >= 1500) {
+                    parts.push(
+                        `Took ${formatBootDuration(build.rebuildMs)}`,
+                    );
+                }
+                return parts.join(" · ");
+            }
+
+            function formatCardMarksBootDoneDetail(
+                markLoad,
+                totalMarks,
+                legacyResult,
+                hadLegacy,
+                options = {},
+            ) {
+                const parts = [];
+                if (options.accountsChecked != null) {
+                    parts.push(
+                        `${formatNumber(options.accountsChecked)} Accounts`,
+                    );
+                } else {
+                    const accountMarkCount = markLoad?.documents?.length || 0;
+                    parts.push(
+                        accountMarkCount > 0
+                            ? `${formatNumber(accountMarkCount)} Accounts`
+                            : "None Marked",
+                    );
+                }
+                const build = markLoad?.build;
+                if (markLoad?.source === "accounts-data-fallback") {
+                    parts.push("Fallback");
+                } else if (build?.cacheHit) {
+                    parts.push("Cached");
+                } else if (Number(build?.rebuildMs) >= 1500) {
+                    parts.push(formatBootDuration(build.rebuildMs));
+                }
+                if (totalMarks > 0) {
+                    parts.push(`${formatNumber(totalMarks)} Cards`);
+                }
+                if (legacyResult?.migrated > 0) {
+                    parts.push(
+                        `${formatNumber(legacyResult.migrated)} Migrated`,
+                    );
+                } else if (legacyResult?.cleared && hadLegacy) {
+                    parts.push("Browser Cleared");
+                }
+                return parts.join(" · ");
+            }
+
+            function describeLegacyCardMarksBootHint(snapshot) {
+                if (!legacyCardMarksSnapshotHasData(snapshot)) return "";
+                const legacyKeys =
+                    snapshot.tradedSet.size + snapshot.sharedSet.size;
+                return ` · ${formatNumber(legacyKeys)} Pending in Browser`;
+            }
+
+            async function fetchAccountCardMarkDocuments(onProgress) {
+                onProgress?.("Reading Mark Index…");
                 const res = await fetch(DASHBOARD_ACCOUNT_CARD_MARKS_PATH, {
                     cache: "no-store",
                 });
@@ -9967,13 +10163,27 @@
                 if (!res.ok || !data.ok) {
                     throw new Error(
                         (data && data.error) ||
-                            (!res.ok ? `HTTP ${res.status}` : "Request failed"),
+                            (!res.ok ? `HTTP ${res.status}` : "Request Failed"),
                     );
                 }
                 const accounts = Array.isArray(data.accounts)
                     ? data.accounts
                     : [];
-                return accounts
+                const build =
+                    data.build && typeof data.build === "object"
+                        ? data.build
+                        : null;
+                if (build && onProgress) {
+                    const marksFound = Number.isFinite(
+                        Number(build.marksFound),
+                    )
+                        ? Number(build.marksFound)
+                        : accounts.length;
+                    onProgress(
+                        formatCardMarksBuildProgressNote(build, marksFound),
+                    );
+                }
+                const documents = accounts
                     .map((entry) => {
                         if (!entry || typeof entry !== "object") return null;
                         const deviceAccount = String(
@@ -9988,6 +10198,7 @@
                         };
                     })
                     .filter(Boolean);
+                return { documents, build };
             }
 
             function extractAccountDocumentsWithCardMarks(documents) {
@@ -10013,17 +10224,20 @@
                 return withMarks;
             }
 
-            async function loadAccountCardMarkDocumentsWithFallback() {
+            async function loadAccountCardMarkDocumentsWithFallback(onProgress) {
                 try {
+                    const result = await fetchAccountCardMarkDocuments(onProgress);
                     return {
-                        documents: await fetchAccountCardMarkDocuments(),
+                        documents: result.documents,
                         source: "account-card-marks",
+                        build: result.build,
                     };
                 } catch (err) {
                     const msg = String(err?.message || err);
                     if (!/\b404\b/.test(msg) && !/\b405\b/.test(msg)) {
                         throw err;
                     }
+                    onProgress?.("Fallback Bundle…");
                     const payload = await fetchDefaultJsonPayload(
                         DEFAULT_ACCOUNTS_DATA_PATH,
                     );
@@ -10034,48 +10248,87 @@
                                 : [],
                         ),
                         source: "accounts-data-fallback",
+                        build: null,
                     };
                 }
             }
 
             async function syncCardMarksAfterAccountLoad(documents) {
                 if (!canPersistCardMarksToDisk()) return;
-                hydrateCardMarksFromAccountDocuments(documents);
-                await migrateLegacyCardMarksOnce(
-                    buildTradeAccountIdSetFromDocuments(documents),
+                const tradeAccounts =
+                    buildTradeAccountIdSetFromDocuments(documents);
+                const legacySnapshot = readLegacyCardMarksSnapshot();
+                const hadLegacy = legacyCardMarksSnapshotHasData(legacySnapshot);
+                bootBeginStep(
+                    "card_marks",
+                    `${formatNumber(tradeAccounts.size)} Accounts${describeLegacyCardMarksBootHint(legacySnapshot)}`,
                 );
-                invalidateCatalogAccountCounts();
-                clearAccountOverviewCache();
+                const report = (message) => bootUpdateStep("card_marks", message);
+                try {
+                    report("Reading Marks…");
+                    hydrateCardMarksFromAccountDocuments(documents);
+                    const legacyResult = await migrateLegacyCardMarksOnce(
+                        tradeAccounts,
+                        { onProgress: report },
+                    );
+                    invalidateCatalogAccountCounts();
+                    clearAccountOverviewCache();
+                    const totalMarks =
+                        state.tradedSet.size + state.sharedSet.size;
+                    bootEndStep(
+                        "card_marks",
+                        formatCardMarksBootDoneDetail(
+                            null,
+                            totalMarks,
+                            legacyResult,
+                            hadLegacy,
+                            { accountsChecked: tradeAccounts.size },
+                        ),
+                    );
+                } catch (err) {
+                    bootFailStep(
+                        "card_marks",
+                        err?.message || "Request Failed",
+                    );
+                }
             }
 
             async function syncCardMarksAfterCompactLoad(summary) {
                 if (!canPersistCardMarksToDisk()) return;
-                bootBeginStep("card_marks");
+                const tradeAccounts = buildTradeAccountIdSet(summary);
+                const legacySnapshot = readLegacyCardMarksSnapshot();
+                const hadLegacy = legacyCardMarksSnapshotHasData(legacySnapshot);
+                bootBeginStep(
+                    "card_marks",
+                    `${formatNumber(tradeAccounts.size)} Accounts${describeLegacyCardMarksBootHint(legacySnapshot)}`,
+                );
+                const report = (message) => bootUpdateStep("card_marks", message);
                 try {
                     const markLoad =
-                        await loadAccountCardMarkDocumentsWithFallback();
+                        await loadAccountCardMarkDocumentsWithFallback(report);
+                    report("Applying Marks…");
                     hydrateCardMarksFromAccountDocuments(markLoad.documents);
                     const legacyResult = await migrateLegacyCardMarksOnce(
-                        buildTradeAccountIdSet(summary),
+                        tradeAccounts,
+                        { onProgress: report },
                     );
                     invalidateCatalogAccountCounts();
                     clearAccountOverviewCache();
-                    const detailParts = [
-                        `${formatNumber(markLoad.documents.length)} ${pluralWord(markLoad.documents.length, "account", "accounts")} with marks`,
-                    ];
-                    if (markLoad.source === "accounts-data-fallback") {
-                        detailParts.push("legacy fallback");
-                    }
-                    if (legacyResult.migrated > 0) {
-                        detailParts.push(
-                            `migrated ${formatNumber(legacyResult.migrated)} legacy ${pluralWord(legacyResult.migrated, "account", "accounts")}`,
-                        );
-                    }
-                    bootEndStep("card_marks", detailParts.join(" · "));
+                    const totalMarks =
+                        state.tradedSet.size + state.sharedSet.size;
+                    bootEndStep(
+                        "card_marks",
+                        formatCardMarksBootDoneDetail(
+                            markLoad,
+                            totalMarks,
+                            legacyResult,
+                            hadLegacy,
+                        ),
+                    );
                 } catch (err) {
                     bootFailStep(
                         "card_marks",
-                        err?.message || "request failed",
+                        err?.message || "Request Failed",
                     );
                 }
             }
@@ -10801,6 +11054,16 @@
             }
 
             const formatTradePersistWarning = formatCardMarksPersistWarning;
+
+            function notifySharedMarkResult(cardId, persistResult) {
+                const persistWarn = formatCardMarksPersistWarning(persistResult);
+                showToast(
+                    `Marked ${formatCardLabel(cardId)} as shared.${persistWarn}`,
+                    "success",
+                    persistWarn ? 3500 : 2500,
+                    { html: true },
+                );
+            }
 
             async function adjustShinedustForTrade(account, cardId, mode) {
                 const isRefund = mode === "credit";
@@ -11595,40 +11858,40 @@
 
             const DASHBOARD_BOOT_STEP_DEFS = {
                 card_definitions: {
-                    label: "Loading card definitions",
-                    shortLabel: "Card definitions",
+                    label: "Loading Card Definitions",
+                    shortLabel: "Card Definitions",
                 },
                 fetch_summary: {
-                    label: "Loading account summary",
-                    shortLabel: "Account summary",
+                    label: "Loading Account Summary",
+                    shortLabel: "Account Summary",
                 },
                 fetch_rows: {
-                    label: "Loading pull rows",
-                    shortLabel: "Pull rows",
+                    label: "Loading Pull Rows",
+                    shortLabel: "Pull Rows",
                 },
                 parse_summary: {
-                    label: "Reading account metadata",
-                    shortLabel: "Account metadata",
+                    label: "Reading Account Metadata",
+                    shortLabel: "Account Metadata",
                 },
                 parse_rows: {
-                    label: "Processing pull rows",
-                    shortLabel: "Row processing",
+                    label: "Processing Pull Rows",
+                    shortLabel: "Row Processing",
                 },
                 card_marks: {
-                    label: "Loading traded and shared marks",
-                    shortLabel: "Traded/shared marks",
+                    label: "Loading Traded and Shared Card Marks",
+                    shortLabel: "Traded & Shared Marks",
                 },
                 fetch_legacy: {
-                    label: "Loading full account data (legacy)",
-                    shortLabel: "Legacy bundle",
+                    label: "Loading Full Account Data (Legacy)",
+                    shortLabel: "Legacy Bundle",
                 },
                 parse_accounts: {
-                    label: "Processing accounts",
-                    shortLabel: "Account parsing",
+                    label: "Processing Accounts",
+                    shortLabel: "Account Parsing",
                 },
                 render_ui: {
-                    label: "Building filters and view",
-                    shortLabel: "Filters and view",
+                    label: "Building Filters and View",
+                    shortLabel: "Filters & View",
                 },
             };
 
@@ -11659,7 +11922,7 @@
 
             const dashboardBootState = {
                 startedAt: 0,
-                pathLabel: "Compact index",
+                pathLabel: "Compact Index",
                 order: DASHBOARD_BOOT_ALL_ORDER,
                 steps: {},
                 activeId: "",
@@ -11736,10 +11999,7 @@
                     } else if (entry.status === "error") {
                         timeText = "err";
                     }
-                    const meta =
-                        entry.status === "skipped"
-                            ? entry.detail || "skipped"
-                            : entry.detail || "";
+                    const meta = bootChecklistMeta(id, entry);
                     const metaHtml = meta
                         ? `<div class="dashboard-boot-check-meta">${escapeHtml(meta)}</div>`
                         : "";
@@ -11786,7 +12046,7 @@
             function bootReset(options = {}) {
                 dashboardBootState.startedAt = performance.now();
                 dashboardBootState.pathLabel =
-                    options.pathLabel || "Compact index";
+                    options.pathLabel || "Compact Index";
                 dashboardBootState.order =
                     options.order || DASHBOARD_BOOT_ALL_ORDER;
                 dashboardBootState.steps = {};
@@ -11796,7 +12056,7 @@
                 }
                 renderDashboardBootProgress();
                 bootStartElapsedTimer();
-                setDashboardBootMessage("Loading account data...");
+                setDashboardBootMessage("Loading account data…");
             }
 
             function bootSetPath(pathLabel, order) {
@@ -11805,7 +12065,7 @@
                 renderDashboardBootProgress();
             }
 
-            function bootSkipSteps(ids, detail = "skipped") {
+            function bootSkipSteps(ids, detail = "Skipped") {
                 for (const id of ids) {
                     dashboardBootState.steps[id] = {
                         status: "skipped",
@@ -11822,10 +12082,7 @@
                     startedAt: performance.now(),
                     detail,
                 };
-                const def = DASHBOARD_BOOT_STEP_DEFS[id] || { label: id };
-                setDashboardBootMessage(
-                    detail ? `${def.label}: ${detail}` : def.label,
-                );
+                setDashboardBootMessage(formatBootHeroMessage(id, detail));
                 renderDashboardBootProgress();
             }
 
@@ -11833,8 +12090,7 @@
                 const entry = dashboardBootState.steps[id];
                 if (!entry || entry.status !== "running") return;
                 entry.detail = detail;
-                const def = DASHBOARD_BOOT_STEP_DEFS[id] || { label: id };
-                setDashboardBootMessage(`${def.label}: ${detail}`);
+                setDashboardBootMessage(formatBootHeroMessage(id, detail));
                 renderDashboardBootProgress();
             }
 
@@ -11861,9 +12117,8 @@
                 };
                 if (dashboardBootState.activeId === id)
                     dashboardBootState.activeId = "";
-                const def = DASHBOARD_BOOT_STEP_DEFS[id] || { label: id };
                 setDashboardBootMessage(
-                    `${def.label} failed${detail ? `: ${detail}` : ""}`,
+                    formatBootHeroMessage(id, detail, { failed: true }),
                     "danger",
                 );
                 renderDashboardBootProgress();
@@ -11883,15 +12138,15 @@
                 const loader = document.getElementById("dashboardBootLoader");
                 const msgEl = document.getElementById("dashboardBootMessage");
                 if (!loader || !msgEl) return;
-                const clean = String(message || "Loading account data...")
+                const clean = String(message || "Loading account data…")
                     .replace(/\s+/g, " ")
                     .trim();
-                msgEl.textContent = clean || "Loading account data...";
+                msgEl.textContent = clean || "Loading account data…";
                 loader.dataset.kind = kind;
             }
 
             function showDashboardBootLoader(
-                message = "Loading account data...",
+                message = "Loading account data…",
             ) {
                 const loader = document.getElementById("dashboardBootLoader");
                 if (!loader) return;
@@ -12716,12 +12971,12 @@
                     force
                 ) {
                     if (!dashboardBootDismissed)
-                        bootUpdateStep(
-                            "card_definitions",
-                            force
-                                ? "refreshing from GitHub"
-                                : "downloading from GitHub",
-                        );
+                            bootUpdateStep(
+                                "card_definitions",
+                                force
+                                    ? "Refreshing Definitions…"
+                                    : "Downloading Definitions…",
+                            );
                     setStatus(
                         force
                             ? "Refreshing card definitions..."
@@ -12750,7 +13005,7 @@
                         if (!dashboardBootDismissed)
                             bootUpdateStep(
                                 "card_definitions",
-                                "downloaded and cached",
+                                "Definitions Cached",
                             );
                         setStatus("Card definitions loaded and cached.");
                         if (state.rows.length)
@@ -12760,7 +13015,7 @@
                             if (!dashboardBootDismissed)
                                 bootUpdateStep(
                                     "card_definitions",
-                                    "using browser cache (remote refresh failed)",
+                                    "Using Cached Definitions",
                                 );
                             setStatus(
                                 `Remote refresh failed. Using cached card definitions.\n${err.message}`,
@@ -12770,7 +13025,7 @@
                             if (!dashboardBootDismissed)
                                 bootFailStep(
                                     "card_definitions",
-                                    err.message || "download failed",
+                                    err.message || "Download Failed",
                                 );
                             setStatus(
                                 `Could not load card definitions.\n${err.message}`,
@@ -12782,10 +13037,10 @@
                     if (!dashboardBootDismissed)
                         bootUpdateStep(
                             "card_definitions",
-                            "loaded from browser cache",
+                            "Definitions From Cache",
                         );
                     if (loadedFromCache && !state.csvLoaded)
-                        setStatus("Loading account data...");
+                        setStatus("Loading account data…");
                 }
             }
 
@@ -13988,7 +14243,7 @@
                         if (lineIndex % 4000 === 0) {
                             bootUpdateStep(
                                 "parse_rows",
-                                `${formatNumber(lineIndex)} lines · ${formatNumber(rows.length)} rows`,
+                                `${formatNumber(lineIndex)} Lines · ${formatNumber(rows.length)} Rows`,
                             );
                             await raf();
                         }
@@ -14019,12 +14274,12 @@
 
                 bootBeginStep(
                     "parse_summary",
-                    `${formatNumber(summary?.accountCount || 0)} accounts`,
+                    `${formatNumber(summary?.accountCount || 0)} Accounts`,
                 );
                 const summaryBuilt = buildStateFromSummaryPayload(summary);
                 bootEndStep(
                     "parse_summary",
-                    `${formatNumber(summaryBuilt.tradeAccountCount)} trade accounts`,
+                    `${formatNumber(summaryBuilt.tradeAccountCount)} Trade Accounts`,
                 );
 
                 bootBeginStep(
@@ -14034,7 +14289,7 @@
                 const rowParse = await parseCompactRowsFromJsonl(rowsText);
                 bootEndStep(
                     "parse_rows",
-                    `${formatNumber(rowParse.rowCount)} rows · ${formatNumber(rowParse.totalCards)} cards`,
+                    `${formatNumber(rowParse.rowCount)} Rows · ${formatNumber(rowParse.totalCards)} Cards`,
                 );
 
                 const hasAnyData =
@@ -14042,7 +14297,7 @@
                     summaryBuilt.linkedAccountCount > 0 ||
                     summaryBuilt.collectionAccounts.length > 0;
                 if (!hasAnyData) {
-                    bootFailStep("parse_rows", `no data in ${sourceLabel}`);
+                    bootFailStep("parse_rows", `No data in ${sourceLabel}`);
                     setStatus(`No account data was found in ${sourceLabel}.`, "warn");
                     hideDashboardBootLoader(900);
                     return false;
@@ -14081,7 +14336,7 @@
                 bootBeginStep("render_ui");
                 buildFilterCheckboxes();
                 applyFiltersAndRender();
-                bootEndStep("render_ui", "filters and table ready");
+                bootEndStep("render_ui", "Ready");
 
                 const prewarmCatalogModel = () => {
                     ensureCatalogTradeShareIndex();
@@ -14139,19 +14394,19 @@
 
                 bootBeginStep(
                     "parse_accounts",
-                    `${formatNumber(documents.length)} JSON documents`,
+                    `${formatNumber(documents.length)} JSON Documents`,
                 );
                 const parseResult = parseAccountDocumentsToDataset(documents);
                 bootEndStep(
                     "parse_accounts",
-                    `${formatNumber(parseResult.rowCount)} rows · ${formatNumber(parseResult.totalCards)} cards`,
+                    `${formatNumber(parseResult.rowCount)} Rows · ${formatNumber(parseResult.totalCards)} Cards`,
                 );
                 const hasAnyData =
                     parseResult.rowCount > 0 ||
                     parseResult.linkedAccountCount > 0 ||
                     parseResult.collectionAccounts.length > 0;
                 if (!hasAnyData) {
-                    bootFailStep("parse_accounts", `no data in ${sourceLabel}`);
+                    bootFailStep("parse_accounts", `No data in ${sourceLabel}`);
                     setStatus(
                         `No account data was found in ${sourceLabel}.`,
                         "warn",
@@ -14190,7 +14445,7 @@
                 bootBeginStep("render_ui");
                 buildFilterCheckboxes();
                 applyFiltersAndRender();
-                bootEndStep("render_ui", "filters and table ready");
+                bootEndStep("render_ui", "Ready");
                 const prewarmCatalogModel = () => {
                     ensureCatalogTradeShareIndex();
                     if (!isCatalogModelWarm()) buildCatalogBaseModel();
@@ -15099,11 +15354,11 @@
             }
 
             async function autoLoadDefaultFiles() {
-                bootReset({ pathLabel: "Compact index" });
+                bootReset({ pathLabel: "Compact Index" });
                 try {
                     bootBeginStep("card_definitions");
                     const resourcesPromise = loadResources(false).finally(() =>
-                        bootEndStep("card_definitions"),
+                        bootEndStep("card_definitions", "Ready"),
                     );
 
                     let indexLoaded = false;
@@ -15116,15 +15371,15 @@
                                 bootEndStep(
                                     "fetch_summary",
                                     summary?.accountCount
-                                        ? `${formatNumber(summary.accountCount)} accounts · ${formatBootDataSize(JSON.stringify(summary).length)}`
-                                        : "received",
+                                        ? `${formatNumber(summary.accountCount)} Accounts · ${formatBootDataSize(JSON.stringify(summary).length)}`
+                                        : "Received",
                                 );
                                 return summary;
                             })
                             .catch((err) => {
                                 bootFailStep(
                                     "fetch_summary",
-                                    err?.message || "request failed",
+                                    err?.message || "Request Failed",
                                 );
                                 throw err;
                             });
@@ -15142,7 +15397,7 @@
                             .catch((err) => {
                                 bootFailStep(
                                     "fetch_rows",
-                                    err?.message || "request failed",
+                                    err?.message || "Request Failed",
                                 );
                                 throw err;
                             });
@@ -15161,22 +15416,22 @@
                     } catch (compactErr) {
                         bootSkipSteps(
                             DASHBOARD_BOOT_COMPACT_ONLY,
-                            "compact index unavailable",
+                            "Compact Index unavailable",
                         );
                         await resourcesPromise.catch(() => {});
                     }
                     if (indexLoaded) {
                         bootSkipSteps(
                             DASHBOARD_BOOT_LEGACY_ONLY,
-                            "not needed (compact index)",
+                            "Not needed (Compact Index)",
                         );
                         return;
                     }
 
-                    bootSetPath("Legacy bundle");
+                    bootSetPath("Legacy Bundle");
                     bootSkipSteps(
                         DASHBOARD_BOOT_COMPACT_ONLY,
-                        "using legacy path",
+                        "Using Legacy Path",
                     );
                     if (
                         dashboardBootState.steps.card_definitions?.status !==
@@ -15195,11 +15450,11 @@
                     bootEndStep(
                         "fetch_legacy",
                         payload?.accountCount
-                            ? `${formatNumber(payload.accountCount)} accounts · ${legacyPayloadSize}`
-                            : "received",
+                            ? `${formatNumber(payload.accountCount)} Accounts · ${legacyPayloadSize}`
+                            : "Received",
                     );
                     if (legacyPayloadSize) {
-                        bootSetPath(`Legacy bundle · ${legacyPayloadSize}`);
+                        bootSetPath(`Legacy Bundle · ${legacyPayloadSize}`);
                     }
                     const documents = Array.isArray(payload?.accounts)
                         ? payload.accounts
@@ -15207,7 +15462,7 @@
                     if (!documents.length) {
                         bootFailStep(
                             "fetch_legacy",
-                            "accounts-data returned no documents",
+                            "No Account Documents Returned",
                         );
                         setStatus(
                             "The accounts-data endpoint returned no account documents.",
@@ -15232,7 +15487,7 @@
                 } catch (err) {
                     bootFailStep(
                         dashboardBootState.activeId || "render_ui",
-                        err?.message || "unknown error",
+                        err?.message || "Unknown Error",
                     );
                     const overHttp =
                         location.protocol === "http:" ||
@@ -17310,13 +17565,7 @@
                                 addSharedCopy(account, cardId);
                                 const persistResult =
                                     await persistAccountCardMarks(account);
-                                const persistWarn =
-                                    formatCardMarksPersistWarning(
-                                        persistResult,
-                                    );
-                                if (persistWarn) {
-                                    showToast(persistWarn.trim(), "warn", 3500);
-                                }
+                                notifySharedMarkResult(cardId, persistResult);
                                 deferRender(renderMultiCardSearchView);
                             });
                         });
@@ -18587,13 +18836,7 @@
                                 addSharedCopy(account, cardId);
                                 const persistResult =
                                     await persistAccountCardMarks(account);
-                                const persistWarn =
-                                    formatCardMarksPersistWarning(
-                                        persistResult,
-                                    );
-                                if (persistWarn) {
-                                    showToast(persistWarn.trim(), "warn", 3500);
-                                }
+                                notifySharedMarkResult(cardId, persistResult);
                                 deferRender(() =>
                                     refreshCatalogLibraryTradeShareLight(
                                         cardId,
@@ -23682,7 +23925,7 @@
             }
             loadWishlist();
             if (state.cardmaster && state.localisation && state.cardmap)
-                setStatus("Loading account data...");
+                setStatus("Loading account data…");
 
             notifyDashboardActive();
             window.addEventListener("pageshow", notifyDashboardActive);
