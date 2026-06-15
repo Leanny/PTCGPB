@@ -9734,39 +9734,204 @@
                 return imported;
             }
 
-            async function migrateCardMarksToAccountFiles(documents) {
-                if (!canPersistCardMarksToDisk()) return;
-                const accounts = new Set();
-                for (const doc of documents || []) {
-                    const account = getDeviceAccountFromDocument(doc);
-                    if (account) accounts.add(account);
+            async function migrateLegacyCardMarksOnce(validAccounts) {
+                if (!canPersistCardMarksToDisk()) {
+                    return { migrated: 0, cleared: false };
                 }
-                if (!accounts.size) return;
-                const touched = new Set();
-                for (const key of state.tradedSet) {
-                    const sep = key.indexOf("::");
-                    if (sep < 0) continue;
-                    const account = key.slice(0, sep);
-                    if (accounts.has(account)) touched.add(account);
+                const snapshot = readLegacyCardMarksSnapshot();
+                if (!legacyCardMarksSnapshotHasData(snapshot)) {
+                    return { migrated: 0, cleared: false };
                 }
-                for (const key of state.sharedSet) {
-                    const sep = key.indexOf("::");
-                    if (sep < 0) continue;
-                    const account = key.slice(0, sep);
-                    if (accounts.has(account)) touched.add(account);
+
+                const accountSet =
+                    validAccounts instanceof Set
+                        ? validAccounts
+                        : new Set(validAccounts || []);
+                const touched = collectLegacyCardMarkAccounts(
+                    snapshot,
+                    accountSet,
+                );
+                if (!touched.size) {
+                    clearLegacyCardMarksLocalStorage();
+                    return { migrated: 0, cleared: true };
                 }
+
+                const accountsToPost = [];
                 for (const account of touched) {
-                    await persistAccountCardMarks(account);
-                    await waitMs(40);
+                    if (
+                        mergeLegacyCardMarksForAccountIntoState(
+                            account,
+                            snapshot,
+                        )
+                    ) {
+                        accountsToPost.push(account);
+                    }
                 }
+
+                if (!accountsToPost.length) {
+                    clearLegacyCardMarksLocalStorage();
+                    return { migrated: 0, cleared: true };
+                }
+
+                const concurrency = 10;
+                let migrated = 0;
+                for (
+                    let i = 0;
+                    i < accountsToPost.length;
+                    i += concurrency
+                ) {
+                    const batch = accountsToPost.slice(i, i + concurrency);
+                    const results = await Promise.all(
+                        batch.map((account) =>
+                            persistAccountCardMarks(account),
+                        ),
+                    );
+                    migrated += results.filter((result) => result.ok).length;
+                }
+
+                clearLegacyCardMarksLocalStorage();
+                invalidateCatalogAccountCounts();
+                clearAccountOverviewCache();
+                return { migrated, cleared: true };
             }
 
-            function buildTradeAccountDocumentsFromSummary(summary) {
-                const entries = Array.isArray(summary?.accounts)
+            function readLegacyCardMarksSnapshot() {
+                const snapshot = {
+                    tradedSet: new Set(),
+                    tradedMeta: new Map(),
+                    sharedSet: new Set(),
+                    sharedMeta: new Map(),
+                };
+                try {
+                    const rawTraded = localStorage.getItem(LS_TRADED);
+                    if (rawTraded) {
+                        const list = JSON.parse(rawTraded);
+                        if (Array.isArray(list)) {
+                            snapshot.tradedSet = new Set(
+                                list.map((value) => String(value)),
+                            );
+                        }
+                    }
+                } catch (_) {}
+                try {
+                    const rawTradedMeta = localStorage.getItem(LS_TRADED_META);
+                    if (rawTradedMeta) {
+                        const obj = JSON.parse(rawTradedMeta);
+                        if (obj && typeof obj === "object") {
+                            snapshot.tradedMeta = new Map(
+                                Object.entries(obj),
+                            );
+                        }
+                    }
+                } catch (_) {}
+                try {
+                    const rawShared = localStorage.getItem(LS_SHARED);
+                    if (rawShared) {
+                        const list = JSON.parse(rawShared);
+                        if (Array.isArray(list)) {
+                            snapshot.sharedSet = new Set(
+                                list.map((value) => String(value)),
+                            );
+                        }
+                    }
+                } catch (_) {}
+                try {
+                    const rawSharedMeta = localStorage.getItem(LS_SHARED_META);
+                    if (rawSharedMeta) {
+                        const obj = JSON.parse(rawSharedMeta);
+                        if (obj && typeof obj === "object") {
+                            snapshot.sharedMeta = new Map(
+                                Object.entries(obj),
+                            );
+                        }
+                    }
+                } catch (_) {}
+                return snapshot;
+            }
+
+            function legacyCardMarksSnapshotHasData(snapshot) {
+                return !!(
+                    snapshot &&
+                    (snapshot.tradedSet.size || snapshot.sharedSet.size)
+                );
+            }
+
+            function clearLegacyCardMarksLocalStorage() {
+                try {
+                    localStorage.removeItem(LS_TRADED);
+                    localStorage.removeItem(LS_TRADED_META);
+                    localStorage.removeItem(LS_SHARED);
+                    localStorage.removeItem(LS_SHARED_META);
+                } catch (_) {}
+            }
+
+            function collectLegacyCardMarkAccounts(snapshot, accountSet) {
+                const touched = new Set();
+                for (const key of snapshot.tradedSet) {
+                    const sep = key.indexOf("::");
+                    if (sep < 0) continue;
+                    const account = key.slice(0, sep);
+                    if (accountSet.has(account)) touched.add(account);
+                }
+                for (const key of snapshot.sharedSet) {
+                    const sep = key.indexOf("::");
+                    if (sep < 0) continue;
+                    const account = key.slice(0, sep);
+                    if (accountSet.has(account)) touched.add(account);
+                }
+                return touched;
+            }
+
+            function mergeLegacyCardMarksForAccountIntoState(account, snapshot) {
+                const prefix = account + "::";
+                let changed = false;
+
+                for (const key of snapshot.tradedSet) {
+                    if (!key.startsWith(prefix)) continue;
+                    const cardId = key.slice(prefix.length);
+                    if (!isValidTradeCardId(cardId)) continue;
+                    if (state.tradedSet.has(key)) continue;
+                    state.tradedSet.add(key);
+                    if (snapshot.tradedMeta.has(key)) {
+                        state.tradedMeta.set(
+                            key,
+                            serializeTradeMeta(
+                                normalizeTradeMeta(
+                                    snapshot.tradedMeta.get(key),
+                                ),
+                            ),
+                        );
+                    }
+                    changed = true;
+                }
+
+                for (const key of snapshot.sharedSet) {
+                    if (!key.startsWith(prefix)) continue;
+                    const cardId = key.slice(prefix.length);
+                    if (!isValidTradeCardId(cardId)) continue;
+                    if (state.sharedSet.has(key)) continue;
+                    state.sharedSet.add(key);
+                    if (snapshot.sharedMeta.has(key)) {
+                        state.sharedMeta.set(
+                            key,
+                            serializeSharedMeta(
+                                normalizeSharedMeta(
+                                    snapshot.sharedMeta.get(key),
+                                ),
+                            ),
+                        );
+                    }
+                    changed = true;
+                }
+
+                return changed;
+            }
+
+            function buildTradeAccountIdSet(summary) {
+                const accounts = new Set();
+                for (const entry of Array.isArray(summary?.accounts)
                     ? summary.accounts
-                    : [];
-                const documents = [];
-                for (const entry of entries) {
+                    : []) {
                     if (!entry || typeof entry !== "object") continue;
                     if (
                         String(entry.sourceType ?? "trade").trim() ===
@@ -9777,13 +9942,18 @@
                     const account = String(
                         entry.account ?? entry.deviceAccount ?? "",
                     ).trim();
-                    if (!account) continue;
-                    documents.push({
-                        deviceAccount: account,
-                        sourceType: "trade",
-                    });
+                    if (account) accounts.add(account);
                 }
-                return documents;
+                return accounts;
+            }
+
+            function buildTradeAccountIdSetFromDocuments(documents) {
+                const accounts = new Set();
+                for (const doc of documents || []) {
+                    const account = getDeviceAccountFromDocument(doc);
+                    if (account) accounts.add(account);
+                }
+                return accounts;
             }
 
             async function fetchAccountCardMarkDocuments() {
@@ -9870,8 +10040,10 @@
 
             async function syncCardMarksAfterAccountLoad(documents) {
                 if (!canPersistCardMarksToDisk()) return;
-                await migrateCardMarksToAccountFiles(documents);
                 hydrateCardMarksFromAccountDocuments(documents);
+                await migrateLegacyCardMarksOnce(
+                    buildTradeAccountIdSetFromDocuments(documents),
+                );
                 invalidateCatalogAccountCounts();
                 clearAccountOverviewCache();
             }
@@ -9880,12 +10052,12 @@
                 if (!canPersistCardMarksToDisk()) return;
                 bootBeginStep("card_marks");
                 try {
-                    const tradeDocuments =
-                        buildTradeAccountDocumentsFromSummary(summary);
-                    await migrateCardMarksToAccountFiles(tradeDocuments);
                     const markLoad =
                         await loadAccountCardMarkDocumentsWithFallback();
                     hydrateCardMarksFromAccountDocuments(markLoad.documents);
+                    const legacyResult = await migrateLegacyCardMarksOnce(
+                        buildTradeAccountIdSet(summary),
+                    );
                     invalidateCatalogAccountCounts();
                     clearAccountOverviewCache();
                     const detailParts = [
@@ -9894,6 +10066,11 @@
                     if (markLoad.source === "accounts-data-fallback") {
                         detailParts.push("legacy fallback");
                     }
+                    if (legacyResult.migrated > 0) {
+                        detailParts.push(
+                            `migrated ${formatNumber(legacyResult.migrated)} legacy ${pluralWord(legacyResult.migrated, "account", "accounts")}`,
+                        );
+                    }
                     bootEndStep("card_marks", detailParts.join(" · "));
                 } catch (err) {
                     bootFailStep(
@@ -9901,13 +10078,6 @@
                         err?.message || "request failed",
                     );
                 }
-            }
-
-            function loadLegacyCardMarksFromLocalStorage() {
-                loadTradedState();
-                loadTradedMeta();
-                loadSharedState();
-                loadSharedMeta();
             }
 
             function loadTradedState() {
@@ -23510,10 +23680,7 @@
                 state.cardCollectionNumberMap =
                     buildCardCollectionNumberIndex(rawCardmapCache);
             }
-            loadLegacyCardMarksFromLocalStorage();
             loadWishlist();
-            backfillMissingTradedTimestamps();
-            backfillMissingSharedTimestamps();
             if (state.cardmaster && state.localisation && state.cardmap)
                 setStatus("Loading account data...");
 

@@ -2142,16 +2142,16 @@ function Test-AccountJsonHasCardMarks {
 function Export-AccountCardMarksEntryFromFile {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Text,
         [Parameter(Mandatory = $true)][hashtable]$Doc
     )
 
     $serializer = Get-AccountJsonSerializer
-    $text = [System.IO.File]::ReadAllText($Path)
     $entry = @{
         deviceAccount = [string]$Doc['deviceAccount']
     }
 
-    $tradedJson = Get-JsonPropertyValueSubstring -Text $text -PropertyName 'tradedCards'
+    $tradedJson = Get-JsonPropertyValueSubstring -Text $Text -PropertyName 'tradedCards'
     if (-not [string]::IsNullOrWhiteSpace($tradedJson)) {
         $tradedTrim = $tradedJson.Trim()
         if ($tradedTrim -ne '{}' -and $tradedTrim -ne 'null') {
@@ -2162,7 +2162,7 @@ function Export-AccountCardMarksEntryFromFile {
         }
     }
 
-    $sharedJson = Get-JsonPropertyValueSubstring -Text $text -PropertyName 'sharedCards'
+    $sharedJson = Get-JsonPropertyValueSubstring -Text $Text -PropertyName 'sharedCards'
     if (-not [string]::IsNullOrWhiteSpace($sharedJson)) {
         $sharedTrim = $sharedJson.Trim()
         if ($sharedTrim -ne '{}' -and $sharedTrim -ne 'null') {
@@ -2216,7 +2216,11 @@ function Build-AccountCardMarksPayload {
     $markPattern = '(?ms)"(?:tradedCards|sharedCards)"\s*:\s*\{\s*"'
     foreach ($file in Get-ChildItem -LiteralPath $accountsDir -Filter "*.json" -File | Sort-Object Name) {
         try {
+            if ($file.Length -lt 48) { continue }
             $text = [System.IO.File]::ReadAllText($file.FullName)
+            if ($text.IndexOf('"tradedCards"') -lt 0 -and $text.IndexOf('"sharedCards"') -lt 0) {
+                continue
+            }
             if (-not [regex]::IsMatch($text, $markPattern)) {
                 continue
             }
@@ -2224,7 +2228,7 @@ function Build-AccountCardMarksPayload {
             if (-not (Test-AccountJsonHasCardMarks -Doc $loaded.Doc)) {
                 continue
             }
-            $accounts += Export-AccountCardMarksEntryFromFile -Path $file.FullName -Doc $loaded.Doc
+            $accounts += Export-AccountCardMarksEntryFromFile -Path $file.FullName -Text $text -Doc $loaded.Doc
         } catch {
             continue
         }
