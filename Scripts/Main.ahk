@@ -1436,13 +1436,13 @@ FavoriteVipFriends() {
 RemoveNonVipFriends() {
     global session, interceptProc
 
-    ; Navigate to Social screen
+    ; Navigate to Social screen, then open friends list.
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        adbClick(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
+        adbClick(143, 518)
         Delay(5)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("In failsafe for Social. " . failSafeTime "/90 seconds")
