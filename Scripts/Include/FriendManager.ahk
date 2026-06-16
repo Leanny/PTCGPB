@@ -114,9 +114,13 @@ AddFriends(renew := false, getFC := false) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, interceptProc
 
+    writeLastActivityEpoch(session.get("scriptName"), 4000)
+
     ; Friend adding is Inject Wonderpick-only; own friend-code lookup is allowed wherever the caller explicitly asks for it.
-    if (!getFC && botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
+    if (!getFC && botConfig.get("deleteMethod") != "Inject Wonderpick 96P+") {
+        clearLastActivityEpoch(session.get("scriptName"))
         return false
+    }
 
     if (!getFC && (botConfig.get("groupRerollEnabled") || botConfig.get("useSoloIdsFile"))) {
         friendIDs := ReadFile("ids")
@@ -130,8 +134,10 @@ AddFriends(renew := false, getFC := false) {
         session.set("friendIDs", false)
     }
     friendIDsAvailable := IsObject(session.get("friendIDs")) && session.get("friendIDs").MaxIndex()
-    if(!getFC && !friendIDsAvailable && botConfig.get("FriendID") = "")
+    if(!getFC && !friendIDsAvailable && botConfig.get("FriendID") = "") {
+        clearLastActivityEpoch(session.get("scriptName"))
         return false
+    }
 
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -183,6 +189,7 @@ AddFriends(renew := false, getFC := false) {
             CreateStatusMessage("Retrieving account info`nOpening Social (" . failSafeTime . "/90 seconds)")
         else
             CreateStatusMessage("Waiting for Social`n(" . failSafeTime . "/90 seconds)")
+        writeLastActivityEpoch(session.get("scriptName"), 4000)
     }
 
     GoToFriendsList(true, false)
@@ -303,6 +310,7 @@ AddFriends(renew := false, getFC := false) {
 
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Processing add friends for `n(" . failSafeTime . "/45 seconds)")
+            writeLastActivityEpoch(session.get("scriptName"), 4000)
         }
 
         if(skipCurrentID)
@@ -339,6 +347,7 @@ AddFriends(renew := false, getFC := false) {
 
         if(!inventoryIconPos) {
             restartGameInstance("Stuck at InSubMenu...")
+            clearLastActivityEpoch(session.get("scriptName"))
             return false
         }
 
@@ -355,6 +364,7 @@ AddFriends(renew := false, getFC := false) {
 
             if((A_TickCount - miscWaitStart) > 5000) {
                 restartGameInstance("Stuck at InSubMenu...")
+                clearLastActivityEpoch(session.get("scriptName"))
                 return false
             }
             Delay(0.25)
@@ -391,8 +401,10 @@ AddFriends(renew := false, getFC := false) {
         Loop % botConfig.get("waitTime") {
             CreateStatusMessage("Waiting for friends to accept request`n(" . A_Index . "/" . botConfig.get("waitTime") . " seconds)")
             sleep, 1000
+            writeLastActivityEpoch(session.get("scriptName"), 4000)
         }
     }
+    clearLastActivityEpoch(session.get("scriptName"))
     return n ;return added friends so we can dynamically update the .txt in the middle of a run without leaving friends at the end
 }
 
@@ -415,6 +427,7 @@ RemoveFriends() {
         IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
         ClearFriendCleanupPending()
         session.set("friended", false)
+        clearLastActivityEpoch(session.get("scriptName"))
         return false
     }
 
@@ -424,6 +437,7 @@ RemoveFriends() {
         if (!session.get("friended") && DeadCheck != 1) {
             LogInfo("RemoveFriends skipped: no friend IDs and no cleanup pending | account=" . cleanupAccount . " | DeadCheck=" . DeadCheck)
             session.set("friended", false)
+            clearLastActivityEpoch(session.get("scriptName"))
             return false
         }
 
@@ -602,7 +616,7 @@ RemoveFriends() {
     ; Exit friend removal process
     CreateStatusMessage("Friend removal completed. Processed " . friendsProcessed . " friends. Returning to main...",,,, false)
     LogInfo("RemoveFriends complete | account=" . cleanupAccount . " | processed=" . friendsProcessed . " | DeadCheckBeforeClear=" . DeadCheck)
-    writeLastActivityEpoch(session.get("scriptName"), 4000)
+    clearLastActivityEpoch(session.get("scriptName"))
     DeadCheck := 0
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
     ClearFriendCleanupPending()

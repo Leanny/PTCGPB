@@ -674,6 +674,16 @@ writeLastActivityEpoch(scriptName, minIntervalMs := 0) {
     return writeMetricEpoch(scriptName, "LastActivityEpoch")
 }
 
+clearLastActivityEpoch(scriptName) {
+    if(InStr(scriptName, "Main"))
+        return 0
+
+    scriptName := StrReplace(scriptName, ".ahk")
+    iniPath := GetScriptIniPathByName(scriptName)
+    IniWrite, 0, %iniPath%, Metrics, LastActivityEpoch
+    return 0
+}
+
 SerializeArray(arr) {
     str := ""
     for index, value in arr {
