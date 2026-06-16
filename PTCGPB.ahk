@@ -1579,11 +1579,11 @@ ShowToolsAndSystemSettings:
     yPos2 += 40
 
     Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
-    xmlSortY := yPos2 - 5
-    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlSortY% w170 h20 gRunXMLSortTool BackgroundTrans, XML pack counts
-    yPos2 += 25
     xmlDupY := yPos2 - 5
     Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlDupY% w170 h20 gRunXMLDuplicateTool BackgroundTrans, XML Duplicate Remover
+    yPos2 += 25
+    xmlMgrY := yPos2 - 5
+    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlMgrY% w170 h20 gRunXMLManagerTool BackgroundTrans, XML Account Manager
     yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
@@ -2313,13 +2313,13 @@ OpenCardDatabase:
     }
 return
 
-RunXMLSortTool:
-    Tool := A_ScriptDir . "\Accounts\xmlCounter.ahk"
+RunXMLDuplicateTool:
+    Tool := A_ScriptDir . "\Accounts\xml_duplicate_finder.ahk"
     RunWait, %Tool%
 Return
 
-RunXMLDuplicateTool:
-    Tool := A_ScriptDir . "\Accounts\xml_duplicate_finder.ahk"
+RunXMLManagerTool:
+    Tool := A_ScriptDir . "\Accounts\xmlManager.ahk"
     RunWait, %Tool%
 Return
 
@@ -2476,8 +2476,8 @@ HelpTT_Init() {
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
-    HelpTT_Add("XML pack counts", "xmlPackCounts", "Shows a summary of saved account XMLs (counts and packs per instance).")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
+    HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 
     OnMessage(0x200, "HelpTT_OnMouseMove")
 }

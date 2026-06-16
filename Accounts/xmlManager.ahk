@@ -121,7 +121,7 @@ XM_BuildGui() {
     Gui, Add, Text, x54 y154 w500 h24, Copy accounts for export, or move them fully out of active bot folders.
     Gui, Font, s10 c%text%, Segoe UI
     Gui, Add, Text, x54 y198 w100 h24, Selection
-    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Brazilian Portuguese|Language Traditional Chinese|Language Korean|Custom pack range
+    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Brazilian Portuguese|Language Traditional Chinese|Language Korean|Custom pack range
     Gui, Add, Text, x54 y238 w100 h24 vRangeLabel, Pack range
     Gui, Add, Edit, x170 y234 w70 h26 Number vMinPacks Center Disabled Background%inputBg% c%text%, 96
     Gui, Add, Text, x252 y238 w24 h24 vRangeToLabel, to
@@ -336,7 +336,7 @@ XM_SetTemplateReadOnly(readOnly) {
 XM_UpdateSortRangeControls() {
     GuiControlGet, filter,, SortFilter
     filter += 0
-    enabled := (filter = 14)
+    enabled := (filter = 16)
     option := enabled ? "Enable" : "Disable"
     showRange := enabled ? "Show" : "Hide"
     hideRange := enabled ? "Hide" : "Show"
@@ -1101,31 +1101,40 @@ XM_GroupForAccount(account, filter, minPacks, maxPacks) {
     if (filter = 4)
         return ""
     if (filter = 5)
-        return (XM_NormalizeLanguage(account.Language) = "ja") ? "language_ja" : ""
+        return (XM_FlagIsSet(account, "C") || XM_FlagIsSet(account, "X")) ? "flag_claim_completed" : ""
     if (filter = 6)
-        return (XM_NormalizeLanguage(account.Language) = "en") ? "language_en" : ""
+        return XM_FlagIsSet(account, "R") ? "flag_receive_gift_completed" : ""
     if (filter = 7)
-        return (XM_NormalizeLanguage(account.Language) = "fr") ? "language_fr" : ""
+        return (XM_NormalizeLanguage(account.Language) = "ja") ? "language_ja" : ""
     if (filter = 8)
-        return (XM_NormalizeLanguage(account.Language) = "it") ? "language_it" : ""
+        return (XM_NormalizeLanguage(account.Language) = "en") ? "language_en" : ""
     if (filter = 9)
-        return (XM_NormalizeLanguage(account.Language) = "de") ? "language_de" : ""
+        return (XM_NormalizeLanguage(account.Language) = "fr") ? "language_fr" : ""
     if (filter = 10)
-        return (XM_NormalizeLanguage(account.Language) = "es") ? "language_es" : ""
+        return (XM_NormalizeLanguage(account.Language) = "it") ? "language_it" : ""
     if (filter = 11)
-        return (XM_NormalizeLanguage(account.Language) = "pt-BR") ? "language_pt-BR" : ""
+        return (XM_NormalizeLanguage(account.Language) = "de") ? "language_de" : ""
     if (filter = 12)
-        return (XM_NormalizeLanguage(account.Language) = "zh") ? "language_zh" : ""
+        return (XM_NormalizeLanguage(account.Language) = "es") ? "language_es" : ""
     if (filter = 13)
-        return (XM_NormalizeLanguage(account.Language) = "ko") ? "language_ko" : ""
+        return (XM_NormalizeLanguage(account.Language) = "pt-BR") ? "language_pt-BR" : ""
     if (filter = 14)
+        return (XM_NormalizeLanguage(account.Language) = "zh") ? "language_zh" : ""
+    if (filter = 15)
+        return (XM_NormalizeLanguage(account.Language) = "ko") ? "language_ko" : ""
+    if (filter = 16)
         return (packs >= minPacks && packs <= maxPacks) ? "packs_" . minPacks . "-" . maxPacks : ""
     return ""
 }
 
 XM_FilterName(filter, minPacks, maxPacks) {
-    names := ["0-13 packs", "14-95 packs", "96+ packs", "Missing XML or JSON pair", "Language Japanese", "Language English", "Language French", "Language Italian", "Language German", "Language Spanish", "Language Brazilian Portuguese", "Language Traditional Chinese", "Language Korean", "Custom " . minPacks . "-" . maxPacks . " packs"]
+    names := ["0-13 packs", "14-95 packs", "96+ packs", "Missing XML or JSON pair", "Claim completed", "Receive gift completed", "Language Japanese", "Language English", "Language French", "Language Italian", "Language German", "Language Spanish", "Language Brazilian Portuguese", "Language Traditional Chinese", "Language Korean", "Custom " . minPacks . "-" . maxPacks . " packs"]
     return names[filter]
+}
+
+XM_FlagIsSet(account, flag) {
+    flags := account.Raw["flags"]
+    return IsObject(flags) && flags.HasKey(flag) && flags[flag]["value"]
 }
 
 XM_NormalizeLanguage(language) {
