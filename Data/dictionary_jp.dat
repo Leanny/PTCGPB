@@ -74,7 +74,6 @@ Txt_ClientLanguage:クライアント
 Txt_InstanceLaunchDelay:エミュレータ起動遅延:
 Txt_autoLaunchMonitor:モニター自動起動
 ExtraSettingsHeading:追加設定
-Txt_applyRoleFilters:ロール別フィルター使用
 Msg_UnopenedPackTitle:GP テスト：未開封パックモード
 Msg_UnopenedPack_p1:未開封のブースターパックが少なくとも 1 つ残っているアカウントでのみ、このモードを使ってください。
 Msg_UnopenedPack_p2:フレンド削除では必ずレート制限が発生します。その後スクリプトが実際にゲームを再起動します。

@@ -667,6 +667,7 @@ UpdateDiscordSettingsButtonText() {
 }
 
 ShowDiscordSettings:
+    HelpTT_DismissForClick()
     ShowDiscordSettingsPopup(A_GuiControl)
 return
 
@@ -890,6 +891,7 @@ UpdatePackSelectionButtonText() {
 }
 
 ShowPackSelection:
+    HelpTT_DismissForClick()
     Gui, Submit, NoHide
 
     Gui, PackSelect:Destroy
@@ -1032,7 +1034,7 @@ UpdateCardDetectionButtonText() {
     if (botConfig.get("PseudoGodPack"))
         enabledOptions.Push("Double 2★")
     if (botConfig.get("WishlistCheck"))
-        enabledOptions.Push("Wishlist")
+        enabledOptions.Push("Wishlist 2★")
     if (botConfig.get("InvalidCheck"))
         enabledOptions.Push("Ignore Invalid")
 
@@ -1056,6 +1058,7 @@ UpdateCardDetectionButtonText() {
 }
 
 ShowCardDetection:
+    HelpTT_DismissForClick()
     Gui, Submit, NoHide
 
     GuiControlGet, curMethod, , ui_deleteMethod
@@ -1140,8 +1143,6 @@ UpdateGroupRerollButtonText() {
     statusText := "Enabled"
     if (botConfig.get("autoUseGPTest"))
         statusText .= " + Auto"
-    if (botConfig.get("applyRoleFilters"))
-        statusText .= " + Roles"
     statusText .= " | IDs " . idsStatus . " VIP " . vipStatus
 
     Gui, Font, s7 cGreen, Segoe UI
@@ -1150,6 +1151,7 @@ UpdateGroupRerollButtonText() {
 }
 
 ShowGroupRerollSettings:
+    HelpTT_DismissForClick()
     Gui, Submit, NoHide
     PTCGPB_PopupRightOfCtl("ui_GroupRerollButton", 250, 12, popupX, popupY)
 
@@ -1188,9 +1190,6 @@ ShowGroupRerollSettings:
     yPos += 20
     Gui, GroupRerollSelect:Add, Edit, vui_gpTestWaitTime_Popup w50 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("gpTestWaitTime")
     yPos += 30
-    GroupReroll_yRoleExpanded := yPos
-    GroupReroll_yRoleCollapsed := GroupReroll_yRoleExpanded - 50
-    Gui, GroupRerollSelect:Add, Checkbox, % (botConfig.get("applyRoleFilters") ? "Checked" : "") " vui_applyRoleFilters_Popup x15 y" . yPos . " cWhite", Role-Based Filters
     yPos += 40
     Gui, GroupRerollSelect:Add, Button, vui_GroupRerollApplyBtn x30 y%yPos% w90 h30 gApplyGroupRerollSettings, Apply
     Gui, GroupRerollSelect:Add, Button, vui_GroupRerollCancelBtn x130 y%yPos% w90 h30 gCancelGroupRerollSettings, Cancel
@@ -1202,7 +1201,6 @@ ShowGroupRerollSettings:
     if (botConfig.get("hasUnopenedPack")) {
         GuiControl, Hide, ui_gpTestWaitLabel
         GuiControl, Hide, ui_gpTestWaitTime_Popup
-        GuiControl, Move, ui_applyRoleFilters_Popup, x15 y%GroupReroll_yRoleCollapsed%
         GuiControl, Move, ui_GroupRerollApplyBtn, x30 y%GroupReroll_yBtnCollapsed%
         GuiControl, Move, ui_GroupRerollCancelBtn, x130 y%GroupReroll_yBtnCollapsed%
         groupRerollShowH := GroupReroll_yBtnCollapsed + 40
@@ -1218,14 +1216,12 @@ GroupRerollGpTestMode:
     if (isUnopened) {
         GuiControl, Hide, ui_gpTestWaitLabel
         GuiControl, Hide, ui_gpTestWaitTime_Popup
-        GuiControl, Move, ui_applyRoleFilters_Popup, x15 y%GroupReroll_yRoleCollapsed%
         GuiControl, Move, ui_GroupRerollApplyBtn, x30 y%GroupReroll_yBtnCollapsed%
         GuiControl, Move, ui_GroupRerollCancelBtn, x130 y%GroupReroll_yBtnCollapsed%
         hNow := GroupReroll_yBtnCollapsed + 40
     } else {
         GuiControl, Show, ui_gpTestWaitLabel
         GuiControl, Show, ui_gpTestWaitTime_Popup
-        GuiControl, Move, ui_applyRoleFilters_Popup, x15 y%GroupReroll_yRoleExpanded%
         GuiControl, Move, ui_GroupRerollApplyBtn, x30 y%GroupReroll_yBtnExpanded%
         GuiControl, Move, ui_GroupRerollCancelBtn, x130 y%GroupReroll_yBtnExpanded%
         hNow := GroupReroll_yBtnExpanded + 40
@@ -1266,7 +1262,6 @@ saveGroupReroll:
         MsgBox, 48, % dict["Msg_UnopenedPackTitle"], %confirmUP%
     }
     botConfig.set("hasUnopenedPack", newUnopened, "GroupReroll")
-    botConfig.set("applyRoleFilters", ui_applyRoleFilters_Popup, "GroupReroll")
 return
 
 CancelGroupRerollSettings:
@@ -1321,6 +1316,7 @@ UpdateS4TButtonText() {
 }
 
 ShowS4TSettings:
+    HelpTT_DismissForClick()
     Gui, Submit, NoHide
     s4tPopupW := 285
     PTCGPB_PopupRightOfCtl("ui_S4TButton", s4tPopupW, 12, popupX, popupY)
@@ -1433,6 +1429,7 @@ return
 
 ; =================== UI - Tools and System Settings(New Window, Details) ===================
 ShowToolsAndSystemSettings:
+    HelpTT_DismissForClick()
     Gui, Submit, NoHide
     PTCGPB_PopupRightOfCtl(A_GuiControl, 410, 12, popupX, popupY)
 
@@ -1686,6 +1683,7 @@ return
 
 ; =================== Logic - Start Bot Button Action ===================
 Save:
+    HelpTT_Dismiss()
     Gui, Submit, NoHide
 
     ;Deluxe := 0 ; Turn off Deluxe for all users now that pack is removed
@@ -1853,6 +1851,7 @@ Save:
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
     }
 
+    HelpTT_Dismiss()
     Gui, 1:Destroy
 
     AccountMetadata_RepairAccountsFromSnapshot()
@@ -2415,7 +2414,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_TrainerCheck_Popup", "TrainerCheck", "When enabled, saves the account and notifies on Discord when a pack contains a 2-star Trainer card.")
     HelpTT_Add("ui_RainbowCheck_Popup", "RainbowCheck", "When enabled, saves the account and notifies on Discord when a pack contains a 2-star Rainbow card.")
     HelpTT_Add("ui_PseudoGodPack_Popup", "PseudoGodPack", "When enabled, saves the account and notifies on Discord when a pack contains two 2-star cards ('pseudo God Pack').")
-    HelpTT_Add("ui_WishlistCheck_Popup", "WishlistCheck", "When enabled, saves the account and notifies on Discord when a pack contains a card from your wishlist (set in the Card Database).")
+    HelpTT_Add("ui_WishlistCheck_Popup", "WishlistCheck", "When enabled, saves the account and notifies on Discord when a pack contains a wishlisted 2-star card (Trainer, Full Art, or Rainbow) from your Card Database wishlist.")
     HelpTT_Add("ui_InvalidCheck_Popup", "InvalidCheck", "When enabled, suppresses Discord notifications for God Packs detected as invalid.`nThey are still logged and backed up.")
 
     ; --- Popup: Group Reroll
@@ -2480,6 +2479,7 @@ HelpTT_Init() {
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
 
     OnMessage(0x200, "HelpTT_OnMouseMove")
+    OnMessage(0x201, "HelpTT_OnLButtonDown")
 }
 
 HelpTT_Add(ctrlId, helpKey, fallbackText) {
@@ -2508,6 +2508,25 @@ HelpTT_OnMouseMove(wParam, lParam, msg, hwnd) {
         SetTimer, HelpTT_Show, -500
     else
         SetTimer, HelpTT_Show, Off
+}
+
+HelpTT_OnLButtonDown(wParam, lParam, msg, hwnd) {
+    HelpTT_DismissForClick()
+}
+
+HelpTT_Dismiss() {
+    global g_HelpTT_Last
+    SetTimer, HelpTT_Show, Off
+    SetTimer, HelpTT_Hide, Off
+    HelpTT_HideWindow()
+    g_HelpTT_Last := ""
+}
+
+HelpTT_DismissForClick() {
+    global g_HelpTT_Last
+    clickedCtrl := A_GuiControl
+    HelpTT_Dismiss()
+    g_HelpTT_Last := clickedCtrl
 }
 
 HelpTT_Show:
@@ -2664,6 +2683,7 @@ StartBot() {
     global botConfig, dict, localVersion, githubUser, modVersion, modRepoUser, rerollTime, PackGuiBuild, botMetadata, typeMsg
         , g_botStarted
 
+    HelpTT_Dismiss()
     PackGuiBuild := 0
     rerollTime := A_TickCount
 

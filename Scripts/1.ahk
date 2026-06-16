@@ -2301,11 +2301,8 @@ CheckPack(stopEarly := false) {
 
     PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star)
 
-    Wishlist_EnsureFresh()
-    wishlistMap      := session.get("wishlistMap")
-    foundWishlist    := Wishlist_CountMatches(cards, wishlistMap)
-    wishlistMatches  := Wishlist_MatchEntries(cards, wishlistMap)
-    session.set("wishlistMatches", wishlistMatches)
+    foundWishlist    := Wishlist_ProcessPack(cards, pack)
+    foundWishlist2Star := Wishlist_CountTwoStarMatches(cards, rarity, session.get("wishlistMap"))
 
     logMessage := "Instance: " . session.get("scriptName") " | Found: " . found1Dmnd
     logMessage := logMessage . "|" . found2Dmnd
@@ -2450,8 +2447,9 @@ CheckPack(stopEarly := false) {
     if (botConfig.get("FullArtCheck") && !foundLabel && foundFullArt) {
             foundLabel := "Full Art"
     }
-    if (botConfig.get("WishlistCheck") && !foundLabel && foundWishlist) {
-            foundLabel := "Wishlist"
+    if (botConfig.get("WishlistCheck") && !foundLabel && foundWishlist2Star) {
+        session.set("wishlistMatches", Wishlist_TwoStarMatchEntries(cards, rarity, session.get("wishlistMap")))
+        foundLabel := "Wishlist"
     }
 
     if (foundLabel) {
