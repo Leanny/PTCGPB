@@ -814,7 +814,7 @@ XM_BuildRenamePlan(template) {
         }
 
         SplitPath, xmlPath,, xmlDir
-        newName := XM_UniqueName(xmlDir, newName, usedTargets)
+        newName := XM_UniqueName(xmlDir, newName, usedTargets, xmlPath)
         newPath := xmlDir . "\" . newName
         key := XM_Lower(newPath)
         usedTargets[key] := true
@@ -866,14 +866,21 @@ XM_TemplateName(template, account) {
     return name
 }
 
-XM_UniqueName(dir, fileName, ByRef usedTargets) {
+XM_UniqueName(dir, fileName, ByRef usedTargets, excludePath := "") {
     SplitPath, fileName,,, ext, baseName
     if (ext = "")
         ext := "xml"
 
     candidate := fileName
     i := 1
-    while (FileExist(dir . "\" . candidate) || usedTargets.HasKey(XM_Lower(dir . "\" . candidate))) {
+    while (true) {
+        fullPath := dir . "\" . candidate
+        key := XM_Lower(fullPath)
+        exists := FileExist(fullPath)
+        if (exists && excludePath != "" && XM_Lower(fullPath) = XM_Lower(excludePath))
+            exists := false
+        if (!exists && !usedTargets.HasKey(key))
+            break
         candidate := baseName . "_" . i . "." . ext
         i++
     }
