@@ -21,6 +21,8 @@ global XM_LastTemplate := ""
 global XM_LastFilter := 0
 global XM_LastMinPacks := 0
 global XM_LastMaxPacks := 0
+global XM_ShowPullReport := false
+global XM_PullFilterOptions := "Last pull beyond 24 hours|Last pull within 24 hours|No last pull recorded"
 
 if (!FileExist(XM_JsonDir)) {
     MsgBox, 16, XML Account Manager, Metadata folder not found:`n%XM_JsonDir%
@@ -61,25 +63,22 @@ XM_BuildGui() {
     Gui, Font, s9 c%muted%, Segoe UI
     Gui, Add, Text, x54 y146 w420 h20, Current JSON metadata and matching XML files in Saved.
     Gui, Font, s10 c%text%, Segoe UI
+    Gui, Add, Button, x690 y124 w120 h30 gLastPullReport, Last pull report
     Gui, Add, Button, x822 y124 w120 h30 gScanNow, Refresh scan
     Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x54 y178 w110 h18 Center, JSON accounts
-    Gui, Add, Text, x174 y178 w110 h18 Center, XML in Saved
-    Gui, Add, Text, x294 y178 w110 h18 Center, Missing XML
-    Gui, Add, Text, x414 y178 w110 h18 Center, 96+ packs
+    Gui, Add, Text, x54 y178 w147 h18 Center, JSON accounts
+    Gui, Add, Text, x201 y178 w147 h18 Center, XML in Saved
+    Gui, Add, Text, x348 y178 w147 h18 Center, Missing XML
+    Gui, Add, Text, x495 y178 w147 h18 Center, 96+ packs
+    Gui, Add, Text, x642 y178 w147 h18 Center, 0-13 packs
+    Gui, Add, Text, x789 y178 w147 h18 Center, 14-95 packs
     Gui, Font, s18 c%text%, Segoe UI
-    Gui, Add, Text, x54 y200 w110 h34 Center vMetricJson, -
-    Gui, Add, Text, x174 y200 w110 h34 Center vMetricXml, -
-    Gui, Add, Text, x294 y200 w110 h34 Center vMetricMissing, -
-    Gui, Add, Text, x414 y200 w110 h34 Center vMetricReady, -
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x554 y178 w110 h18 Center, 0-13
-    Gui, Add, Text, x674 y178 w110 h18 Center, 14-95
-    Gui, Add, Text, x794 y178 w110 h18 Center, 100+
-    Gui, Font, s18 c%text%, Segoe UI
-    Gui, Add, Text, x554 y200 w110 h34 Center vMetricLow, -
-    Gui, Add, Text, x674 y200 w110 h34 Center vMetricMid, -
-    Gui, Add, Text, x794 y200 w110 h34 Center vMetric100, -
+    Gui, Add, Text, x54 y200 w147 h34 Center vMetricJson, -
+    Gui, Add, Text, x201 y200 w147 h34 Center vMetricXml, -
+    Gui, Add, Text, x348 y200 w147 h34 Center vMetricMissing, -
+    Gui, Add, Text, x495 y200 w147 h34 Center vMetricReady, -
+    Gui, Add, Text, x642 y200 w147 h34 Center vMetricLow, -
+    Gui, Add, Text, x789 y200 w147 h34 Center vMetricMid, -
     Gui, Add, Progress, x54 y248 w886 h1 c%border% Background%border% Disabled, 100
     Gui, Font, s9 c%muted%, Segoe UI
     Gui, Add, GroupBox, x54 y262 w250 h148 c%muted%, Pack ranges
@@ -109,7 +108,7 @@ XM_BuildGui() {
     Gui, Font, s9 c%muted%, Segoe UI
     Gui, Add, Text, x54 y274 w100 h24, Fields
     Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x170 y270 w720 h38, {packCount}=packs   {createdAt}=created   {instance}=bot   {language}=language`n{accountName}=name   {friendCode}=friend code   {deviceAccount}=account ID
+    Gui, Add, Text, x170 y270 w720 h52, {packCount}=packs   {createdAt}=created   {instance}=bot   {language}=language`n{accountName}=name   {friendCode}=friend code   {deviceAccount}=account ID   {lastPackPulled}=last pull
     Gui, Font, s10 c%text%, Segoe UI
     Gui, Add, Button, x170 y314 w140 h32 gPreviewRename, Preview rename
     Gui, Add, Button, x326 y314 w140 h32 gApplyRename, Apply rename
@@ -121,7 +120,7 @@ XM_BuildGui() {
     Gui, Add, Text, x54 y154 w500 h24, Copy accounts for export, or move them fully out of active bot folders.
     Gui, Font, s10 c%text%, Segoe UI
     Gui, Add, Text, x54 y198 w100 h24, Selection
-    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Brazilian Portuguese|Language Traditional Chinese|Language Korean|Custom pack range
+    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Brazilian Portuguese|Language Traditional Chinese|Language Korean|Custom pack range|%XM_PullFilterOptions%
     Gui, Add, Text, x54 y238 w100 h24 vRangeLabel, Pack range
     Gui, Add, Edit, x170 y234 w70 h26 Number vMinPacks Center Disabled Background%inputBg% c%text%, 96
     Gui, Add, Text, x252 y238 w24 h24 vRangeToLabel, to
@@ -172,11 +171,16 @@ XM_BuildGui() {
 
 MainTabChanged:
     Gui, Submit, NoHide
+    XM_ShowPullReport := false
     XM_UpdatePreviewVisibility()
 return
 
 ScanNow:
     XM_RefreshSummary()
+return
+
+LastPullReport:
+    XM_ShowLastPullReport()
 return
 
 RenameStyleChanged:
@@ -224,7 +228,7 @@ return
 
 PreviewSort:
     Gui, Submit, NoHide
-    if (!XM_ValidateRange(MinPacks, MaxPacks))
+    if (!XM_ValidateSortInputs())
         return
     XM_LastAction := "sort"
     XM_LastFilter := SortFilter
@@ -236,7 +240,7 @@ return
 
 ApplySort:
     Gui, Submit, NoHide
-    if (!XM_ValidateRange(MinPacks, MaxPacks))
+    if (!XM_ValidateSortInputs())
         return
     plan := XM_BuildCopyPlan(SortFilter, MinPacks + 0, MaxPacks + 0)
     if (plan.Count = 0) {
@@ -254,7 +258,7 @@ return
 
 MoveSort:
     Gui, Submit, NoHide
-    if (!XM_ValidateRange(MinPacks, MaxPacks))
+    if (!XM_ValidateSortInputs())
         return
     plan := XM_BuildCopyPlan(SortFilter, MinPacks + 0, MaxPacks + 0)
     if (plan.Count = 0) {
@@ -272,6 +276,7 @@ return
 
 ClearLog:
     GuiControlGet, tab,, MainTab
+    XM_ShowPullReport := false
     if (tab = "Overview") {
         GuiControl,, PackBreakdownLabels, Refresh scan.
         GuiControl,, PackBreakdownValues,
@@ -279,8 +284,9 @@ ClearLog:
         GuiControl,, LanguageBreakdownValues,
         GuiControl,, InstanceLeftLabels, Refresh scan.
         GuiControl,, InstanceLeftValues,
-        GuiControl,, InstanceRightLabels,
+        GuiControl,, InstanceRightLabels, Refresh scan.
         GuiControl,, InstanceRightValues,
+        XM_UpdatePreviewVisibility()
     } else {
         XM_SetLog("Ready.")
     }
@@ -336,22 +342,41 @@ XM_SetTemplateReadOnly(readOnly) {
 XM_UpdateSortRangeControls() {
     GuiControlGet, filter,, SortFilter
     filter += 0
-    enabled := (filter = 16)
-    option := enabled ? "Enable" : "Disable"
-    showRange := enabled ? "Show" : "Hide"
-    hideRange := enabled ? "Hide" : "Show"
-    GuiControl, %option%, MinPacks
-    GuiControl, %option%, MaxPacks
-    GuiControl, %showRange%, RangeLabel
-    GuiControl, %showRange%, MinPacks
-    GuiControl, %showRange%, RangeToLabel
-    GuiControl, %showRange%, MaxPacks
-    GuiControl, %hideRange%, RangeHint
+    packRange := (filter = 16)
+    packOption := packRange ? "Enable" : "Disable"
+    GuiControl, %packOption%, MinPacks
+    GuiControl, %packOption%, MaxPacks
+
+    if (packRange) {
+        GuiControl, Show, RangeLabel
+        GuiControl, Show, MinPacks
+        GuiControl, Show, RangeToLabel
+        GuiControl, Show, MaxPacks
+        GuiControl, Hide, RangeHint
+    } else {
+        GuiControl, Hide, RangeLabel
+        GuiControl, Hide, MinPacks
+        GuiControl, Hide, RangeToLabel
+        GuiControl, Hide, MaxPacks
+        if (filter >= 1 && filter <= 15)
+            GuiControl, Show, RangeHint
+        else
+            GuiControl, Hide, RangeHint
+    }
+}
+
+XM_ValidateSortInputs() {
+    GuiControlGet, filter,, SortFilter
+    filter += 0
+    if (filter = 16)
+        return XM_ValidateRange(MinPacks, MaxPacks)
+    return true
 }
 
 XM_UpdatePreviewVisibility() {
+    global XM_ShowPullReport
     GuiControlGet, tab,, MainTab
-    hidePreview := (tab = "Overview")
+    hidePreview := (tab = "Overview" && !XM_ShowPullReport)
     previewOption := hidePreview ? "Hide" : "Show"
     tabHeight := hidePreview ? 360 : 300
     GuiControl, Move, MainTab, h%tabHeight%
@@ -375,7 +400,6 @@ XM_RefreshSummary(updateLog := true) {
     ready96 := 0
     p1_13 := 0
     p14_95 := 0
-    p100plus := 0
     totalAccounts := accounts.Length()
 
     for idx, account in accounts {
@@ -389,20 +413,17 @@ XM_RefreshSummary(updateLog := true) {
             p14_95++
         if (packs >= 96)
             ready96++
-        if (packs >= 100)
-            p100plus++
     }
 
     text := "JSON accounts: " . accounts.Length() . "    XML in Saved: " . xmlTotal . "`n"
     text .= "Missing XML: " . missing . "`n"
-    text .= "0-13: " . p1_13 . "    14-95: " . p14_95 . "    96+: " . ready96 . "    100+: " . p100plus
+    text .= "0-13: " . p1_13 . "    14-95: " . p14_95 . "    96+: " . ready96
     GuiControl,, MetricJson, % accounts.Length()
     GuiControl,, MetricXml, %xmlTotal%
     GuiControl,, MetricMissing, %missing%
     GuiControl,, MetricReady, %ready96%
     GuiControl,, MetricLow, %p1_13%
     GuiControl,, MetricMid, %p14_95%
-    GuiControl,, Metric100, %p100plus%
     XM_SetOverviewBreakdown(accounts)
     summaryDetails := XM_BuildPackSummary(accounts, missing, xmlTotal)
     if (updateLog) {
@@ -415,6 +436,15 @@ XM_RefreshSummary(updateLog := true) {
 
 XM_SetLog(text) {
     GuiControl,, LogBox, %text%
+}
+
+XM_AssembleReportText(header, summary, listText := "") {
+    text := header
+    if (summary != "")
+        text .= summary
+    if (listText != "")
+        text .= listText
+    return text
 }
 
 XM_ProgressStart(label) {
@@ -491,6 +521,7 @@ XM_LoadAccounts(progressLabel := "") {
             , Language: account["language"]
             , PackCount: account["packCount"] + 0
             , CreatedAt: account["createdAt"]
+            , LastPackPulled: account["lastPackPulled"]
             , Raw: account})
     }
 
@@ -757,8 +788,9 @@ XM_BuildRenamePlan(template) {
     accounts := XM_LoadAccounts("Reading JSON metadata")
     plan := {Items: [], Count: 0, Missing: 0, Skipped: 0, Text: ""}
     usedTargets := {}
-    text := "=== Rename preview ===`n"
-    text .= "Template: " . template . "`n`n"
+    header := "=== Rename preview ===`n"
+    header .= "Template: " . template . "`n`n"
+    listText := ""
     totalAccounts := accounts.Length()
 
     for idx, account in accounts {
@@ -772,7 +804,7 @@ XM_BuildRenamePlan(template) {
         newName := XM_TemplateName(template, account)
         if (newName = "") {
             plan.Skipped++
-            text .= "[Skip: missing data] " . account.FileName . "`n"
+            listText .= "[Skip: missing data] " . account.FileName . "`n"
             continue
         }
 
@@ -789,11 +821,11 @@ XM_BuildRenamePlan(template) {
 
         plan.Items.Push({Account: account, OldPath: xmlPath, NewPath: newPath, OldName: account.FileName, NewName: newName})
         plan.Count++
-        text .= account.FileName . "  ->  " . newName . "`n"
+        listText .= account.FileName . "  ->  " . newName . "`n"
     }
 
-    text .= "`nTo rename: " . plan.Count . "    Skipped: " . plan.Skipped . "    Missing XML: " . plan.Missing
-    plan.Text := text
+    summary := "To rename: " . plan.Count . "    Skipped: " . plan.Skipped . "    Missing XML: " . plan.Missing . "`n`n"
+    plan.Text := XM_AssembleReportText(header, summary, listText)
     XM_ProgressDone("Rename preview ready.")
     return plan
 }
@@ -810,9 +842,14 @@ XM_TemplateName(template, account) {
     if (createdAt = "" || createdAt = "0")
         createdAt := "unknown"
 
+    lastPackPulled := XM_GetLastPackPulled(account)
+    if (lastPackPulled = "")
+        lastPackPulled := "unknown"
+
     name := template
     name := StrReplace(name, "{packCount}", account.PackCount)
     name := StrReplace(name, "{createdAt}", createdAt)
+    name := StrReplace(name, "{lastPackPulled}", lastPackPulled)
     name := StrReplace(name, "{instance}", account.Instance)
     name := StrReplace(name, "{language}", XM_NormalizeLanguage(account.Language))
     name := StrReplace(name, "{accountName}", account.AccountName)
@@ -846,7 +883,8 @@ XM_UniqueName(dir, fileName, ByRef usedTargets) {
 XM_ExecuteRenamePlan(plan) {
     changed := 0
     errors := 0
-    text := "=== Rename results ===`n`n"
+    header := "=== Rename results ===`n`n"
+    listText := ""
     totalItems := plan.Items.Length()
     XM_ProgressStart("Renaming XML files...")
 
@@ -857,7 +895,7 @@ XM_ExecuteRenamePlan(plan) {
         FileMove, %oldPath%, %newPath%, 0
         if (ErrorLevel) {
             errors++
-            text .= "[Error] " . item.OldName . " -> " . item.NewName . "`n"
+            listText .= "[Error] " . item.OldName . " -> " . item.NewName . "`n"
             continue
         }
 
@@ -866,17 +904,17 @@ XM_ExecuteRenamePlan(plan) {
         account["instance"] := item.Account.Instance
         if (!AccountMetadata_WriteAccountUnlocked(item.Account.DeviceAccount, account)) {
             errors++
-            text .= "[Metadata error] " . item.NewName . "`n"
+            listText .= "[Metadata error] " . item.NewName . "`n"
             continue
         }
 
         changed++
-        text .= "[OK] " . item.OldName . " -> " . item.NewName . "`n"
+        listText .= "[OK] " . item.OldName . " -> " . item.NewName . "`n"
     }
 
-    text .= "`nRenamed: " . changed . "    Errors: " . errors
+    summary := "Renamed: " . changed . "    Errors: " . errors . "`n`n"
     XM_ProgressDone("Rename complete.")
-    return text
+    return XM_AssembleReportText(header, summary, listText)
 }
 
 XM_BuildCopyPlan(filter, minPacks, maxPacks) {
@@ -884,14 +922,15 @@ XM_BuildCopyPlan(filter, minPacks, maxPacks) {
     XM_ProgressStart("Preparing copy preview...")
     accounts := XM_LoadAccounts("Reading JSON metadata")
     plan := {Items: [], Count: 0, Missing: 0, Skipped: 0, Text: ""}
-    text := "=== Selection preview ===`n"
-    text .= "Selection: " . XM_FilterName(filter, minPacks, maxPacks) . "`n`n"
+    header := "=== Selection preview ===`n"
+    header .= "Selection: " . XM_FilterName(filter, minPacks, maxPacks) . "`n`n"
+    listText := ""
     totalAccounts := accounts.Length()
 
     if (filter = 4) {
-        XM_AddIncompleteAccounts(plan, text, accounts)
-        text .= "`nSelected: " . plan.Count . "    Skipped: " . plan.Skipped . "    Missing XML: " . plan.Missing
-        plan.Text := text
+        XM_AddIncompleteAccounts(plan, listText, accounts)
+        summary := "Selected: " . plan.Count . "    Skipped: " . plan.Skipped . "    Missing XML: " . plan.Missing . "`n`n"
+        plan.Text := XM_AssembleReportText(header, summary, listText)
         XM_ProgressDone("Copy preview ready.")
         return plan
     }
@@ -924,17 +963,17 @@ XM_BuildCopyPlan(filter, minPacks, maxPacks) {
         jsonSource := AccountMetadata_AccountPath(account.DeviceAccount)
         plan.Items.Push({Account: account, OldPath: xmlPath, JsonSource: jsonSource, HasXml: true, HasJson: FileExist(jsonSource) ? true : false, DestXmlDir: destXmlDir, DestJsonDir: destJsonDir, DestName: destName, DestPath: destPath, Group: group})
         plan.Count++
-        text .= account.FileName . "  ->  " . destXmlDir . "`n"
+        listText .= account.FileName . "  ->  " . destXmlDir . "`n"
     }
 
-    text .= "`nSelected: " . plan.Count . "    Skipped: " . plan.Skipped . "    Missing XML: " . plan.Missing
-    text .= "`nJSON files will be included when present."
-    plan.Text := text
+    summary := "Selected: " . plan.Count . "    Skipped: " . plan.Skipped . "    Missing XML: " . plan.Missing . "`n"
+    summary .= "JSON files will be included when present.`n`n"
+    plan.Text := XM_AssembleReportText(header, summary, listText)
     XM_ProgressDone("Copy preview ready.")
     return plan
 }
 
-XM_AddIncompleteAccounts(ByRef plan, ByRef text, accounts) {
+XM_AddIncompleteAccounts(ByRef plan, ByRef listText, accounts) {
     global XM_SavedDir, XM_SortedDir
     knownJson := {}
 
@@ -964,7 +1003,7 @@ XM_AddIncompleteAccounts(ByRef plan, ByRef text, accounts) {
             , Group: group}
         plan.Items.Push(item)
         plan.Count++
-        text .= account.DeviceAccount . ".json  ->  " . item.DestJsonDir . "`n"
+        listText .= account.DeviceAccount . ".json  ->  " . item.DestJsonDir . "`n"
     }
 
     Loop, Files, %XM_SavedDir%\*.xml, R
@@ -990,14 +1029,15 @@ XM_AddIncompleteAccounts(ByRef plan, ByRef text, accounts) {
             , Group: group}
         plan.Items.Push(item)
         plan.Count++
-        text .= fileName . "  ->  " . item.DestXmlDir . "`n"
+        listText .= fileName . "  ->  " . item.DestXmlDir . "`n"
     }
 }
 
 XM_ExecuteCopyPlan(plan) {
     copied := 0
     errors := 0
-    text := "=== Copy results ===`n`n"
+    header := "=== Copy results ===`n`n"
+    listText := ""
     totalItems := plan.Items.Length()
     XM_ProgressStart("Copying XML files...")
 
@@ -1016,7 +1056,7 @@ XM_ExecuteCopyPlan(plan) {
             FileCopy, %oldPath%, %destPath%, 0
             if (ErrorLevel) {
                 errors++
-                text .= "[Error] " . item.Account.FileName . "`n"
+                listText .= "[Error] " . item.Account.FileName . "`n"
                 continue
             }
         }
@@ -1032,18 +1072,19 @@ XM_ExecuteCopyPlan(plan) {
         }
 
         copied++
-        text .= "[OK] " . item.Account.FileName . " -> " . item.Group . "`n"
+        listText .= "[OK] " . item.Account.FileName . " -> " . item.Group . "`n"
     }
 
-    text .= "`nCopied: " . copied . "    Errors: " . errors
+    summary := "Copied: " . copied . "    Errors: " . errors . "`n`n"
     XM_ProgressDone("Copy complete.")
-    return text
+    return XM_AssembleReportText(header, summary, listText)
 }
 
 XM_ExecuteMovePlan(plan) {
     moved := 0
     errors := 0
-    text := "=== Move results ===`n`n"
+    header := "=== Move results ===`n`n"
+    listText := ""
     totalItems := plan.Items.Length()
     XM_ProgressStart("Moving accounts...")
 
@@ -1063,7 +1104,7 @@ XM_ExecuteMovePlan(plan) {
             FileMove, %oldPath%, %destPath%, 0
             if (ErrorLevel) {
                 errors++
-                text .= "[XML Error] " . item.Account.FileName . "`n"
+                listText .= "[XML Error] " . item.Account.FileName . "`n"
                 continue
             }
         }
@@ -1076,18 +1117,18 @@ XM_ExecuteMovePlan(plan) {
             FileMove, %jsonSource%, %jsonDest%, 0
             if (ErrorLevel) {
                 errors++
-                text .= "[JSON error] " . item.Account.FileName . " (XML already moved)`n"
+                listText .= "[JSON error] " . item.Account.FileName . " (XML already moved)`n"
                 continue
             }
         }
 
         moved++
-        text .= "[OK] " . item.Account.FileName . " -> " . item.Group . "`n"
+        listText .= "[OK] " . item.Account.FileName . " -> " . item.Group . "`n"
     }
 
-    text .= "`nMoved: " . moved . "    Errors: " . errors
+    summary := "Moved: " . moved . "    Errors: " . errors . "`n`n"
     XM_ProgressDone("Move complete.")
-    return text
+    return XM_AssembleReportText(header, summary, listText)
 }
 
 XM_GroupForAccount(account, filter, minPacks, maxPacks) {
@@ -1124,12 +1165,132 @@ XM_GroupForAccount(account, filter, minPacks, maxPacks) {
         return (XM_NormalizeLanguage(account.Language) = "ko") ? "language_ko" : ""
     if (filter = 16)
         return (packs >= minPacks && packs <= maxPacks) ? "packs_" . minPacks . "-" . maxPacks : ""
+    if (filter = 17)
+        return XM_AccountMatchesPullFilter(account, 17) ? "last_pulled_24h_plus" : ""
+    if (filter = 18)
+        return XM_AccountMatchesPullFilter(account, 18) ? "last_pulled_24h_minus" : ""
+    if (filter = 19)
+        return XM_AccountMatchesPullFilter(account, 19) ? "last_pulled_never" : ""
     return ""
 }
 
 XM_FilterName(filter, minPacks, maxPacks) {
+    if (filter >= 17 && filter <= 19)
+        return XM_PullFilterLabel(filter)
     names := ["0-13 packs", "14-95 packs", "96+ packs", "Missing XML or JSON pair", "Claim completed", "Receive gift completed", "Language Japanese", "Language English", "Language French", "Language Italian", "Language German", "Language Spanish", "Language Brazilian Portuguese", "Language Traditional Chinese", "Language Korean", "Custom " . minPacks . "-" . maxPacks . " packs"]
     return names[filter]
+}
+
+XM_PullFilterLabel(filter) {
+    if (filter = 17)
+        return "Last pull beyond 24 hours"
+    if (filter = 18)
+        return "Last pull within 24 hours"
+    if (filter = 19)
+        return "No last pull recorded"
+    return ""
+}
+
+XM_GetLastPackPulled(account) {
+    ts := account.Raw["lastPackPulled"]
+    if (ts = "" || ts = "0")
+        return ""
+    return ts
+}
+
+XM_HoursSincePull(account) {
+    ts := XM_GetLastPackPulled(account)
+    if (ts = "")
+        return -1
+    hours := A_Now
+    EnvSub, hours, %ts%, Hours
+    if (hours < 0)
+        hours := 0
+    return hours
+}
+
+XM_AccountMatchesPullFilter(account, pullFilter) {
+    if (pullFilter = 0)
+        return true
+
+    hours := XM_HoursSincePull(account)
+    if (pullFilter = 17)
+        return (hours >= 24)
+    if (pullFilter = 18)
+        return (hours >= 0 && hours < 24)
+    if (pullFilter = 19)
+        return (hours < 0)
+    return false
+}
+
+XM_FormatPullTime(timestamp) {
+    if (timestamp = "" || timestamp = "0")
+        return "Never"
+    return SubStr(timestamp, 1, 4) . "-" . SubStr(timestamp, 5, 2) . "-" . SubStr(timestamp, 7, 2) . " " . SubStr(timestamp, 9, 2) . ":" . SubStr(timestamp, 11, 2)
+}
+
+XM_PullSortKey(account) {
+    ts := XM_GetLastPackPulled(account)
+    if (ts = "")
+        return 0
+    return ts + 0
+}
+
+XM_SortAccountsByPull(ByRef accounts) {
+    count := accounts.Length()
+    if (count < 2)
+        return
+
+    Loop, % count - 1 {
+        outer := A_Index
+        Loop, % count - outer {
+            inner := outer + A_Index
+            if (XM_PullSortKey(accounts[inner]) > XM_PullSortKey(accounts[outer])) {
+                temp := accounts[outer]
+                accounts[outer] := accounts[inner]
+                accounts[inner] := temp
+            }
+        }
+    }
+}
+
+XM_ShowLastPullReport() {
+    global XM_ShowPullReport
+    XM_ProgressStart("Building last pull report...")
+    accounts := XM_LoadAccounts("Reading JSON metadata")
+    XM_SortAccountsByPull(accounts)
+
+    neverCount := 0
+    within24 := 0
+    older24 := 0
+    header := "=== Last pull report ===`n"
+    header .= "Sorted by most recent pull first. Times come from JSON lastPackPulled.`n`n"
+    listText := XM_PadRight("File name", 34) . XM_PadRight("Inst", 6) . XM_PadRight("Packs", 7) . "Last pulled`n"
+    listText .= XM_PadRight("---------", 34) . XM_PadRight("----", 6) . XM_PadRight("-----", 7) . "-----------`n"
+
+    totalAccounts := accounts.Length()
+    for idx, account in accounts {
+        XM_ProgressUpdate(idx, totalAccounts, "Building last pull report")
+        ts := XM_GetLastPackPulled(account)
+        hours := XM_HoursSincePull(account)
+        if (hours < 0)
+            neverCount++
+        else if (hours < 24)
+            within24++
+        else
+            older24++
+
+        fileLabel := account.FileName
+        if (StrLen(fileLabel) > 32)
+            fileLabel := SubStr(fileLabel, 1, 29) . "..."
+        listText .= XM_PadRight(fileLabel, 34) . XM_PadRight(account.Instance, 6) . XM_PadRight(account.PackCount, 7) . XM_FormatPullTime(ts) . "`n"
+    }
+
+    summary := "Total: " . accounts.Length() . "    Never pulled: " . neverCount . "    Within 24h: " . within24 . "    24h+ ago: " . older24 . "`n`n"
+    XM_ShowPullReport := true
+    XM_UpdatePreviewVisibility()
+    XM_SetLog(XM_AssembleReportText(header, summary, listText))
+    XM_ProgressDone("Last pull report ready.")
 }
 
 XM_FlagIsSet(account, flag) {
