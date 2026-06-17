@@ -227,7 +227,6 @@ if(session.get("injectMethod"))
     createAccountList(session.get("scriptName"))
 
 SetTimer, LiveMetricsTimer, 5000
-writeLastActivityEpoch(session.get("scriptName"))
 
 if(session.get("injectMethod") && DeadCheck != 1) {
     session.set("loadedAccount", loadAccount())
@@ -441,7 +440,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartTimeUTC
         EnvSub, now, 1970, seconds
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartEpoch
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastActivityEpoch
 
         startPreProcess(botConfig.get("deleteMethod"))
 
@@ -737,7 +735,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
         EnvSub, now, 1970, seconds
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastActivityEpoch
 
         session.set("rerolls", session.get("rerolls") + 1)
         session.set("rerolls_local", session.get("rerolls_local") + 1)
@@ -3134,7 +3131,6 @@ CleanupUsedAccountsTimer:
 Return
 
 LiveMetricsTimer:
-    writeLastActivityEpoch(session.get("scriptName"), 4000)
     updateTotalTime()
     session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
     CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
