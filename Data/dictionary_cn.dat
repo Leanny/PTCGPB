@@ -74,7 +74,6 @@ Txt_ClientLanguage:遊戲語言
 Txt_InstanceLaunchDelay:開啟模擬器延遲：
 Txt_autoLaunchMonitor:啟用監視器
 ExtraSettingsHeading:進階設定
-Txt_applyRoleFilters:使用角色篩選器
 Msg_UnopenedPackTitle:GP 測試：未開包模式
 Msg_UnopenedPack_p1:僅在此帳號仍至少還有一個尚未開啟的增益包時，才可使用未開包模式。
 Msg_UnopenedPack_p2:移除好友時一定會觸發請求頻率限制；隨後腳本會實際重新啟動遊戲。

@@ -327,6 +327,8 @@ AccountMetadata_WriteAccountUnlocked(deviceAccount, account) {
 
     pullsJson := "[]"
     registeredCardsJson := "[]"
+    tradedCardsJson := "{}"
+    sharedCardsJson := "{}"
     if (FileExist(path)) {
         FileRead, oldJson, %path%
         pullsJson := AccountMetadata_ExtractArrayValue(oldJson, "pulls")
@@ -335,6 +337,12 @@ AccountMetadata_WriteAccountUnlocked(deviceAccount, account) {
         registeredCardsJson := AccountMetadata_ExtractArrayValue(oldJson, "registeredCards")
         if (registeredCardsJson = "")
             registeredCardsJson := "[]"
+        tradedCardsJson := AccountMetadata_ExtractObjectValue(oldJson, "tradedCards")
+        if (tradedCardsJson = "")
+            tradedCardsJson := "{}"
+        sharedCardsJson := AccountMetadata_ExtractObjectValue(oldJson, "sharedCards")
+        if (sharedCardsJson = "")
+            sharedCardsJson := "{}"
     }
 
     tempPath := path . ".tmp"
@@ -342,7 +350,9 @@ AccountMetadata_WriteAccountUnlocked(deviceAccount, account) {
     jsonText .= "  ""deviceAccount"": """ . AccountMetadata_Escape(deviceAccount) . """,`r`n"
     jsonText .= "  ""metadata"": " . AccountMetadata_SerializeAccount(account) . ",`r`n"
     jsonText .= "  ""pulls"": " . pullsJson . ",`r`n"
-    jsonText .= "  ""registeredCards"": " . registeredCardsJson . "`r`n"
+    jsonText .= "  ""registeredCards"": " . registeredCardsJson . ",`r`n"
+    jsonText .= "  ""tradedCards"": " . tradedCardsJson . ",`r`n"
+    jsonText .= "  ""sharedCards"": " . sharedCardsJson . "`r`n"
     jsonText .= "}`r`n"
 
     if FileExist(tempPath)
