@@ -48,7 +48,7 @@ waitForAppBootScreen() {
             return false
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (FindOrLoseImage("Boot_Welcome", 0, failSafeTime, 30, true)) {
+        if (FindOrLoseImage("Boot_Welcome", 0, 0, 30, true)) {
             LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
             return true
         }
