@@ -1876,6 +1876,16 @@
                 height: 30px;
                 font-size: 0.95rem;
             }
+            #filtersSection .rows-godpack-filter {
+                flex: 0 0 auto;
+                width: auto;
+                height: 30px;
+                padding: 0 9px;
+                font-size: 0.68rem;
+                font-weight: 700;
+                letter-spacing: 0.01em;
+                color: #ffc44a;
+            }
             #filtersSection .small-actions button {
                 padding: 2px 7px;
                 font-size: 0.74rem;
@@ -4730,6 +4740,34 @@
                 border-color: rgba(200, 60, 120, 0.42);
                 background: rgba(255, 126, 179, 0.14);
             }
+            .catalog-godpack-filter {
+                flex: 0 0 auto;
+                width: auto;
+                min-height: 0;
+                padding: 0 10px;
+                justify-content: center;
+                gap: 0;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.01em;
+                line-height: 1;
+                color: #ffc44a;
+            }
+            button.catalog-godpack-filter {
+                appearance: none;
+                -webkit-appearance: none;
+                margin: 0;
+                font: inherit;
+            }
+            .catalog-godpack-filter.checked {
+                border-color: rgba(255, 196, 72, 0.62);
+                background: rgba(255, 196, 72, 0.14);
+                color: #ffd978;
+            }
+            [data-theme="light"] .catalog-godpack-filter.checked {
+                border-color: rgba(176, 118, 0, 0.45);
+                background: rgba(255, 196, 72, 0.16);
+            }
             .catalog-missing-filter {
                 flex: 0 0 auto;
                 width: 38px;
@@ -7418,6 +7456,16 @@
                                         >&#9829;</span
                                     >
                                 </button>
+                                <button
+                                    type="button"
+                                    id="rowsGodPackOnly"
+                                    class="check-chip catalog-godpack-filter rows-godpack-filter"
+                                    title="God Pack"
+                                    aria-label="God Pack"
+                                    aria-pressed="false"
+                                >
+                                    God Pack
+                                </button>
                                 <div
                                     class="checkbox-list rarity-card-type-filters"
                                     id="cardTypeFilters"
@@ -7955,6 +8003,7 @@
             };
             const SPECIAL_RARITY_TWO_STAR = "__two_star__";
             const SPECIAL_RARITY_TRAINER = "__trainer__";
+            const GOD_PACK_DIAMOND_RARITIES = new Set([100, 200, 300, 400]);
             const SPECIAL_RARITY_ICONS = {
                 [SPECIAL_RARITY_TWO_STAR]: {
                     file: "SR.png",
@@ -8193,6 +8242,7 @@
                 selectedPacks: new Set(),
                 selectedRarities: new Set(),
                 rowsWishlistOnly: false,
+                rowsGodPackOnly: false,
                 selectedCardTypes: new Set(),
                 allPacks: new Map(),
                 allRarities: new Set(),
@@ -8334,6 +8384,8 @@
                 rarityFilters: document.getElementById("rarityFilters"),
                 rowsWishlistOnlyBtn:
                     document.getElementById("rowsWishlistOnly"),
+                rowsGodPackOnlyBtn:
+                    document.getElementById("rowsGodPackOnly"),
                 cardTypeFilters: document.getElementById("cardTypeFilters"),
                 packFilters: document.getElementById("packFilters"),
                 expandAllBtn: document.getElementById("expandAllBtn"),
@@ -13878,6 +13930,7 @@
                                 cardSearchBlob: derived.cardSearchBlob,
                                 rarityValues: derived.rarityValues,
                                 cardTypeValues: derived.cardTypeValues,
+                                isGodPack: derived.isGodPack,
                             });
                         }
                     }
@@ -14235,6 +14288,7 @@
                                         cardSearchBlob: derived.cardSearchBlob,
                                         rarityValues: derived.rarityValues,
                                         cardTypeValues: derived.cardTypeValues,
+                                        isGodPack: derived.isGodPack,
                                     });
                                 }
                             }
@@ -14777,6 +14831,7 @@
                 const cardTypeSet = new Set();
                 const searchParts = [];
                 const missing = [];
+                let isGodPack = cardIds.length === 5;
                 for (let i = 0; i < cardIds.length; i++) {
                     const id = cardIds[i];
                     const info = getCardInfo(id);
@@ -14784,6 +14839,13 @@
                     cardTypeSet.add(getCardType(id));
                     if (info.rarityValue != null)
                         raritySet.add(getCardRarityFilterKey(id, info));
+                    else if (isGodPack)
+                        isGodPack = false;
+                    if (
+                        isGodPack &&
+                        GOD_PACK_DIAMOND_RARITIES.has(Number(info.rarityValue))
+                    )
+                        isGodPack = false;
                     if (!info.raw) missing.push(id);
                 }
                 const value = {
@@ -14791,6 +14853,7 @@
                     rarityValues: [...raritySet],
                     cardTypeValues: [...cardTypeSet],
                     missing,
+                    isGodPack,
                 };
                 _buildRowDerivedCache.set(sig, { cardIds, value });
                 return value;
@@ -14957,6 +15020,7 @@
                             cardSearchBlob: derived.cardSearchBlob,
                             rarityValues: derived.rarityValues,
                             cardTypeValues: derived.cardTypeValues,
+                            isGodPack: derived.isGodPack,
                         });
                     }
                 });
@@ -15597,6 +15661,7 @@
                     row.cardSearchBlob = derived.cardSearchBlob;
                     row.rarityValues = derived.rarityValues;
                     row.cardTypeValues = derived.cardTypeValues;
+                    row.isGodPack = derived.isGodPack;
                     for (const rarity of row.rarityValues) rarities.add(rarity);
                 }
                 state.allPacks = new Map(
@@ -15651,6 +15716,19 @@
                 });
                 el.cardTypeFilters.innerHTML = cardTypeParts.join("");
                 syncRowsWishlistFilterButton();
+                syncRowsGodPackFilterButton();
+            }
+
+            function syncRowsGodPackFilterButton() {
+                const btn =
+                    el.rowsGodPackOnlyBtn ||
+                    document.getElementById("rowsGodPackOnly");
+                if (!btn) return;
+                btn.classList.toggle("checked", state.rowsGodPackOnly);
+                btn.setAttribute(
+                    "aria-pressed",
+                    state.rowsGodPackOnly ? "true" : "false",
+                );
             }
 
             function syncRowsWishlistFilterButton() {
@@ -15808,6 +15886,7 @@
                 const accountTermDigits = accountTerm.replace(/\D/g, "");
                 const filterPacks =
                     state.selectedPacks.size !== state.allPacks.size;
+                const filterGodPack = state.rowsGodPackOnly;
                 const cardFilterConfig = getActiveCardFilterConfig(
                     el.cardSearch.value,
                 );
@@ -15825,7 +15904,12 @@
                     return;
                 }
 
-                if (!accountTerm && !filterPacks && !cardFilterConfig.active) {
+                if (
+                    !accountTerm &&
+                    !filterPacks &&
+                    !cardFilterConfig.active &&
+                    !filterGodPack
+                ) {
                     const filtered =
                         state.rows.length > 0 ? state.rows.slice() : [];
                     sortRows(filtered);
@@ -15883,6 +15967,7 @@
                             continue;
                     }
                     if (filterPacks && !selectedPacks.has(row.pack)) continue;
+                    if (filterGodPack && !row.isGodPack) continue;
                     if (cardFilterConfig.active) {
                         const cardIds = row.cardIds;
                         let matched = false;
@@ -23828,6 +23913,13 @@
                 el.rowsWishlistOnlyBtn.addEventListener("click", () => {
                     state.rowsWishlistOnly = !state.rowsWishlistOnly;
                     syncRowsWishlistFilterButton();
+                    deferRender(applyFiltersAndRender);
+                });
+            }
+            if (el.rowsGodPackOnlyBtn) {
+                el.rowsGodPackOnlyBtn.addEventListener("click", () => {
+                    state.rowsGodPackOnly = !state.rowsGodPackOnly;
+                    syncRowsGodPackFilterButton();
                     deferRender(applyFiltersAndRender);
                 });
             }
