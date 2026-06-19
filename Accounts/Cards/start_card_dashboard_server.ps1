@@ -987,10 +987,17 @@ function Invoke-LoadDashboardRows {
     Write-JsonResponse -Context $Context -StatusCode 503 -Payload @{ ok = $false; error = "Dashboard rows unavailable." }
 }
 
-function Invoke-DashboardCacheBuilder {
+function Get-DashboardRepairArchivePaths {
+    $cacheDir = Join-Path $resolvedRoot "Accounts\Cards\database_cache"
+    $archiveDir = Join-Path $cacheDir "archive"
+    return [pscustomobject]@{
+        Data = Join-Path $archiveDir "accounts-repair.archive.json"
+        Meta = Join-Path $archiveDir "accounts-repair.archive.meta.json"
+    }
+}
+
+function Invoke-DashboardRepairArchiveBuilder {
     param(
-        [Parameter(Mandatory = $true)][string]$CachePath,
-        [Parameter(Mandatory = $true)][string]$MetaPath,
         [Parameter(Mandatory = $true)]$Manifest
     )
 
@@ -999,24 +1006,26 @@ function Invoke-DashboardCacheBuilder {
         return $false
     }
 
+    $archive = Get-DashboardRepairArchivePaths
     try {
-        $args = @(
-            "--root", $resolvedRoot,
-            "build-dashboard-cache",
-            "--output", $CachePath,
-            "--meta", $MetaPath,
-            "--signature", [string]$Manifest.Signature,
-            "--source-count", [string]$Manifest.Count,
-            "--source-bytes", [string]$Manifest.TotalLength
-        )
-        $builderOutput = & $carddbPath @args 2>&1
+        & $carddbPath @("--root", $resolvedRoot, "snapshot-accounts") 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
             return $false
         }
-        return (Test-DashboardAccountsCache -CachePath $CachePath -MetaPath $MetaPath -Manifest $Manifest)
+        return (Test-DashboardAccountsCache -CachePath $archive.Data -MetaPath $archive.Meta -Manifest $Manifest)
     } catch {
         return $false
     }
+}
+
+function Invoke-DashboardCacheBuilder {
+    param(
+        [Parameter(Mandatory = $true)][string]$CachePath,
+        [Parameter(Mandatory = $true)][string]$MetaPath,
+        [Parameter(Mandatory = $true)]$Manifest
+    )
+
+    return (Invoke-DashboardRepairArchiveBuilder -Manifest $Manifest)
 }
 
 function Invoke-LoadAccountData {
@@ -1033,24 +1042,23 @@ function Invoke-LoadAccountData {
     }
 
     $cacheDir = Join-Path $cardsDir "database_cache"
-    $cachePath = Join-Path $cacheDir "accounts-data.cache.json"
-    $cacheMetaPath = Join-Path $cacheDir "accounts-data.cache.meta.json"
-    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+    $archive = Get-DashboardRepairArchivePaths
+    New-Item -ItemType Directory -Path (Split-Path -Parent $archive.Data) -Force | Out-Null
     $manifest = Get-DashboardAccountManifest -AccountsDataDir $accountsDataDir -CollectionsDataDir $collectionsDataDir
 
-    if (Test-DashboardAccountsCache -CachePath $cachePath -MetaPath $cacheMetaPath -Manifest $manifest) {
+    if (Test-DashboardAccountsCache -CachePath $archive.Data -MetaPath $archive.Meta -Manifest $manifest) {
         try {
-            $bytes = [System.IO.File]::ReadAllBytes($cachePath)
+            $bytes = [System.IO.File]::ReadAllBytes($archive.Data)
             Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
             return
         } catch {
-            # Fall through and rebuild the cache.
+            # Fall through and rebuild the repair archive.
         }
     }
 
-    if (Invoke-DashboardCacheBuilder -CachePath $cachePath -MetaPath $cacheMetaPath -Manifest $manifest) {
+    if (Invoke-DashboardRepairArchiveBuilder -Manifest $manifest) {
         try {
-            $bytes = [System.IO.File]::ReadAllBytes($cachePath)
+            $bytes = [System.IO.File]::ReadAllBytes($archive.Data)
             Write-BytesResponse -Context $Context -StatusCode 200 -Bytes $bytes -ContentType "application/json; charset=utf-8"
             return
         } catch {
@@ -1061,18 +1069,12 @@ function Invoke-LoadAccountData {
     $payload = New-DashboardAccountsPayload -Files $manifest.Files
 
     try {
-        Write-Utf8File -Path $cachePath -Text $payload.Json
-        $meta = @{
-            signature = $manifest.Signature
-            sourceCount = $manifest.Count
-            sourceBytes = $manifest.TotalLength
-            accountCount = $payload.AccountCount
-            skippedCount = $payload.SkippedCount
-            generatedAt = (Get-Date).ToUniversalTime().ToString("o")
-        } | ConvertTo-Json -Depth 4 -Compress
-        Write-Utf8File -Path $cacheMetaPath -Text $meta
+        $carddbPath = Join-Path $resolvedRoot "Helper\carddb.exe"
+        if (Test-Path -LiteralPath $carddbPath -PathType Leaf) {
+            Start-Process -FilePath $carddbPath -ArgumentList @("--root", $resolvedRoot, "snapshot-accounts") -WorkingDirectory $resolvedRoot -WindowStyle Hidden | Out-Null
+        }
     } catch {
-        # Cache writes are an optimization; the response should still succeed.
+        # Archive refresh is best-effort after the direct fallback response.
     }
 
     Write-TextResponse -Context $Context -StatusCode 200 -Body $payload.Json -ContentType "application/json; charset=utf-8"

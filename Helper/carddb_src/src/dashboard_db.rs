@@ -1,17 +1,17 @@
 use anyhow::{Context, Result};
 use chrono::{NaiveDateTime, TimeZone, Utc};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::dashboard_index::{
-    build_account_summary, compact_rows_from_doc, dashboard_cache_dir, summary_json_path,
-    AccountSummaryRecord,
+    build_account_summary, compact_rows_from_doc, dashboard_cache_dir, scan_compact_pulls,
+    AccountSummaryRecord, CompactRow,
 };
 
 const SCHEMA_VERSION: &str = "3";
@@ -78,39 +78,6 @@ fn touch_progress(progress: &Option<ProgressHandle>, update: impl FnOnce(&mut Da
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct BenchmarkStep {
-    pub name: String,
-    pub elapsed_ms: u128,
-    pub detail: String,
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct BenchmarkReport {
-    pub root: String,
-    pub source_file_count: usize,
-    pub json_index_build_ms: u128,
-    pub sqlite_full_rebuild_ms: u128,
-    pub sqlite_cold_scan_ms: u128,
-    pub sqlite_incremental_sync_ms: u128,
-    pub query_accounts_ms: u128,
-    pub query_rows_page_ms: u128,
-    pub query_card_holders_ms: u128,
-    pub parity_ok: bool,
-    pub parity_notes: Vec<String>,
-    pub db_stats: DashboardDbStats,
-    pub json_stats: Value,
-    pub steps: Vec<BenchmarkStep>,
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct CompareReport {
-    pub parity_ok: bool,
-    pub notes: Vec<String>,
-    pub json: Value,
-    pub sqlite: Value,
-}
-
 pub fn rebuild_dashboard_db(root: &Path) -> Result<DashboardDbStats> {
     rebuild_dashboard_db_with_progress(root, None)
 }
@@ -146,6 +113,19 @@ pub fn rebuild_dashboard_db_with_progress(
 
 pub fn sync_dashboard_db(root: &Path, max_accounts: Option<usize>) -> Result<SyncResult> {
     sync_dashboard_db_with_progress(root, max_accounts, None)
+}
+
+/// Sync only when account JSON files are dirty. Returns true when a sync ran.
+pub fn sync_dashboard_db_if_dirty(root: &Path) -> Result<bool> {
+    let conn = open_connection(root)?;
+    init_schema(&conn)?;
+    let paths = crate::gather_dashboard_paths(root)?;
+    let dirty = find_dirty_sources(&conn, &paths)?;
+    if dirty.is_empty() {
+        return Ok(false);
+    }
+    sync_dashboard_db(root, None)?;
+    Ok(true)
 }
 
 pub fn sync_dashboard_db_with_progress(
@@ -184,22 +164,29 @@ pub fn sync_dashboard_db_with_progress(
     });
 
     let mut skipped_files = 0usize;
-    for (idx, (source_key, path)) in dirty.iter().enumerate() {
-        touch_progress(&progress, |p| {
-            p.current = idx + 1;
-            p.total = dirty.len();
-            p.elapsed_ms = started.elapsed().as_millis();
-            p.message = format!(
-                "Syncing account files ({}/{})…",
-                idx + 1,
-                dirty.len()
-            );
-        });
-        if let Err(err) = reindex_source_file(root, &conn, source_key, path) {
-            skipped_files += 1;
-            eprintln!("dashboard_db: skipped {source_key}: {err:#}");
+    let tx = conn.unchecked_transaction()?;
+    {
+        let mut inserter = AccountInserter::new(&tx)?;
+        for (idx, (source_key, path)) in dirty.iter().enumerate() {
+            touch_progress(&progress, |p| {
+                p.current = idx + 1;
+                p.total = dirty.len();
+                p.elapsed_ms = started.elapsed().as_millis();
+                p.message = format!(
+                    "Syncing account files ({}/{})…",
+                    idx + 1,
+                    dirty.len()
+                );
+            });
+            if let Err(err) =
+                reindex_source_in_tx(root, &tx, &mut inserter, source_key, path)
+            {
+                skipped_files += 1;
+                eprintln!("dashboard_db: skipped {source_key}: {err:#}");
+            }
         }
     }
+    tx.commit()?;
 
     set_meta(&conn, "last_sync_at", &Utc::now().to_rfc3339())?;
     touch_progress(&progress, |p| {
@@ -292,6 +279,8 @@ pub fn ensure_dashboard_db(
         });
     }
 
+    // Block boot until dirty account JSON is synced into SQLite so row streams
+    // are complete when the dashboard loader finishes.
     let sync = sync_dashboard_db_with_progress(root, None, progress.clone())?;
     let stats = open_connection(root)
         .and_then(|conn| read_db_stats(&conn, root))
@@ -302,225 +291,41 @@ pub fn ensure_dashboard_db(
             row_count: 0,
             total_cards: 0,
             unique_card_count: 0,
-            skipped_count: sync.skipped_files,
+            skipped_count: 0,
             db_bytes: dashboard_db_path(root)
                 .metadata()
                 .map(|meta| meta.len())
                 .unwrap_or(0),
         });
+    let mode = if sync.dirty_accounts > 0 {
+        "incremental_sync"
+    } else {
+        "ready"
+    };
     touch_progress(&progress, |p| {
         p.phase = "ready".into();
-        p.mode = "incremental_sync".into();
+        p.mode = mode.into();
         p.account_count = stats.account_count;
         p.row_count = stats.row_count;
         p.elapsed_ms = started.elapsed().as_millis();
-        p.message = if sync.dirty_accounts == 0 {
-            "SQLite index is up to date.".into()
+        p.message = if sync.dirty_accounts > 0 {
+            format!(
+                "Synced {} account file(s) into SQLite.",
+                sync.reindexed_accounts
+            )
         } else {
-            "SQLite index updated.".into()
+            "SQLite index ready.".into()
         };
     });
     Ok(EnsureDbResult {
         ok: true,
-        mode: if sync.dirty_accounts == 0 {
-            "ready".into()
-        } else {
-            "incremental_sync".into()
-        },
+        mode: mode.into(),
         account_count: stats.account_count,
         row_count: stats.row_count,
         reindexed_accounts: sync.reindexed_accounts,
         skipped_files: sync.skipped_files,
         elapsed_ms: started.elapsed().as_millis(),
         db_bytes: stats.db_bytes,
-    })
-}
-
-pub fn compare_dashboard_db(root: &Path) -> Result<CompareReport> {
-    let conn = open_connection(root)?;
-    init_schema(&conn)?;
-    let db_stats = read_db_stats(&conn, root)?;
-
-    let summary_text = fs::read_to_string(summary_json_path(root))
-        .with_context(|| "accounts-summary.json missing; run ensure-dashboard-index first")?;
-    let summary: Value = serde_json::from_str(&summary_text)?;
-
-    let mut notes = Vec::new();
-    let mut parity_ok = true;
-
-    let checks = [
-        ("accountCount", db_stats.account_count, summary["accountCount"].as_u64()),
-        (
-            "tradeAccountCount",
-            db_stats.trade_account_count,
-            summary["tradeAccountCount"].as_u64(),
-        ),
-        (
-            "collectionRegistryCount",
-            db_stats.collection_count,
-            summary["collectionRegistryCount"].as_u64(),
-        ),
-        ("rowCount", db_stats.row_count, summary["rowCount"].as_u64()),
-        ("totalCards", db_stats.total_cards, summary["totalCards"].as_u64()),
-        (
-            "uniqueCardCount",
-            db_stats.unique_card_count,
-            summary["uniqueCardCount"].as_u64(),
-        ),
-    ];
-
-    for (label, db_value, json_value) in checks {
-        let json_value = json_value.unwrap_or(0) as usize;
-        if db_value != json_value {
-            parity_ok = false;
-            notes.push(format!("{label}: sqlite={db_value} json={json_value}"));
-        }
-    }
-
-    if parity_ok {
-        notes.push("Aggregate counts match accounts-summary.json".to_owned());
-    }
-
-    Ok(CompareReport {
-        parity_ok,
-        notes,
-        json: summary,
-        sqlite: json!({
-            "accountCount": db_stats.account_count,
-            "tradeAccountCount": db_stats.trade_account_count,
-            "collectionRegistryCount": db_stats.collection_count,
-            "rowCount": db_stats.row_count,
-            "totalCards": db_stats.total_cards,
-            "uniqueCardCount": db_stats.unique_card_count,
-            "skippedCount": db_stats.skipped_count,
-            "dbBytes": db_stats.db_bytes,
-        }),
-    })
-}
-
-pub fn benchmark_dashboard(root: &Path, simulate_dirty_accounts: usize) -> Result<BenchmarkReport> {
-    let mut steps = Vec::new();
-    let paths = crate::gather_dashboard_paths(root)?;
-    let source_file_count = paths.len();
-
-    let json_started = Instant::now();
-    let json_stats = crate::dashboard_index::build_dashboard_index(root, None, None, None)?;
-    steps.push(BenchmarkStep {
-        name: "json_full_index".to_owned(),
-        elapsed_ms: json_started.elapsed().as_millis(),
-        detail: format!("{} rows", json_stats.row_count),
-    });
-
-    let sqlite_started = Instant::now();
-    let db_stats = rebuild_dashboard_db(root)?;
-    steps.push(BenchmarkStep {
-        name: "sqlite_full_rebuild".to_owned(),
-        elapsed_ms: sqlite_started.elapsed().as_millis(),
-        detail: format!("{} rows", db_stats.row_count),
-    });
-
-    let cold_scan_started = Instant::now();
-    let cold = sync_dashboard_db(root, None)?;
-    steps.push(BenchmarkStep {
-        name: "sqlite_cold_scan_no_dirty".to_owned(),
-        elapsed_ms: cold_scan_started.elapsed().as_millis(),
-        detail: format!("{} files scanned, {} dirty", cold.scanned_files, cold.dirty_accounts),
-    });
-
-    if simulate_dirty_accounts > 0 {
-        touch_sample_accounts(root, &paths, simulate_dirty_accounts)?;
-    }
-
-    let incremental_started = Instant::now();
-    let incremental = sync_dashboard_db(root, None)?;
-    steps.push(BenchmarkStep {
-        name: "sqlite_incremental_sync".to_owned(),
-        elapsed_ms: incremental_started.elapsed().as_millis(),
-        detail: format!(
-            "{} dirty, {} reindexed",
-            incremental.dirty_accounts, incremental.reindexed_accounts
-        ),
-    });
-
-    let conn = open_connection(root)?;
-
-    let accounts_started = Instant::now();
-    let account_count = query_accounts(&conn, 0, 100)?.len();
-    let query_accounts_ms = accounts_started.elapsed().as_millis();
-    steps.push(BenchmarkStep {
-        name: "query_accounts_page".to_owned(),
-        elapsed_ms: query_accounts_ms,
-        detail: format!("{account_count} accounts"),
-    });
-
-    let rows_started = Instant::now();
-    let row_page = query_rows(&conn, 0, 200, None, None)?;
-    let query_rows_page_ms = rows_started.elapsed().as_millis();
-    steps.push(BenchmarkStep {
-        name: "query_rows_page".to_owned(),
-        elapsed_ms: query_rows_page_ms,
-        detail: format!("{} rows", row_page.len()),
-    });
-
-    let card_started = Instant::now();
-    let sample_card = sample_card_id(&conn)?;
-    let holders = if sample_card.is_empty() {
-        0
-    } else {
-        query_card_holders(&conn, &sample_card)?.len()
-    };
-    let query_card_holders_ms = card_started.elapsed().as_millis();
-    steps.push(BenchmarkStep {
-        name: "query_card_holders".to_owned(),
-        elapsed_ms: query_card_holders_ms,
-        detail: if sample_card.is_empty() {
-            "no cards indexed".to_owned()
-        } else {
-            format!("{holders} holders for {sample_card}")
-        },
-    });
-
-    let compare = compare_dashboard_db(root)?;
-
-    Ok(BenchmarkReport {
-        root: root.display().to_string(),
-        source_file_count,
-        json_index_build_ms: steps
-            .iter()
-            .find(|s| s.name == "json_full_index")
-            .map(|s| s.elapsed_ms)
-            .unwrap_or(0),
-        sqlite_full_rebuild_ms: steps
-            .iter()
-            .find(|s| s.name == "sqlite_full_rebuild")
-            .map(|s| s.elapsed_ms)
-            .unwrap_or(0),
-        sqlite_cold_scan_ms: steps
-            .iter()
-            .find(|s| s.name == "sqlite_cold_scan_no_dirty")
-            .map(|s| s.elapsed_ms)
-            .unwrap_or(0),
-        sqlite_incremental_sync_ms: steps
-            .iter()
-            .find(|s| s.name == "sqlite_incremental_sync")
-            .map(|s| s.elapsed_ms)
-            .unwrap_or(0),
-        query_accounts_ms,
-        query_rows_page_ms,
-        query_card_holders_ms,
-        parity_ok: compare.parity_ok,
-        parity_notes: compare.notes,
-        db_stats,
-        json_stats: json!({
-            "accountCount": json_stats.account_count,
-            "tradeAccountCount": json_stats.trade_account_count,
-            "collectionRegistryCount": json_stats.collection_count,
-            "rowCount": json_stats.row_count,
-            "totalCards": json_stats.total_cards,
-            "uniqueCardCount": json_stats.unique_card_count,
-            "skippedCount": json_stats.skipped_count,
-        }),
-        steps,
     })
 }
 
@@ -651,24 +456,6 @@ pub fn export_dashboard_rows_page(
     }))
 }
 
-pub fn query_card_holders(conn: &Connection, card_id: &str) -> Result<Vec<Value>> {
-    let mut stmt = conn.prepare(
-        "SELECT acc.account_key, acc.count, a.source_type
-         FROM account_card_counts acc
-         JOIN accounts a ON a.account_key = acc.account_key
-         WHERE acc.card_id = ?1 AND acc.count > 0
-         ORDER BY acc.count DESC, acc.account_key",
-    )?;
-    let rows = stmt.query_map(params![card_id], |row| {
-        Ok(json!({
-            "account": row.get::<_, String>(0)?,
-            "count": row.get::<_, i64>(1)?,
-            "sourceType": row.get::<_, String>(2)?,
-        }))
-    })?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
-}
-
 pub fn export_accounts_summary_payload(root: &Path) -> Result<Value> {
     let conn = open_connection(root)?;
     init_schema(&conn)?;
@@ -689,57 +476,6 @@ pub fn export_accounts_summary_payload(root: &Path) -> Result<Value> {
     }))
 }
 
-pub fn write_dashboard_rows_ndjson(conn: &Connection, writer: &mut impl Write) -> Result<(usize, usize)> {
-    write_dashboard_rows_ndjson_with_batch(conn, writer, usize::MAX)
-}
-
-const ROWS_STREAM_BATCH_BYTES: usize = 256 * 1024;
-
-fn write_dashboard_rows_ndjson_with_batch(
-    conn: &Connection,
-    writer: &mut impl Write,
-    batch_bytes: usize,
-) -> Result<(usize, usize)> {
-    let mut stmt = conn.prepare(
-        "SELECT account_key, pack, source_pack, timestamp, card_ids_json
-         FROM rows ORDER BY id",
-    )?;
-    let mut rows = stmt.query([])?;
-    let mut row_count = 0usize;
-    let mut total_cards = 0usize;
-    let mut batch = Vec::with_capacity(batch_bytes.min(ROWS_STREAM_BATCH_BYTES));
-
-    while let Some(row) = rows.next()? {
-        let account: String = row.get(0)?;
-        let pack: String = row.get(1)?;
-        let source_pack: String = row.get(2)?;
-        let timestamp: String = row.get(3)?;
-        let card_ids: Value =
-            serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or(json!([]));
-        let card_count = card_ids.as_array().map(|a| a.len()).unwrap_or(0);
-        total_cards += card_count;
-        row_count += 1;
-        let line = json!({
-            "account": account,
-            "pack": pack,
-            "sourcePack": source_pack,
-            "timestamp": timestamp,
-            "cardIds": card_ids,
-        });
-        serde_json::to_writer(&mut batch, &line)?;
-        batch.write_all(b"\n")?;
-        if batch.len() >= batch_bytes {
-            writer.write_all(&batch)?;
-            batch.clear();
-        }
-    }
-    if !batch.is_empty() {
-        writer.write_all(&batch)?;
-    }
-
-    Ok((row_count, total_cards))
-}
-
 pub fn stream_dashboard_rows_ndjson(
     root: PathBuf,
     tx: tokio::sync::mpsc::Sender<Result<bytes::Bytes, std::convert::Infallible>>,
@@ -751,7 +487,7 @@ pub fn stream_dashboard_rows_ndjson(
          FROM rows ORDER BY id",
     )?;
     let mut rows = stmt.query([])?;
-    let mut batch = Vec::with_capacity(ROWS_STREAM_BATCH_BYTES);
+    let mut batch = Vec::with_capacity(256 * 1024);
 
     while let Some(row) = rows.next()? {
         let account: String = row.get(0)?;
@@ -769,7 +505,7 @@ pub fn stream_dashboard_rows_ndjson(
         });
         serde_json::to_writer(&mut batch, &line)?;
         batch.write_all(b"\n")?;
-        if batch.len() >= ROWS_STREAM_BATCH_BYTES {
+        if batch.len() >= 256 * 1024 {
             if tx
                 .blocking_send(Ok(bytes::Bytes::from(std::mem::take(&mut batch))))
                 .is_err()
@@ -852,24 +588,12 @@ pub fn export_account_card_marks_payload(root: &Path) -> Result<Value> {
     }))
 }
 
-pub fn dashboard_rows_ndjson_bytes(root: &Path) -> Result<Vec<u8>> {
-    let conn = open_connection(root)?;
-    init_schema(&conn)?;
-    let mut buffer = Vec::with_capacity(8 * 1024 * 1024);
-    write_dashboard_rows_ndjson(&conn, &mut buffer)?;
-    Ok(buffer)
-}
-
 pub fn open_connection_public(root: &Path) -> Result<Connection> {
     open_connection(root)
 }
 
 pub fn init_schema_public(conn: &Connection) -> Result<()> {
     init_schema(conn)
-}
-
-pub fn read_db_stats_public(conn: &Connection, root: &Path) -> Result<DashboardDbStats> {
-    read_db_stats(conn, root)
 }
 
 fn open_connection(root: &Path) -> Result<Connection> {
@@ -1282,14 +1006,274 @@ pub fn reindex_account_source_file(root: &Path, device_account: &str) -> Result<
 }
 
 fn reindex_source_file(root: &Path, conn: &Connection, source_key: &str, path: &Path) -> Result<()> {
-    let doc = crate::load_dashboard_account_document(path, source_key)?;
     let tx = conn.unchecked_transaction()?;
     {
         let mut inserter = AccountInserter::new(&tx)?;
-        inserter.index_document(&tx, source_key, path, &doc, true)?;
+        reindex_source_in_tx(root, &tx, &mut inserter, source_key, path)?;
     }
     tx.commit()?;
+    Ok(())
+}
+
+enum AppendPlan {
+    FullReindex,
+    AppendNewRows(Vec<CompactRow>),
+    MetadataOnly,
+}
+
+fn plan_append(
+    conn: &Connection,
+    source_key: &str,
+    path: &Path,
+    summary: &AccountSummaryRecord,
+    doc: &Value,
+) -> Result<AppendPlan> {
+    if summary.source_type == "collection" {
+        return Ok(AppendPlan::FullReindex);
+    }
+
+    let stored_file: Option<(i64, i64)> = conn
+        .query_row(
+            "SELECT file_size, modified_ns FROM source_files WHERE source_key = ?1",
+            params![source_key],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let Some((stored_size, _)) = stored_file else {
+        return Ok(AppendPlan::FullReindex);
+    };
+
+    let (new_size, _) = file_fingerprint(path)?;
+    if new_size < stored_size as u64 {
+        return Ok(AppendPlan::FullReindex);
+    }
+
+    let stored_rows: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM rows WHERE account_key = ?1",
+        params![summary.account],
+        |row| row.get(0),
+    )?;
+    let stored_rows = stored_rows as usize;
+    let (new_count, boundary_row, new_rows) =
+        scan_compact_pulls(doc, &summary.account, stored_rows);
+
+    if new_count < stored_rows {
+        return Ok(AppendPlan::FullReindex);
+    }
+    if new_count == stored_rows {
+        return Ok(AppendPlan::MetadataOnly);
+    }
+    if stored_rows > 0 {
+        let Some(expected) = boundary_row.as_ref() else {
+            return Ok(AppendPlan::FullReindex);
+        };
+        if !last_row_matches(conn, &summary.account, expected)? {
+            return Ok(AppendPlan::FullReindex);
+        }
+    }
+
+    Ok(AppendPlan::AppendNewRows(new_rows))
+}
+
+fn reindex_source_in_tx(
+    root: &Path,
+    conn: &Connection,
+    inserter: &mut AccountInserter<'_>,
+    source_key: &str,
+    path: &Path,
+) -> Result<()> {
+    let doc = crate::load_dashboard_account_document(path, source_key)?;
+    let summary = build_account_summary(&doc)
+        .with_context(|| format!("Could not build summary for {source_key}"))?;
+
+    match plan_append(conn, source_key, path, &summary, &doc)? {
+        AppendPlan::FullReindex => {
+            let replace = account_exists(conn, &summary.account)?;
+            inserter.index_document(conn, source_key, path, &doc, replace)?;
+        }
+        AppendPlan::AppendNewRows(new_rows) => {
+            sync_append_or_metadata(
+                inserter,
+                conn,
+                source_key,
+                path,
+                &doc,
+                &summary,
+                &new_rows,
+                true,
+            )?;
+        }
+        AppendPlan::MetadataOnly => {
+            sync_append_or_metadata(
+                inserter,
+                conn,
+                source_key,
+                path,
+                &doc,
+                &summary,
+                &[],
+                false,
+            )?;
+        }
+    }
     let _ = root;
+    Ok(())
+}
+
+fn account_exists(conn: &Connection, account_key: &str) -> Result<bool> {
+    conn.query_row(
+        "SELECT 1 FROM accounts WHERE account_key = ?1",
+        params![account_key],
+        |_| Ok(true),
+    )
+    .optional()
+    .map(|value| value.is_some())
+    .with_context(|| format!("Could not check account existence for {account_key}"))
+}
+
+fn sync_append_or_metadata(
+    inserter: &mut AccountInserter<'_>,
+    conn: &Connection,
+    source_key: &str,
+    path: &Path,
+    doc: &Value,
+    summary: &AccountSummaryRecord,
+    new_rows: &[CompactRow],
+    appended_new_rows: bool,
+) -> Result<()> {
+    if appended_new_rows && !new_rows.is_empty() {
+        let mut card_deltas: HashMap<String, i64> = HashMap::new();
+        for row in new_rows {
+            let timestamp_ms = parse_timestamp_ms(&row.timestamp);
+            let card_ids_json = serde_json::to_string(&row.card_ids)?;
+            inserter.insert_row.execute(params![
+                row.account,
+                row.pack,
+                row.source_pack,
+                row.timestamp,
+                timestamp_ms,
+                row.card_ids.len() as i64,
+                card_ids_json,
+            ])?;
+            for card_id in &row.card_ids {
+                *card_deltas.entry(card_id.clone()).or_insert(0) += 1;
+            }
+        }
+        for (card_id, count) in card_deltas {
+            conn.execute(
+                "INSERT INTO account_card_counts(account_key, card_id, count) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(account_key, card_id) DO UPDATE SET
+                    count = account_card_counts.count + excluded.count",
+                params![summary.account, card_id, count],
+            )?;
+        }
+    }
+
+    update_account_record(conn, summary)?;
+    if !appended_new_rows {
+        refresh_card_marks(conn, inserter, &summary.account, doc)?;
+    }
+
+    let (size, modified_ns) = file_fingerprint(path)?;
+    inserter.upsert_source_file.execute(params![
+        source_key,
+        summary.account,
+        size as i64,
+        modified_ns_to_i64(modified_ns),
+        Utc::now().to_rfc3339(),
+    ])?;
+    Ok(())
+}
+
+fn last_row_matches(
+    conn: &Connection,
+    account_key: &str,
+    expected: &CompactRow,
+) -> Result<bool> {
+    let stored: Option<(String, String, String, String)> = conn
+        .query_row(
+            "SELECT pack, source_pack, timestamp, card_ids_json
+             FROM rows WHERE account_key = ?1 ORDER BY id DESC LIMIT 1",
+            params![account_key],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .optional()?;
+    let Some((pack, source_pack, timestamp, card_ids_json)) = stored else {
+        return Ok(false);
+    };
+    let card_ids: Vec<String> = serde_json::from_str(&card_ids_json).unwrap_or_default();
+    Ok(pack == expected.pack
+        && source_pack == expected.source_pack
+        && timestamp == expected.timestamp
+        && card_ids == expected.card_ids)
+}
+
+fn update_account_record(conn: &Connection, summary: &AccountSummaryRecord) -> Result<()> {
+    conn.execute(
+        "UPDATE accounts SET
+            source_type = ?2,
+            source_file_name = ?3,
+            file_label = ?4,
+            display_name = ?5,
+            account_name = ?6,
+            friend_code = ?7,
+            instance = ?8,
+            device_account = ?9,
+            collection_id = ?10,
+            created_at = ?11,
+            last_logged_in = ?12,
+            last_pack_pulled = ?13,
+            last_modified = ?14,
+            pack_count = ?15,
+            shinedust = ?16,
+            shinedust_updated_at = ?17,
+            pull_count = ?18,
+            card_count = ?19,
+            unique_card_count = ?20,
+            registry_card_count = ?21,
+            registered_cards_json = ?22,
+            registry_imported_at = ?23
+         WHERE account_key = ?1",
+        params![
+            summary.account,
+            summary.source_type,
+            summary.source_file_name,
+            summary.file_label,
+            summary.display_name,
+            summary.account_name,
+            summary.friend_code,
+            summary.instance,
+            summary.device_account,
+            summary.collection_id,
+            summary.created_at,
+            summary.last_logged_in,
+            summary.last_pack_pulled,
+            summary.last_modified,
+            summary.pack_count,
+            summary.shinedust,
+            summary.shinedust_updated_at,
+            summary.pull_count,
+            summary.card_count,
+            summary.unique_card_count,
+            summary.registry_card_count,
+            serde_json::to_string(&summary.registered_cards)?,
+            summary.registry_imported_at,
+        ],
+    )?;
+    Ok(())
+}
+
+fn refresh_card_marks(
+    conn: &Connection,
+    inserter: &mut AccountInserter<'_>,
+    account_key: &str,
+    doc: &Value,
+) -> Result<()> {
+    conn.execute(
+        "DELETE FROM card_marks WHERE account_key = ?1",
+        params![account_key],
+    )?;
+    insert_card_marks_prepared(inserter, account_key, doc)?;
     Ok(())
 }
 
@@ -1462,29 +1446,6 @@ fn parse_timestamp_ms(text: &str) -> Option<i64> {
         }
     }
     None
-}
-
-fn sample_card_id(conn: &Connection) -> Result<String> {
-    conn.query_row(
-        "SELECT card_id FROM account_card_counts ORDER BY rowid LIMIT 1",
-        [],
-        |row| row.get(0),
-    )
-    .map_err(Into::into)
-}
-
-fn touch_sample_accounts(root: &Path, paths: &[(String, PathBuf)], count: usize) -> Result<()> {
-    let now = SystemTime::now();
-    for (_source_key, path) in paths.iter().take(count) {
-        OpenOptions::new()
-            .write(true)
-            .open(path)
-            .with_context(|| format!("Could not open {:?} for touch", path))?
-            .set_modified(now)
-            .with_context(|| format!("Could not touch mtime for {:?}", path))?;
-        let _ = root;
-    }
-    Ok(())
 }
 
 #[cfg(test)]

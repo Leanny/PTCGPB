@@ -13,19 +13,18 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use tokio::sync::{Mutex as AsyncMutex, RwLock};
+use std::time::Duration;
+use tokio::sync::Mutex as AsyncMutex;
 use tower_http::cors::CorsLayer;
 use std::convert::Infallible;
 use tokio_stream::wrappers::ReceiverStream;
 use tower_http::services::ServeDir;
 
 use crate::dashboard_db::{
-    checkpoint_dashboard_db, compare_dashboard_db, ensure_dashboard_db,
+    checkpoint_dashboard_db, ensure_dashboard_db,
     export_account_card_marks_payload, export_accounts_summary_payload,
-    export_dashboard_rows_page, query_accounts, query_card_holders, query_rows,
-    read_dashboard_db_build_progress, read_db_stats_public, stream_dashboard_rows_ndjson,
-    sync_dashboard_db, DashboardDbBuildProgress, ProgressHandle, SyncResult,
+    export_dashboard_rows_page, read_dashboard_db_build_progress, stream_dashboard_rows_ndjson,
+    sync_dashboard_db, sync_dashboard_db_if_dirty, DashboardDbBuildProgress, ProgressHandle,
 };
 
 #[derive(Clone)]
@@ -33,20 +32,10 @@ pub struct ServeState {
     root: PathBuf,
     legacy_port: u16,
     client: reqwest::Client,
-    last_sync: Arc<RwLock<Option<Instant>>>,
-    sync_interval: Duration,
     db_progress: ProgressHandle,
     db_ensure_mutex: Arc<AsyncMutex<()>>,
     sync_mutex: Arc<AsyncMutex<()>>,
     active_row_streams: Arc<AtomicUsize>,
-}
-
-#[derive(Debug, Deserialize)]
-struct PageQuery {
-    #[serde(default)]
-    offset: usize,
-    #[serde(default = "default_limit")]
-    limit: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,34 +50,11 @@ fn default_rows_page_limit() -> usize {
     25000
 }
 
-#[derive(Debug, Deserialize)]
-struct RowsQuery {
-    #[serde(default)]
-    offset: usize,
-    #[serde(default = "default_rows_limit")]
-    limit: usize,
-    account: Option<String>,
-    pack: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SyncQuery {
-    max_accounts: Option<usize>,
-}
-
-fn default_limit() -> usize {
-    100
-}
-
-fn default_rows_limit() -> usize {
-    200
-}
-
 pub async fn run_serve(
     root: &Path,
     port: u16,
     legacy_port: u16,
-    sync_interval_ms: u64,
+    background_sync_interval_secs: u64,
 ) -> Result<()> {
     let db_progress = Arc::new(Mutex::new(read_dashboard_db_build_progress(root)));
 
@@ -101,8 +67,6 @@ pub async fn run_serve(
         root: root.to_path_buf(),
         legacy_port,
         client,
-        last_sync: Arc::new(RwLock::new(None)),
-        sync_interval: Duration::from_millis(sync_interval_ms.max(250)),
         db_progress,
         db_ensure_mutex: Arc::new(AsyncMutex::new(())),
         sync_mutex: Arc::new(AsyncMutex::new(())),
@@ -129,14 +93,10 @@ pub async fn run_serve(
         .route("/account-trade-marks", get(get_account_card_marks_compat).post(post_account_card_marks_compat))
         .fallback(any(proxy_legacy));
 
+    spawn_background_sync(state.clone(), background_sync_interval_secs);
+
     let app = Router::new()
         .nest("/__dashboard", dashboard_routes)
-        .route("/api/dashboard/summary", get(get_summary))
-        .route("/api/accounts", get(get_accounts))
-        .route("/api/rows", get(get_rows))
-        .route("/api/catalog/cards/{card_id}/holders", get(get_card_holders))
-        .route("/api/sync", post(post_sync))
-        .route("/api/compare", get(get_compare))
         .fallback_service(static_files)
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -149,41 +109,46 @@ pub async fn run_serve(
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .with_context(|| format!("Could not bind to port {port}"))?;
+
     axum::serve(listener, app)
         .await
         .context("HTTP server stopped with error")?;
     Ok(())
 }
 
-async fn maybe_sync(state: &ServeState, force: bool) -> Result<Option<SyncResult>> {
-    if state.active_row_streams.load(Ordering::SeqCst) > 0 {
-        return Ok(None);
-    }
-
-    let now = Instant::now();
-    {
-        let last = state.last_sync.read().await;
-        if !force {
-            if let Some(prev) = *last {
-                if now.duration_since(prev) < state.sync_interval {
-                    return Ok(None);
+fn spawn_background_sync(state: ServeState, interval_secs: u64) {
+    tokio::spawn(async move {
+        let every = Duration::from_secs(interval_secs.max(5));
+        let mut interval = tokio::time::interval(every);
+        interval.tick().await;
+        loop {
+            interval.tick().await;
+            if state.active_row_streams.load(Ordering::SeqCst) > 0 {
+                continue;
+            }
+            let _guard = match state.sync_mutex.try_lock() {
+                Ok(guard) => guard,
+                Err(_) => continue,
+            };
+            if state.active_row_streams.load(Ordering::SeqCst) > 0 {
+                continue;
+            }
+            let root = state.root.clone();
+            let result = tokio::task::spawn_blocking(move || sync_dashboard_db(&root, None))
+                .await;
+            match result {
+                Ok(Ok(sync)) if sync.reindexed_accounts > 0 => {
+                    eprintln!(
+                        "dashboard background sync: {} account(s) updated in {} ms ({} dirty)",
+                        sync.reindexed_accounts, sync.elapsed_ms, sync.dirty_accounts
+                    );
                 }
+                Ok(Err(err)) => eprintln!("dashboard background sync failed: {err:#}"),
+                Err(err) => eprintln!("dashboard background sync join failed: {err:#}"),
+                _ => {}
             }
         }
-    }
-
-    let _guard = state.sync_mutex.lock().await;
-    if state.active_row_streams.load(Ordering::SeqCst) > 0 {
-        return Ok(None);
-    }
-
-    let root = state.root.clone();
-    let result = tokio::task::spawn_blocking(move || sync_dashboard_db(&root, None))
-        .await
-        .context("sync task join failed")??;
-
-    *state.last_sync.write().await = Some(Instant::now());
-    Ok(Some(result))
+    });
 }
 
 fn with_conn<T>(root: &Path, f: impl FnOnce(&rusqlite::Connection) -> Result<T>) -> Result<T> {
@@ -238,14 +203,22 @@ async fn post_database_index_ensure(
         .await
         .context("database index ensure join failed")??;
 
-    *state.last_sync.write().await = Some(Instant::now());
     Ok(json_response(serde_json::to_value(result)?))
+}
+
+async fn sync_if_dirty_blocking(state: &ServeState) -> Result<(), AppError> {
+    let _guard = state.sync_mutex.lock().await;
+    let root = state.root.clone();
+    tokio::task::spawn_blocking(move || sync_dashboard_db_if_dirty(&root))
+        .await
+        .context("sync-if-dirty join failed")??;
+    Ok(())
 }
 
 async fn get_accounts_summary_compat(
     State(state): State<ServeState>,
 ) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
+    sync_if_dirty_blocking(&state).await?;
     let root = state.root.clone();
     let payload = tokio::task::spawn_blocking(move || export_accounts_summary_payload(&root))
         .await
@@ -257,7 +230,6 @@ async fn get_dashboard_rows_page_compat(
     State(state): State<ServeState>,
     Query(query): Query<RowsPageQuery>,
 ) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
     let root = state.root.clone();
     let offset = query.offset;
     let limit = query.limit.clamp(1, 50_000);
@@ -270,7 +242,7 @@ async fn get_dashboard_rows_page_compat(
 }
 
 async fn get_dashboard_rows_compat(State(state): State<ServeState>) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
+    sync_if_dirty_blocking(&state).await?;
     let root = state.root.clone();
     state.active_row_streams.fetch_add(1, Ordering::SeqCst);
     let active_row_streams = state.active_row_streams.clone();
@@ -299,7 +271,6 @@ async fn get_dashboard_rows_compat(State(state): State<ServeState>) -> Result<Re
 async fn get_account_card_marks_compat(
     State(state): State<ServeState>,
 ) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
     let root = state.root.clone();
     let payload = tokio::task::spawn_blocking(move || export_account_card_marks_payload(&root))
         .await
@@ -351,132 +322,6 @@ fn json_response_with_status(status: StatusCode, payload: Value) -> Response {
         payload.to_string(),
     )
         .into_response()
-}
-
-async fn get_summary(State(state): State<ServeState>) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
-    let root = state.root.clone();
-    let payload = tokio::task::spawn_blocking(move || {
-        with_conn(&root, |conn| {
-            let stats = read_db_stats_public(conn, &root)?;
-            Ok(json!({
-                "ok": true,
-                "source": "dashboard.db",
-                "accountCount": stats.account_count,
-                "tradeAccountCount": stats.trade_account_count,
-                "collectionRegistryCount": stats.collection_count,
-                "rowCount": stats.row_count,
-                "totalCards": stats.total_cards,
-                "uniqueCardCount": stats.unique_card_count,
-                "dbBytes": stats.db_bytes,
-            }))
-        })
-    })
-    .await
-    .context("summary task join failed")??;
-
-    Ok(json_response(payload))
-}
-
-async fn get_accounts(
-    State(state): State<ServeState>,
-    Query(query): Query<PageQuery>,
-) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
-    let root = state.root.clone();
-    let offset = query.offset;
-    let limit = query.limit.min(500);
-    let payload = tokio::task::spawn_blocking(move || {
-        with_conn(&root, |conn| {
-            let accounts = query_accounts(conn, offset, limit)?;
-            Ok(json!({
-                "ok": true,
-                "offset": offset,
-                "limit": limit,
-                "accounts": accounts,
-            }))
-        })
-    })
-    .await
-    .context("accounts task join failed")??;
-
-    Ok(json_response(payload))
-}
-
-async fn get_rows(
-    State(state): State<ServeState>,
-    Query(query): Query<RowsQuery>,
-) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
-    let root = state.root.clone();
-    let offset = query.offset;
-    let limit = query.limit.min(1000);
-    let account = query.account;
-    let pack = query.pack;
-    let payload = tokio::task::spawn_blocking(move || {
-        with_conn(&root, |conn| {
-            let rows = query_rows(
-                conn,
-                offset,
-                limit,
-                account.as_deref(),
-                pack.as_deref(),
-            )?;
-            Ok(json!({
-                "ok": true,
-                "offset": offset,
-                "limit": limit,
-                "rows": rows,
-            }))
-        })
-    })
-    .await
-    .context("rows task join failed")??;
-
-    Ok(json_response(payload))
-}
-
-async fn get_card_holders(
-    State(state): State<ServeState>,
-    axum::extract::Path(card_id): axum::extract::Path<String>,
-) -> Result<Response, AppError> {
-    let _ = maybe_sync(&state, false).await?;
-    let root = state.root.clone();
-    let payload = tokio::task::spawn_blocking(move || {
-        with_conn(&root, |conn| {
-            let holders = query_card_holders(conn, &card_id)?;
-            Ok(json!({
-                "ok": true,
-                "cardId": card_id,
-                "holders": holders,
-            }))
-        })
-    })
-    .await
-    .context("holders task join failed")??;
-
-    Ok(json_response(payload))
-}
-
-async fn post_sync(
-    State(state): State<ServeState>,
-    Query(query): Query<SyncQuery>,
-) -> Result<Response, AppError> {
-    let root = state.root.clone();
-    let max_accounts = query.max_accounts;
-    let result = tokio::task::spawn_blocking(move || sync_dashboard_db(&root, max_accounts))
-        .await
-        .context("sync task join failed")??;
-    *state.last_sync.write().await = Some(Instant::now());
-    Ok(json_response(json!({ "ok": true, "result": result })))
-}
-
-async fn get_compare(State(state): State<ServeState>) -> Result<Response, AppError> {
-    let root = state.root.clone();
-    let report = tokio::task::spawn_blocking(move || compare_dashboard_db(&root))
-        .await
-        .context("compare task join failed")??;
-    Ok(json_response(serde_json::to_value(report)?))
 }
 
 async fn proxy_legacy(

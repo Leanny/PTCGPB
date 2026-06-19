@@ -15665,23 +15665,6 @@
             }
 
             async function ensureDashboardDatabaseIndex() {
-                let status = null;
-                try {
-                    status = await fetchDashboardDbBuildStatus();
-                } catch (_) {}
-
-                if (
-                    status &&
-                    status.phase === "ready" &&
-                    Number(status.account_count || 0) > 0
-                ) {
-                    bootSkipSteps(
-                        ["database_index"],
-                        `${formatNumber(status.account_count)} accounts ready`,
-                    );
-                    return status;
-                }
-
                 bootBeginStep("database_index", "Preparing SQLite index…");
                 let pollTimer = 0;
                 const stopPolling = () => {
@@ -15863,7 +15846,7 @@
                     let indexLoaded = false;
                     try {
                         bootBeginStep("fetch_summary");
-                        const summaryPromise = fetchDefaultJsonPayload(
+                        const summary = await fetchDefaultJsonPayload(
                             DEFAULT_ACCOUNTS_SUMMARY_PATH,
                         )
                             .then((summary) => {
@@ -15887,7 +15870,7 @@
                             ["parse_rows"],
                             "Included in download stream",
                         );
-                        const rowsPromise = fetchDashboardRowsNdjsonStream()
+                        const rowParse = await fetchDashboardRowsNdjsonStream()
                             .then((result) => {
                                 bootEndStep(
                                     "fetch_rows",
@@ -15902,11 +15885,7 @@
                                 );
                                 throw err;
                             });
-                        const [summary, rowParse] = await Promise.all([
-                            summaryPromise,
-                            rowsPromise,
-                            resourcesPromise,
-                        ]);
+                        await resourcesPromise;
                         if (summary?.ok && rowParse) {
                             indexLoaded = await loadDashboardIndexData(
                                 summary,

@@ -141,18 +141,6 @@ enum Command {
         #[arg(long)]
         cards: String,
     },
-    BuildDashboardCache {
-        #[arg(long)]
-        output: PathBuf,
-        #[arg(long)]
-        meta: PathBuf,
-        #[arg(long)]
-        signature: String,
-        #[arg(long)]
-        source_count: usize,
-        #[arg(long)]
-        source_bytes: u64,
-    },
     BuildDashboardIndex {
         #[arg(long)]
         signature: Option<String>,
@@ -167,18 +155,15 @@ enum Command {
         #[arg(long)]
         max_accounts: Option<usize>,
     },
-    CompareDashboardDb,
-    BenchmarkDashboard {
-        #[arg(long, default_value_t = 9)]
-        simulate_dirty_accounts: usize,
-    },
+    CheckpointDashboardDb,
     Serve {
         #[arg(long, default_value_t = 8081)]
         port: u16,
         #[arg(long, default_value_t = 8083)]
         legacy_port: u16,
-        #[arg(long, default_value_t = 15000)]
-        sync_interval_ms: u64,
+        /// Background catch-up interval while carddb serve is running (full sync, no batch cap).
+        #[arg(long, default_value_t = 10)]
+        background_sync_interval_secs: u64,
     },
     SnapshotAccounts,
     RepairAccountsFromSnapshot,
@@ -350,29 +335,6 @@ fn run(cli: Cli) -> Result<()> {
             pack,
             cards,
         } => append_pull(&cli.root, &device_account, &timestamp, &pack, &cards),
-        Command::BuildDashboardCache {
-            output,
-            meta,
-            signature,
-            source_count,
-            source_bytes,
-        } => {
-            build_dashboard_cache(
-                &cli.root,
-                &output,
-                &meta,
-                &signature,
-                source_count,
-                source_bytes,
-            )?;
-            dashboard_index::build_dashboard_index(
-                &cli.root,
-                Some(signature.as_str()),
-                Some(source_count),
-                Some(source_bytes),
-            )?;
-            Ok(())
-        }
         Command::BuildDashboardIndex {
             signature,
             source_count,
@@ -408,30 +370,30 @@ fn run(cli: Cli) -> Result<()> {
             }))?);
             Ok(())
         }
-        Command::CompareDashboardDb => {
-            let report = dashboard_db::compare_dashboard_db(&cli.root)?;
-            println!("{}", serde_json::to_string_pretty(&report)?);
-            if !report.parity_ok {
-                anyhow::bail!("dashboard db parity check failed");
-            }
-            Ok(())
-        }
-        Command::BenchmarkDashboard { simulate_dirty_accounts } => {
-            let report = dashboard_db::benchmark_dashboard(&cli.root, simulate_dirty_accounts)?;
-            println!("{}", serde_json::to_string_pretty(&report)?);
+        Command::CheckpointDashboardDb => {
+            dashboard_db::checkpoint_dashboard_db(&cli.root)?;
+            let db_bytes = dashboard_db::dashboard_db_path(&cli.root)
+                .metadata()
+                .map(|meta| meta.len())
+                .unwrap_or(0);
+            println!("{}", serde_json::to_string_pretty(&json!({
+                "ok": true,
+                "kind": "dashboard-db-checkpoint",
+                "dbBytes": db_bytes,
+            }))?);
             Ok(())
         }
         Command::Serve {
             port,
             legacy_port,
-            sync_interval_ms,
+            background_sync_interval_secs,
         } => {
             let rt = tokio::runtime::Runtime::new().context("Could not start async runtime")?;
             rt.block_on(dashboard_serve::run_serve(
                 &cli.root,
                 port,
                 legacy_port,
-                sync_interval_ms,
+                background_sync_interval_secs,
             ))
         }
         Command::SnapshotAccounts => snapshot_accounts(&cli.root),
@@ -610,18 +572,6 @@ pub(crate) fn write_file_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     fs::write(&tmp, bytes)?;
     fs::rename(&tmp, path).with_context(|| format!("Could not move {:?} to {:?}", tmp, path))?;
     Ok(())
-}
-
-fn build_dashboard_cache(
-    root: &Path,
-    output: &Path,
-    meta: &Path,
-    signature: &str,
-    source_count: usize,
-    source_bytes: u64,
-) -> Result<()> {
-    let _ = (output, meta, signature, source_count, source_bytes);
-    snapshot_accounts(root)
 }
 
 fn repair_archive_files(root: &Path) -> (PathBuf, PathBuf) {

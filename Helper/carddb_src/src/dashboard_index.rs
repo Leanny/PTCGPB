@@ -197,41 +197,42 @@ fn timestamp_from_pull(pull: &Value) -> String {
     )
 }
 
-struct AccountSummaryRecord {
-    account: String,
-    source_type: String,
-    source_file_name: String,
-    file_label: String,
-    display_name: String,
-    account_name: String,
-    friend_code: String,
-    instance: String,
-    created_at: String,
-    last_logged_in: String,
-    last_pack_pulled: String,
-    last_modified: String,
-    pack_count: i64,
-    shinedust: i64,
-    shinedust_updated_at: String,
-    pull_count: i64,
-    card_count: i64,
-    unique_card_count: i64,
-    registry_card_count: i64,
-    registered_cards: Vec<String>,
-    device_account: String,
-    registry_imported_at: String,
-    collection_id: String,
+pub(crate) struct AccountSummaryRecord {
+    pub(crate) account: String,
+    pub(crate) source_type: String,
+    pub(crate) source_file_name: String,
+    pub(crate) file_label: String,
+    pub(crate) display_name: String,
+    pub(crate) account_name: String,
+    pub(crate) friend_code: String,
+    pub(crate) instance: String,
+    pub(crate) created_at: String,
+    pub(crate) last_logged_in: String,
+    pub(crate) last_pack_pulled: String,
+    pub(crate) last_modified: String,
+    pub(crate) pack_count: i64,
+    pub(crate) shinedust: i64,
+    pub(crate) shinedust_updated_at: String,
+    pub(crate) pull_count: i64,
+    pub(crate) card_count: i64,
+    pub(crate) unique_card_count: i64,
+    pub(crate) registry_card_count: i64,
+    pub(crate) registered_cards: Vec<String>,
+    pub(crate) device_account: String,
+    pub(crate) registry_imported_at: String,
+    pub(crate) collection_id: String,
 }
 
-struct CompactRow {
-    account: String,
-    pack: String,
-    source_pack: String,
-    timestamp: String,
-    card_ids: Vec<String>,
+#[derive(Clone)]
+pub(crate) struct CompactRow {
+    pub(crate) account: String,
+    pub(crate) pack: String,
+    pub(crate) source_pack: String,
+    pub(crate) timestamp: String,
+    pub(crate) card_ids: Vec<String>,
 }
 
-fn build_account_summary(doc: &Value) -> Option<AccountSummaryRecord> {
+pub(crate) fn build_account_summary(doc: &Value) -> Option<AccountSummaryRecord> {
     if !doc.is_object() {
         return None;
     }
@@ -367,12 +368,20 @@ fn build_account_summary(doc: &Value) -> Option<AccountSummaryRecord> {
     })
 }
 
-fn compact_rows_from_doc(doc: &Value) -> Vec<CompactRow> {
+pub(crate) fn compact_rows_from_doc(doc: &Value) -> Vec<CompactRow> {
     let summary = match build_account_summary(doc) {
         Some(summary) => summary,
         None => return Vec::new(),
     };
-    if summary.source_type == "collection" {
+    compact_rows_for_account(doc, &summary.account, summary.source_type == "collection")
+}
+
+pub(crate) fn compact_rows_for_account(
+    doc: &Value,
+    account: &str,
+    is_collection: bool,
+) -> Vec<CompactRow> {
+    if is_collection {
         return Vec::new();
     }
 
@@ -383,22 +392,63 @@ fn compact_rows_from_doc(doc: &Value) -> Vec<CompactRow> {
         .cloned()
         .unwrap_or_default();
 
-    let mut rows = Vec::new();
-    for pull in pulls {
-        let card_ids = card_ids_from_pull(&pull);
-        if card_ids.is_empty() {
-            continue;
-        }
-        let pack = pack_from_pull(&pull);
-        rows.push(CompactRow {
-            account: summary.account.clone(),
-            pack: pack.clone(),
-            source_pack: pack,
-            timestamp: timestamp_from_pull(&pull),
-            card_ids,
-        });
+    compact_rows_from_pull_values(&pulls, account, 0).2
+}
+
+/// Single pass over pulls: total compact row count, optional boundary row at `stored_rows - 1`,
+/// and compact rows from index `stored_rows` onward.
+pub(crate) fn scan_compact_pulls(
+    doc: &Value,
+    account: &str,
+    stored_rows: usize,
+) -> (usize, Option<CompactRow>, Vec<CompactRow>) {
+    let pulls = doc
+        .get("pulls")
+        .or_else(|| doc.get("Pulls"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    compact_rows_from_pull_values(&pulls, account, stored_rows)
+}
+
+fn compact_row_from_pull(pull: &Value, account: &str) -> Option<CompactRow> {
+    let card_ids = card_ids_from_pull(pull);
+    if card_ids.is_empty() {
+        return None;
     }
-    rows
+    let pack = pack_from_pull(pull);
+    Some(CompactRow {
+        account: account.to_owned(),
+        pack: pack.clone(),
+        source_pack: pack,
+        timestamp: timestamp_from_pull(pull),
+        card_ids,
+    })
+}
+
+fn compact_rows_from_pull_values(
+    pulls: &[Value],
+    account: &str,
+    stored_rows: usize,
+) -> (usize, Option<CompactRow>, Vec<CompactRow>) {
+    let mut compact_index = 0usize;
+    let mut boundary_row = None;
+    let mut new_rows = Vec::new();
+
+    for pull in pulls {
+        let Some(row) = compact_row_from_pull(pull, account) else {
+            continue;
+        };
+        if stored_rows > 0 && compact_index == stored_rows - 1 {
+            boundary_row = Some(row.clone());
+        }
+        if compact_index >= stored_rows {
+            new_rows.push(row);
+        }
+        compact_index += 1;
+    }
+
+    (compact_index, boundary_row, new_rows)
 }
 
 fn write_compact_row(writer: &mut impl Write, row: &CompactRow) -> Result<()> {
@@ -549,14 +599,6 @@ pub fn build_dashboard_index(
         unique_card_count: unique_cards.len(),
         skipped_count: skipped.len(),
     })
-}
-
-pub fn invalidate_dashboard_index(root: &Path) -> Result<()> {
-    let meta_path = index_meta_path(root);
-    if meta_path.exists() {
-        fs::remove_file(&meta_path)?;
-    }
-    Ok(())
 }
 
 pub fn ensure_dashboard_index(root: &Path) -> Result<bool> {
