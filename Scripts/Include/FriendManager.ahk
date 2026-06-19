@@ -957,6 +957,20 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             if(FindOrLoseImage("Common_ColorChangeButton2", 0, , 80)) {
                 adbClick_wbb(200, 80)
             }
+            if(!skipTutorialProc) {
+                if(TryHandleTradeTutorial(failSafeTime))
+                    continue
+                else if(TryDismissSocialFirstTutorial(failSafeTime))
+                    continue
+                else if (!ShouldSkipGenericButtonInSocialWait()) {
+                    clickButton := FindOrLoseImage("Common_ColorChangeButton", 0, , 80)
+                    if(clickButton) {
+                        StringSplit, pos, clickButton, `,  ; Split at ", "
+                        adbClick_wbb(pos1, pos2)
+                        continue
+                    }
+                }
+            }
             if(!IsSocialHubReadyForFriends()) {
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
                 Delay(0.5)
