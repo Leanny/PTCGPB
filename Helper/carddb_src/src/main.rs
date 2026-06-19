@@ -13,7 +13,9 @@ use std::process::Command as ProcessCommand;
 use std::thread;
 use std::time::{Duration as StdDuration, Instant, SystemTime};
 
+mod dashboard_db;
 mod dashboard_index;
+mod dashboard_serve;
 
 #[derive(Parser)]
 #[command(
@@ -160,6 +162,24 @@ enum Command {
         source_bytes: Option<u64>,
     },
     EnsureDashboardIndex,
+    RebuildDashboardDb,
+    SyncDashboardDb {
+        #[arg(long)]
+        max_accounts: Option<usize>,
+    },
+    CompareDashboardDb,
+    BenchmarkDashboard {
+        #[arg(long, default_value_t = 9)]
+        simulate_dirty_accounts: usize,
+    },
+    Serve {
+        #[arg(long, default_value_t = 8081)]
+        port: u16,
+        #[arg(long, default_value_t = 8083)]
+        legacy_port: u16,
+        #[arg(long, default_value_t = 1500)]
+        sync_interval_ms: u64,
+    },
     SnapshotAccounts,
     RepairAccountsFromSnapshot,
 }
@@ -370,6 +390,50 @@ fn run(cli: Cli) -> Result<()> {
             dashboard_index::ensure_dashboard_index(&cli.root)?;
             Ok(())
         }
+        Command::RebuildDashboardDb => {
+            let stats = dashboard_db::rebuild_dashboard_db(&cli.root)?;
+            println!("{}", serde_json::to_string_pretty(&json!({
+                "ok": true,
+                "kind": "dashboard-db-rebuild",
+                "stats": stats,
+            }))?);
+            Ok(())
+        }
+        Command::SyncDashboardDb { max_accounts } => {
+            let result = dashboard_db::sync_dashboard_db(&cli.root, max_accounts)?;
+            println!("{}", serde_json::to_string_pretty(&json!({
+                "ok": true,
+                "kind": "dashboard-db-sync",
+                "result": result,
+            }))?);
+            Ok(())
+        }
+        Command::CompareDashboardDb => {
+            let report = dashboard_db::compare_dashboard_db(&cli.root)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            if !report.parity_ok {
+                anyhow::bail!("dashboard db parity check failed");
+            }
+            Ok(())
+        }
+        Command::BenchmarkDashboard { simulate_dirty_accounts } => {
+            let report = dashboard_db::benchmark_dashboard(&cli.root, simulate_dirty_accounts)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            Ok(())
+        }
+        Command::Serve {
+            port,
+            legacy_port,
+            sync_interval_ms,
+        } => {
+            let rt = tokio::runtime::Runtime::new().context("Could not start async runtime")?;
+            rt.block_on(dashboard_serve::run_serve(
+                &cli.root,
+                port,
+                legacy_port,
+                sync_interval_ms,
+            ))
+        }
         Command::SnapshotAccounts => snapshot_accounts(&cli.root),
         Command::RepairAccountsFromSnapshot => repair_accounts_from_snapshot(&cli.root),
     }
@@ -556,32 +620,8 @@ fn build_dashboard_cache(
     source_count: usize,
     source_bytes: u64,
 ) -> Result<()> {
-    let paths = gather_dashboard_paths(root)?;
-    let (payload, meta_payload) =
-        build_dashboard_payload(&paths, signature, source_count, source_bytes)?;
-
-    if let Some(parent) = output.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    if let Some(parent) = meta.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    write_file_atomic(output, &serde_json::to_vec(&payload)?)?;
-    write_file_atomic(meta, &serde_json::to_vec(&meta_payload)?)?;
-    Ok(())
-}
-
-fn dashboard_accounts_cache_files(root: &Path) -> (PathBuf, PathBuf) {
-    let cache_dir = dashboard_index::dashboard_cache_dir(root);
-    (
-        cache_dir.join("accounts-data.cache.json"),
-        cache_dir.join("accounts-data.cache.meta.json"),
-    )
-}
-
-fn dashboard_accounts_cache_path(root: &Path) -> PathBuf {
-    dashboard_accounts_cache_files(root).0
+    let _ = (output, meta, signature, source_count, source_bytes);
+    snapshot_accounts(root)
 }
 
 fn repair_archive_files(root: &Path) -> (PathBuf, PathBuf) {
@@ -759,14 +799,6 @@ fn seed_repair_archive_lookup(
         }
     }
 
-    if let Ok(dashboard_lookup) = load_dashboard_cache_account_lookup(root) {
-        for (key, account) in dashboard_lookup {
-            if lookup.insert(key, account).is_none() {
-                seeded += 1;
-            }
-        }
-    }
-
     Ok(seeded)
 }
 
@@ -874,11 +906,19 @@ fn metadata_from_account_document(doc: &Value) -> Value {
         .unwrap_or_else(|| json!({}))
 }
 
+fn remove_legacy_accounts_data_cache(root: &Path) {
+    let cache_dir = dashboard_index::dashboard_cache_dir(root);
+    for name in ["accounts-data.cache.json", "accounts-data.cache.meta.json"] {
+        let _ = fs::remove_file(cache_dir.join(name));
+    }
+}
+
 fn snapshot_accounts(root: &Path) -> Result<()> {
+    remove_legacy_accounts_data_cache(root);
     let (signature, source_count, source_bytes) =
         dashboard_index::compute_dashboard_manifest_signature(root)?;
     let paths = gather_dashboard_paths(root)?;
-    let (payload, meta_payload) =
+    let (payload, _meta_payload) =
         build_dashboard_payload(&paths, &signature, source_count, source_bytes)?;
     let account_count = payload
         .get("accountCount")
@@ -889,54 +929,15 @@ fn snapshot_accounts(root: &Path) -> Result<()> {
         .and_then(Value::as_u64)
         .unwrap_or(0);
 
-    let (output, meta_path) = dashboard_accounts_cache_files(root);
-    write_file_atomic(&output, &serde_json::to_vec(&payload)?)?;
-    write_file_atomic(&meta_path, &serde_json::to_vec(&meta_payload)?)?;
+    merge_repair_archive_from_payload(root, &payload, &signature)?;
 
     append_carddb_log(
         root,
         &format!(
-            "snapshot_accounts wrote {account_count} accounts ({skipped_count} skipped) to {:?}",
-            output
+            "snapshot_accounts updated repair archive with {account_count} accounts ({skipped_count} skipped)",
         ),
     );
-    if let Err(err) = merge_repair_archive_from_payload(root, &payload, &signature) {
-        append_carddb_log(root, &format!("merge_repair_archive after snapshot failed: {err:#}"));
-    }
     Ok(())
-}
-
-fn load_dashboard_cache_account_lookup(root: &Path) -> Result<HashMap<String, Value>> {
-    let source = dashboard_accounts_cache_path(root);
-    if !source.exists() {
-        anyhow::bail!(
-            "No dashboard accounts cache found at {:?}",
-            source
-        );
-    }
-
-    let payload: Value = serde_json::from_slice(
-        &fs::read(&source).with_context(|| format!("Could not read {:?}", source))?,
-    )
-    .with_context(|| format!("Could not parse dashboard cache JSON {:?}", source))?;
-    let accounts = payload
-        .get("accounts")
-        .and_then(Value::as_array)
-        .context("Snapshot payload is missing accounts[]")?;
-
-    let mut lookup = HashMap::new();
-    for account in accounts {
-        let key = account
-            .get("deviceAccount")
-            .and_then(Value::as_str)
-            .filter(|value| !value.trim().is_empty())
-            .map(str::to_owned);
-        let Some(key) = key else {
-            continue;
-        };
-        lookup.insert(key, account.clone());
-    }
-    Ok(lookup)
 }
 
 fn is_account_json_corrupted(path: &Path) -> Result<bool> {
@@ -1762,6 +1763,106 @@ fn append_pull_to_account_file(root: &Path, device_account: &str, pull: Value) -
     }
     doc["pulls"].as_array_mut().expect("pulls array").push(pull);
     write_account_document(root, device_account, &doc)
+}
+
+fn is_valid_device_account(value: &str) -> bool {
+    value.len() == 16 && value.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+fn count_json_object_entries(value: &Value) -> usize {
+    value.as_object().map(|map| map.len()).unwrap_or(0)
+}
+
+pub(crate) struct SetAccountCardMarksOutcome {
+    pub status: u16,
+    pub payload: Value,
+}
+
+pub(crate) fn set_account_card_marks_from_payload(
+    root: &Path,
+    payload: Value,
+) -> SetAccountCardMarksOutcome {
+    let fail = |status: u16, error: &str| SetAccountCardMarksOutcome {
+        status,
+        payload: json!({ "ok": false, "error": error }),
+    };
+
+    let Some(device_account) = payload
+        .get("deviceAccount")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
+    else {
+        return fail(400, "Missing 'deviceAccount' field.");
+    };
+
+    if !is_valid_device_account(&device_account) {
+        return fail(400, "Invalid deviceAccount.");
+    }
+
+    let has_traded = payload.get("tradedCards").is_some();
+    let has_shared = payload.get("sharedCards").is_some();
+    if !has_traded && !has_shared {
+        return fail(400, "Missing 'tradedCards' and/or 'sharedCards' field.");
+    }
+
+    let path = account_file_path(root, &device_account);
+    if !path.exists() {
+        return fail(
+            404,
+            &format!("Account JSON not found for deviceAccount '{device_account}'."),
+        );
+    }
+
+    let mut doc = match load_account_document(&path, &device_account) {
+        Ok(doc) => doc,
+        Err(err) => {
+            return fail(500, &format!("Failed to read account JSON: {err:#}"));
+        }
+    };
+
+    let stored_account = doc
+        .get("deviceAccount")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if stored_account != device_account {
+        return fail(400, "deviceAccount mismatch in account JSON.");
+    }
+
+    let mut traded_count = 0usize;
+    let mut shared_count = 0usize;
+    if has_traded {
+        let traded = payload.get("tradedCards").cloned().unwrap_or_else(|| json!({}));
+        traded_count = count_json_object_entries(&traded);
+        doc["tradedCards"] = traded;
+    }
+    if has_shared {
+        let shared = payload.get("sharedCards").cloned().unwrap_or_else(|| json!({}));
+        shared_count = count_json_object_entries(&shared);
+        doc["sharedCards"] = shared;
+    }
+
+    if let Err(err) = write_account_document(root, &device_account, &doc) {
+        return fail(500, &format!("Failed to write account JSON: {err:#}"));
+    }
+    if let Err(err) = format_account(root, &device_account) {
+        eprintln!("format_account after card marks failed: {err:#}");
+    }
+    if let Err(err) = dashboard_db::reindex_account_source_file(root, &device_account) {
+        eprintln!("sqlite reindex after card marks failed: {err:#}");
+    }
+
+    SetAccountCardMarksOutcome {
+        status: 200,
+        payload: json!({
+            "ok": true,
+            "deviceAccount": device_account,
+            "tradedCount": traded_count,
+            "sharedCount": shared_count,
+            "path": path.display().to_string(),
+        }),
+    }
 }
 
 fn write_account_files_from_store(root: &Path, store: &Value) -> Result<()> {
@@ -3921,7 +4022,7 @@ fn append_pull(
         "cards": cards,
     });
     append_pull_to_account_file(root, device_account, pull)?;
-    dashboard_index::invalidate_dashboard_index(root)
+    Ok(())
 }
 
 #[cfg(test)]
