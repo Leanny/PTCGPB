@@ -880,12 +880,28 @@ fn open_connection(root: &Path) -> Result<Connection> {
     conn.pragma_update(None, "synchronous", "NORMAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.pragma_update(None, "temp_store", "MEMORY")?;
+    // Merge WAL back into the main DB periodically (pages, not bytes).
+    conn.pragma_update(None, "wal_autocheckpoint", 1000)?;
     Ok(conn)
 }
 
 fn checkpoint_database(conn: &Connection) -> Result<()> {
-    let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_row| Ok(()))?;
+    let busy: i32 = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
+        Ok(row.get::<_, i32>(0)?)
+    })?;
+    if busy != 0 {
+        // Active readers (e.g. a long dashboard-rows stream) block TRUNCATE.
+        let _ = conn.query_row("PRAGMA wal_checkpoint(RESTART)", [], |row| {
+            Ok(row.get::<_, i32>(0)?)
+        });
+    }
     Ok(())
+}
+
+pub fn checkpoint_dashboard_db(root: &Path) -> Result<()> {
+    let conn = open_connection(root)?;
+    init_schema(&conn)?;
+    checkpoint_database(&conn)
 }
 
 fn remove_database_files(root: &Path) -> Result<()> {

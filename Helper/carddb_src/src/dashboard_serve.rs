@@ -11,16 +11,17 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex as AsyncMutex, RwLock};
 use tower_http::cors::CorsLayer;
 use std::convert::Infallible;
 use tokio_stream::wrappers::ReceiverStream;
 use tower_http::services::ServeDir;
 
 use crate::dashboard_db::{
-    compare_dashboard_db, ensure_dashboard_db,
+    checkpoint_dashboard_db, compare_dashboard_db, ensure_dashboard_db,
     export_account_card_marks_payload, export_accounts_summary_payload,
     export_dashboard_rows_page, query_accounts, query_card_holders, query_rows,
     read_dashboard_db_build_progress, read_db_stats_public, stream_dashboard_rows_ndjson,
@@ -35,7 +36,9 @@ pub struct ServeState {
     last_sync: Arc<RwLock<Option<Instant>>>,
     sync_interval: Duration,
     db_progress: ProgressHandle,
-    db_ensure_mutex: Arc<tokio::sync::Mutex<()>>,
+    db_ensure_mutex: Arc<AsyncMutex<()>>,
+    sync_mutex: Arc<AsyncMutex<()>>,
+    active_row_streams: Arc<AtomicUsize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -101,7 +104,9 @@ pub async fn run_serve(
         last_sync: Arc::new(RwLock::new(None)),
         sync_interval: Duration::from_millis(sync_interval_ms.max(250)),
         db_progress,
-        db_ensure_mutex: Arc::new(tokio::sync::Mutex::new(())),
+        db_ensure_mutex: Arc::new(AsyncMutex::new(())),
+        sync_mutex: Arc::new(AsyncMutex::new(())),
+        active_row_streams: Arc::new(AtomicUsize::new(0)),
     };
 
     let static_files = ServeDir::new(state.root.clone());
@@ -151,6 +156,10 @@ pub async fn run_serve(
 }
 
 async fn maybe_sync(state: &ServeState, force: bool) -> Result<Option<SyncResult>> {
+    if state.active_row_streams.load(Ordering::SeqCst) > 0 {
+        return Ok(None);
+    }
+
     let now = Instant::now();
     {
         let last = state.last_sync.read().await;
@@ -161,6 +170,11 @@ async fn maybe_sync(state: &ServeState, force: bool) -> Result<Option<SyncResult
                 }
             }
         }
+    }
+
+    let _guard = state.sync_mutex.lock().await;
+    if state.active_row_streams.load(Ordering::SeqCst) > 0 {
+        return Ok(None);
     }
 
     let root = state.root.clone();
@@ -258,10 +272,17 @@ async fn get_dashboard_rows_page_compat(
 async fn get_dashboard_rows_compat(State(state): State<ServeState>) -> Result<Response, AppError> {
     let _ = maybe_sync(&state, false).await?;
     let root = state.root.clone();
+    state.active_row_streams.fetch_add(1, Ordering::SeqCst);
+    let active_row_streams = state.active_row_streams.clone();
     let (tx, rx) = tokio::sync::mpsc::channel::<Result<bytes::Bytes, Infallible>>(32);
     tokio::task::spawn_blocking(move || {
-        if let Err(err) = stream_dashboard_rows_ndjson(root, tx) {
+        let stream_result = stream_dashboard_rows_ndjson(root.clone(), tx);
+        active_row_streams.fetch_sub(1, Ordering::SeqCst);
+        if let Err(err) = stream_result {
             eprintln!("dashboard rows stream failed: {err}");
+        }
+        if let Err(err) = checkpoint_dashboard_db(&root) {
+            eprintln!("dashboard db checkpoint after rows stream failed: {err}");
         }
     });
     Ok((

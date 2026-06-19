@@ -177,7 +177,7 @@ enum Command {
         port: u16,
         #[arg(long, default_value_t = 8083)]
         legacy_port: u16,
-        #[arg(long, default_value_t = 1500)]
+        #[arg(long, default_value_t = 15000)]
         sync_interval_ms: u64,
     },
     SnapshotAccounts,
