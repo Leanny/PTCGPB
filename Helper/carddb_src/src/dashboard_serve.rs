@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex as AsyncMutex;
 use tower_http::cors::CorsLayer;
 use std::convert::Infallible;
@@ -27,11 +27,36 @@ use crate::dashboard_db::{
     sync_dashboard_db, sync_dashboard_db_if_dirty, DashboardDbBuildProgress, ProgressHandle,
 };
 
+const SHUTDOWN_DELAY: Duration = Duration::from_secs(3);
+
+#[derive(Clone, Default)]
+struct ShutdownControl {
+    deadline: Arc<Mutex<Option<Instant>>>,
+}
+
+impl ShutdownControl {
+    fn cancel(&self) {
+        *self.deadline.lock().unwrap() = None;
+    }
+
+    fn schedule(&self) {
+        *self.deadline.lock().unwrap() = Some(Instant::now() + SHUTDOWN_DELAY);
+    }
+
+    fn is_due(&self) -> bool {
+        self.deadline
+            .lock()
+            .unwrap()
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    }
+}
+
 #[derive(Clone)]
 pub struct ServeState {
     root: PathBuf,
     legacy_port: u16,
     client: reqwest::Client,
+    shutdown: ShutdownControl,
     db_progress: ProgressHandle,
     db_ensure_mutex: Arc<AsyncMutex<()>>,
     sync_mutex: Arc<AsyncMutex<()>>,
@@ -67,6 +92,7 @@ pub async fn run_serve(
         root: root.to_path_buf(),
         legacy_port,
         client,
+        shutdown: ShutdownControl::default(),
         db_progress,
         db_ensure_mutex: Arc::new(AsyncMutex::new(())),
         sync_mutex: Arc::new(AsyncMutex::new(())),
@@ -77,7 +103,7 @@ pub async fn run_serve(
 
     let dashboard_routes = Router::new()
         .route("/ping", get(ping))
-        .route("/shutdown", post(proxy_legacy))
+        .route("/shutdown", post(post_dashboard_shutdown))
         .route(
             "/database-index/status",
             get(get_database_index_status),
@@ -94,6 +120,7 @@ pub async fn run_serve(
         .fallback(any(proxy_legacy));
 
     spawn_background_sync(state.clone(), background_sync_interval_secs);
+    spawn_shutdown_monitor(state.clone());
 
     let app = Router::new()
         .nest("/__dashboard", dashboard_routes)
@@ -123,6 +150,9 @@ fn spawn_background_sync(state: ServeState, interval_secs: u64) {
         interval.tick().await;
         loop {
             interval.tick().await;
+            if state.shutdown.is_due() {
+                break;
+            }
             if state.active_row_streams.load(Ordering::SeqCst) > 0 {
                 continue;
             }
@@ -151,14 +181,60 @@ fn spawn_background_sync(state: ServeState, interval_secs: u64) {
     });
 }
 
+fn spawn_shutdown_monitor(state: ServeState) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_millis(200));
+        loop {
+            interval.tick().await;
+            if state.shutdown.is_due() {
+                eprintln!("carddb serve shutting down (dashboard closed)");
+                std::process::exit(0);
+            }
+        }
+    });
+}
+
+fn notify_legacy_ping(client: &reqwest::Client, legacy_port: u16) {
+    let client = client.clone();
+    tokio::spawn(async move {
+        let _ = client
+            .get(format!(
+                "http://127.0.0.1:{legacy_port}/__dashboard/ping"
+            ))
+            .send()
+            .await;
+    });
+}
+
+fn notify_legacy_shutdown(client: &reqwest::Client, legacy_port: u16) {
+    let client = client.clone();
+    tokio::spawn(async move {
+        let _ = client
+            .post(format!(
+                "http://127.0.0.1:{legacy_port}/__dashboard/shutdown"
+            ))
+            .body("close")
+            .send()
+            .await;
+    });
+}
+
 fn with_conn<T>(root: &Path, f: impl FnOnce(&rusqlite::Connection) -> Result<T>) -> Result<T> {
     let conn = crate::dashboard_db::open_connection_public(root)?;
     crate::dashboard_db::init_schema_public(&conn)?;
     f(&conn)
 }
 
-async fn ping() -> StatusCode {
+async fn ping(State(state): State<ServeState>) -> StatusCode {
+    state.shutdown.cancel();
+    notify_legacy_ping(&state.client, state.legacy_port);
     StatusCode::NO_CONTENT
+}
+
+async fn post_dashboard_shutdown(State(state): State<ServeState>) -> StatusCode {
+    state.shutdown.schedule();
+    notify_legacy_shutdown(&state.client, state.legacy_port);
+    StatusCode::ACCEPTED
 }
 
 fn active_build_phase(phase: &str) -> bool {

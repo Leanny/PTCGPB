@@ -148,7 +148,9 @@ pub fn sync_dashboard_db_with_progress(
 
     let paths = crate::gather_dashboard_paths(root)?;
     let mut dirty = find_dirty_sources(&conn, &paths)?;
-    let removed = remove_orphan_sources(root, &conn, &paths)?;
+    let removed_sources = remove_orphan_sources(root, &conn, &paths)?;
+    let removed_accounts = remove_orphan_accounts(&conn)?;
+    let removed = removed_sources + removed_accounts;
 
     if let Some(limit) = max_accounts {
         dirty.truncate(limit);
@@ -820,6 +822,16 @@ impl<'conn> AccountInserter<'conn> {
             .with_context(|| format!("Could not build summary for {source_key}"))?;
         let (size, modified_ns) = file_fingerprint(path)?;
 
+        if let Ok(old_key) = conn.query_row(
+            "SELECT account_key FROM source_files WHERE source_key = ?1",
+            params![source_key],
+            |row| row.get::<_, String>(0),
+        ) {
+            if old_key != summary.account {
+                delete_account(conn, &old_key)?;
+            }
+        }
+
         if replace_existing {
             delete_account(conn, &summary.account)?;
         }
@@ -940,13 +952,17 @@ fn find_dirty_sources(
             )
             .ok();
 
-        let account_key = account_key_from_source(source_key, path);
-        let account_exists: bool = conn
+        let linked_account_key: Option<String> = conn
             .query_row(
-                "SELECT 1 FROM accounts WHERE account_key = ?1",
-                params![account_key],
-                |_| Ok(true),
+                "SELECT account_key FROM source_files WHERE source_key = ?1",
+                params![source_key],
+                |row| row.get(0),
             )
+            .optional()?;
+        let account_exists = linked_account_key
+            .as_deref()
+            .map(|key| account_exists(conn, key))
+            .transpose()?
             .unwrap_or(false);
 
         let needs_reindex = match stored {
@@ -985,6 +1001,22 @@ fn remove_orphan_sources(
         delete_account(conn, account_key)?;
     }
     let _ = root;
+    Ok(orphans.len())
+}
+
+fn remove_orphan_accounts(conn: &Connection) -> Result<usize> {
+    let mut orphans = Vec::new();
+    let mut stmt = conn.prepare(
+        "SELECT account_key FROM accounts
+         WHERE account_key NOT IN (SELECT account_key FROM source_files)",
+    )?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+    for row in rows {
+        orphans.push(row?);
+    }
+    for account_key in &orphans {
+        delete_account(conn, account_key)?;
+    }
     Ok(orphans.len())
 }
 

@@ -12050,6 +12050,8 @@
                 return "○";
             }
 
+            const DASHBOARD_BOOT_COMPACT_STREAM_MERGED = ["parse_rows"];
+
             function getVisibleBootSteps() {
                 const legacyPath = dashboardBootState.pathLabel
                     .toLowerCase()
@@ -12058,6 +12060,12 @@
                     const status =
                         dashboardBootState.steps[id]?.status || "pending";
                     if (status === "skipped") return false;
+                    if (
+                        !legacyPath &&
+                        DASHBOARD_BOOT_COMPACT_STREAM_MERGED.includes(id)
+                    ) {
+                        return false;
+                    }
                     if (status !== "pending") return true;
                     if (legacyPath) return !DASHBOARD_BOOT_COMPACT_ONLY.includes(id);
                     return !DASHBOARD_BOOT_LEGACY_ONLY.includes(id);
@@ -15866,10 +15874,6 @@
                                 throw err;
                             });
                         bootBeginStep("fetch_rows");
-                        bootSkipSteps(
-                            ["parse_rows"],
-                            "Included in download stream",
-                        );
                         const rowParse = await fetchDashboardRowsNdjsonStream()
                             .then((result) => {
                                 bootEndStep(

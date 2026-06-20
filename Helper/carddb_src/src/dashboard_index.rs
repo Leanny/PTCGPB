@@ -242,22 +242,26 @@ pub(crate) fn build_account_summary(doc: &Value) -> Option<AccountSummaryRecord>
     let is_collection =
         source_type.eq_ignore_ascii_case("collection") || source_file_name.starts_with("collections/");
 
-    let mut account = json_str_value(
-        doc,
-        &[
-            "deviceAccount",
-            "DeviceAccount",
-            "account",
-            "Account",
-            "collectionId",
-            "CollectionId",
-        ],
-    );
-    if is_collection && account.is_empty() {
-        if let Some(leaf) = source_file_name.split('/').next_back() {
-            account = leaf.trim_end_matches(".json").to_owned();
+    let mut account = if is_collection {
+        let mut collection_account =
+            json_str_value(doc, &["collectionId", "CollectionId"]);
+        if collection_account.is_empty() {
+            if let Some(leaf) = source_file_name.split('/').next_back() {
+                collection_account = leaf.trim_end_matches(".json").to_owned();
+            }
         }
-    }
+        collection_account
+    } else {
+        json_str_value(
+            doc,
+            &[
+                "deviceAccount",
+                "DeviceAccount",
+                "account",
+                "Account",
+            ],
+        )
+    };
     if account.is_empty() {
         return None;
     }
