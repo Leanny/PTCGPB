@@ -1086,14 +1086,20 @@ fn plan_append(
         |row| row.get(0),
     )?;
     let stored_rows = stored_rows as usize;
+    let compact_row_count = summary.compact_row_count as usize;
+
+    if compact_row_count == stored_rows {
+        return Ok(AppendPlan::MetadataOnly);
+    }
+    if compact_row_count < stored_rows {
+        return Ok(AppendPlan::FullReindex);
+    }
+
     let (new_count, boundary_row, new_rows) =
         scan_compact_pulls(doc, &summary.account, stored_rows);
 
-    if new_count < stored_rows {
+    if new_count != compact_row_count {
         return Ok(AppendPlan::FullReindex);
-    }
-    if new_count == stored_rows {
-        return Ok(AppendPlan::MetadataOnly);
     }
     if stored_rows > 0 {
         let Some(expected) = boundary_row.as_ref() else {
@@ -1486,8 +1492,11 @@ mod tests {
     use serde_json::json;
     use std::fs;
 
-    fn test_root() -> PathBuf {
-        std::env::temp_dir().join(format!("carddb_sqlite_test_{}", std::process::id()))
+    fn test_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "carddb_sqlite_test_{}_{label}",
+            std::process::id()
+        ))
     }
 
     #[test]
@@ -1498,7 +1507,7 @@ mod tests {
 
     #[test]
     fn sqlite_rebuild_and_incremental_sync_round_trip() {
-        let root = test_root();
+        let root = test_root("round_trip");
         let _ = fs::remove_dir_all(&root);
         let accounts_dir = root.join("Accounts/Cards/accounts");
         fs::create_dir_all(&accounts_dir).unwrap();
@@ -1550,6 +1559,67 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM rows", [], |row| row.get(0))
             .unwrap();
         assert_eq!(row_count, 2);
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn sqlite_metadata_only_sync_skips_pull_rescan_after_instance_change() {
+        let root = test_root("metadata_only");
+        let _ = fs::remove_dir_all(&root);
+        let accounts_dir = root.join("Accounts/Cards/accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+        let doc = json!({
+            "deviceAccount": "dev1",
+            "metadata": { "accountName": "Test", "instance": "1" },
+            "pulls": [
+                { "timestamp": "2026-05-05 04:53:46", "pack": "A1", "cards": ["PK_01_000001", "PK_01_000002"] }
+            ],
+            "tradedCards": {},
+            "sharedCards": {}
+        });
+        fs::write(
+            accounts_dir.join("dev1.json"),
+            serde_json::to_string_pretty(&doc).unwrap(),
+        )
+        .unwrap();
+
+        rebuild_dashboard_db(&root).unwrap();
+
+        fs::write(
+            accounts_dir.join("dev1.json"),
+            serde_json::to_string_pretty(&json!({
+                "deviceAccount": "dev1",
+                "metadata": { "accountName": "Test", "instance": "5" },
+                "pulls": [
+                    { "timestamp": "2026-05-05 04:53:46", "pack": "A1", "cards": ["PK_01_000001", "PK_01_000002"] }
+                ],
+                "tradedCards": {},
+                "sharedCards": {}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let sync = sync_dashboard_db(&root, None).unwrap();
+        assert_eq!(sync.dirty_accounts, 1);
+        assert_eq!(sync.reindexed_accounts, 1);
+
+        let conn = open_connection(&root).unwrap();
+        let instance: String = conn
+            .query_row(
+                "SELECT instance FROM accounts WHERE account_key = 'dev1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(instance, "5");
+        let row_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM rows WHERE account_key = 'dev1'", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(row_count, 1);
 
         let _ = fs::remove_dir_all(&root);
     }

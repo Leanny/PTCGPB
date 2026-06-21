@@ -214,6 +214,8 @@ pub(crate) struct AccountSummaryRecord {
     pub(crate) shinedust: i64,
     pub(crate) shinedust_updated_at: String,
     pub(crate) pull_count: i64,
+    /// Pulls that produce at least one card id (matches SQLite `rows` count).
+    pub(crate) compact_row_count: i64,
     pub(crate) card_count: i64,
     pub(crate) unique_card_count: i64,
     pub(crate) registry_card_count: i64,
@@ -322,8 +324,12 @@ pub(crate) fn build_account_summary(doc: &Value) -> Option<AccountSummaryRecord>
 
     let mut unique_cards = HashSet::new();
     let mut card_count = 0i64;
+    let mut compact_row_count = 0i64;
     for pull in &pulls {
         let ids = card_ids_from_pull(pull);
+        if !ids.is_empty() {
+            compact_row_count += 1;
+        }
         card_count += ids.len() as i64;
         unique_cards.extend(ids);
     }
@@ -358,6 +364,11 @@ pub(crate) fn build_account_summary(doc: &Value) -> Option<AccountSummaryRecord>
             0
         } else {
             pulls.len() as i64
+        },
+        compact_row_count: if is_collection {
+            0
+        } else {
+            compact_row_count
         },
         card_count,
         unique_card_count: unique_cards.len() as i64,

@@ -2676,73 +2676,80 @@
                 gap: 8px;
             }
 
+            .db-row--account .card-tile {
+                content-visibility: auto;
+                contain-intrinsic-size: auto 132px;
+            }
+
+            .account-overview-grid-wrap {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .account-overview-show-all-btn {
+                align-self: flex-start;
+            }
+
             .db-row--expandable {
                 content-visibility: visible;
             }
 
             .db-row--expandable .row-body {
+                display: grid;
+                grid-template-rows: 0fr;
                 overflow: hidden;
                 padding: 0;
-                max-height: 0;
-                opacity: 0;
-                visibility: hidden;
+                margin: 0;
+                opacity: 1;
+                visibility: visible;
                 border-top: 0 solid transparent;
-                clip-path: inset(0 0 100% 0);
+                transition:
+                    grid-template-rows 320ms cubic-bezier(0.16, 1, 0.3, 1),
+                    padding 320ms cubic-bezier(0.16, 1, 0.3, 1),
+                    border-top-color 240ms ease;
             }
 
-            .db-row--expandable.is-row-expanded .row-body.is-expanded,
-            .db-row--expandable .row-body.is-opening,
-            .db-row--expandable .row-body.is-closing {
-                visibility: visible;
-                opacity: 1;
-                clip-path: none;
+            .db-row--expandable .row-body > * {
+                min-height: 0;
+                overflow: hidden;
             }
 
             .db-row--expandable.is-row-expanded .row-body.is-expanded {
-                max-height: none;
+                grid-template-rows: 1fr;
                 padding: 16px;
                 border-top-width: 1px;
                 border-top-color: var(--row-sep);
             }
 
-            .db-row--expandable:not(.is-row-expanded)
-                .row-body:not(.is-opening):not(.is-closing) {
-                display: none;
-            }
-
-            .db-row--expandable .row-body.is-opening {
-                animation: row-expand-open 320ms cubic-bezier(0.16, 1, 0.3, 1)
+            .db-row--expandable .row-body.is-expanded .cards-grid,
+            .db-row--expandable .row-body.is-expanded .account-overview-grid-wrap {
+                animation: account-grid-in 260ms cubic-bezier(0.16, 1, 0.3, 1)
                     both;
+                animation-delay: 72ms;
             }
 
-            .db-row--expandable .row-body.is-closing {
-                animation: row-expand-close 240ms
-                    cubic-bezier(0.4, 0, 0.85, 0.45) both;
-            }
-
-            @keyframes row-expand-open {
+            @keyframes account-grid-in {
                 from {
                     opacity: 0;
-                    clip-path: inset(0 0 100% 0);
-                    transform: translate3d(0, -12px, 0) scale(0.992);
+                    transform: translate3d(0, 6px, 0);
                 }
                 to {
                     opacity: 1;
-                    clip-path: inset(0 0 0 0);
-                    transform: translate3d(0, 0, 0) scale(1);
+                    transform: translate3d(0, 0, 0);
                 }
             }
 
-            @keyframes row-expand-close {
-                from {
-                    opacity: 1;
-                    clip-path: inset(0 0 0 0);
-                    transform: translate3d(0, 0, 0) scale(1);
+            @media (prefers-reduced-motion: reduce) {
+                .db-row--expandable .row-body {
+                    transition: none !important;
                 }
-                to {
-                    opacity: 0;
-                    clip-path: inset(0 0 100% 0);
-                    transform: translate3d(0, -8px, 0) scale(0.992);
+
+                .db-row--expandable .row-body.is-expanded .cards-grid,
+                .db-row--expandable
+                    .row-body.is-expanded
+                    .account-overview-grid-wrap {
+                    animation: none !important;
                 }
             }
 
@@ -8337,6 +8344,8 @@
                 collectionWishlistOnly: false,
                 language: readSelectedLanguage(),
                 defaultExpanded: false,
+                bulkExpandBusy: false,
+                deferAccountGridRender: false,
                 pageSize: initialPageSize,
                 displayLimit: initialPageSize,
                 csvLoaded: false,
@@ -21710,25 +21719,163 @@
             }
 
             const ROW_EXPAND_OPEN_MS = 320;
-            const ROW_EXPAND_CLOSE_MS = 240;
+            const ROW_EXPAND_CLOSE_MS = 260;
+            const BULK_EXPAND_MOUNT_CHUNK = 8;
+            const CARD_GRID_HTML_CHUNK = 120;
+            const ACCOUNT_OVERVIEW_GRID_CAP = 60;
+
+            let accountOverviewGridObserver = null;
+            const accountOverviewGridMountQueue = [];
+            let accountOverviewGridMountActive = false;
 
             function rowExpandMotionReduced() {
                 return window.matchMedia("(prefers-reduced-motion: reduce)")
                     .matches;
             }
 
-            function setExpandableRowBodyExpanded(body, expanded, renderGrid) {
+            function cancelLazyAccountGridMount(body) {
+                if (!body) return;
+                if (accountOverviewGridObserver)
+                    accountOverviewGridObserver.unobserve(body);
+                delete body._pendingGridRenderer;
+            }
+
+            function ensureAccountOverviewGridObserver() {
+                if (accountOverviewGridObserver) return accountOverviewGridObserver;
+                accountOverviewGridObserver = new IntersectionObserver(
+                    (entries) => {
+                        for (const entry of entries) {
+                            if (!entry.isIntersecting) continue;
+                            const body = entry.target;
+                            accountOverviewGridObserver.unobserve(body);
+                            const renderGrid = body._pendingGridRenderer;
+                            delete body._pendingGridRenderer;
+                            if (renderGrid)
+                                void enqueueAccountOverviewGridMount(
+                                    body,
+                                    renderGrid,
+                                );
+                        }
+                    },
+                    { root: null, rootMargin: "280px 0px", threshold: 0.01 },
+                );
+                return accountOverviewGridObserver;
+            }
+
+            async function drainAccountOverviewGridMountQueue() {
+                if (accountOverviewGridMountActive) return;
+                accountOverviewGridMountActive = true;
+                while (accountOverviewGridMountQueue.length) {
+                    const job = accountOverviewGridMountQueue.shift();
+                    if (
+                        job.body?.classList.contains("is-expanded") &&
+                        !job.body.dataset.rendered
+                    ) {
+                        await mountExpandableRowGrid(job.body, job.renderGrid);
+                    }
+                    job.resolve?.();
+                    await raf();
+                }
+                accountOverviewGridMountActive = false;
+            }
+
+            function enqueueAccountOverviewGridMount(body, renderGrid) {
+                return new Promise((resolve) => {
+                    accountOverviewGridMountQueue.push({
+                        body,
+                        renderGrid,
+                        resolve,
+                    });
+                    void drainAccountOverviewGridMountQueue();
+                });
+            }
+
+            function scheduleAccountOverviewGridMount(
+                body,
+                renderGrid,
+                expandOptions = {},
+            ) {
+                if (expandOptions.lazyMount) {
+                    cancelLazyAccountGridMount(body);
+                    body._pendingGridRenderer = renderGrid;
+                    ensureAccountOverviewGridObserver().observe(body);
+                    return Promise.resolve();
+                }
+                if (expandOptions.directMount)
+                    return mountExpandableRowGrid(body, renderGrid);
+                return enqueueAccountOverviewGridMount(body, renderGrid);
+            }
+
+            function buildAccountOverviewRowCache() {
+                const cache = new Map();
+                el.rows
+                    .querySelectorAll(".db-row--account[data-account-key]")
+                    .forEach((article) => {
+                        const key = article.dataset.accountKey;
+                        if (!key) return;
+                        cache.set(key, {
+                            body: article.querySelector(".row-body"),
+                            btn: article.querySelector(".toggle-btn"),
+                        });
+                    });
+                return cache;
+            }
+
+            async function mountExpandableRowGrid(body, renderGrid) {
+                if (!body || body.dataset.rendered || typeof renderGrid !== "function")
+                    return;
+                let grid = renderGrid();
+                if (grid && typeof grid.then === "function")
+                    grid = await grid;
+                if (
+                    !grid ||
+                    body.dataset.rendered ||
+                    !body.classList.contains("is-expanded")
+                ) {
+                    return;
+                }
+                body.appendChild(grid);
+                body.dataset.rendered = "1";
+            }
+
+            function waitForRowBodyTransition(body, propertyName, fallbackMs) {
+                return new Promise((resolve) => {
+                    let done = false;
+                    const finish = () => {
+                        if (done) return;
+                        done = true;
+                        body.removeEventListener("transitionend", onEnd);
+                        resolve();
+                    };
+                    const onEnd = (event) => {
+                        if (
+                            event.target !== body ||
+                            event.propertyName !== propertyName
+                        )
+                            return;
+                        finish();
+                    };
+                    body.addEventListener("transitionend", onEnd);
+                    window.setTimeout(finish, fallbackMs + 40);
+                });
+            }
+
+            async function setExpandableRowBodyExpanded(
+                body,
+                expanded,
+                renderGrid,
+                expandOptions = {},
+            ) {
                 if (!body || body.dataset.animating === "1") return;
 
                 const article = body.closest(".db-row--expandable");
-                const instant = rowExpandMotionReduced();
+                const instant =
+                    rowExpandMotionReduced() || !!expandOptions.instant;
+                const parallel = !!expandOptions.parallel;
 
                 const clearBody = () => {
-                    body.classList.remove(
-                        "is-expanded",
-                        "is-opening",
-                        "is-closing",
-                    );
+                    cancelLazyAccountGridMount(body);
+                    body.classList.remove("is-expanded", "is-opening", "is-closing");
                     body.textContent = "";
                     delete body.dataset.rendered;
                     body.dataset.animating = "0";
@@ -21736,47 +21883,55 @@
                 };
 
                 if (expanded) {
-                    if (body.classList.contains("is-expanded")) return;
-
                     if (
-                        !body.dataset.rendered &&
-                        typeof renderGrid === "function"
-                    ) {
-                        body.appendChild(renderGrid());
-                        body.dataset.rendered = "1";
-                    }
-
-                    article?.classList.add("is-row-expanded");
-                    body.classList.add("is-expanded");
-
-                    if (instant) return;
+                        article?.classList.contains("is-row-expanded") &&
+                        body.dataset.rendered
+                    )
+                        return;
 
                     body.dataset.animating = "1";
                     body.classList.remove("is-closing");
-                    body.classList.add("is-opening");
+                    body.classList.add("is-expanded");
+                    article?.classList.remove("is-row-expanded");
 
-                    let done = false;
-                    const finish = () => {
-                        if (done) return;
-                        done = true;
-                        body.classList.remove("is-opening");
+                    if (!body.dataset.rendered && typeof renderGrid === "function") {
+                        await scheduleAccountOverviewGridMount(body, renderGrid, {
+                            directMount: true,
+                            ...expandOptions,
+                        });
+                    }
+
+                    if (!body.dataset.rendered) {
                         body.dataset.animating = "0";
-                    };
-                    const onEnd = (event) => {
-                        if (
-                            event.target !== body ||
-                            event.animationName !== "row-expand-open"
-                        )
-                            return;
-                        body.removeEventListener("animationend", onEnd);
-                        finish();
-                    };
-                    body.addEventListener("animationend", onEnd);
-                    window.setTimeout(finish, ROW_EXPAND_OPEN_MS + 40);
+                        body.classList.remove("is-expanded");
+                        return;
+                    }
+
+                    if (instant) {
+                        article?.classList.add("is-row-expanded");
+                        body.dataset.animating = "0";
+                        return;
+                    }
+
+                    void body.offsetHeight;
+                    article?.classList.add("is-row-expanded");
+                    if (parallel) {
+                        body.dataset.animating = "0";
+                        return;
+                    }
+                    await waitForRowBodyTransition(
+                        body,
+                        "grid-template-rows",
+                        ROW_EXPAND_OPEN_MS,
+                    );
+                    body.dataset.animating = "0";
                     return;
                 }
 
-                if (!body.classList.contains("is-expanded")) {
+                if (
+                    !body.classList.contains("is-expanded") &&
+                    !article?.classList.contains("is-row-expanded")
+                ) {
                     clearBody();
                     return;
                 }
@@ -21787,26 +21942,21 @@
                 }
 
                 body.dataset.animating = "1";
-                body.classList.remove("is-opening");
-                body.classList.add("is-closing");
-
-                let done = false;
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    body.removeEventListener("animationend", onEnd);
-                    clearBody();
-                };
-                const onEnd = (event) => {
-                    if (
-                        event.target !== body ||
-                        event.animationName !== "row-expand-close"
-                    )
-                        return;
-                    finish();
-                };
-                body.addEventListener("animationend", onEnd);
-                window.setTimeout(finish, ROW_EXPAND_CLOSE_MS + 40);
+                article?.classList.remove("is-row-expanded");
+                if (parallel) {
+                    window.setTimeout(() => {
+                        if (!article?.classList.contains("is-row-expanded")) {
+                            clearBody();
+                        }
+                    }, ROW_EXPAND_CLOSE_MS + 24);
+                    return;
+                }
+                await waitForRowBodyTransition(
+                    body,
+                    "grid-template-rows",
+                    ROW_EXPAND_CLOSE_MS,
+                );
+                clearBody();
             }
 
             function getPackRowGridRenderer(row) {
@@ -21823,29 +21973,96 @@
                 account,
                 cardFilterConfig = getActiveCardFilterConfig(),
             ) {
-                return () =>
-                    renderCardGrid(
-                        sortCardEntriesByRarity(
-                            getAccountVisibleCardEntries(
-                                account,
-                                cardFilterConfig,
-                            ),
+                const entries = sortCardEntriesByRarity(
+                    filterAccountOverviewVisibleEntries(
+                        getAccountVisibleCardEntries(
+                            account,
+                            cardFilterConfig,
                         ),
-                        {
-                            showQuantity: true,
-                            entries: true,
-                            account: account.account,
-                            disableTrade: true,
-                        },
-                    );
+                    ),
+                );
+                const gridOptions = {
+                    showQuantity: true,
+                    entries: true,
+                    account: account.account,
+                    disableTrade: true,
+                };
+                return () => renderAccountOverviewGrid(entries, gridOptions);
             }
 
-            function animateShownPackRows(expanded) {
+            async function mountExpandableRowCollapsed(body, renderGrid) {
+                if (!body || body.dataset.rendered || typeof renderGrid !== "function")
+                    return false;
+                const article = body.closest(".db-row--expandable");
+                body.classList.add("is-expanded");
+                article?.classList.remove("is-row-expanded");
+                await scheduleAccountOverviewGridMount(body, renderGrid, {
+                    directMount: true,
+                });
+                return !!body.dataset.rendered;
+            }
+
+            function openExpandableRowParallel(body) {
+                if (!body?.dataset.rendered) return;
+                const article = body.closest(".db-row--expandable");
+                void body.offsetHeight;
+                article?.classList.add("is-row-expanded");
+                body.dataset.animating = "0";
+            }
+
+            async function runBulkExpandableRowJobs(jobs, expanded) {
+                if (!jobs.length) return false;
+                const collapseOpts = { parallel: true };
+
+                if (expanded) {
+                    const mounted = [];
+                    for (
+                        let i = 0;
+                        i < jobs.length;
+                        i += BULK_EXPAND_MOUNT_CHUNK
+                    ) {
+                        const chunk = jobs.slice(
+                            i,
+                            i + BULK_EXPAND_MOUNT_CHUNK,
+                        );
+                        const results = await Promise.all(
+                            chunk.map((job) =>
+                                mountExpandableRowCollapsed(
+                                    job.body,
+                                    job.renderGrid,
+                                ),
+                            ),
+                        );
+                        for (let j = 0; j < chunk.length; j++) {
+                            if (results[j]) mounted.push(chunk[j].body);
+                        }
+                        if (i + BULK_EXPAND_MOUNT_CHUNK < jobs.length)
+                            await raf();
+                    }
+                    await raf();
+                    for (const body of mounted) openExpandableRowParallel(body);
+                    return mounted.length > 0;
+                }
+
+                for (const job of jobs) {
+                    void setExpandableRowBodyExpanded(
+                        job.body,
+                        false,
+                        null,
+                        collapseOpts,
+                    );
+                }
+                if (!rowExpandMotionReduced())
+                    await waitMs(ROW_EXPAND_CLOSE_MS + 32);
+                return true;
+            }
+
+            async function animateShownPackRows(expanded) {
                 const limit = Math.min(
                     state.displayLimit,
                     state.filteredRows.length,
                 );
-                let matched = 0;
+                const jobs = [];
                 for (let i = 0; i < limit; i++) {
                     const row = state.filteredRows[i];
                     const article = el.rows.querySelector(
@@ -21855,59 +22072,61 @@
                     const body = article.querySelector(".row-body");
                     const btn = article.querySelector(".toggle-btn");
                     if (!body || !btn) continue;
-                    matched++;
                     btn.textContent = expanded ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(
+                    jobs.push({
                         body,
-                        expanded,
-                        expanded ? getPackRowGridRenderer(row) : null,
-                    );
+                        renderGrid: expanded
+                            ? getPackRowGridRenderer(row)
+                            : null,
+                    });
                 }
-                return matched > 0;
+                return runBulkExpandableRowJobs(jobs, expanded);
             }
 
-            function animateShownAccountRows(expanded) {
+            async function animateShownAccountRows(expanded) {
                 const accounts = state.accountRows;
                 if (!accounts?.length) return false;
                 const cardFilterConfig = getActiveCardFilterConfig();
                 const limit = Math.min(state.displayLimit, accounts.length);
-                let matched = 0;
+                const rowCache = buildAccountOverviewRowCache();
+                const jobs = [];
                 for (let i = 0; i < limit; i++) {
                     const account = accounts[i];
-                    const article = el.rows.querySelector(
-                        `.db-row[data-account-key="${CSS.escape(account.key)}"]`,
-                    );
-                    if (!article) continue;
-                    const body = article.querySelector(".row-body");
-                    const btn = article.querySelector(".toggle-btn");
-                    if (!body || !btn) continue;
-                    matched++;
-                    btn.textContent = expanded ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(
-                        body,
-                        expanded,
-                        expanded
+                    const cached = rowCache.get(account.key);
+                    if (!cached?.body || !cached?.btn) continue;
+                    cached.btn.textContent = expanded ? "Compact" : "Expand";
+                    jobs.push({
+                        body: cached.body,
+                        renderGrid: expanded
                             ? getAccountRowGridRenderer(
                                   account,
                                   cardFilterConfig,
                               )
                             : null,
-                    );
+                    });
                 }
-                return matched > 0;
+                return runBulkExpandableRowJobs(jobs, expanded);
             }
 
-            function animateBulkExpandableRows(expanded) {
-                const animated =
-                    state.view === "rows"
-                        ? animateShownPackRows(expanded)
-                        : state.view === "accounts"
-                          ? animateShownAccountRows(expanded)
-                          : false;
-                if (!animated) {
-                    invalidateViewDomCache();
-                    renderCurrent();
+            async function animateBulkExpandableRows(expanded) {
+                if (state.view === "rows") {
+                    const animated = await animateShownPackRows(expanded);
+                    if (!animated) {
+                        invalidateViewDomCache();
+                        renderCurrent();
+                    }
+                    return;
                 }
+                if (state.view === "accounts") {
+                    const animated = await animateShownAccountRows(expanded);
+                    if (!animated) {
+                        invalidateViewDomCache();
+                        renderCurrent();
+                    }
+                    return;
+                }
+                invalidateViewDomCache();
+                renderCurrent();
             }
 
             function renderRows() {
@@ -21982,12 +22201,11 @@
                     const willExpand = !rowIsExpanded(row);
                     setRowExpanded(row.index, willExpand);
                     btn.textContent = willExpand ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(body, willExpand, () =>
-                        renderCardGrid(visibleCardIds, {
-                            showQuantity: false,
-                            account: row.account,
-                            disableTrade: true,
-                        }),
+                    void setExpandableRowBodyExpanded(
+                        body,
+                        willExpand,
+                        willExpand ? getPackRowGridRenderer(row) : null,
+                        { directMount: true },
                     );
                 });
                 return article;
@@ -23355,6 +23573,8 @@
                 cardFilterConfig = getActiveCardFilterConfig(),
             ) {
                 const expanded = accountIsExpanded(account.key);
+                const domExpanded =
+                    expanded && !state.deferAccountGridRender;
                 const article = document.createElement("article");
                 article.className =
                     "db-row db-row--account db-row--expandable panel";
@@ -23400,7 +23620,7 @@
                     rawFileLabel,
                     expanded,
                 );
-                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${titleMain}</strong><div class="meta">${accountMeta}<span>${countLabel}</span><span>${uniqueLabel}</span></div></div><div class="row-actions">${overviewActionsHtml}</div></div><div class="row-body${expanded ? " is-expanded" : ""}"></div>`;
+                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${titleMain}</strong><div class="meta">${accountMeta}<span>${countLabel}</span><span>${uniqueLabel}</span></div></div><div class="row-actions">${overviewActionsHtml}</div></div><div class="row-body${domExpanded ? " is-expanded" : ""}"></div>`;
                 const rowHead = article.firstElementChild;
                 const body = article.lastElementChild;
                 const btn = rowHead.querySelector(".toggle-btn");
@@ -23418,15 +23638,18 @@
                             ),
                         ),
                     );
-                if (expanded) {
+                if (domExpanded) {
                     article.classList.add("is-row-expanded");
                     body.appendChild(
-                        renderCardGrid(getVisibleEntriesForGrid(), {
-                            showQuantity: true,
-                            entries: true,
-                            account: account.account,
-                            disableTrade: true,
-                        }),
+                        renderAccountOverviewGrid(
+                            getVisibleEntriesForGrid(),
+                            {
+                                showQuantity: true,
+                                entries: true,
+                                account: account.account,
+                                disableTrade: true,
+                            },
+                        ),
                     );
                     body.dataset.rendered = "1";
                 }
@@ -23480,13 +23703,16 @@
                     const willExpand = !accountIsExpanded(account.key);
                     setAccountExpanded(account.key, willExpand);
                     btn.textContent = willExpand ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(body, willExpand, () =>
-                        renderCardGrid(getVisibleEntriesForGrid(), {
-                            showQuantity: true,
-                            entries: true,
-                            account: account.account,
-                            disableTrade: true,
-                        }),
+                    void setExpandableRowBodyExpanded(
+                        body,
+                        willExpand,
+                        willExpand
+                            ? getAccountRowGridRenderer(
+                                  account,
+                                  cardFilterConfig,
+                              )
+                            : null,
+                        { directMount: true },
                     );
                 });
 
@@ -23572,84 +23798,82 @@
                 return article;
             }
 
-            function renderCardGrid(items, options) {
-                const parts = [];
+            function buildCardTileHtml(item, options) {
                 const account = options.account || "";
                 const disableTrade = !!options.disableTrade;
-                for (const item of items) {
-                    const id = options.entries ? item.id : item;
-                    const pulledCount = options.entries
-                        ? Number(item.pulledCount ?? item.count) || 0
-                        : 0;
-                    const count = options.entries ? item.count : 0;
-                    const card = options.entries ? item.info : getCardInfo(id);
-                    const imgPart = card.imageUrl
-                        ? `<img src="${escapeHtml(card.imageUrl)}" loading="lazy" alt="${escapeHtml(card.name)}" ${cardImageOnErrorAttr(card, "catalog")}>`
-                        : "";
-                    const fallbackClass = card.imageUrl
-                        ? "hidden empty"
-                        : "empty";
-                    let copyCount = 0;
-                    if (options.showCopyCount && account) {
-                        copyCount = options.sharedView
-                            ? getSharedCount(account, id)
-                            : getTradedCount(account, id);
-                    }
-                    const qtyValue = options.showQuantity
-                        ? count
-                        : copyCount > 1
-                          ? copyCount
-                          : 0;
-                    const qtyPart =
-                        options.showQuantity || qtyValue > 1
-                            ? `<div class="qty">×${formatNumber(qtyValue)}</div>`
-                            : "";
-                    const noTrade =
-                        card.rarityValue === 800 ||
-                        card.rarityValue === 900 ||
-                        isPromoCard(id);
-                    const isInShared =
-                        !disableTrade && account && isShared(account, id);
-                    const isInTraded =
-                        !disableTrade && account && isTraded(account, id);
-                    const tradedClass = isInTraded ? " traded" : "";
-                    const sharedClass = isInShared ? " shared" : "";
-                    const tradedCnt =
-                        account && !options.sharedView
-                            ? getTradedCount(account, id)
-                            : 0;
-                    const tradedMarkGlyph = isInTraded ? "\u2715" : "\u2713";
-                    const tradedMarkTitle = isInTraded
-                        ? tradedCnt > 1
-                            ? "Remove one traded copy"
-                            : "Remove from traded"
-                        : "Toggle traded status";
-                    const tradedBtn =
-                        !disableTrade &&
-                        account &&
-                        !noTrade &&
-                        !options.sharedView
-                            ? `<button class="traded-btn traded-mark-btn" type="button" data-account="${escapeHtml(account)}" data-card-id="${escapeHtml(id)}" title="${escapeHtml(tradedMarkTitle)}">${tradedMarkGlyph}</button>`
-                            : "";
-                    const sharedCnt =
-                        options.sharedView && account
-                            ? getSharedCount(account, id)
-                            : 0;
-                    const sharedRemoveTitle =
-                        options.sharedView && account && sharedCnt > 1
-                            ? "Remove one shared copy"
-                            : "Remove from shared";
-                    const sharedRemoveBtn =
-                        options.sharedView && account
-                            ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="${escapeHtml(sharedRemoveTitle)}">\u2715</button>`
-                            : "";
-                    parts.push(
-                        `<div class="card-tile${tradedClass}${sharedClass}" data-catalog-navigate-card="${escapeHtml(id)}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(id, card))}</span></div></div>`,
-                    );
+                const id = options.entries ? item.id : item;
+                const count = options.entries ? item.count : 0;
+                const card = options.entries ? item.info : getCardInfo(id);
+                const imgPart = card.imageUrl
+                    ? `<img src="${escapeHtml(card.imageUrl)}" loading="lazy" alt="${escapeHtml(card.name)}" ${cardImageOnErrorAttr(card, "catalog")}>`
+                    : "";
+                const fallbackClass = card.imageUrl ? "hidden empty" : "empty";
+                let copyCount = 0;
+                if (options.showCopyCount && account) {
+                    copyCount = options.sharedView
+                        ? getSharedCount(account, id)
+                        : getTradedCount(account, id);
                 }
-                const grid = document.createElement("div");
-                grid.className = "cards-grid";
-                grid.innerHTML = parts.join("");
+                const qtyValue = options.showQuantity
+                    ? count
+                    : copyCount > 1
+                      ? copyCount
+                      : 0;
+                const qtyPart =
+                    options.showQuantity || qtyValue > 1
+                        ? `<div class="qty">×${formatNumber(qtyValue)}</div>`
+                        : "";
+                const noTrade =
+                    card.rarityValue === 800 ||
+                    card.rarityValue === 900 ||
+                    isPromoCard(id);
+                const isInShared =
+                    !disableTrade && account && isShared(account, id);
+                const isInTraded =
+                    !disableTrade && account && isTraded(account, id);
+                const tradedClass = isInTraded ? " traded" : "";
+                const sharedClass = isInShared ? " shared" : "";
+                const tradedCnt =
+                    account && !options.sharedView
+                        ? getTradedCount(account, id)
+                        : 0;
+                const tradedMarkGlyph = isInTraded ? "\u2715" : "\u2713";
+                const tradedMarkTitle = isInTraded
+                    ? tradedCnt > 1
+                        ? "Remove one traded copy"
+                        : "Remove from traded"
+                    : "Toggle traded status";
+                const tradedBtn =
+                    !disableTrade && account && !noTrade && !options.sharedView
+                        ? `<button class="traded-btn traded-mark-btn" type="button" data-account="${escapeHtml(account)}" data-card-id="${escapeHtml(id)}" title="${escapeHtml(tradedMarkTitle)}">${tradedMarkGlyph}</button>`
+                        : "";
+                const sharedCnt =
+                    options.sharedView && account
+                        ? getSharedCount(account, id)
+                        : 0;
+                const sharedRemoveTitle =
+                    options.sharedView && account && sharedCnt > 1
+                        ? "Remove one shared copy"
+                        : "Remove from shared";
+                const sharedRemoveBtn =
+                    options.sharedView && account
+                        ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="${escapeHtml(sharedRemoveTitle)}">\u2715</button>`
+                        : "";
+                return `<div class="card-tile${tradedClass}${sharedClass}" data-catalog-navigate-card="${escapeHtml(id)}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(id, card))}</span></div></div>`;
+            }
+
+            function appendCardGridHtml(grid, items, options, start = 0, end) {
+                const last = end == null ? items.length : end;
+                if (start >= last) return;
+                const parts = [];
+                for (let i = start; i < last; i++)
+                    parts.push(buildCardTileHtml(items[i], options));
+                grid.insertAdjacentHTML("beforeend", parts.join(""));
+            }
+
+            function attachCardGridListeners(grid, options) {
+                const account = options.account || "";
+                const disableTrade = !!options.disableTrade;
                 grid.addEventListener("click", async (e) => {
                     const sharedBtn = e.target.closest(
                         "[data-shared-remove-account]",
@@ -23807,6 +24031,67 @@
                             partnerReceivedId,
                         );
                 });
+            }
+
+            function renderAccountOverviewGrid(entries, options) {
+                const cap = ACCOUNT_OVERVIEW_GRID_CAP;
+                if (entries.length <= cap) {
+                    if (entries.length <= CARD_GRID_HTML_CHUNK)
+                        return renderCardGrid(entries, options);
+                    return renderCardGridChunked(entries, options);
+                }
+                const wrap = document.createElement("div");
+                wrap.className = "account-overview-grid-wrap";
+                wrap.appendChild(renderCardGrid(entries.slice(0, cap), options));
+                const moreBtn = document.createElement("button");
+                moreBtn.type = "button";
+                moreBtn.className = "ghost account-overview-show-all-btn";
+                moreBtn.textContent = `Show all ${formatNumber(entries.length)} cards (${formatNumber(entries.length - cap)} more)`;
+                moreBtn.addEventListener("click", async () => {
+                    moreBtn.disabled = true;
+                    moreBtn.textContent = "Loading cards…";
+                    const rest = entries.slice(cap);
+                    const extra =
+                        rest.length <= CARD_GRID_HTML_CHUNK
+                            ? renderCardGrid(rest, options)
+                            : await renderCardGridChunked(rest, options);
+                    moreBtn.remove();
+                    wrap.appendChild(extra);
+                });
+                wrap.appendChild(moreBtn);
+                return wrap;
+            }
+
+            function renderCardGrid(items, options) {
+                const grid = document.createElement("div");
+                grid.className = "cards-grid";
+                appendCardGridHtml(grid, items, options);
+                attachCardGridListeners(grid, options);
+                return grid;
+            }
+
+            async function renderCardGridChunked(items, options) {
+                const grid = document.createElement("div");
+                grid.className = "cards-grid";
+                attachCardGridListeners(grid, options);
+                if (items.length <= CARD_GRID_HTML_CHUNK) {
+                    appendCardGridHtml(grid, items, options);
+                    return grid;
+                }
+                for (
+                    let i = 0;
+                    i < items.length;
+                    i += CARD_GRID_HTML_CHUNK
+                ) {
+                    appendCardGridHtml(
+                        grid,
+                        items,
+                        options,
+                        i,
+                        Math.min(i + CARD_GRID_HTML_CHUNK, items.length),
+                    );
+                    if (i + CARD_GRID_HTML_CHUNK < items.length) await raf();
+                }
                 return grid;
             }
 
@@ -24575,45 +24860,71 @@
             });
 
             el.expandAllBtn.addEventListener("click", async () => {
+                if (state.bulkExpandBusy) return;
+                state.bulkExpandBusy = true;
+                el.expandAllBtn.disabled = true;
+                el.compactAllBtn.disabled = true;
                 state.defaultExpanded = true;
-                if (state.view === "rows") {
-                    const limit = Math.min(
-                        state.displayLimit,
-                        state.filteredRows.length,
-                    );
-                    for (let i = 0; i < limit; i++)
-                        setRowExpanded(state.filteredRows[i].index, true);
-                    animateBulkExpandableRows(true);
-                } else if (state.view === "accounts") {
-                    let accounts = state.accountRows;
-                    if (!accounts) {
-                        renderAccountOverviewPending(
-                            "Preparing Account Overview...",
+                try {
+                    if (state.view === "rows") {
+                        const limit = Math.min(
+                            state.displayLimit,
+                            state.filteredRows.length,
                         );
-                        accounts = await ensureAccountOverviewBuild();
-                        if (!accounts || state.view !== "accounts") return;
+                        for (let i = 0; i < limit; i++)
+                            setRowExpanded(state.filteredRows[i].index, true);
+                        await animateBulkExpandableRows(true);
+                    } else if (state.view === "accounts") {
+                        let accounts = state.accountRows;
+                        if (!accounts) {
+                            renderAccountOverviewPending(
+                                "Preparing Account Overview...",
+                            );
+                            accounts = await ensureAccountOverviewBuild();
+                            if (!accounts || state.view !== "accounts") return;
+                            const limit = Math.min(
+                                state.displayLimit,
+                                accounts.length,
+                            );
+                            for (let i = 0; i < limit; i++)
+                                setAccountExpanded(accounts[i].key, true);
+                            state.deferAccountGridRender = true;
+                            invalidateViewDomCache();
+                            renderAccountOverview();
+                            state.deferAccountGridRender = false;
+                            await animateShownAccountRows(true);
+                            return;
+                        }
                         const limit = Math.min(
                             state.displayLimit,
                             accounts.length,
                         );
                         for (let i = 0; i < limit; i++)
                             setAccountExpanded(accounts[i].key, true);
-                        invalidateViewDomCache();
-                        renderAccountOverview();
-                        return;
+                        await animateBulkExpandableRows(true);
                     }
-                    const limit = Math.min(state.displayLimit, accounts.length);
-                    for (let i = 0; i < limit; i++)
-                        setAccountExpanded(accounts[i].key, true);
-                    animateBulkExpandableRows(true);
+                } finally {
+                    state.bulkExpandBusy = false;
+                    el.expandAllBtn.disabled = false;
+                    el.compactAllBtn.disabled = false;
                 }
             });
 
-            el.compactAllBtn.addEventListener("click", () => {
+            el.compactAllBtn.addEventListener("click", async () => {
+                if (state.bulkExpandBusy) return;
+                state.bulkExpandBusy = true;
+                el.expandAllBtn.disabled = true;
+                el.compactAllBtn.disabled = true;
                 state.defaultExpanded = false;
                 state.expandedRows.clear();
                 state.expandedAccounts.clear();
-                animateBulkExpandableRows(false);
+                try {
+                    await animateBulkExpandableRows(false);
+                } finally {
+                    state.bulkExpandBusy = false;
+                    el.expandAllBtn.disabled = false;
+                    el.compactAllBtn.disabled = false;
+                }
             });
 
             state.cardmaster = readCachedJson(LS_MASTER);
