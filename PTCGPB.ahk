@@ -34,6 +34,7 @@ DllCall("ntdll\ZwDelayExecution","Int",0,"Int64*",-5000)
 #Include ChooseColors.ahk
 #Include DropDownColor.ahk
 #Include SpecialEvent.ahk
+#Include MumuHelper.ahk
 #Include Utils.ahk
 #Include AccountMetadata.ahk
 #Include GitManager.ahk
@@ -2180,7 +2181,7 @@ ArrangeWindows:
 
     scaleParam := 283
     windowsPositioned := 0
-    titleHeight := 40
+    titleHeight := 40 + MuMuBias()
 
     if(botConfig.get("SelectedMonitorIndex") = "")
         botConfig.set("SelectedMonitorIndex", "1:", "ToolsAndSystem")

@@ -256,11 +256,12 @@ initializeAdbShell() {
                     else
                         continue
                 }
-
                 try {
                     RetryCount++
                     ADB_LogTrace("initializeAdbShell requesting su")
+                    MuMuEnableRoot(session.get("scriptName"))
                     session.get("adbShell").StdIn.WriteLine("su")
+                    MuMuDisableRoot(session.get("scriptName"))
                 } catch e2 {
                     if (RetryCount > MaxRetries) {
                         throw Exception("Failed to elevate shell: " . (IsObject(e2) ? e2.Message : e2))
@@ -322,7 +323,9 @@ doesMissionUserPrefsExist() {
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    MuMuEnableRoot(session.get("scriptName"))
     result := Trim(CmdRet(adbCommand . " shell su -c '""test -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs && echo 1 || echo 0""'"), "`r`n`t ")
+    MuMuDisableRoot(session.get("scriptName"))
     ADB_LogTrace("doesMissionUserPrefsExist result=" . result)
     return (result = "1")
 }
@@ -751,7 +754,7 @@ waitadb(){
 adbClick(X, Y) {
     prof := Prof_Scope(A_ThisFunc)
     static clickCommands := Object()
-    static convX := 540/283, convY := 960/488, offset := -40
+    static convX := 540/283, convY := 960/488, offset := (-40 - MuMuBias())
 
     key := X << 16 | Y
 

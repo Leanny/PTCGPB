@@ -14,7 +14,6 @@ EnsurePTCGPBHelperInstalled() {
     helperUrl := "https://leanny.github.io/ptcgpb-helper/ptcgpb-helper-android"
     localPath := A_Temp . "\ptcgpb-helper-android." . safeScriptName
     minHelperSize := 2500000
-
     adbWriteRaw("mkdir -p /data/ptcgp")
     remoteSize := Trim(StrReplace(adbWriteRaw("if [ -x " . remotePath . " ]; then wc -c < " . remotePath . "; else echo 0; fi", true), "`r"), "`n`t ")
     remoteSize := RegExReplace(remoteSize, "[^\d]")
@@ -38,10 +37,12 @@ EnsurePTCGPBHelperInstalled() {
         LogWarn("Downloaded ptcgpb helper is unexpectedly small: " . helperSize . " bytes")
         return false
     }
-
+    MuMuEnableRoot(session.get("scriptName"))
     adbCommand := """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort")
     LogTrace("Pushing ptcgpb helper to " . sdcardTmpPath, "ADB.txt")
     RunWait, % adbCommand . " push """ . localPath . """ " . sdcardTmpPath,, Hide
+    MuMuDisableRoot(session.get("scriptName"))
+
     if (ErrorLevel) {
         LogWarn("Failed to push ptcgpb helper to device. ErrorLevel=" . ErrorLevel)
         return false

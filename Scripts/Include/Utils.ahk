@@ -62,13 +62,13 @@ DownloadFile(url, filename) {
     prof := Prof_Scope(A_ThisFunc)
     url := url  ; Change to your hosted .txt URL "https://pastebin.com/raw/vYxsiqSs"
     RegRead, proxyEnabled, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyEnable
-	RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
+    RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
     localPath = %A_ScriptDir%\..\%filename% ; Change to the folder you want to save the file
     errored := false
     try {
         whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
         if (proxyEnabled)
-			whr.SetProxy(2, proxyServer)
+            whr.SetProxy(2, proxyServer)
         whr.Open("GET", url, true)
         whr.Send()
         whr.WaitForResponse()
@@ -124,22 +124,22 @@ MigrateDeleteMethod(oldMethod) {
 ; getChangeDateTime - Calculate the server reset time in local timezone
 ;-------------------------------------------------------------------------------
 getChangeDateTime() {
-	offset := A_Now
-	currenttimeutc := A_NowUTC
-	EnvSub, offset, %currenttimeutc%, Hours   ;offset from local timezone to UTC
+    offset := A_Now
+    currenttimeutc := A_NowUTC
+    EnvSub, offset, %currenttimeutc%, Hours   ;offset from local timezone to UTC
 
     resetTime := SubStr(A_Now, 1, 8) "060000" ;today at 6am [utc] zero seconds is the reset time at UTC
-	resetTime += offset, Hours                ;reset time in local timezone
+    resetTime += offset, Hours                ;reset time in local timezone
 
-	;find the closest reset time
-	currentTime := A_Now
-	timeToReset := resetTime
-	EnvSub, timeToReset, %currentTime%, Hours
-	if(timeToReset > 12) {
-		resetTime += -1, Days
-	} else if (timeToReset < -12) {
-		resetTime += 1, Days
-	}
+    ;find the closest reset time
+    currentTime := A_Now
+    timeToReset := resetTime
+    EnvSub, timeToReset, %currentTime%, Hours
+    if(timeToReset > 12) {
+        resetTime += -1, Days
+    } else if (timeToReset < -12) {
+        resetTime += 1, Days
+    }
 
     return resetTime
 }
@@ -162,7 +162,7 @@ checkShouldDoMissions() {
     }
     else if (botConfig.get("deleteMethod") = "Inject 13P+" || botConfig.get("deleteMethod") = "Inject Wonderpick 96P+") {
         ; if(verboseLogging)
-            ; LogToFile("Skipping missions for " . deleteMethod . " method - missions only run for 'Inject Missions'")
+        ; LogToFile("Skipping missions for " . deleteMethod . " method - missions only run for 'Inject Missions'")
         return false
     }
     else {
@@ -566,6 +566,7 @@ getMumuInstanceNum(scriptName, mumuFolder) {
                     RegExMatch(A_LoopFileFullPath, "[^-]+$", mumuNum)
                     return mumuNum
                 }
+
             }
         }
     }
@@ -577,7 +578,7 @@ getMumuInstanceNum(scriptName, mumuFolder) {
 ;-------------------------------------------------------------------------------
 Run_(target, args:="", workdir:="") {
     try
-        ShellRun(target, args, workdir)
+    ShellRun(target, args, workdir)
     catch e
         Run % args="" ? target : target " " args, % workdir
 }
@@ -770,52 +771,6 @@ getScriptBaseFolder(){
     return grandParentDir
 }
 
-getMuMuFolderInConfig(){
-    jsonPath := A_AppData . "\Netease\MuMuPlayerGlobal\install_config.json"
-
-    if (!FileExist(jsonPath)) {
-        return -1
-    }
-
-    FileRead, jsonText, %jsonPath%
-
-    if (RegExMatch(jsonText, "U)""install_dir""\s*:\s*""(.*)""", match)) {
-        rawPath := match1
-        fullPath := StrReplace(rawPath, "\\", "\")
-
-        ;SplitPath, fullPath,, parentDir
-
-        if (InStr(FileExist(fullPath), "D")) {
-            return fullPath
-        } else {
-            return -2
-        }
-    } else {
-        return -3
-    }
-}
-getMuMuFolder(){
-    global botConfig
-    static subFolderList
-
-    mumuFolder := getMuMuFolderInConfig()
-
-    if(!IsNumeric(mumuFolder))
-        return mumuFolder
-
-    baseFolder := botConfig.get("folderPath")
-    subFolderList := ["MuMuPlayerGlobal-12.0", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
-
-    For idx, value in subFolderList {
-        mumuFolder = %baseFolder%\%value%
-        if InStr(FileExist(mumuFolder), "D")
-            return mumuFolder
-    }
-
-    MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
-    return
-}
-
 GetGPUMemoryByWMI(pid){
     ; First try WMI GPU perf counters (more stable across systems than PDH wildcard reads).
     try {
@@ -929,7 +884,8 @@ FixInstanceScreen(instanceNo){
     Sleep, 50
     SendMessage, 0x0005, 0, 0,, %instanceTitle%
     Sleep, 500
-    WinMove, %instanceTitle%, , , , 283, 532
+    YCoord := 532 + MuMuBias()
+    WinMove, %instanceTitle%, , , , 283, %YCoord%
 }
 
 getMuMuHwnd(winTitle) {

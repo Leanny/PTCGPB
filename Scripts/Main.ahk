@@ -13,6 +13,7 @@ CoordMode, Pixel, Screen
 #Include Profiler.ahk
 
 #Include Logging.ahk
+#Include MumuHelper.ahk
 #Include ADB.ahk
 #Include Gdip_All.ahk
 #Include Gdip_Imagesearch.ahk
@@ -476,8 +477,9 @@ resetWindows(){
             if (instanceIndex = "")
                 instanceIndex := 1
 
+            titleHeight := 40 + MuMuBias()
             borderWidth := 4 - 1
-            rowHeight := 40 + 492
+            rowHeight := titleHeight + 492
             currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
             y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
