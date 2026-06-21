@@ -2712,6 +2712,7 @@ StartBot() {
         if (!FileExist("showcase_ids.txt")) {
             MsgBox, 48, Showcase Warning, Showcase is enabled but showcase_ids.txt does not exist.`nPlease create this file in the same directory as the script.
         }
+        resetShowcaseLikesIfNewCycle()
     }
 
     if (botConfig.get("runMain")) {

@@ -361,10 +361,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             session.set("loadedAccount", false)
         }
 
-        if(session.get("dateChange")){
-            botConfig.set("showcaseLikes", 5, "Extra")
-            botConfig.saveConfigToSettings("Extra")
-        }
+        resetShowcaseLikesIfNewCycle()
 
         ; Only refresh account lists if we're not in injection mode or if no account is loaded
         ; This prevents constant list regeneration during injection
