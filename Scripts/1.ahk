@@ -1800,9 +1800,7 @@ GetHistoryOfAccount() {
     adbWriteRaw("cp -f " . remotePath . " " . sdcardPath)
 
     LogTrace("Pulling history file to " . localPath, "ADB.txt")
-    MuMuEnableRoot(session.get("scriptName"))
     RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
-    MuMuDisableRoot(session.get("scriptName"))
     adbWriteRaw("rm -f " . remotePath . " " . sdcardPath)
     if (!FileExist(localPath)) {
         LogWarn("GetHistoryOfAccount failed because pulled history file was not created: " . localPath)
@@ -1811,9 +1809,7 @@ GetHistoryOfAccount() {
 
     root := getScriptBaseFolder()
     LogDebug("Importing history file with carddb for device account " . deviceAccount)
-    MuMuEnableRoot(session.get("scriptName"))
     RunWait, % """" . helperPath . """ --root """ . root . """ import-history --device-account """ . deviceAccount . """ --input """ . localPath . """",, Hide
-    MuMuDisableRoot(session.get("scriptName"))
     if (ErrorLevel) {
         LogWarn("GetHistoryOfAccount carddb import-history failed for " . session.get("accountFileName") . " ErrorLevel=" . ErrorLevel)
         return false
@@ -1836,13 +1832,11 @@ InitPackOpening(full := false) {
     adbWriteRaw("pkill -f /data/ptcgp/ptcgpb")
 
     SavePackOpeningMissionUserPrefsSnapshot("pre")
-    MuMuEnableRoot(session.get("scriptName"))
     if (full) {
-        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --full --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
+        RunWait, % adbCommand . " shell ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --full --duplicate >/dev/null 2>&1 </dev/null &'""", , Hide
     } else {
-        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
+        RunWait, % adbCommand . " shell ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
     }
-    MuMuDisableRoot(session.get("scriptName"))
     Sleep, 300
 }
 
@@ -2077,9 +2071,7 @@ EvaluatePack() {
     maxAttempts := expectedOpenedPacks > 1 ? 100 : 10
     foundResult := false
     Loop, %maxAttempts% {
-        MuMuEnableRoot(session.get("scriptName"))
         RunWait, % adbCommand . " shell test -f /data/ptcgp/result.rc", , Hide
-        MuMuDisableRoot(session.get("scriptName"))
         if (ErrorLevel = 0) {
             foundResult := true
             break
@@ -2107,11 +2099,9 @@ EvaluatePackCount() {
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
 
     LogTrace("EvaluatePackCount running ptcgpb packcount", "ADB.txt")
-    MuMuEnableRoot(session.get("scriptName"))
-    output := GetStdout(adbCommand . " shell su -c ""sh -c '/data/ptcgp/ptcgpb packcount'""")
+    output := GetStdout(adbCommand . " shell ""/data/ptcgp/ptcgpb packcount""")
     output := StrReplace(output, "`r")
     output := Trim(output, "`n ")
-    MuMuDisableRoot(session.get("scriptName"))
     if !RegExMatch(output, "^-?\d+$") {
         LogDebug("EvaluatePackCount returned non-numeric output: " . output)
         return 0
@@ -2132,9 +2122,7 @@ RecoverPack() {
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
     adbWriteRaw("rm -f /data/ptcgp/result.log")
     adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
-    MuMuEnableRoot(session.get("scriptName"))
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
-    MuMuDisableRoot(session.get("scriptName"))
     return ParsePackResultOutput(output)
 }
 

@@ -37,11 +37,9 @@ EnsurePTCGPBHelperInstalled() {
         LogWarn("Downloaded ptcgpb helper is unexpectedly small: " . helperSize . " bytes")
         return false
     }
-    MuMuEnableRoot(session.get("scriptName"))
     adbCommand := """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort")
     LogTrace("Pushing ptcgpb helper to " . sdcardTmpPath, "ADB.txt")
     RunWait, % adbCommand . " push """ . localPath . """ " . sdcardTmpPath,, Hide
-    MuMuDisableRoot(session.get("scriptName"))
 
     if (ErrorLevel) {
         LogWarn("Failed to push ptcgpb helper to device. ErrorLevel=" . ErrorLevel)
