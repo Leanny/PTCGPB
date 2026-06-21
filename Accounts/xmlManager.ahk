@@ -120,7 +120,7 @@ XM_BuildGui() {
     Gui, Add, Text, x54 y154 w500 h24, Copy accounts for export, or move them fully out of active bot folders.
     Gui, Font, s10 c%text%, Segoe UI
     Gui, Add, Text, x54 y198 w100 h24, Selection
-    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Brazilian Portuguese|Language Traditional Chinese|Language Korean|Custom pack range|%XM_PullFilterOptions%
+    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Portuguese|Language Traditional Chinese|Language Korean|Custom pack range|%XM_PullFilterOptions%
     Gui, Add, Text, x54 y238 w100 h24 vRangeLabel, Pack range
     Gui, Add, Edit, x170 y234 w70 h26 Number vMinPacks Center Disabled Background%inputBg% c%text%, 96
     Gui, Add, Text, x252 y238 w24 h24 vRangeToLabel, to
@@ -624,11 +624,11 @@ XM_BuildPackSummary(accounts, missing, xmlTotal) {
     XM_AddLanguageCount(languageLines, languageCounts, "it", "Italian")
     XM_AddLanguageCount(languageLines, languageCounts, "de", "German")
     XM_AddLanguageCount(languageLines, languageCounts, "es", "Spanish")
-    XM_AddLanguageCount(languageLines, languageCounts, "pt-BR", "Brazilian Portuguese")
+    XM_AddLanguageCount(languageLines, languageCounts, "pt", "Portuguese")
     XM_AddLanguageCount(languageLines, languageCounts, "zh", "Traditional Chinese")
     XM_AddLanguageCount(languageLines, languageCounts, "ko", "Korean")
     for language, count in languageCounts {
-        if !(language = "ja" || language = "en" || language = "fr" || language = "it" || language = "de" || language = "es" || language = "pt-BR" || language = "zh" || language = "ko")
+        if !(language = "ja" || language = "en" || language = "fr" || language = "it" || language = "de" || language = "es" || language = "pt" || language = "zh" || language = "ko")
             languageLines.Push(XM_FormatColumnLine(language, count))
     }
 
@@ -703,11 +703,11 @@ XM_SetOverviewBreakdown(accounts) {
     XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "it", "Italian")
     XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "de", "German")
     XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "es", "Spanish")
-    XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "pt-BR", "Brazilian Portuguese")
+    XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "pt", "Portuguese")
     XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "zh", "Traditional Chinese")
     XM_AddOverviewLanguage(languageLabels, languageValues, languageCounts, "ko", "Korean")
     for language, count in languageCounts {
-        if !(language = "ja" || language = "en" || language = "fr" || language = "it" || language = "de" || language = "es" || language = "pt-BR" || language = "zh" || language = "ko") {
+        if !(language = "ja" || language = "en" || language = "fr" || language = "it" || language = "de" || language = "es" || language = "pt" || language = "zh" || language = "ko") {
             languageLabels .= language . "`n"
             languageValues .= count . "`n"
         }
@@ -1165,7 +1165,7 @@ XM_GroupForAccount(account, filter, minPacks, maxPacks) {
     if (filter = 12)
         return (XM_NormalizeLanguage(account.Language) = "es") ? "language_es" : ""
     if (filter = 13)
-        return (XM_NormalizeLanguage(account.Language) = "pt-BR") ? "language_pt-BR" : ""
+        return (XM_NormalizeLanguage(account.Language) = "pt") ? "language_pt" : ""
     if (filter = 14)
         return (XM_NormalizeLanguage(account.Language) = "zh") ? "language_zh" : ""
     if (filter = 15)
@@ -1184,7 +1184,7 @@ XM_GroupForAccount(account, filter, minPacks, maxPacks) {
 XM_FilterName(filter, minPacks, maxPacks) {
     if (filter >= 17 && filter <= 19)
         return XM_PullFilterLabel(filter)
-    names := ["0-13 packs", "14-95 packs", "96+ packs", "Missing XML or JSON pair", "Claim completed", "Receive gift completed", "Language Japanese", "Language English", "Language French", "Language Italian", "Language German", "Language Spanish", "Language Brazilian Portuguese", "Language Traditional Chinese", "Language Korean", "Custom " . minPacks . "-" . maxPacks . " packs"]
+    names := ["0-13 packs", "14-95 packs", "96+ packs", "Missing XML or JSON pair", "Claim completed", "Receive gift completed", "Language Japanese", "Language English", "Language French", "Language Italian", "Language German", "Language Spanish", "Language Portuguese", "Language Traditional Chinese", "Language Korean", "Custom " . minPacks . "-" . maxPacks . " packs"]
     return names[filter]
 }
 
@@ -1308,12 +1308,6 @@ XM_FlagIsSet(account, flag) {
 XM_NormalizeLanguage(language) {
     language := Trim(language)
     StringLower, out, language
-    if (out = "jp")
-        out := "ja"
-    if (out = "cn")
-        out := "zh"
-    if (out = "pt_br" || out = "pt-br" || out = "br")
-        out := "pt-BR"
     return out
 }
 
