@@ -2099,7 +2099,7 @@ EvaluatePackCount() {
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
 
     LogTrace("EvaluatePackCount running ptcgpb packcount", "ADB.txt")
-    output := GetStdout(adbCommand . " shell ""/data/ptcgp/ptcgpb packcount""")
+     output := GetStdout(adbCommand . " shell ""sh -c '/data/ptcgp/ptcgpb packcount'""")
     output := StrReplace(output, "`r")
     output := Trim(output, "`n ")
     if !RegExMatch(output, "^-?\d+$") {

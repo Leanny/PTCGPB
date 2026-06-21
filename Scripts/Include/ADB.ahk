@@ -317,7 +317,7 @@ doesMissionUserPrefsExist() {
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
-    result := Trim(CmdRet(adbCommand . " shell ""sh -c 'test -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs && echo 1 || echo 0'"""), "`r`n`t ")
+    result := Trim(CmdRet(adbCommand . " shell sh -c '""test -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs && echo 1 || echo 0""'"), "`r`n`t ")
     ADB_LogTrace("doesMissionUserPrefsExist result=" . result)
     return (result = "1")
 }
