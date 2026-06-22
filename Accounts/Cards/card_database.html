@@ -11510,6 +11510,36 @@
                 });
             }
 
+            function ensureAccountPinned(account) {
+                if (!account) return;
+                if (state.view === "multisearch") {
+                    if (state.multiSelectedAccount === account) return;
+                    const firstRect =
+                        findAccountPinRow(account)?.getBoundingClientRect() ??
+                        null;
+                    state.multiSelectedAccount = account;
+                    refreshMultiBestAccountsPanel({
+                        animate: false,
+                        pinOnly: true,
+                        onComplete: () => {
+                            _attachMultiResultsPanelListeners();
+                            playAccountPinSlideAnimation(
+                                account,
+                                "pinned",
+                                firstRect,
+                            );
+                        },
+                    });
+                    return;
+                }
+                if (state.selectedCatalogAccount === account) return;
+                const firstRect =
+                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
+                state.selectedCatalogAccount = account;
+                renderCatalogSidePanel({ patchOnly: true, animate: false });
+                playAccountPinSlideAnimation(account, "pinned", firstRect);
+            }
+
             function attachAccountPinToggleListeners(root, onToggle) {
                 root.querySelectorAll("[data-pin-account]").forEach((btn) => {
                     btn.addEventListener("click", (event) => {
@@ -17981,6 +18011,7 @@
             }
 
             function startTradeForMultiAccount(btn, account, fileName, cardIds) {
+                ensureAccountPinned(account);
                 const matchedCardIds = Array.isArray(cardIds)
                     ? cardIds
                     : String(cardIds || "")
