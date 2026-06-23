@@ -11,6 +11,38 @@ Wishlist_Path() {
     return getScriptBaseFolder() . "\Accounts\Cards\wishlist.json"
 }
 
+Wishlist_MapSize(wishlistMap) {
+    if (!IsObject(wishlistMap))
+        return 0
+    count := 0
+    For _ in wishlistMap
+        count++
+    return count
+}
+
+; Read wishlist JSON as UTF-8. Do not use FileRead ,, UTF-8 (broken empty read on some AHK builds).
+Wishlist_ReadJsonText(path) {
+    fileSize := 0
+    if (FileExist(path))
+        FileGetSize, fileSize, %path%
+
+    jsonText := ""
+    if (fileSize <= 0)
+        return {text: jsonText, size: fileSize}
+
+    file := FileOpen(path, "r", "UTF-8")
+    if (IsObject(file)) {
+        jsonText := file.Read()
+        file.Close()
+    }
+    if (StrLen(jsonText) > 0)
+        return {text: jsonText, size: fileSize}
+
+    jsonText := ""
+    FileRead, jsonText, %path%
+    return {text: jsonText, size: fileSize}
+}
+
 ; Public: ensure session has the latest wishlist loaded. Call before each pack
 ; evaluation. Cheap: only re-reads the file if its mtime changed.
 Wishlist_EnsureFresh() {
@@ -25,12 +57,39 @@ Wishlist_EnsureFresh() {
     }
 
     FileGetTime, mtime, %path%, M
-    if (session.get("wishlistMtime") = mtime && IsObject(session.get("wishlistMap")))
+    cachedMap := session.get("wishlistMap")
+    cachedSize := Wishlist_MapSize(cachedMap)
+    if (session.get("wishlistMtime") = mtime && IsObject(cachedMap) && cachedSize > 0)
         return
 
-    FileRead, jsonText, %path%, UTF-8
-    session.set("wishlistMap", Wishlist_Parse(jsonText))
+    readResult := Wishlist_ReadJsonText(path)
+    jsonText := readResult.text
+    fileSize := readResult.size
+    parsedMap := Wishlist_Parse(jsonText)
+    mapSize := Wishlist_MapSize(parsedMap)
+
+    if (mapSize = 0 && fileSize > 0) {
+        if (cachedSize > 0)
+            return
+        if (session.get("wishlistMtime") != mtime)
+            session.set("wishlistMtime", "")
+        return
+    }
+
+    session.set("wishlistMap", parsedMap)
     session.set("wishlistMtime", mtime)
+}
+
+; Load wishlist, match pack cards, store session.wishlistMatches. Returns hit count.
+Wishlist_ProcessPack(cards, pack := "") {
+    global session
+
+    Wishlist_EnsureFresh()
+    wishlistMap := session.get("wishlistMap")
+    foundWishlist := Wishlist_CountMatches(cards, wishlistMap)
+    wishlistMatches := Wishlist_MatchEntries(cards, wishlistMap)
+    session.set("wishlistMatches", wishlistMatches)
+    return foundWishlist
 }
 
 ; Returns a map { cardId => name } from the wishlist JSON. Tolerant: malformed
@@ -76,6 +135,62 @@ Wishlist_CountMatches(cards, wishlistMap) {
             count++
     }
     return count
+}
+
+; True when a pack card is a 2-star pull (Trainer, Full Art, or Rainbow).
+Wishlist_CardIsTwoStar(rarityValue, cardId) {
+    if (rarityValue = 8)
+        return true
+    if (rarityValue = 5) {
+        if (SubStr(cardId, 1, 3) = "TR_")
+            return true
+        if (SubStr(cardId, 1, 3) = "PK_")
+            return true
+    }
+    return false
+}
+
+; Wishlist hits that are also 2-star cards (Inject Wonderpick God Pack saves).
+Wishlist_CountTwoStarMatches(cards, rarity, wishlistMap := "") {
+    global session
+
+    if (wishlistMap = "" || !IsObject(wishlistMap))
+        wishlistMap := session.get("wishlistMap")
+    if (!IsObject(cards) || !IsObject(rarity) || !IsObject(wishlistMap))
+        return 0
+
+    count := 0
+    total := cards.MaxIndex()
+    Loop, % total {
+        i := A_Index
+        cardId := cards[i]
+        if (wishlistMap.HasKey(cardId) && Wishlist_CardIsTwoStar(rarity[i], cardId))
+            count++
+    }
+    return count
+}
+
+Wishlist_TwoStarMatchEntries(cards, rarity, wishlistMap := "") {
+    global session
+
+    if (wishlistMap = "" || !IsObject(wishlistMap))
+        wishlistMap := session.get("wishlistMap")
+    matches := []
+    if (!IsObject(cards) || !IsObject(rarity) || !IsObject(wishlistMap))
+        return matches
+
+    total := cards.MaxIndex()
+    Loop, % total {
+        i := A_Index
+        cardId := cards[i]
+        if (!wishlistMap.HasKey(cardId) || !Wishlist_CardIsTwoStar(rarity[i], cardId))
+            continue
+        name := wishlistMap[cardId]
+        if (name = "")
+            name := cardId
+        matches.Push({ id: cardId, name: name })
+    }
+    return matches
 }
 
 ; Return [{id, name}, ...] for every wishlist match in the pack, preserving

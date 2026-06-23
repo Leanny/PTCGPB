@@ -2094,6 +2094,8 @@ function Invoke-SetAccountCardMarks {
         return
     }
 
+    Invoke-InvalidateAccountCardMarksCache
+
     Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
         ok = $true
         deviceAccount = $deviceAccount
@@ -2103,9 +2105,595 @@ function Invoke-SetAccountCardMarks {
     }
 }
 
+function Get-ManifestFileVersionMap {
+    param([Parameter(Mandatory = $true)]$Manifest)
+
+    $map = @{}
+    $files = $Manifest.Files
+    if ($null -eq $files) { return $map }
+    foreach ($entry in $files) {
+        if ($null -eq $entry) { continue }
+        $file = $entry.File
+        if ($null -eq $file) { continue }
+        $map[[string]$entry.SourceName] = "$($file.Length)|$($file.LastWriteTimeUtc.Ticks)"
+    }
+    return $map
+}
+
+$script:AccountCardMarksNonemptyPattern = '(?ms)"(?:tradedCards|sharedCards)"\s*:\s*\{\s*"'
+
+function Read-AccountJsonMarkProbeText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$TailBytes = 16384
+    )
+
+    $fileInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
+    if ($fileInfo.Length -le $TailBytes) {
+        return [System.IO.File]::ReadAllText($fileInfo.FullName)
+    }
+
+    $buffer = New-Object byte[] $TailBytes
+    $fs = [System.IO.File]::Open(
+        $fileInfo.FullName,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::ReadWrite
+    )
+    try {
+        [void]$fs.Seek(-$TailBytes, [System.IO.SeekOrigin]::End)
+        $read = $fs.Read($buffer, 0, $TailBytes)
+        if ($read -lt $TailBytes) {
+            $buffer = $buffer[0..($read - 1)]
+        }
+    } finally {
+        $fs.Dispose()
+    }
+    return [System.Text.Encoding]::UTF8.GetString($buffer)
+}
+
+function Test-AccountJsonTextHasNonemptyCardMarks {
+    param([Parameter(Mandatory = $true)][string]$Text)
+
+    if ($Text.IndexOf('"tradedCards"') -lt 0 -and $Text.IndexOf('"sharedCards"') -lt 0) {
+        return $false
+    }
+    return [regex]::IsMatch($Text, $script:AccountCardMarksNonemptyPattern)
+}
+
+function Test-AccountJsonFileHasNonemptyCardMarks {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    try {
+        $fileInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($fileInfo.Length -lt 48) { return $false }
+        $probe = Read-AccountJsonMarkProbeText -Path $fileInfo.FullName
+        return (Test-AccountJsonTextHasNonemptyCardMarks -Text $probe)
+    } catch {
+        return $false
+    }
+}
+
+function Test-AccountJsonFileMayHaveCardMarks {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    return (Test-AccountJsonFileHasNonemptyCardMarks -Path $Path)
+}
+
+function Get-AccountCardMarksMarkFileVersionMap {
+    param([Parameter(Mandatory = $true)][string]$AccountsDir)
+
+    $map = @{}
+    if (-not (Test-Path -LiteralPath $AccountsDir -PathType Container)) {
+        return $map
+    }
+
+    foreach ($file in Get-ChildItem -LiteralPath $AccountsDir -Filter "*.json" -File -ErrorAction SilentlyContinue) {
+        try {
+            if ($file.Length -lt 48) { continue }
+            if (-not (Test-AccountJsonFileHasNonemptyCardMarks -Path $file.FullName)) {
+                continue
+            }
+            $map["accounts/$($file.Name)"] = "$($file.Length)|$($file.LastWriteTimeUtc.Ticks)"
+        } catch {
+            continue
+        }
+    }
+    return $map
+}
+
+function Test-AccountCardMarksCache {
+    param(
+        [Parameter(Mandatory = $true)][string]$CachePath,
+        [Parameter(Mandatory = $true)][string]$MetaPath,
+        [Parameter(Mandatory = $true)]$Manifest
+    )
+
+    if (-not (Test-Path -LiteralPath $CachePath -PathType Leaf)) { return $false }
+    if (-not (Test-Path -LiteralPath $MetaPath -PathType Leaf)) { return $false }
+
+    try {
+        $cacheFile = Get-Item -LiteralPath $CachePath -ErrorAction Stop
+        if ($cacheFile.Length -le 0) { return $false }
+
+        $metaText = [System.IO.File]::ReadAllText($MetaPath)
+        $meta = $metaText | ConvertFrom-Json
+        if ([string]$meta.signature -eq [string]$Manifest.Signature) {
+            return $true
+        }
+
+        if ($null -eq $meta.fileVersions) {
+            return $false
+        }
+
+        $metaFileVersions = Import-AccountCardMarksMetaVersionMap -MetaObject $meta -PropertyName 'fileVersions'
+        if ($metaFileVersions.Count -eq 0) {
+            return $false
+        }
+
+        $metaMarkFileVersions = Import-AccountCardMarksMetaVersionMap -MetaObject $meta -PropertyName 'markFileVersions'
+
+        $currentFileVersions = Get-ManifestFileVersionMap -Manifest $Manifest
+        foreach ($sourceName in $currentFileVersions.Keys) {
+            if (-not $metaFileVersions.ContainsKey($sourceName)) {
+                return $false
+            }
+        }
+
+        foreach ($sourceName in $metaFileVersions.Keys) {
+            if (-not $currentFileVersions.ContainsKey($sourceName)) {
+                return $false
+            }
+        }
+
+        foreach ($sourceName in $currentFileVersions.Keys) {
+            $currentVersion = [string]$currentFileVersions[$sourceName]
+            $previousVersion = [string]$metaFileVersions[$sourceName]
+            if ($currentVersion -eq $previousVersion) { continue }
+
+            if ($metaMarkFileVersions.ContainsKey($sourceName)) {
+                return $false
+            }
+
+            $manifestEntry = @(
+                $Manifest.Files | Where-Object {
+                    [string]$_.SourceName -eq [string]$sourceName
+                }
+            )[0]
+            if ($manifestEntry -and (Test-AccountJsonFileMayHaveCardMarks -Path $manifestEntry.File.FullName)) {
+                return $false
+            }
+        }
+
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 function Invoke-SetAccountTradeMarks {
     param([Parameter(Mandatory = $true)]$Context)
     Invoke-SetAccountCardMarks -Context $Context
+}
+
+function Get-AccountCardMarksCachePaths {
+    $cacheDir = Join-Path $resolvedRoot "Accounts\Cards\database_cache"
+    return [pscustomobject]@{
+        Cache = Join-Path $cacheDir "account-card-marks.v2.cache.json"
+        Meta = Join-Path $cacheDir "account-card-marks.v2.cache.meta.json"
+    }
+}
+
+function Invoke-InvalidateAccountCardMarksCache {
+    $paths = Get-AccountCardMarksCachePaths
+    foreach ($path in @($paths.Cache, $paths.Meta)) {
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Test-AccountJsonHasCardMarks {
+    param([Parameter(Mandatory = $true)][hashtable]$Doc)
+
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
+    $traded = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'tradedCards'
+    $shared = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'sharedCards'
+    return (
+        ($traded -and $traded.Count -gt 0) -or
+        ($shared -and $shared.Count -gt 0)
+    )
+}
+
+function Export-AccountCardMarksEntryFromFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][hashtable]$Doc
+    )
+
+    $serializer = Get-AccountJsonSerializer
+    $entry = @{
+        deviceAccount = [string]$Doc['deviceAccount']
+    }
+
+    $tradedJson = Get-JsonPropertyValueSubstring -Text $Text -PropertyName 'tradedCards'
+    if (-not [string]::IsNullOrWhiteSpace($tradedJson)) {
+        $tradedTrim = $tradedJson.Trim()
+        if ($tradedTrim -ne '{}' -and $tradedTrim -ne 'null') {
+            $tradedObj = $serializer.DeserializeObject($tradedTrim)
+            if ($null -ne $tradedObj) {
+                $entry['tradedCards'] = $tradedObj
+            }
+        }
+    }
+
+    $sharedJson = Get-JsonPropertyValueSubstring -Text $Text -PropertyName 'sharedCards'
+    if (-not [string]::IsNullOrWhiteSpace($sharedJson)) {
+        $sharedTrim = $sharedJson.Trim()
+        if ($sharedTrim -ne '{}' -and $sharedTrim -ne 'null') {
+            $sharedObj = $serializer.DeserializeObject($sharedTrim)
+            if ($null -ne $sharedObj) {
+                $entry['sharedCards'] = $sharedObj
+            }
+        }
+    }
+
+    return $entry
+}
+
+function Export-AccountCardMarksEntry {
+    param([Parameter(Mandatory = $true)][hashtable]$Doc)
+
+    Merge-AccountCardMarksFromMetadataToRoot -Doc $Doc | Out-Null
+    $entry = @{
+        deviceAccount = [string]$Doc['deviceAccount']
+    }
+    $traded = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'tradedCards'
+    if ($traded -and $traded.Count -gt 0) {
+        $tradedOut = @{}
+        foreach ($markEntry in $traded.GetEnumerator()) {
+            $tradedOut[[string]$markEntry.Key] = ConvertTo-JsonHashtable $markEntry.Value
+        }
+        $entry['tradedCards'] = $tradedOut
+    }
+    $shared = Get-AccountCardMarksTable -Doc $Doc -PropertyName 'sharedCards'
+    if ($shared -and $shared.Count -gt 0) {
+        $sharedOut = @{}
+        foreach ($markEntry in $shared.GetEnumerator()) {
+            $sharedOut[[string]$markEntry.Key] = ConvertTo-JsonHashtable $markEntry.Value
+        }
+        $entry['sharedCards'] = $sharedOut
+    }
+    return $entry
+}
+
+function Build-AccountCardMarksPayload {
+    $accountsDir = Join-Path $resolvedRoot "Accounts\Cards\accounts"
+    $accounts = @()
+    $sourceFilesScanned = 0
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    if (-not (Test-Path -LiteralPath $accountsDir -PathType Container)) {
+        $sw.Stop()
+        return @{
+            ok = $true
+            accountCount = 0
+            accounts = @()
+            build = @{
+                cacheHit = $false
+                sourceFilesScanned = 0
+                marksFound = 0
+                rebuildMs = [int]$sw.ElapsedMilliseconds
+            }
+        }
+    }
+
+    foreach ($file in Get-ChildItem -LiteralPath $accountsDir -Filter "*.json" -File | Sort-Object Name) {
+        $sourceFilesScanned++
+        try {
+            if ($file.Length -lt 48) { continue }
+            $probe = Read-AccountJsonMarkProbeText -Path $file.FullName
+            if (-not (Test-AccountJsonTextHasNonemptyCardMarks -Text $probe)) {
+                continue
+            }
+            $text = [System.IO.File]::ReadAllText($file.FullName)
+            $loaded = Read-AccountJsonDocument -Path $file.FullName
+            if (-not (Test-AccountJsonHasCardMarks -Doc $loaded.Doc)) {
+                continue
+            }
+            $accounts += Export-AccountCardMarksEntryFromFile -Path $file.FullName -Text $text -Doc $loaded.Doc
+        } catch {
+            continue
+        }
+    }
+
+    $sw.Stop()
+    return @{
+        ok = $true
+        accountCount = $accounts.Count
+        accounts = $accounts
+        build = @{
+            cacheHit = $false
+            incremental = $false
+            sourceFilesScanned = $sourceFilesScanned
+            marksFound = $accounts.Count
+            rebuildMs = [int]$sw.ElapsedMilliseconds
+        }
+    }
+}
+
+function Import-AccountCardMarksMetaVersionMap {
+    param(
+        [Parameter(Mandatory = $true)]$MetaObject,
+        [Parameter(Mandatory = $true)][string]$PropertyName
+    )
+
+    $map = @{}
+    if ($null -eq $MetaObject) { return $map }
+    $property = $MetaObject.PSObject.Properties[$PropertyName]
+    if ($null -eq $property -or $null -eq $property.Value) { return $map }
+    foreach ($prop in $property.Value.PSObject.Properties) {
+        $map[[string]$prop.Name] = [string]$prop.Value
+    }
+    return $map
+}
+
+function Get-AccountCardMarksRebuildPlan {
+    param(
+        [Parameter(Mandatory = $true)][string]$CachePath,
+        [Parameter(Mandatory = $true)][string]$MetaPath,
+        [Parameter(Mandatory = $true)]$Manifest
+    )
+
+    $plan = [pscustomobject]@{
+        CanIncremental = $false
+        ScanEntries = @()
+        RemoveDeviceAccounts = @()
+    }
+
+    if (-not (Test-Path -LiteralPath $CachePath -PathType Leaf)) { return $plan }
+    if (-not (Test-Path -LiteralPath $MetaPath -PathType Leaf)) { return $plan }
+
+    try {
+        $meta = Get-Content -LiteralPath $MetaPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -eq $meta.fileVersions) { return $plan }
+
+        $metaFileVersions = Import-AccountCardMarksMetaVersionMap -MetaObject $meta -PropertyName 'fileVersions'
+        $metaMarkFileVersions = Import-AccountCardMarksMetaVersionMap -MetaObject $meta -PropertyName 'markFileVersions'
+        if ($metaFileVersions.Count -eq 0) { return $plan }
+
+        $currentFileVersions = Get-ManifestFileVersionMap -Manifest $Manifest
+        $scanSourceNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        $removeDeviceAccounts = New-Object System.Collections.Generic.List[string]
+
+        foreach ($sourceName in $currentFileVersions.Keys) {
+            if (-not $metaFileVersions.ContainsKey($sourceName)) {
+                [void]$scanSourceNames.Add([string]$sourceName)
+            }
+        }
+
+        foreach ($sourceName in $metaFileVersions.Keys) {
+            if ($currentFileVersions.ContainsKey($sourceName)) { continue }
+            $leaf = [System.IO.Path]::GetFileName($sourceName)
+            if ($leaf.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) {
+                $removeDeviceAccounts.Add([System.IO.Path]::GetFileNameWithoutExtension($leaf))
+            }
+        }
+
+        foreach ($sourceName in $currentFileVersions.Keys) {
+            if (-not $metaFileVersions.ContainsKey($sourceName)) { continue }
+            $currentVersion = [string]$currentFileVersions[$sourceName]
+            $previousVersion = [string]$metaFileVersions[$sourceName]
+            if ($currentVersion -eq $previousVersion) { continue }
+
+            if ($metaMarkFileVersions.ContainsKey($sourceName)) {
+                [void]$scanSourceNames.Add([string]$sourceName)
+                continue
+            }
+
+            $manifestEntry = @(
+                $Manifest.Files | Where-Object {
+                    [string]$_.SourceName -eq [string]$sourceName
+                }
+            )[0]
+            if ($manifestEntry -and (Test-AccountJsonFileHasNonemptyCardMarks -Path $manifestEntry.File.FullName)) {
+                [void]$scanSourceNames.Add([string]$sourceName)
+            }
+        }
+
+        $scanEntries = New-Object System.Collections.Generic.List[object]
+        foreach ($entry in @($Manifest.Files)) {
+            if ($scanSourceNames.Contains([string]$entry.SourceName)) {
+                $scanEntries.Add($entry) | Out-Null
+            }
+        }
+
+        $plan.CanIncremental = $true
+        $plan.ScanEntries = $scanEntries.ToArray()
+        $plan.RemoveDeviceAccounts = $removeDeviceAccounts.ToArray()
+        return $plan
+    } catch {
+        return $plan
+    }
+}
+
+function Build-AccountCardMarksPayloadIncremental {
+    param(
+        [Parameter(Mandatory = $true)]$Manifest,
+        [Parameter(Mandatory = $true)][string]$CachePath,
+        [Parameter(Mandatory = $true)]$Plan
+    )
+
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $serializer = Get-AccountJsonSerializer
+    $cacheText = [System.IO.File]::ReadAllText($CachePath)
+    $cached = $serializer.DeserializeObject($cacheText)
+
+    $accountsByDevice = [ordered]@{}
+    $accountsRaw = $cached['accounts']
+    if ($accountsRaw -is [System.Collections.IEnumerable] -and -not ($accountsRaw -is [string])) {
+        foreach ($entry in $accountsRaw) {
+            if ($null -eq $entry) { continue }
+            $deviceAccount = ""
+            if ($entry -is [System.Collections.IDictionary]) {
+                $deviceAccount = [string]$entry['deviceAccount']
+            }
+            if ([string]::IsNullOrWhiteSpace($deviceAccount)) { continue }
+            $accountsByDevice[$deviceAccount] = $entry
+        }
+    }
+
+    foreach ($deviceAccount in @($Plan.RemoveDeviceAccounts)) {
+        if ($accountsByDevice.Contains($deviceAccount)) {
+            $accountsByDevice.Remove($deviceAccount)
+        }
+    }
+
+    $sourceFilesScanned = 0
+    foreach ($entry in @($Plan.ScanEntries)) {
+        $sourceFilesScanned++
+        $file = $entry.File
+        try {
+            if ($null -eq $file -or $file.Length -lt 48) { continue }
+            $probe = Read-AccountJsonMarkProbeText -Path $file.FullName
+            if (-not (Test-AccountJsonTextHasNonemptyCardMarks -Text $probe)) {
+                $leaf = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+                if ($accountsByDevice.Contains($leaf)) {
+                    $accountsByDevice.Remove($leaf)
+                }
+                continue
+            }
+            $text = [System.IO.File]::ReadAllText($file.FullName)
+            $loaded = Read-AccountJsonDocument -Path $file.FullName
+            if (-not (Test-AccountJsonHasCardMarks -Doc $loaded.Doc)) {
+                $leaf = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+                if ($accountsByDevice.Contains($leaf)) {
+                    $accountsByDevice.Remove($leaf)
+                }
+                continue
+            }
+            $exported = Export-AccountCardMarksEntryFromFile -Path $file.FullName -Text $text -Doc $loaded.Doc
+            $deviceAccount = [string]$exported['deviceAccount']
+            if ($deviceAccount) {
+                $accountsByDevice[$deviceAccount] = $exported
+            }
+        } catch {
+            continue
+        }
+    }
+
+    $accounts = @($accountsByDevice.Values)
+    $sw.Stop()
+    return @{
+        ok = $true
+        accountCount = $accounts.Count
+        accounts = $accounts
+        build = @{
+            cacheHit = $false
+            incremental = $true
+            sourceFilesScanned = $sourceFilesScanned
+            marksFound = $accounts.Count
+            rebuildMs = [int]$sw.Elapsed.TotalMilliseconds
+        }
+    }
+}
+
+function Invoke-GetAccountCardMarks {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $accountsDataDir = Join-Path $cardsDir "accounts"
+    $collectionsDataDir = Join-Path $cardsDir "collections"
+    $manifest = Get-DashboardAccountManifest -AccountsDataDir $accountsDataDir -CollectionsDataDir $collectionsDataDir
+    $paths = Get-AccountCardMarksCachePaths
+    $cacheDir = Split-Path $paths.Cache -Parent
+    if (-not (Test-Path -LiteralPath $cacheDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+    }
+
+    if (Test-AccountCardMarksCache -CachePath $paths.Cache -MetaPath $paths.Meta -Manifest $manifest) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($paths.Cache)
+            $jsonText = [System.Text.Encoding]::UTF8.GetString($bytes)
+            $serializer = Get-AccountJsonSerializer
+            $payload = $serializer.DeserializeObject($jsonText)
+
+            $metaSourceFilesScanned = $manifest.Count
+            $metaMarksFound = 0
+            $metaRebuildMs = 0
+            if (Test-Path -LiteralPath $paths.Meta -PathType Leaf) {
+                try {
+                    $metaObj = Get-Content -LiteralPath $paths.Meta -Raw -Encoding UTF8 | ConvertFrom-Json
+                    if ($null -ne $metaObj.sourceFilesScanned) {
+                        $metaSourceFilesScanned = [int]$metaObj.sourceFilesScanned
+                    }
+                    if ($null -ne $metaObj.accountCount) {
+                        $metaMarksFound = [int]$metaObj.accountCount
+                    }
+                    if ($null -ne $metaObj.rebuildMs) {
+                        $metaRebuildMs = [int]$metaObj.rebuildMs
+                    }
+                } catch {
+                    # Meta is optional; fall back to manifest counts.
+                }
+            }
+
+            if ($payload -is [System.Collections.IDictionary]) {
+                if (-not $metaMarksFound -and $null -ne $payload['accountCount']) {
+                    $metaMarksFound = [int]$payload['accountCount']
+                }
+                $payload['build'] = @{
+                    cacheHit = $true
+                    sourceFilesScanned = $metaSourceFilesScanned
+                    marksFound = $metaMarksFound
+                    rebuildMs = $metaRebuildMs
+                }
+                $jsonText = $serializer.Serialize($payload)
+            }
+
+            Write-TextResponse -Context $Context -StatusCode 200 -Body $jsonText -ContentType "application/json; charset=utf-8"
+            return
+        } catch {
+            # Fall through and rebuild the cache.
+        }
+    }
+
+    $payload = $null
+    $rebuildPlan = Get-AccountCardMarksRebuildPlan `
+        -CachePath $paths.Cache `
+        -MetaPath $paths.Meta `
+        -Manifest $manifest
+    if ($rebuildPlan.CanIncremental) {
+        try {
+            $payload = Build-AccountCardMarksPayloadIncremental `
+                -Manifest $manifest `
+                -CachePath $paths.Cache `
+                -Plan $rebuildPlan
+        } catch {
+            $payload = $null
+        }
+    }
+    if (-not $payload) {
+        $payload = Build-AccountCardMarksPayload
+    }
+    $serializer = Get-AccountJsonSerializer
+    $json = $serializer.Serialize($payload)
+    try {
+        Write-Utf8File -Path $paths.Cache -Text $json
+        $meta = @{
+            signature = $manifest.Signature
+            accountCount = $payload.accountCount
+            sourceFilesScanned = $payload.build.sourceFilesScanned
+            rebuildMs = $payload.build.rebuildMs
+            generatedAt = (Get-Date).ToUniversalTime().ToString("o")
+            fileVersions = Get-ManifestFileVersionMap -Manifest $manifest
+            markFileVersions = Get-AccountCardMarksMarkFileVersionMap -AccountsDir $accountsDataDir
+        } | ConvertTo-Json -Depth 6 -Compress
+        Write-Utf8File -Path $paths.Meta -Text $meta
+    } catch {
+        # Cache writes are an optimization; the response should still succeed.
+    }
+
+    Write-TextResponse -Context $Context -StatusCode 200 -Body $json -ContentType "application/json; charset=utf-8"
 }
 
 function Invoke-DeductAccountShinedust {
@@ -2905,6 +3493,22 @@ try {
             }
             try {
                 Invoke-OpenAccountJson -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if (
+            ($request.Url.AbsolutePath -eq "/__dashboard/account-trade-marks" -or $request.Url.AbsolutePath -eq "/__dashboard/account-card-marks") -and
+            $request.HttpMethod -eq "GET"
+        ) {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-GetAccountCardMarks -Context $context
             } catch {
                 Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
             }

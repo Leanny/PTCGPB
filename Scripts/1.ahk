@@ -228,7 +228,6 @@ if(session.get("injectMethod"))
     createAccountList(session.get("scriptName"))
 
 SetTimer, LiveMetricsTimer, 5000
-writeLastActivityEpoch(session.get("scriptName"))
 
 if(session.get("injectMethod") && DeadCheck != 1) {
     session.set("loadedAccount", loadAccount())
@@ -363,10 +362,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             session.set("loadedAccount", false)
         }
 
-        if(session.get("dateChange")){
-            botConfig.set("showcaseLikes", 5, "Extra")
-            botConfig.saveConfigToSettings("Extra")
-        }
+        resetShowcaseLikesIfNewCycle()
 
         ; Only refresh account lists if we're not in injection mode or if no account is loaded
         ; This prevents constant list regeneration during injection
@@ -442,7 +438,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartTimeUTC
         EnvSub, now, 1970, seconds
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartEpoch
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastActivityEpoch
 
         startPreProcess(botConfig.get("deleteMethod"))
 
@@ -738,7 +733,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
         EnvSub, now, 1970, seconds
         IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastActivityEpoch
 
         session.set("rerolls", session.get("rerolls") + 1)
         session.set("rerolls_local", session.get("rerolls_local") + 1)
@@ -2299,11 +2293,8 @@ CheckPack(stopEarly := false) {
 
     PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star)
 
-    Wishlist_EnsureFresh()
-    wishlistMap      := session.get("wishlistMap")
-    foundWishlist    := Wishlist_CountMatches(cards, wishlistMap)
-    wishlistMatches  := Wishlist_MatchEntries(cards, wishlistMap)
-    session.set("wishlistMatches", wishlistMatches)
+    foundWishlist    := Wishlist_ProcessPack(cards, pack)
+    foundWishlist2Star := Wishlist_CountTwoStarMatches(cards, rarity, session.get("wishlistMap"))
 
     logMessage := "Instance: " . session.get("scriptName") " | Found: " . found1Dmnd
     logMessage := logMessage . "|" . found2Dmnd
@@ -2448,8 +2439,9 @@ CheckPack(stopEarly := false) {
     if (botConfig.get("FullArtCheck") && !foundLabel && foundFullArt) {
             foundLabel := "Full Art"
     }
-    if (botConfig.get("WishlistCheck") && !foundLabel && foundWishlist) {
-            foundLabel := "Wishlist"
+    if (botConfig.get("WishlistCheck") && !foundLabel && foundWishlist2Star) {
+        session.set("wishlistMatches", Wishlist_TwoStarMatchEntries(cards, rarity, session.get("wishlistMap")))
+        foundLabel := "Wishlist"
     }
 
     if (foundLabel) {
@@ -3134,7 +3126,6 @@ CleanupUsedAccountsTimer:
 Return
 
 LiveMetricsTimer:
-    writeLastActivityEpoch(session.get("scriptName"), 4000)
     updateTotalTime()
     session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
     CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)

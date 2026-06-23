@@ -214,15 +214,18 @@ if(firstRun) {
     done := false
     Loop 3 {
         Delay(1)
-        if(FindOrLoseImage("Friend_AcceptButtonInApproveSubmenu", 0)) {
+        if(DismissExpiredFriendRequestInApprove()) {
+            continue
+        } else if(FindOrLoseImage("Friend_AcceptButtonInApproveSubmenu", 0)) {
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
             Loop {
                 Delay(1)
                 clickButton := FindOrLoseImage("Common_ColorChangeButton", 0, failSafeTime, 80)
-                requestAlreadyClosed := FindOrLoseImage("Friend_RequestAlreadyClosedInApproveSubmenu", 0, failSafeTime)
                 if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
                     done := true
+                    break
+                } else if(DismissExpiredFriendRequestInApprove()) {
                     break
                 } else if(FindOrLoseImage("Common_Error", 0, failSafeTime)) {
                     ; Handle communication error
@@ -244,13 +247,12 @@ if(firstRun) {
                     SafeReload("Main startup error")
                 } else if(DismissCreateDownloadScreens()) {
                     ; In-game data download dialog dismissed
-                } else if(requestAlreadyClosed || clickButton) {
+                } else if(clickButton) {
                     okClickSpacing := botConfig.get("Delay") * 2
                     if (okClickSpacing < 700)
                         okClickSpacing := 700
-                    coords := clickButton ? clickButton : requestAlreadyClosed
-                    if (InStr(coords, ",")) {
-                        StringSplit, pos, coords, `,
+                    if (InStr(clickButton, ",")) {
+                        StringSplit, pos, clickButton, `,
                         adbClick_wbb(pos1, pos2)
                     } else
                         adbClick(137, 365)
@@ -266,9 +268,7 @@ if(firstRun) {
                             adbClick(137, 365)
                         Sleep, %okClickSpacing%
                     }
-                    adbInputEvent("4")
                     Sleep, 500
-                    Break, 2  ; inner loop + Loop 3 (else Pending re-taps)
                 } else if(FindOrLoseImage("Friend_AcceptButtonInApproveSubmenu", 0, failSafeTime)) {
                     if (session.get("GPTest"))
                         break
@@ -288,6 +288,47 @@ if(firstRun) {
     }
 }
 return
+
+DismissExpiredFriendRequestInApprove() {
+    global botConfig, session
+
+    if (!FindOrLoseImage("Friend_RequestAlreadyClosedInApproveSubmenu", 0, 0, 20, 1))
+        return false
+
+    CreateStatusMessage("Friend request expired. Dismissing...",,,, false)
+    LogInfo("Friend request expired; returning to approve list")
+
+    okClickSpacing := botConfig.get("Delay") * 2
+    if (okClickSpacing < 700)
+        okClickSpacing := 700
+
+    okButton := FindOrLoseImage("Common_ColorChangeButton", 0, 0, 80, 1)
+    if (okButton && InStr(okButton, ",")) {
+        StringSplit, pos, okButton, `,
+        adbClick_wbb(pos1, pos2)
+    } else
+        adbClick(137, 365)
+    Sleep, %okClickSpacing%
+
+    Loop {
+        btnPos := FindOrLoseImage("Common_ColorChangeButton", 0, 0, 80, 1)
+        if (!btnPos)
+            break
+        if (InStr(btnPos, ",")) {
+            StringSplit, pos, btnPos, `,
+            adbClick_wbb(pos1, pos2)
+        } else
+            adbClick(137, 365)
+        Sleep, %okClickSpacing%
+    }
+
+    session.set("failSafe", A_TickCount)
+    Delay(1)
+    FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30)
+    FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
+    FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464, , 500)
+    return true
+}
 
 #Include HistoryImport.ahk
 
@@ -1444,13 +1485,13 @@ FavoriteVipFriends() {
 RemoveNonVipFriends() {
     global session, interceptProc
 
-    ; Navigate to Social screen
+    ; Navigate to Social screen, then open friends list.
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        adbClick(143, 518)
         if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime))
             break
+        adbClick(143, 518)
         Delay(5)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("In failsafe for Social. " . failSafeTime "/90 seconds")

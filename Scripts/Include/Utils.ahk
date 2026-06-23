@@ -145,6 +145,42 @@ getChangeDateTime() {
 }
 
 ;-------------------------------------------------------------------------------
+; getShowcaseLikesCycleKey - YYYYMMDD of the current server-reset day (06:00 UTC)
+;-------------------------------------------------------------------------------
+getShowcaseLikesCycleKey() {
+    nowUTC := A_NowUTC
+    resetUTC := SubStr(nowUTC, 1, 8) . "060000"
+    if (nowUTC < resetUTC)
+        resetUTC += -1, Days
+    return SubStr(resetUTC, 1, 8)
+}
+
+;-------------------------------------------------------------------------------
+; resetShowcaseLikesIfNewCycle - Shared daily showcase counter reset
+;-------------------------------------------------------------------------------
+resetShowcaseLikesIfNewCycle() {
+    global botConfig
+
+    botConfig.loadIniSectionFromSettingsFile("Extra")
+    cycleKey := getShowcaseLikesCycleKey()
+    storedKey := botConfig.get("showcaseLikesCycleKey")
+    if (storedKey = cycleKey)
+        return false
+
+    botConfig.set("showcaseLikes", 5, "Extra")
+    botConfig.set("showcaseLikesCycleKey", cycleKey, "Extra")
+    botConfig.saveConfigToSettings("Extra")
+    utilDir := RegExReplace(A_LineFile, "\\[^\\]+$")
+    showcaseLogPath := utilDir . "\..\..\Logs\ShowcaseLog.txt"
+    SplitPath, showcaseLogPath,, showcaseLogDir
+    if !FileExist(showcaseLogDir)
+        FileCreateDir, %showcaseLogDir%
+    FormatTime, readableTime, %A_Now%, MMMM dd, yyyy HH:mm:ss
+    FileAppend, % "[" . readableTime . "] Showcase likes reset for daily cycle " . cycleKey . "`n", %showcaseLogPath%
+    return true
+}
+
+;-------------------------------------------------------------------------------
 ; checkShouldDoMissions - Determine if missions should be executed
 ;-------------------------------------------------------------------------------
 checkShouldDoMissions() {
@@ -673,6 +709,16 @@ writeLastActivityEpoch(scriptName, minIntervalMs := 0) {
 
     lastWriteTick[scriptName] := A_TickCount
     return writeMetricEpoch(scriptName, "LastActivityEpoch")
+}
+
+clearLastActivityEpoch(scriptName) {
+    if(InStr(scriptName, "Main"))
+        return 0
+
+    scriptName := StrReplace(scriptName, ".ahk")
+    iniPath := GetScriptIniPathByName(scriptName)
+    IniWrite, 0, %iniPath%, Metrics, LastActivityEpoch
+    return 0
 }
 
 SerializeArray(arr) {

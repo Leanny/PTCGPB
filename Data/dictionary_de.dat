@@ -74,7 +74,6 @@ Txt_ClientLanguage:Klient
 Txt_InstanceLaunchDelay:MUMU-Startverzögerung:
 Txt_autoLaunchMonitor:Überwachung automatisch starten
 ExtraSettingsHeading:Weitere Einstellungen
-Txt_applyRoleFilters:Rollenbasierte Filter verwenden
 Msg_UnopenedPackTitle:GP-Test: Modus „Ungeöffnetes Pack“
 Msg_UnopenedPack_p1:Nutze den Modus „Ungeöffnetes Pack“ nur, wenn auf diesem Konto mindestens ein noch ungeöffnetes Booster-Pack vorhanden ist.
 Msg_UnopenedPack_p2:Das Entfernen von Freunden löst immer das Ratenlimit aus

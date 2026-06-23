@@ -74,7 +74,6 @@ Txt_ClientLanguage:Client
 Txt_InstanceLaunchDelay:Launch MuMu Delay:
 Txt_autoLaunchMonitor:Auto-open Monitor
 ExtraSettingsHeading:Extra Settings
-Txt_applyRoleFilters:Role-Based Filters
 Msg_UnopenedPackTitle:GP Test: Unopened Pack mode
 Msg_UnopenedPack_p1:Only use Unopened Pack mode if this account still has at least one booster pack that you haven't opened.
 Msg_UnopenedPack_p2:Friend removal will trigger the rate limit
