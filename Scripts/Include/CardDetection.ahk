@@ -83,6 +83,7 @@ CheckCardLoading(totalCardsInPack){
     }
 
     pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
+    bias := MuMuBias()
     for index, value in borderCoords {
         coords := borderCoords[A_Index]
         imageName := "lag" . A_Index
@@ -90,7 +91,7 @@ CheckCardLoading(totalCardsInPack){
         Path := A_ScriptDir . "\Needles\" . imageName . ".png"
         if (FileExist(Path)) {
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, coords[1], coords[2], coords[3], coords[4], 40)
+            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, coords[1], coords[2] + bias, coords[3], coords[4]+ bias, 40)
             if (vRet = 1) {
                 count += 1
             }

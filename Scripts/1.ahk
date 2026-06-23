@@ -3470,9 +3470,11 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     profNeedle := Prof_Scope(A_ThisFunc . ":" . pNeedle.Name)
     global session
 
-    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1,OuterX2,OuterY2,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
+    bias := MuMuBias()
+
+    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+bias,OuterX2,OuterY2+bias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
     if(session.get("dbg_bbox"))
-        bboxAndPause_immage(OuterX1, OuterY1, OuterX2, OuterY2, pNeedle, vret, session.get("dbg_bboxNpause"))
+        bboxAndPause_immage(OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
 }
 

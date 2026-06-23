@@ -8,9 +8,9 @@
     __New(startX, startY, endX, endY)
     {
         this.startX := startX
-        this.startY := startY + MuMuBias()
+        this.startY := startY
         this.endX := endX
-        this.endY := endY + MuMuBias()
+        this.endY := endY
 
         if RegExMatch(this.startX, "^\d+$") && RegExMatch(this.startY, "^\d+$") && RegExMatch(this.endX, "^\d+$") && RegExMatch(this.endY, "^\d+$") {
             this.isValid := true
