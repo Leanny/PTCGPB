@@ -205,7 +205,7 @@ AddFriends(renew := false, getFC := false) {
         session.get("friendIDs").Push(botConfig.get("FriendID"))  ; Use an array to hold the single friend ID
     }
     FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 75, 440)
-    FindImageAndClick("Friend_FriendIDInputReady", 138, 265)
+    FindFriendIDInputAndClick("", "initial")
 
     ;randomize friend id list to not back up mains if running in groups since they'll be sent in a random order.
     n := session.get("friendIDs").MaxIndex()
@@ -351,6 +351,9 @@ AddFriends(renew := false, getFC := false) {
             else
                 adbInputEvent("59 122 67")
 
+            if (!IsFriendSearchInputReady() && !IsFriendSearchDialogOpen())
+                RecoverWrongScreenBeforeFriendIDInput("processing index=" . friendIDIdx)
+
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Processing add friends for `n(" . failSafeTime . "/45 seconds)")
             writeLastActivityEpoch(session.get("scriptName"), 4000)
@@ -363,9 +366,8 @@ AddFriends(renew := false, getFC := false) {
             continue
 
         if(friendIDIdx != session.get("friendIDs").maxIndex()) {
-            CloseFriendDetailsIfOpen()
-            FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 143, 518, , 1000)
-            FindImageAndClick("Friend_FriendIDInputReady", 138, 265, , 1000)
+            if (!FindFriendIDInputAndClick(1000, "next ID " . (friendIDIdx + 1) . "/" . n))
+                break
             EraseInput(friendIDIdx, n)
         }
         friendIDIdx += 1
@@ -716,7 +718,7 @@ ReEnterSocial(prevAction){
     if(prevAction = "ADD"){
         GoToFriendsList(true, true)
         FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 75, 440)
-        FindImageAndClick("Friend_FriendIDInputReady", 138, 265)
+        FindFriendIDInputAndClick("", "re-enter ADD")
     }
     else if(prevAction = "CLEARALL"){
         GoToFriendsList(false, true)
@@ -776,6 +778,105 @@ showcaseLikes() {
 }
 
 ;-------------------------------------------------------------------------------
+; Friend ID input focus - safe click (only inside search dialog)
+;-------------------------------------------------------------------------------
+IsFriendSearchDialogOpen() {
+    return FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, , , true)
+}
+
+IsFriendSearchInputReady() {
+    return FindOrLoseImage("Friend_FriendIDInputReady", 0, , , true)
+        || FindOrLoseImage("Friend_InputFormBlank", 0, , , true)
+}
+
+IsFriendProfileDetailsOpen() {
+    return FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+        || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
+        || FindOrLoseImage("GPTest_NotFavouriteInDetails", 0, , , true)
+        || FindOrLoseImage("GPTest_FavouritedInDetails", 0, , , true)
+        || FindOrLoseImage("GPTest_FriendRequestButtonInUserDetails", 0, , , true)
+        || FindOrLoseImage("Profile_TrophyStandIconInProfile", 0, , , true)
+}
+
+RecoverWrongScreenBeforeFriendIDInput(context := "") {
+    ctx := (context != "") ? " | " . context : ""
+
+    if (IsFriendSearchInputReady())
+        return false
+
+    if (FindOrLoseImage("Friend_AddButtonInFriendList", 0, , , true)
+        && !IsFriendSearchDialogOpen()) {
+        LogInfo("FriendAdd recovery: on friend list, opening search" . ctx)
+        adbClick_wbb(240, 120)
+        Delay(1)
+        return true
+    }
+
+    if (IsFriendSearchDialogOpen())
+        return false
+
+    if (IsFriendProfileDetailsOpen())
+        LogInfo("FriendAdd recovery: friend profile detected, pressing back" . ctx)
+    else
+        LogInfo("FriendAdd recovery: not on OK2/search/list, pressing back" . ctx)
+
+    adbClick_wbb(143, 507)
+    Delay(0.75)
+    return true
+}
+
+FindFriendIDInputAndClick(sleepTimeMs := "", context := "") {
+    global botConfig, session
+
+    if (sleepTimeMs = "")
+        sleepTimeMs := botConfig.get("Delay")
+
+    navTime := 0
+    focusTime := 0
+    start := A_TickCount
+    wasRecovered := false
+    ctx := (context != "") ? " | " . context : ""
+
+    Loop {
+        if (RecoverWrongScreenBeforeFriendIDInput(context))
+            wasRecovered := true
+
+        if (IsFriendSearchInputReady()) {
+            if (wasRecovered)
+                LogInfo("FriendAdd recovery: OK2 visible again after leaving profile/list" . ctx)
+            adbClick_wbb(138, 265)
+            Delay(0.25)
+            return true
+        }
+
+        if (IsFriendSearchDialogOpen()) {
+            if (!focusTime || (A_TickCount - focusTime) >= sleepTimeMs) {
+                adbClick_wbb(138, 265)
+                focusTime := A_TickCount
+            }
+        } else if (!navTime || (A_TickCount - navTime) >= sleepTimeMs) {
+            LogInfo("FriendAdd recovery: still off search dialog, pressing back again" . ctx)
+            adbClick_wbb(143, 507)
+            Delay(0.75)
+            navTime := A_TickCount
+            wasRecovered := true
+        }
+
+        elapsed := (A_TickCount - start) // 1000
+        if (elapsed >= 45) {
+            if (IsFriendProfileDetailsOpen() || !IsFriendSearchDialogOpen())
+                LogWarn("FriendAdd recovery failed: could not return to OK2 from profile/wrong screen after 45s" . ctx)
+            else
+                LogWarn("Instance " . session.get("scriptName") . " stuck at OK2 for " . elapsed . "s during friend ID input focus" . ctx)
+            restartGameInstance("Stuck at OK2...")
+            return false
+        }
+
+        Sleep, 100
+    }
+}
+
+;-------------------------------------------------------------------------------
 ; EraseInput - Clear friend code input field
 ;-------------------------------------------------------------------------------
 SubmitFriendIDSearch(value, num := 0, total := 0) {
@@ -785,7 +886,7 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
         if(num)
             CreateStatusMessage("Entering friend ID " . num . "/" . total . " (" . A_Index . "/3)",,,, false)
 
-        FindImageAndClick("Friend_FriendIDInputReady", 138, 265, , 1000)
+        FindFriendIDInputAndClick(1000, "submit index=" . num)
         adbInputEvent("59 122 67")
         Delay(0.25)
         adbInput(value)
@@ -841,18 +942,31 @@ EraseInput(num := 0, total := 0) {
     failSafeTime := 0
 
     Loop {
+        if(FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
+            && IsFriendSearchDialogOpen()) {
+            LogToFile("EraseInput clearing cannot-friend-request result | index=" . num)
+            adbClick_wbb(138, 265)
+            Delay(0.25)
+            adbInputEvent("59 122 67")
+            if(FindOrLoseImage("Friend_InputFormBlank", 0, failSafeTime, , true))
+                return true
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if(failSafeTime > 10)
+                break
+            continue
+        }
+
         if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, , 80, true)
             || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
             || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
-            || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
             || FindOrLoseImage("Common_Error", 0, , , true)) {
             LogToFile("EraseInput skipped because search result is open | index=" . num)
             return true
         }
 
-        FindImageAndClick("Friend_FriendIDInputReady", 138, 265)
+        FindFriendIDInputAndClick("", "erase index=" . num)
         adbInputEvent("59 122 67") ; Press Shift + Home + Backspace
         if(FindOrLoseImage("Friend_InputFormBlank", 0, failSafeTime))
             break
@@ -865,15 +979,17 @@ EraseInput(num := 0, total := 0) {
     return false
 }
 
-CloseFriendDetailsIfOpen() {
-    Loop, 4 {
-        if(!FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
-            && !FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true))
+CloseFriendDetailsIfOpen(context := "") {
+    ctx := (context != "") ? " | " . context : ""
+    Loop, 6 {
+        if(!IsFriendProfileDetailsOpen())
             return true
 
+        LogInfo("FriendAdd recovery: closing friend profile (" . A_Index . "/6)" . ctx)
         adbClick_wbb(143, 507)
-        Delay(0.5)
+        Delay(0.75)
     }
+    LogWarn("FriendAdd recovery: failed to close friend profile" . ctx)
     return false
 }
 
