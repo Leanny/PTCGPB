@@ -6908,8 +6908,9 @@
                 }
 
                 .catalog-account-list.pin-slide-active,
-                .multi-result-list.pin-slide-active {
-                    overflow: hidden;
+                .multi-result-list.pin-slide-active,
+                .catalog-side-list-stage.pin-slide-active {
+                    overflow: visible;
                 }
             }
 
@@ -8295,7 +8296,7 @@
                 multiSelectedRarities: new Set(),
                 multiWishlistOnly: false,
                 multiSearchCardIds: new Set(),
-                multiSelectedAccount: "",
+                pinnedMultiAccounts: [],
                 multiTradeReadyOnly: false,
                 multiRequiredShinedustOnly: false,
                 appliedMultiSearchCardIds: new Set(),
@@ -8321,7 +8322,7 @@
                 catalogTradeShareIndex: null,
                 catalogTradeShareIndexVersion: -1,
                 catalogWarmupHandle: 0,
-                selectedCatalogAccount: "",
+                pinnedCatalogAccounts: [],
                 catalogPullHistoryAccount: "",
                 cardCollectionNumberMap: new Map(),
                 tradedSet: new Set(),
@@ -11301,6 +11302,34 @@
                 );
             }
 
+            function isCatalogAccountPinned(account) {
+                return (
+                    !!account && state.pinnedCatalogAccounts.includes(account)
+                );
+            }
+
+            function isMultiAccountPinned(account) {
+                return !!account && state.pinnedMultiAccounts.includes(account);
+            }
+
+            function clearPinnedCatalogAccounts() {
+                state.pinnedCatalogAccounts = [];
+            }
+
+            function clearPinnedMultiAccounts() {
+                state.pinnedMultiAccounts = [];
+            }
+
+            function compareAccountPinOrder(aAccount, bAccount, pinnedList) {
+                const aIdx = pinnedList.indexOf(aAccount);
+                const bIdx = pinnedList.indexOf(bAccount);
+                const aPinned = aIdx >= 0;
+                const bPinned = bIdx >= 0;
+                if (aPinned !== bPinned) return aPinned ? -1 : 1;
+                if (aPinned && bPinned && aIdx !== bIdx) return aIdx - bIdx;
+                return 0;
+            }
+
             function accountPinToggleButtonHtml(account, isPinned) {
                 const label = isPinned
                     ? "Unpin account. Returns to normal sort order"
@@ -11325,31 +11354,38 @@
 
             function renderCatalogAccountPinHint(accountRows) {
                 if (!accountRows.length) return "";
-                if (state.selectedCatalogAccount) {
-                    return `<p class="account-pin-hint account-pin-hint--active">Account pinned to the top. Click the pin again to unpin.</p>`;
+                const pinCount = state.pinnedCatalogAccounts.length;
+                if (pinCount === 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">1 account pinned to the top. Click the pin again to unpin.</p>`;
                 }
-                return `<p class="account-pin-hint">Use the pin on an account to keep it at the top while sorting or filtering.</p>`;
+                if (pinCount > 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">${formatNumber(pinCount)} accounts pinned to the top (first pinned stays highest). Click a pin again to unpin.</p>`;
+                }
+                return `<p class="account-pin-hint">Use the pin on accounts to keep them at the top while sorting or filtering.</p>`;
             }
 
             function renderMultiAccountPinHint(accountRows) {
                 if (!accountRows.length) return "";
-                if (state.multiSelectedAccount) {
-                    return `<p class="account-pin-hint account-pin-hint--active">Account pinned to the top. Click the pin again or click outside the list to unpin.</p>`;
+                const pinCount = state.pinnedMultiAccounts.length;
+                if (pinCount === 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">1 account pinned to the top. Click the pin again or click outside the list to unpin all.</p>`;
                 }
-                return `<p class="account-pin-hint">Use the pin on an account to keep it at the top.</p>`;
+                if (pinCount > 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">${formatNumber(pinCount)} accounts pinned to the top. Click a pin again to unpin one, or click outside the list to unpin all.</p>`;
+                }
+                return `<p class="account-pin-hint">Use the pin on accounts to keep them at the top.</p>`;
             }
 
             function syncCatalogAccountPin(accountRows) {
-                if (
-                    state.selectedCatalogAccount &&
-                    accountRows.length &&
-                    !accountRows.some(
-                        (row) => row.account === state.selectedCatalogAccount,
-                    )
-                ) {
-                    state.selectedCatalogAccount = "";
+                if (!accountRows.length) {
+                    clearPinnedCatalogAccounts();
+                } else {
+                    const live = new Set(accountRows.map((row) => row.account));
+                    state.pinnedCatalogAccounts =
+                        state.pinnedCatalogAccounts.filter((account) =>
+                            live.has(account),
+                        );
                 }
-                if (!accountRows.length) state.selectedCatalogAccount = "";
                 if (
                     state.catalogPullHistoryAccount &&
                     accountRows.length &&
@@ -11365,28 +11401,35 @@
 
             function toggleCatalogAccountPin(account) {
                 if (!account) return null;
-                const wasPinned = state.selectedCatalogAccount === account;
-                state.selectedCatalogAccount = wasPinned ? "" : account;
-                return wasPinned ? "unpinned" : "pinned";
+                const idx = state.pinnedCatalogAccounts.indexOf(account);
+                if (idx >= 0) {
+                    state.pinnedCatalogAccounts.splice(idx, 1);
+                    return "unpinned";
+                }
+                state.pinnedCatalogAccounts.push(account);
+                return "pinned";
             }
 
             function syncMultiAccountPin(accountRows) {
-                if (
-                    state.multiSelectedAccount &&
-                    accountRows.length &&
-                    !accountRows.some(
-                        (row) => row.account === state.multiSelectedAccount,
-                    )
-                ) {
-                    state.multiSelectedAccount = "";
+                if (!accountRows.length) {
+                    clearPinnedMultiAccounts();
+                    return;
                 }
+                const live = new Set(accountRows.map((row) => row.account));
+                state.pinnedMultiAccounts = state.pinnedMultiAccounts.filter(
+                    (account) => live.has(account),
+                );
             }
 
             function toggleMultiAccountPin(account) {
                 if (!account) return null;
-                const wasPinned = state.multiSelectedAccount === account;
-                state.multiSelectedAccount = wasPinned ? "" : account;
-                return wasPinned ? "unpinned" : "pinned";
+                const idx = state.pinnedMultiAccounts.indexOf(account);
+                if (idx >= 0) {
+                    state.pinnedMultiAccounts.splice(idx, 1);
+                    return "unpinned";
+                }
+                state.pinnedMultiAccounts.push(account);
+                return "pinned";
             }
 
             function findAccountPinRow(account) {
@@ -11405,8 +11448,11 @@
                 );
             }
 
-            const ACCOUNT_PIN_SLIDE_MS = 520;
+            const ACCOUNT_PIN_SLIDE_MS = 820;
+            const ACCOUNT_PIN_UNPIN_SLIDE_MS = 1100;
             const ACCOUNT_PIN_SLIDE_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+            const ACCOUNT_PIN_UNPIN_SLIDE_EASE =
+                "cubic-bezier(0.33, 1, 0.38, 1)";
 
             function playAccountPinPopOnRow(row) {
                 if (!row) return;
@@ -11419,9 +11465,42 @@
                 );
             }
 
-            function playAccountPinSlideAnimation(account, action, firstRect) {
+            function captureAccountPinSlideContext(account) {
+                const row = findAccountPinRow(account);
+                const listHost =
+                    row?.closest(".catalog-account-list, .multi-result-list") ??
+                    null;
+                return {
+                    firstOffset:
+                        row && listHost
+                            ? getAccountPinRowOffsetInList(row, listHost)
+                            : null,
+                };
+            }
+
+            function getAccountPinRowOffsetInList(row, listHost) {
+                if (!row || !listHost) return 0;
+                const rowRect = row.getBoundingClientRect();
+                const listRect = listHost.getBoundingClientRect();
+                return rowRect.top - listRect.top + listHost.scrollTop;
+            }
+
+            function playAccountPinSlideAnimation(
+                account,
+                action,
+                firstOffset,
+            ) {
                 if (prefersReducedMotion() || !action || !account) return;
-                if (!firstRect) return;
+                if (!Number.isFinite(firstOffset)) return;
+
+                const slideMs =
+                    action === "unpinned"
+                        ? ACCOUNT_PIN_UNPIN_SLIDE_MS
+                        : ACCOUNT_PIN_SLIDE_MS;
+                const slideEase =
+                    action === "unpinned"
+                        ? ACCOUNT_PIN_UNPIN_SLIDE_EASE
+                        : ACCOUNT_PIN_SLIDE_EASE;
 
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -11434,22 +11513,27 @@
                         if (listHost && action === "pinned")
                             listHost.scrollTop = 0;
 
-                        const lastRect = row.getBoundingClientRect();
-                        const deltaX = firstRect.left - lastRect.left;
-                        const deltaY = firstRect.top - lastRect.top;
+                        const lastOffset = getAccountPinRowOffsetInList(
+                            row,
+                            listHost,
+                        );
+                        const deltaY = firstOffset - lastOffset;
 
-                        if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
+                        if (Math.abs(deltaY) < 2) {
                             playAccountPinPopOnRow(row);
                             return;
                         }
 
                         row.classList.add("pin-sliding");
                         listHost?.classList.add("pin-slide-active");
-                        row.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+                        listHost
+                            ?.closest(".catalog-side-list-stage")
+                            ?.classList.add("pin-slide-active");
+                        row.style.transform = `translate3d(0, ${deltaY}px, 0)`;
                         row.style.transition = "none";
 
                         requestAnimationFrame(() => {
-                            row.style.transition = `transform ${ACCOUNT_PIN_SLIDE_MS}ms ${ACCOUNT_PIN_SLIDE_EASE}, box-shadow ${ACCOUNT_PIN_SLIDE_MS}ms ${ACCOUNT_PIN_SLIDE_EASE}`;
+                            row.style.transition = `transform ${slideMs}ms ${slideEase}, box-shadow ${slideMs}ms ${slideEase}`;
                             row.style.transform = "translate3d(0, 0, 0)";
                             playAccountPinPopOnRow(row);
 
@@ -11461,6 +11545,9 @@
                                 row.style.transform = "";
                                 row.style.transition = "";
                                 listHost?.classList.remove("pin-slide-active");
+                                listHost
+                                    ?.closest(".catalog-side-list-stage")
+                                    ?.classList.remove("pin-slide-active");
                             };
                             row.addEventListener(
                                 "transitionend",
@@ -11470,10 +11557,7 @@
                                 },
                                 { once: true },
                             );
-                            window.setTimeout(
-                                cleanup,
-                                ACCOUNT_PIN_SLIDE_MS + 80,
-                            );
+                            window.setTimeout(cleanup, slideMs + 80);
                         });
                     });
                 });
@@ -11481,20 +11565,22 @@
 
             function applyCatalogAccountPinToggle(account) {
                 if (!account) return;
-                const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
+                const slideContext = captureAccountPinSlideContext(account);
                 const action = toggleCatalogAccountPin(account);
                 renderCatalogSidePanel({
                     patchOnly: true,
                     animate: false,
                 });
-                playAccountPinSlideAnimation(account, action, firstRect);
+                playAccountPinSlideAnimation(
+                    account,
+                    action,
+                    slideContext.firstOffset,
+                );
             }
 
             function applyMultiAccountPinToggle(account) {
                 if (!account) return;
-                const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
+                const slideContext = captureAccountPinSlideContext(account);
                 const action = toggleMultiAccountPin(account);
                 refreshMultiBestAccountsPanel({
                     animate: false,
@@ -11504,7 +11590,7 @@
                         playAccountPinSlideAnimation(
                             account,
                             action,
-                            firstRect,
+                            slideContext.firstOffset,
                         );
                     },
                 });
@@ -11513,11 +11599,9 @@
             function ensureAccountPinned(account) {
                 if (!account) return;
                 if (state.view === "multisearch") {
-                    if (state.multiSelectedAccount === account) return;
-                    const firstRect =
-                        findAccountPinRow(account)?.getBoundingClientRect() ??
-                        null;
-                    state.multiSelectedAccount = account;
+                    if (isMultiAccountPinned(account)) return;
+                    const slideContext = captureAccountPinSlideContext(account);
+                    state.pinnedMultiAccounts.push(account);
                     refreshMultiBestAccountsPanel({
                         animate: false,
                         pinOnly: true,
@@ -11526,18 +11610,21 @@
                             playAccountPinSlideAnimation(
                                 account,
                                 "pinned",
-                                firstRect,
+                                slideContext.firstOffset,
                             );
                         },
                     });
                     return;
                 }
-                if (state.selectedCatalogAccount === account) return;
-                const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
-                state.selectedCatalogAccount = account;
+                if (isCatalogAccountPinned(account)) return;
+                const slideContext = captureAccountPinSlideContext(account);
+                state.pinnedCatalogAccounts.push(account);
                 renderCatalogSidePanel({ patchOnly: true, animate: false });
-                playAccountPinSlideAnimation(account, "pinned", firstRect);
+                playAccountPinSlideAnimation(
+                    account,
+                    "pinned",
+                    slideContext.firstOffset,
+                );
             }
 
             function attachAccountPinToggleListeners(root, onToggle) {
@@ -13782,7 +13869,7 @@
                 state.catalogPullHistoryRowsRef = null;
                 state.catalogPullHistoryRowIndex = null;
                 state.selectedCatalogCardId = "";
-                state.selectedCatalogAccount = "";
+                clearPinnedCatalogAccounts();
                 state.catalogPullHistoryAccount = "";
                 state.catalogTradeReadyOnly = false;
                 state.multiExpansionFilter = "__all__";
@@ -13790,7 +13877,7 @@
                 state.multiSelectedRarities = new Set();
                 state.multiRaritiesInitialized = false;
                 state.multiSearchCardIds.clear();
-                state.multiSelectedAccount = "";
+                clearPinnedMultiAccounts();
                 state.multiTradeReadyOnly = false;
                 state.appliedMultiSearchCardIds.clear();
                 state.collectionAccounts = [];
@@ -17429,6 +17516,25 @@
                 return `<span class="multi-card-chip-thumb-wrap multi-result-mini-thumb${qtyClass}">${thumb}${qtyBadge}</span>`;
             }
 
+            function buildPinnedMultiAccountStub(account, accountFirstSeenMs) {
+                return {
+                    account,
+                    matchedCardIds: new Set(),
+                    perCardCounts: new Map(),
+                    totalCopies: 0,
+                    instance: String(
+                        state.accountMetadataMap.get(account)?.instance || "",
+                    ).trim(),
+                    shinedust: state.accountShinedustMap.has(account)
+                        ? state.accountShinedustMap.get(account)
+                        : Number.NaN,
+                    ageDays: calculateAccountAgeDays(
+                        account,
+                        accountFirstSeenMs.get(account),
+                    ),
+                };
+            }
+
             function buildMultiCardAccountRows(
                 selectedCards,
                 cardToAccounts,
@@ -17478,29 +17584,17 @@
                         row.totalCopies += remaining;
                     }
                 }
-                if (
-                    state.multiSelectedAccount &&
-                    selectedCards.length &&
-                    !rowsByAccount.has(state.multiSelectedAccount)
-                ) {
-                    const account = state.multiSelectedAccount;
-                    rowsByAccount.set(account, {
-                        account,
-                        matchedCardIds: new Set(),
-                        perCardCounts: new Map(),
-                        totalCopies: 0,
-                        instance: String(
-                            state.accountMetadataMap.get(account)?.instance ||
-                                "",
-                        ).trim(),
-                        shinedust: state.accountShinedustMap.has(account)
-                            ? state.accountShinedustMap.get(account)
-                            : Number.NaN,
-                        ageDays: calculateAccountAgeDays(
+                if (selectedCards.length) {
+                    for (const account of state.pinnedMultiAccounts) {
+                        if (rowsByAccount.has(account)) continue;
+                        rowsByAccount.set(
                             account,
-                            accountFirstSeenMs.get(account),
-                        ),
-                    });
+                            buildPinnedMultiAccountStub(
+                                account,
+                                accountFirstSeenMs,
+                            ),
+                        );
+                    }
                 }
                 let rows = [...rowsByAccount.values()].map((row) => ({
                     ...row,
@@ -17513,12 +17607,12 @@
                 }));
                 rows = applyMultiAccountFilters(rows);
                 return rows.sort((a, b) => {
-                    const pinnedAccount = state.multiSelectedAccount || "";
-                    if (pinnedAccount) {
-                        const aPinned = a.account === pinnedAccount;
-                        const bPinned = b.account === pinnedAccount;
-                        if (aPinned !== bPinned) return aPinned ? -1 : 1;
-                    }
+                    const pinOrder = compareAccountPinOrder(
+                        a.account,
+                        b.account,
+                        state.pinnedMultiAccounts,
+                    );
+                    if (pinOrder !== 0) return pinOrder;
                     if (a.matchedUnique !== b.matchedUnique)
                         return b.matchedUnique - a.matchedUnique;
                     if (a.totalCopies !== b.totalCopies)
@@ -17560,8 +17654,9 @@
                             row.account,
                             rawFileLabel,
                         );
-                        const isSelectedAccount =
-                            row.account === state.multiSelectedAccount;
+                        const isSelectedAccount = isMultiAccountPinned(
+                            row.account,
+                        );
                         const shinedustTitle =
                             row.requiredShinedust > 0
                                 ? `Needs ${formatNumber(row.requiredShinedust)} Shinedust for selected tradeables`
@@ -17707,7 +17802,7 @@
                 selectedCards,
                 accountRows,
             ) {
-                return `<aside class="multi-search-results"><div class="multi-results-sticky catalog-side panel view-switch-fade-out-target"><div class="catalog-side-title">Best Accounts</div><div class="catalog-side-update-body view-switch-fade-target"><div class="catalog-side-meta-slot"><div class="catalog-side-meta"><div class="catalog-side-meta-stats"><span>Sorted by selected cards matched, then copies. Pin an account to keep it at the top.</span></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort">${multiFilterTogglesHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderMultiAccountPinHint(accountRows)}</div>${renderMultiResultList(selectedCards, accountRows)}</div></div></div></div></aside>`;
+                return `<aside class="multi-search-results"><div class="multi-results-sticky catalog-side panel view-switch-fade-out-target"><div class="catalog-side-title">Best Accounts</div><div class="catalog-side-update-body view-switch-fade-target"><div class="catalog-side-meta-slot"><div class="catalog-side-meta"><div class="catalog-side-meta-stats"><span>Sorted by selected cards matched, then copies. Pin accounts to keep them at the top.</span></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort">${multiFilterTogglesHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderMultiAccountPinHint(accountRows)}</div>${renderMultiResultList(selectedCards, accountRows)}</div></div></div></div></aside>`;
             }
 
             function applyMultiResultsAsidePatch(
@@ -18050,7 +18145,7 @@
                             if (!cardId) return;
                             state.multiSearchCardIds.delete(cardId);
                             if (!state.multiSearchCardIds.size)
-                                state.multiSelectedAccount = "";
+                                clearPinnedMultiAccounts();
                             const pickerBtn = el.rows.querySelector(
                                 `[data-multi-picker-card-id="${CSS.escape(cardId)}"]`,
                             );
@@ -18070,7 +18165,7 @@
                         event.stopPropagation();
                         clearSelected.blur();
                         state.multiSearchCardIds.clear();
-                        state.multiSelectedAccount = "";
+                        clearPinnedMultiAccounts();
                         el.rows
                             .querySelectorAll(
                                 "[data-multi-picker-card-id].selected",
@@ -18841,14 +18936,7 @@
                     model.cardToAccounts,
                     model.accountFirstSeenMs,
                 );
-                if (
-                    state.multiSelectedAccount &&
-                    !accountRows.some(
-                        (row) => row.account === state.multiSelectedAccount,
-                    )
-                ) {
-                    state.multiSelectedAccount = "";
-                }
+                syncMultiAccountPin(accountRows);
 
                 const renderedCardCount = model.filteredCardCount;
                 const hiddenCardCount = 0;
@@ -18964,7 +19052,7 @@
                                 state.multiSearchCardIds.delete(cardId);
                             else state.multiSearchCardIds.add(cardId);
                             if (!state.multiSearchCardIds.size)
-                                state.multiSelectedAccount = "";
+                                clearPinnedMultiAccounts();
                             btn.classList.toggle("selected", !wasSelected);
                             btn.setAttribute(
                                 "aria-pressed",
@@ -19097,14 +19185,7 @@
                     model.cardToAccounts,
                     model.accountFirstSeenMs,
                 );
-                if (
-                    state.multiSelectedAccount &&
-                    !accountRows.some(
-                        (row) => row.account === state.multiSelectedAccount,
-                    )
-                ) {
-                    state.multiSelectedAccount = "";
-                }
+                syncMultiAccountPin(accountRows);
                 const renderedCardCount = model.filteredCardCount;
                 const hiddenCardCount = 0;
                 const controlsHtml = renderCatalogControlsForMulti(
@@ -19168,8 +19249,8 @@
                     if (state.view !== "multisearch") return;
                     if (event.target.closest("[data-multi-result-account]"))
                         return;
-                    if (!state.multiSelectedAccount) return;
-                    state.multiSelectedAccount = "";
+                    if (!state.pinnedMultiAccounts.length) return;
+                    clearPinnedMultiAccounts();
                     rebuildMultiSelectionUI();
                 };
 
@@ -19700,8 +19781,7 @@
                     : accountTradeBlocked
                       ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
                       : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(row.account)}" data-start-trade-card="${escapeHtml(selected.id)}" data-start-trade-file="${escapeHtml(mappedFileName)}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
-                const isPinned =
-                    row.account === state.selectedCatalogAccount;
+                const isPinned = isCatalogAccountPinned(row.account);
                 const isHistoryOpen =
                     row.account === state.catalogPullHistoryAccount;
                 const historyButton = catalogPullHistoryToggleButtonHtml(
@@ -19870,7 +19950,7 @@
                     requiredShinedust,
                 );
                 syncCatalogAccountPin(accountRows);
-                if (!selected) state.selectedCatalogAccount = "";
+                if (!selected) clearPinnedCatalogAccounts();
 
                 const { accountItemsHtml, accountListFillAttr, accountListNoteHtml } =
                     buildCatalogAccountListParts(
@@ -20128,7 +20208,7 @@
                 state.catalogCardSearch =
                     String(info.name || "").trim() || cardId;
                 state.selectedCatalogCardId = cardId;
-                state.selectedCatalogAccount = "";
+                clearPinnedCatalogAccounts();
                 state.catalogPullHistoryAccount = "";
                 _viewDomCache.delete("allcards");
                 if (state.view === "allcards") {
@@ -20594,16 +20674,16 @@
             }
 
             function sortCatalogAccounts(rows) {
-                const pinned = state.selectedCatalogAccount || "";
                 const mode = state.catalogAccountSort;
                 const asc = state.catalogAccountSortAsc;
                 const dir = asc ? 1 : -1;
                 rows.sort((a, b) => {
-                    if (pinned) {
-                        const aPinned = a.account === pinned;
-                        const bPinned = b.account === pinned;
-                        if (aPinned !== bPinned) return aPinned ? -1 : 1;
-                    }
+                    const pinOrder = compareAccountPinOrder(
+                        a.account,
+                        b.account,
+                        state.pinnedCatalogAccounts,
+                    );
+                    if (pinOrder !== 0) return pinOrder;
                     if (mode === "shinedust") {
                         const aDust = Number.isFinite(a.shinedust)
                             ? a.shinedust
@@ -20786,7 +20866,7 @@
                 }
                 if (!selectedStillValid) {
                     state.selectedCatalogCardId = "";
-                    state.selectedCatalogAccount = "";
+                    clearPinnedCatalogAccounts();
                 }
 
                 const selected = state.selectedCatalogCardId
@@ -20960,7 +21040,7 @@
                 );
 
                 syncCatalogAccountPin(accountRows);
-                if (!selected) state.selectedCatalogAccount = "";
+                if (!selected) clearPinnedCatalogAccounts();
 
                 let sideHtml = "";
                 if (includeSide) {
@@ -21178,7 +21258,7 @@
                 }
                 if (!selectedStillValid) {
                     state.selectedCatalogCardId = "";
-                    state.selectedCatalogAccount = "";
+                    clearPinnedCatalogAccounts();
                 }
 
                 const clippedNote = hiddenCardCount
@@ -21510,7 +21590,7 @@
                             const tile = btn.querySelector(".card-tile");
                             if (tile) tile.classList.add("selected");
                             state.selectedCatalogCardId = cardId;
-                            state.selectedCatalogAccount = "";
+                            clearPinnedCatalogAccounts();
                             state.catalogPullHistoryAccount = "";
                             renderCatalogSidePanel({ animate: "selection" });
                         });
