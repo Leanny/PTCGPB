@@ -19,9 +19,6 @@ setADBBaseInfo(){
         MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
         ExitApp
     }
-    adbPath := findAdbPath(mumuFolder)
-    ADB_LogTrace("Resolved adbPath=" . adbPath)
-
     adbPort := findAdbPorts()
     if(!adbPort) {
         LogError("[" . A_ScriptName . "] ADB port could not be resolved", "ADB.txt")
@@ -29,6 +26,9 @@ setADBBaseInfo(){
         ExitApp
     }
     ADB_LogTrace("Resolved adbPort=" . adbPort)
+
+    adbPath := findAdbPath(mumuFolder, session.get("muMuAndroid15"))
+    ADB_LogTrace("Resolved adbPath=" . adbPath)
 
     session.set("adbPort", adbPort)
     session.set("adbPath", adbPath)
@@ -88,7 +88,8 @@ findAdbPorts() {
                 ; Parse the JSON for playerName
                 RegExMatch(extraConfigContent, """playerName"":\s*""(.*?)""", playerName)
                 if(playerName1 = session.get("scriptName")) {
-                    ADB_LogTrace("Matched MuMu playerName=" . playerName1 . " adbPort=" . adbPortValue)
+                    ADB_LogTrace("Matched MuMu playerName=" . playerName1 . " adbPort=" . adbPortValue . " android15=" . (InStr(folder, "MuMuPlayerGlobal-15.0") ? 1 : 0))
+                    session.set("muMuAndroid15", InStr(folder, "MuMuPlayerGlobal-15.0") ? 1 : 0)
                     return adbPortValue
                 }
             }
@@ -314,10 +315,8 @@ waitUntilActivatePTCGPApp(){
 
 doesMissionUserPrefsExist() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
-    result := Trim(CmdRet(adbCommand . " shell sh -c '""test -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs && echo 1 || echo 0""'"), "`r`n`t ")
+    result := Trim(adbWriteRaw("if [ -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs ]; then echo 1; else echo 0; fi", true), "`r`n`t ")
     ADB_LogTrace("doesMissionUserPrefsExist result=" . result)
     return (result = "1")
 }
@@ -587,7 +586,8 @@ isTerminatePTCGPAppByADBShell() {
         return cachedResult
     }
 
-    result := adbWriteRaw("pidof jp.pokemon.pokemontcgp", true)
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    result := CmdRet(adbCommand . " shell pidof jp.pokemon.pokemontcgp")
     ADB_LogTrace("isTerminatePTCGPAppByADBShell pidResult=" . Trim(result))
     if (RegExMatch(result, "\d+")) {
         cachedResult := false

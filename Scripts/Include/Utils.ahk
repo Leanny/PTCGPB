@@ -11,10 +11,14 @@
 ;   - Mission checking logic
 ;   - MuMu version detection
 ;
-; Dependencies: none for core helpers; do not call LogToFile here - use AppendGPlog for GPlog.txt
+; Dependencies: MumuHelper.ahk (getMuMuFolder); do not call LogToFile here - use AppendGPlog for GPlog.txt
 ;   (Utils is #included by LaunchAllMumu.ahk without Logging.ahk).
 ; Used by: Multiple modules throughout 1.ahk
 ;===============================================================================
+
+#Include *i MumuHelper.ahk
+#Include *i %A_ScriptDir%\Include\MumuHelper.ahk
+#Include *i %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
 
 ;-------------------------------------------------------------------------------
 ; Delay - Configurable delay based on global Delay setting
@@ -1272,7 +1276,13 @@ generateStatusText(){
     return viewStr
 }
 
-findAdbPath(targetDir) {
+findAdbPath(targetDir, preferAndroid15 := false) {
+    if (preferAndroid15) {
+        android15Path := targetDir . "\nx_device\15.0\shell\adb.exe"
+        if (FileExist(android15Path))
+            return android15Path
+    }
+
     rootPath := targetDir . "\adb.exe"
     if (FileExist(rootPath)) {
         return rootPath
