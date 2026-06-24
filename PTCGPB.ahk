@@ -20,6 +20,28 @@ DllCall("ntdll\ZwSetTimerResolution","Int",5000,"Int",1,"Int*",MyCurrentTimerRes
 DllCall("Sleep","UInt",1)
 DllCall("ntdll\ZwDelayExecution","Int",0,"Int64*",-5000)
 
+; =================== EARLY Command-Line Argument Capture ===================
+; Declare globals FIRST to ensure they persist throughout script
+global logFile := A_ScriptDir . "\Logs\command_line_execution.log"
+global cli_mode := ""
+global clicommand := "clicommand"
+
+; Check for arguments
+FileAppend, [%A_Now%] Script started - Admin: %A_IsAdmin%`n, %logFile%
+hasCliCommand := false
+for index, arg in A_Args {
+    if (index = 1 && arg = %clicommand%) {
+        hasCliCommand := true
+        continue
+    }
+    if (index = 2 && hasCliCommand = true) {
+        cli_mode := arg
+        msg := "[" . A_Now . "] Early CLI capture - Command: clicommand. Value: " . cli_mode . "`n"
+        FileAppend, %msg%, %logFile%
+        break
+    }
+}
+
 #Include %A_ScriptDir%\Scripts\Include\
 #Include Config.ahk
 #Include Session.ahk
@@ -64,7 +86,14 @@ OnMessage(0x0112, "PTCGPB_OnWmSysCommand")
 if not A_IsAdmin
 {
     try {
-        Run *RunAs "%A_ScriptFullPath%"
+        ; Build the full command with proper argument preservation. Original command : Run *RunAs "%A_ScriptFullPath%"
+        if (cli_mode != "")
+            fullCmd := """" . A_ScriptFullPath . """" . " " . clicommand . " " . cli_mode
+        else
+            fullCmd := """" . A_ScriptFullPath . """"
+        msg := "[" . A_Now . "] Elevating to admin with args - " . fullCmd . "`n"
+        FileAppend, %msg%, %logFile%
+        Run *RunAs %fullCmd%
     } catch {
         MsgBox, 48, PTCGPB, Administrator permission is required to run PTCGPB.`n`nPlease launch it again and approve the permission prompt.
     }
@@ -472,6 +501,36 @@ NextStep:
     Gui, Add, Text, x530 y398 w190 Center BackgroundTrans cGray, CC BY-NC 4.0 international license
 
     HelpTT_Init()
+
+    ; =================== Command-Line Argument Handling ===================    
+    if (cli_mode != "") {
+        msg := "[" . A_Now . "] CLI command execution started with: " . cli_mode . "`n"
+        FileAppend, %msg%, %logFile%
+        ModeMap := {"CreateBots13P": "Create Bots (13P)", "Inject13P": "Inject 13P+", "InjectWonderpick96P": "Inject Wonderpick 96P+", "InjectRewards": "Inject Rewards"}
+        if (ModeMap.HasKey(cli_mode)) {
+            final_mod := ModeMap[cli_mode]
+            msg := "[" . A_Now . "] Mode matched: " . final_mod . "`n"
+            FileAppend, %msg%, %logFile%
+            botConfig.set("deleteMethod", final_mod, "General")
+            msg := "[" . A_Now . "] Bot mode set to: " . final_mod . "`n"
+            FileAppend, %msg%, %logFile%
+            Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
+            Sleep, 500
+            FileAppend, [%A_Now%] Running BalanceXMLs...`n, %logFile%
+            GoSub, BalanceXMLs
+            FileAppend, [%A_Now%] BalanceXMLs completed, waiting 2 seconds...`n, %logFile%
+            Sleep, 2000
+            msg := "[" . A_Now . "] Starting bot with mode: " . final_mod . "`n"
+            FileAppend, %msg%, %logFile%
+            StartBot()
+            ExitApp
+        } else {
+            msg := "[" . A_Now . "] Argument did not match any known mode: " . cli_mode . "`n"
+            FileAppend, %msg%, %logFile%
+        }
+    } else {
+        FileAppend, [%A_Now%] No valid CLI command arguments detected - showing UI`n, %logFile%
+    }
 
     Gui, Show, w%GUI_WIDTH% h%GUI_HEIGHT%, Arturo's PTCGP BOT
     WinRestore, Arturo's PTCGP BOT
@@ -1903,9 +1962,17 @@ BalanceXMLs:
                 errorText := ""
                 if (FileExist(errorPath))
                     FileRead, errorText, %errorPath%
-                MsgBox, 0x40000, XML Balance, % "carddb balance-xmls failed.`n`n" . errorText
+                if (cli_mode != "") {
+                    FileAppend, XML Balance, % "carddb balance-xmls failed.`n`n" . errorText, %logFile%
+                } else {
+                    MsgBox, 0x40000, XML Balance, % "carddb balance-xmls failed.`n`n" . errorText
+                }
             } else {
-                MsgBox, 0x40000, XML Balance, % XMLBalanceResultMessage(botConfig.get("Instances"), counter)
+                if (cli_mode != "") {
+                    FileAppend, XML Balance, % XMLBalanceResultMessage(botConfig.get("Instances"), counter), %logFile%
+                } else {
+                    MsgBox, 0x40000, XML Balance, % XMLBalanceResultMessage(botConfig.get("Instances"), counter)
+                }
             }
             return
         }
