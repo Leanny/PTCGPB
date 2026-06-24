@@ -37,7 +37,7 @@ getMuMuFolder() {
         return mumuFolder
 
     baseFolder := botConfig.get("folderPath")
-    subFolderList := ["MuMuPlayerGlobal-12.0", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
+    subFolderList := ["", "MuMuPlayerGlobal-12.0", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
 
     For idx, value in subFolderList {
         mumuFolder = %baseFolder%\%value%
