@@ -242,7 +242,7 @@ RunAdbRootCommand(shellCommand) {
     if (ErrorLevel = 0)
         return 1
 
-    nonRootCommand := q . adbPath . q . " -s " . device . " shell " . sq . shellCommand . sq
+    nonRootCommand := q . adbPath . q . " -s " . device . " shell " . q . shellCommand . q
     RunWait, %nonRootCommand%,, Hide
     return (ErrorLevel = 0)
 }
