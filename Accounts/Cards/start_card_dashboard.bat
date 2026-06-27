@@ -8,12 +8,6 @@ set "ROOT=%~dp0..\.."
 for %%F in ("%~dp0card_database.html") do set "HTMLVER=%%~zF"
 set "URL=http://localhost:%PORT%/Accounts/Cards/card_database.html?v=%HTMLVER%"
 set "CARDDB=%ROOT%\Helper\carddb.exe"
-set "CARDDB_BUILD=%ROOT%\Helper\carddb_src\target\release\carddb.exe"
-
-if exist "%CARDDB_BUILD%" (
-  copy /Y "%CARDDB_BUILD%" "%CARDDB%" >nul 2>&1
-  if errorlevel 1 set "CARDDB=%CARDDB_BUILD%"
-)
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ports=@(%PORT%,%LEGACY_PORT%); foreach($port in $ports){ Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }"
