@@ -19,9 +19,6 @@ setADBBaseInfo(){
         MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
         ExitApp
     }
-    adbPath := findAdbPath(mumuFolder)
-    ADB_LogTrace("Resolved adbPath=" . adbPath)
-
     adbPort := findAdbPorts()
     if(!adbPort) {
         LogError("[" . A_ScriptName . "] ADB port could not be resolved", "ADB.txt")
@@ -29,6 +26,9 @@ setADBBaseInfo(){
         ExitApp
     }
     ADB_LogTrace("Resolved adbPort=" . adbPort)
+
+    adbPath := findAdbPath(mumuFolder, session.get("muMuAndroid15"))
+    ADB_LogTrace("Resolved adbPath=" . adbPath)
 
     session.set("adbPort", adbPort)
     session.set("adbPath", adbPath)
@@ -88,7 +88,8 @@ findAdbPorts() {
                 ; Parse the JSON for playerName
                 RegExMatch(extraConfigContent, """playerName"":\s*""(.*?)""", playerName)
                 if(playerName1 = session.get("scriptName")) {
-                    ADB_LogTrace("Matched MuMu playerName=" . playerName1 . " adbPort=" . adbPortValue)
+                    ADB_LogTrace("Matched MuMu playerName=" . playerName1 . " adbPort=" . adbPortValue . " android15=" . (InStr(folder, "MuMuPlayerGlobal-15.0") ? 1 : 0))
+                    session.set("muMuAndroid15", InStr(folder, "MuMuPlayerGlobal-15.0") ? 1 : 0)
                     return adbPortValue
                 }
             }
@@ -238,6 +239,11 @@ initializeAdbShell() {
                     throw Exception("ADB port is invalid: " . session.get("adbPort"))
                 }
 
+                ; disable root and restart as root shell
+                MuMuDisableRoot(session.get("scriptName"))
+                ADB_LogTrace("initializeAdbShell adb shell port=" . session.get("adbPort"))
+                RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " root", , Hide
+
                 ; Attempt to start adb shell
                 ADB_LogTrace("initializeAdbShell exec adb shell port=" . session.get("adbPort"))
                 session.set("adbShell", ComObjCreate("WScript.Shell").Exec(session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " shell"))
@@ -255,16 +261,6 @@ initializeAdbShell() {
                     }
                     else
                         continue
-                }
-
-                try {
-                    RetryCount++
-                    ADB_LogTrace("initializeAdbShell requesting su")
-                    session.get("adbShell").StdIn.WriteLine("su")
-                } catch e2 {
-                    if (RetryCount > MaxRetries) {
-                        throw Exception("Failed to elevate shell: " . (IsObject(e2) ? e2.Message : e2))
-                    }
                 }
             }
 
@@ -319,10 +315,8 @@ waitUntilActivatePTCGPApp(){
 
 doesMissionUserPrefsExist() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
-    result := Trim(CmdRet(adbCommand . " shell su -c '""test -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs && echo 1 || echo 0""'"), "`r`n`t ")
+    result := Trim(adbWriteRaw("if [ -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs ]; then echo 1; else echo 0; fi", true), "`r`n`t ")
     ADB_LogTrace("doesMissionUserPrefsExist result=" . result)
     return (result = "1")
 }
@@ -592,7 +586,8 @@ isTerminatePTCGPAppByADBShell() {
         return cachedResult
     }
 
-    result := adbWriteRaw("pidof jp.pokemon.pokemontcgp", true)
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    result := CmdRet(adbCommand . " shell pidof jp.pokemon.pokemontcgp")
     ADB_LogTrace("isTerminatePTCGPAppByADBShell pidResult=" . Trim(result))
     if (RegExMatch(result, "\d+")) {
         cachedResult := false
@@ -751,14 +746,14 @@ waitadb(){
 adbClick(X, Y) {
     prof := Prof_Scope(A_ThisFunc)
     static clickCommands := Object()
-    static convX := 540/283, convY := 960/488, offset := -40
+    static convX := 540/283, convY := 960/488, offset :=40
 
     key := X << 16 | Y
 
     if (!clickCommands.HasKey(key)) {
         clickCommands[key] := Format("input tap {} {}"
             , Round(X * convX)
-            , Round((Y + offset) * convY))
+            , Round((Y - offset) * convY))
     }
     ADB_LogTrace("adbClick logical=(" . X . "," . Y . ") command=" . clickCommands[key])
     adbWriteRaw(clickCommands[key])

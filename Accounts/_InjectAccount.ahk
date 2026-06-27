@@ -343,6 +343,7 @@ RunInjectFlow:
         injectInProgress := 0
         return
     }
+    RunWait, %adbPath% -s 127.0.0.1:%adbPorts% root,, Hide
 
     UpdateInjectUi("Injecting account data...", 45)
     if !loadAccount() {
@@ -460,25 +461,22 @@ RunAdbRootCommand(shellCommand) {
     global adbPath, adbPorts
     q := Chr(34)
     sq := Chr(39)
+    device := "127.0.0.1:" . adbPorts
 
-    fullCommand := q . adbPath . q . " -s 127.0.0.1:" . adbPorts . " shell su -c " . sq . shellCommand . sq
-    RunWait, %fullCommand%,, Hide
+    ; Prefer adb root shell. Nested su/sh -c hangs on MuMu Android 15.
+    rootShellCommand := q . adbPath . q . " -s " . device . " shell " . sq . shellCommand . sq
+    RunWait, %rootShellCommand%,, Hide
     if (ErrorLevel = 0)
         return 1
 
-    ; Fallback for builds where su uses positional uid instead of -c.
-    fallbackCommand := q . adbPath . q . " -s 127.0.0.1:" . adbPorts . " shell su 0 sh -c " . sq . shellCommand . sq
-    RunWait, %fallbackCommand%,, Hide
+    suCommand := q . adbPath . q . " -s " . device . " shell su -c " . sq . shellCommand . sq
+    RunWait, %suCommand%,, Hide
     if (ErrorLevel = 0)
         return 1
 
-    ; Last fallback: run as shell user (works for some commands like am force-stop).
-    nonRootCommand := q . adbPath . q . " -s 127.0.0.1:" . adbPorts . " shell " . sq . shellCommand . sq
+    nonRootCommand := q . adbPath . q . " -s " . device . " shell " . q . shellCommand . q
     RunWait, %nonRootCommand%,, Hide
-    if (ErrorLevel = 0)
-        return 1
-
-    return 0
+    return (ErrorLevel = 0)
 }
 
 RunAdbPush(localPath, remotePath) {

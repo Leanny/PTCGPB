@@ -15,6 +15,7 @@ CoordMode, Pixel, Screen
 #Include Gdip_All.ahk
 #Include Gdip_Imagesearch.ahk
 pToken := Gdip_Startup()
+#Include MumuHelper.ahk
 #Include Utils.ahk
 #Include Logging.ahk
 #Include ADB.ahk
@@ -257,9 +258,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     waitForAppBootScreen()
     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
     if(session.get("setSpeed") = 3)
-        FindImageAndClick("Common_SpeedMod3x", 187, 172)
+        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
     else
-        FindImageAndClick("Common_SpeedMod2x", 106, 173)
+        FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
     adbClick_wbb(51, 297)
     Delay(1)
     startPreProcess(botConfig.get("deleteMethod"))
@@ -419,9 +420,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         waitForAppBootScreen()
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
         if(session.get("setSpeed") = 3)
-            FindImageAndClick("Common_SpeedMod3x", 187, 172)
+            FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
         else
-            FindImageAndClick("Common_SpeedMod2x", 106, 173)
+            FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -1008,7 +1009,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     }
 
     if(botConfig.get("slowMotion")) {
-        if(imageName = "speedmodMenu" || imageName = "One" || imageName = "Two" || imageName = "Three")
+        if(IsSpeedModImageName(imageName))
             return true
     }
     imagePath := A_ScriptDir . "\Needles\"
@@ -1121,7 +1122,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
     imageName := needleObj.imageName
 
     if(botConfig.get("slowMotion")) {
-        if(imageName = "speedmodMenu" || imageName = "One" || imageName = "Two" || imageName = "Three")
+        if(IsSpeedModImageName(imageName))
             return true
     }
     if (sleepTime = "") {
@@ -1307,7 +1308,7 @@ DirectlyPositionWindow() {
         instanceIndex := Title
     }
 
-    titleHeight := 40
+    titleHeight := 40 + MuMuBias()
 
     borderWidth := 4 - 1
     rowHeight := titleHeight + 492
@@ -1549,9 +1550,9 @@ menuDeleteStart() {
     if(session.get("friended")) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
         if(session.get("setSpeed") = 3)
-            FindImageAndClick("Common_SpeedMod3x", 187, 172)
+            FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
         else
-            FindImageAndClick("Common_SpeedMod2x", 106, 173)
+            FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -1815,9 +1816,7 @@ GetHistoryOfAccount() {
 
 InitPackOpening(full := false) {
     prof := Prof_Scope(A_ThisFunc)
-    global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
     if (!EnsurePTCGPBHelperInstalled())
         return false
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
@@ -1825,13 +1824,7 @@ InitPackOpening(full := false) {
     adbWriteRaw("pkill -f /data/ptcgp/ptcgpb")
 
     SavePackOpeningMissionUserPrefsSnapshot("pre")
-
-    if (full) {
-        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --full --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
-    } else {
-        RunWait, % adbCommand . " shell su -c ""sh -c 'nohup /data/ptcgp/ptcgpb watch-cards --duplicate >/dev/null 2>&1 </dev/null &'", , Hide
-    }
-    Sleep, 300
+    StartPtcgpbWatchCards(full)
 }
 
 PackOpeningMissionUserPrefsPath() {
@@ -2088,22 +2081,9 @@ EvaluatePack() {
 
 EvaluatePackCount() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
-
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
 
     LogTrace("EvaluatePackCount running ptcgpb packcount", "ADB.txt")
-    output := GetStdout(adbCommand . " shell su -c ""sh -c '/data/ptcgp/ptcgpb packcount'""")
-    output := StrReplace(output, "`r")
-    output := Trim(output, "`n ")
-
-    if !RegExMatch(output, "^-?\d+$") {
-        LogDebug("EvaluatePackCount returned non-numeric output: " . output)
-        return 0
-    }
-
-    LogDebug("EvaluatePackCount result=" . output)
-    return output + 0
+    return GetPtcgpbPackCount()
 }
 
 RecoverPack() {
@@ -2117,7 +2097,6 @@ RecoverPack() {
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
     adbWriteRaw("rm -f /data/ptcgp/result.log")
     adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
-
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
     return ParsePackResultOutput(output)
 }
@@ -3463,9 +3442,11 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     profNeedle := Prof_Scope(A_ThisFunc . ":" . pNeedle.Name)
     global session
 
-    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1,OuterX2,OuterY2,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
+    bias := MuMuBias()
+
+    vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+bias,OuterX2,OuterY2+bias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
     if(session.get("dbg_bbox"))
-        bboxAndPause_immage(OuterX1, OuterY1, OuterX2, OuterY2, pNeedle, vret, session.get("dbg_bboxNpause"))
+        bboxAndPause_immage(OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
 }
 
@@ -3615,7 +3596,7 @@ DoTutorial() {
 
     if(session.get("setSpeed") = 3){
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -3625,7 +3606,7 @@ DoTutorial() {
 
     if(session.get("setSpeed") = 3){
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod3x", 187, 172)
+        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -3678,7 +3659,7 @@ DoTutorial() {
     FindImageAndClick("Pack_ReadyForOpenPack", 140, 424) ;wait for pack to be ready  to trace
     if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -3692,7 +3673,7 @@ DoTutorial() {
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
                     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick("Common_SpeedMod3x", 187, 172) ; click 3x
+                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3)) ; click 3x
                 }
             }
             adbClick_wbb(51, 297)
@@ -3705,7 +3686,7 @@ DoTutorial() {
     FindImageAndClick("Create_SwipeForRegisterDexIcon", 140, 375) ;click through cards until needing to swipe up
     if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -3719,9 +3700,9 @@ DoTutorial() {
             if(session.get("setSpeed") > 1) {
                 FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
                 if(session.get("setSpeed") = 3)
-                    FindImageAndClick("Common_SpeedMod3x", 187, 172)
+                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
                 else
-                    FindImageAndClick("Common_SpeedMod2x", 106, 173)
+                    FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
             }
             adbClick_wbb(51, 297)
             break
@@ -3779,7 +3760,7 @@ DoTutorial() {
     FindImageAndClick("Pack_ReadyForOpenPack", 239, 497) ;wait for pack to be ready  to Trace
     if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -3793,7 +3774,7 @@ DoTutorial() {
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
                     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick("Common_SpeedMod3x", 187, 172)
+                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
                 }
             }
             adbClick_wbb(51, 297)
@@ -4289,7 +4270,7 @@ PackOpening(tenPackOpening := false) {
 
     if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -4303,7 +4284,7 @@ PackOpening(tenPackOpening := false) {
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
                     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick("Common_SpeedMod3x", 187, 172)
+                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
                 }
             }
             adbClick_wbb(51, 292)
@@ -4489,7 +4470,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
 
     if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -4503,7 +4484,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
                     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick("Common_SpeedMod3x", 187, 172)
+                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
                 }
             }
             adbClick_wbb(51, 297)
@@ -4695,11 +4676,11 @@ SetOpenGiftSpeed(targetSpeed) {
 SetOpenGiftSpeedByButtons(targetSpeed) {
     FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
     if(targetSpeed = 1)
-        FindImageAndClick("Common_SpeedMod1x", 21, 172)
+        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
     else if(targetSpeed = 3)
-        FindImageAndClick("Common_SpeedMod3x", 187, 172)
+        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
     else
-        FindImageAndClick("Common_SpeedMod2x", 106, 173)
+        FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
 
     Delay(1)
     adbClick_wbb(51, 297)

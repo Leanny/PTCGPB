@@ -13,6 +13,7 @@ CoordMode, Pixel, Screen
 #Include Profiler.ahk
 
 #Include Logging.ahk
+#Include MumuHelper.ahk
 #Include ADB.ahk
 #Include Gdip_All.ahk
 #Include Gdip_Imagesearch.ahk
@@ -359,7 +360,9 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     ;bboxAndPause(X1, Y1, X2, Y2)
 
     ; ImageSearch within the region
-    vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+    yBias := MuMuBias()
+
+    vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1+yBias, X2, Y2+yBias, searchVariation)
     ErrorCheckInScreen(pBitmap)
     Gdip_DisposeImage(pBitmap)
     if(EL = 0)
@@ -436,7 +439,9 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         Y2 := needleObj.coords.endY
         ;bboxAndPause(X1, Y1, X2, Y2)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+        yBias := MuMuBias()
+
+        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1+yBias, X2, Y2+yBias, searchVariation)
         ErrorCheckInScreen(pBitmap)
         Gdip_DisposeImage(pBitmap)
         if (!confirmed && vRet = 1) {
@@ -458,7 +463,9 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         Path = %imagePath%Error1.png
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, 15, 155, 270, 420, searchVariation)
+        yBias := MuMuBias()
+
+        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, 15, 155+yBias, 270, 420+yBias, searchVariation)
         Gdip_DisposeImage(pBitmap)
         if (vRet = 1) {
             CreateStatusMessage("Error message in " . session.get("scriptName") . ". Clicking retry...")
@@ -517,8 +524,9 @@ resetWindows(){
             if (instanceIndex = "")
                 instanceIndex := 1
 
+            titleHeight := 40 + MuMuBias()
             borderWidth := 4 - 1
-            rowHeight := 40 + 492
+            rowHeight := titleHeight + 492
             currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
             y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
@@ -2253,7 +2261,9 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     ; Returns: Result from Gdip_ImageSearch
     ; ------------------------------------------------------------------------------
     global session
-    yBias := 40 - 45
+    ; todo: figure out why this is originally at -5
+    yBias := -5 + MuMuBias()
+
     vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+yBias,OuterX2,OuterY2+yBias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
     if(session.get("dbg_bbox"))
         bboxAndPause_immage(OuterX1, OuterY1+yBias, OuterX2, OuterY2+yBias, pNeedle, vret, session.get("dbg_bboxNpause"))
