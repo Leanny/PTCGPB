@@ -1315,6 +1315,7 @@
                 background: rgba(255, 255, 255, 0.04);
                 font-size: 0.74rem;
                 font-weight: 800;
+                font-variant-numeric: tabular-nums;
                 color: var(--muted);
             }
 
@@ -1875,6 +1876,16 @@
                 width: 30px;
                 height: 30px;
                 font-size: 0.95rem;
+            }
+            #filtersSection .rows-godpack-filter {
+                flex: 0 0 auto;
+                width: auto;
+                height: 30px;
+                padding: 0 9px;
+                font-size: 0.68rem;
+                font-weight: 700;
+                letter-spacing: 0.01em;
+                color: #ffc44a;
             }
             #filtersSection .small-actions button {
                 padding: 2px 7px;
@@ -2665,73 +2676,80 @@
                 gap: 8px;
             }
 
+            .db-row--account .card-tile {
+                content-visibility: auto;
+                contain-intrinsic-size: auto 132px;
+            }
+
+            .account-overview-grid-wrap {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .account-overview-show-all-btn {
+                align-self: flex-start;
+            }
+
             .db-row--expandable {
                 content-visibility: visible;
             }
 
             .db-row--expandable .row-body {
+                display: grid;
+                grid-template-rows: 0fr;
                 overflow: hidden;
                 padding: 0;
-                max-height: 0;
-                opacity: 0;
-                visibility: hidden;
+                margin: 0;
+                opacity: 1;
+                visibility: visible;
                 border-top: 0 solid transparent;
-                clip-path: inset(0 0 100% 0);
+                transition:
+                    grid-template-rows 320ms cubic-bezier(0.16, 1, 0.3, 1),
+                    padding 320ms cubic-bezier(0.16, 1, 0.3, 1),
+                    border-top-color 240ms ease;
             }
 
-            .db-row--expandable.is-row-expanded .row-body.is-expanded,
-            .db-row--expandable .row-body.is-opening,
-            .db-row--expandable .row-body.is-closing {
-                visibility: visible;
-                opacity: 1;
-                clip-path: none;
+            .db-row--expandable .row-body > * {
+                min-height: 0;
+                overflow: hidden;
             }
 
             .db-row--expandable.is-row-expanded .row-body.is-expanded {
-                max-height: none;
+                grid-template-rows: 1fr;
                 padding: 16px;
                 border-top-width: 1px;
                 border-top-color: var(--row-sep);
             }
 
-            .db-row--expandable:not(.is-row-expanded)
-                .row-body:not(.is-opening):not(.is-closing) {
-                display: none;
-            }
-
-            .db-row--expandable .row-body.is-opening {
-                animation: row-expand-open 320ms cubic-bezier(0.16, 1, 0.3, 1)
+            .db-row--expandable .row-body.is-expanded .cards-grid,
+            .db-row--expandable .row-body.is-expanded .account-overview-grid-wrap {
+                animation: account-grid-in 260ms cubic-bezier(0.16, 1, 0.3, 1)
                     both;
+                animation-delay: 72ms;
             }
 
-            .db-row--expandable .row-body.is-closing {
-                animation: row-expand-close 240ms
-                    cubic-bezier(0.4, 0, 0.85, 0.45) both;
-            }
-
-            @keyframes row-expand-open {
+            @keyframes account-grid-in {
                 from {
                     opacity: 0;
-                    clip-path: inset(0 0 100% 0);
-                    transform: translate3d(0, -12px, 0) scale(0.992);
+                    transform: translate3d(0, 6px, 0);
                 }
                 to {
                     opacity: 1;
-                    clip-path: inset(0 0 0 0);
-                    transform: translate3d(0, 0, 0) scale(1);
+                    transform: translate3d(0, 0, 0);
                 }
             }
 
-            @keyframes row-expand-close {
-                from {
-                    opacity: 1;
-                    clip-path: inset(0 0 0 0);
-                    transform: translate3d(0, 0, 0) scale(1);
+            @media (prefers-reduced-motion: reduce) {
+                .db-row--expandable .row-body {
+                    transition: none !important;
                 }
-                to {
-                    opacity: 0;
-                    clip-path: inset(0 0 100% 0);
-                    transform: translate3d(0, -8px, 0) scale(0.992);
+
+                .db-row--expandable .row-body.is-expanded .cards-grid,
+                .db-row--expandable
+                    .row-body.is-expanded
+                    .account-overview-grid-wrap {
+                    animation: none !important;
                 }
             }
 
@@ -4730,6 +4748,34 @@
                 border-color: rgba(200, 60, 120, 0.42);
                 background: rgba(255, 126, 179, 0.14);
             }
+            .catalog-godpack-filter {
+                flex: 0 0 auto;
+                width: auto;
+                min-height: 0;
+                padding: 0 10px;
+                justify-content: center;
+                gap: 0;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.01em;
+                line-height: 1;
+                color: #ffc44a;
+            }
+            button.catalog-godpack-filter {
+                appearance: none;
+                -webkit-appearance: none;
+                margin: 0;
+                font: inherit;
+            }
+            .catalog-godpack-filter.checked {
+                border-color: rgba(255, 196, 72, 0.62);
+                background: rgba(255, 196, 72, 0.14);
+                color: #ffd978;
+            }
+            [data-theme="light"] .catalog-godpack-filter.checked {
+                border-color: rgba(176, 118, 0, 0.45);
+                background: rgba(255, 196, 72, 0.16);
+            }
             .catalog-missing-filter {
                 flex: 0 0 auto;
                 width: 38px;
@@ -6550,10 +6596,18 @@
             }
 
             .catalog-pull-history-empty,
-            .catalog-pull-history-more {
+            .catalog-pull-history-more,
+            .catalog-pull-history-note,
+            .catalog-account-list-note {
                 color: var(--muted);
                 font-size: 0.78rem;
                 line-height: 1.35;
+            }
+
+            .catalog-pull-history-note,
+            .catalog-account-list-note {
+                padding-top: 6px;
+                text-align: center;
             }
 
             .catalog-pull-history-more {
@@ -6854,8 +6908,9 @@
                 }
 
                 .catalog-account-list.pin-slide-active,
-                .multi-result-list.pin-slide-active {
-                    overflow: hidden;
+                .multi-result-list.pin-slide-active,
+                .catalog-side-list-stage.pin-slide-active {
+                    overflow: visible;
                 }
             }
 
@@ -7418,6 +7473,16 @@
                                         >&#9829;</span
                                     >
                                 </button>
+                                <button
+                                    type="button"
+                                    id="rowsGodPackOnly"
+                                    class="check-chip catalog-godpack-filter rows-godpack-filter"
+                                    title="God Pack"
+                                    aria-label="God Pack"
+                                    aria-pressed="false"
+                                >
+                                    God Pack
+                                </button>
                                 <div
                                     class="checkbox-list rarity-card-type-filters"
                                     id="cardTypeFilters"
@@ -7884,6 +7949,8 @@
             const INITIAL_LIMIT = 25;
             const ACCOUNT_OVERVIEW_CHUNK_MS = 10;
             const ACCOUNT_OVERVIEW_WARMUP_TIMEOUT_MS = 1800;
+            const ACCOUNT_OVERVIEW_WARMUP_ROW_LIMIT = 50000;
+            const HEAVY_ROW_FILTER_THRESHOLD = 50000;
             const CATALOG_DETAIL_CARD_LIMIT = 240;
             const MULTI_SEARCH_RESULT_LIMIT = 100;
             const TRADE_READY_MIN_AGE_DAYS = 15;
@@ -7901,6 +7968,8 @@
             const DEFAULT_ACCOUNTS_DATA_PATH = "/__dashboard/accounts-data";
             const DEFAULT_ACCOUNTS_SUMMARY_PATH = "/__dashboard/accounts-summary";
             const DEFAULT_DASHBOARD_ROWS_PATH = "/__dashboard/dashboard-rows";
+            const DASHBOARD_DB_STATUS_PATH = "/__dashboard/database-index/status";
+            const DASHBOARD_DB_ENSURE_PATH = "/__dashboard/database-index/ensure";
 
             function getSupportedLanguage(code) {
                 return LOCALISATION_LANGUAGES.some(([value]) => value === code)
@@ -7955,6 +8024,7 @@
             };
             const SPECIAL_RARITY_TWO_STAR = "__two_star__";
             const SPECIAL_RARITY_TRAINER = "__trainer__";
+            const GOD_PACK_DIAMOND_RARITIES = new Set([100, 200, 300, 400]);
             const SPECIAL_RARITY_ICONS = {
                 [SPECIAL_RARITY_TWO_STAR]: {
                     file: "SR.png",
@@ -8193,6 +8263,7 @@
                 selectedPacks: new Set(),
                 selectedRarities: new Set(),
                 rowsWishlistOnly: false,
+                rowsGodPackOnly: false,
                 selectedCardTypes: new Set(),
                 allPacks: new Map(),
                 allRarities: new Set(),
@@ -8206,6 +8277,8 @@
                 totalCards: 0,
                 uniqueCardCount: 0,
                 rowSort: "time-desc",
+                rowsSortedFor: null,
+                filterApplyToken: 0,
                 accountSort: "cards",
                 accountSortAsc: false,
                 markedSort: "cards",
@@ -8223,7 +8296,7 @@
                 multiSelectedRarities: new Set(),
                 multiWishlistOnly: false,
                 multiSearchCardIds: new Set(),
-                multiSelectedAccount: "",
+                pinnedMultiAccounts: [],
                 multiTradeReadyOnly: false,
                 multiRequiredShinedustOnly: false,
                 appliedMultiSearchCardIds: new Set(),
@@ -8249,7 +8322,7 @@
                 catalogTradeShareIndex: null,
                 catalogTradeShareIndexVersion: -1,
                 catalogWarmupHandle: 0,
-                selectedCatalogAccount: "",
+                pinnedCatalogAccounts: [],
                 catalogPullHistoryAccount: "",
                 cardCollectionNumberMap: new Map(),
                 tradedSet: new Set(),
@@ -8272,6 +8345,8 @@
                 collectionWishlistOnly: false,
                 language: readSelectedLanguage(),
                 defaultExpanded: false,
+                bulkExpandBusy: false,
+                deferAccountGridRender: false,
                 pageSize: initialPageSize,
                 displayLimit: initialPageSize,
                 csvLoaded: false,
@@ -8334,6 +8409,8 @@
                 rarityFilters: document.getElementById("rarityFilters"),
                 rowsWishlistOnlyBtn:
                     document.getElementById("rowsWishlistOnly"),
+                rowsGodPackOnlyBtn:
+                    document.getElementById("rowsGodPackOnly"),
                 cardTypeFilters: document.getElementById("cardTypeFilters"),
                 packFilters: document.getElementById("packFilters"),
                 expandAllBtn: document.getElementById("expandAllBtn"),
@@ -8488,6 +8565,23 @@
                 _viewDomCache.clear();
                 el.rows.style.minHeight = "";
             }
+            function invalidateViewDomCacheForFilterChange() {
+                _viewDomCache.delete("rows");
+                _viewDomCache.delete("accounts");
+                el.rows.style.minHeight = "";
+            }
+            function ensureMainRowsSorted() {
+                const mode = state.rowSort;
+                if (state.rowsSortedFor === mode || !state.rows.length) return;
+                sortRows(state.rows);
+                state.rowsSortedFor = mode;
+            }
+            function shouldSkipAccountOverviewWarmup() {
+                return (
+                    state.filteredRows === state.rows &&
+                    state.filteredRows.length > ACCOUNT_OVERVIEW_WARMUP_ROW_LIMIT
+                );
+            }
             function isCatalogViewCacheEntryValid(entry) {
                 return (
                     entry &&
@@ -8527,6 +8621,10 @@
             function captureViewDom(view) {
                 if (!view || !CACHEABLE_VIEWS.includes(view)) return;
                 if (el.rows.dataset.viewState === "skeleton") return;
+                if (CATALOG_VIEWS.includes(view) && shouldSkipCatalogViewCache()) {
+                    cancelCatalogAsyncFills();
+                    return;
+                }
                 const fragment = document.createDocumentFragment();
                 while (el.rows.firstChild)
                     fragment.appendChild(el.rows.firstChild);
@@ -8631,6 +8729,7 @@
                     state.view === "accounts" ||
                     !state.csvLoaded ||
                     !state.filteredRows.length ||
+                    shouldSkipAccountOverviewWarmup() ||
                     state.accountRows ||
                     state.accountOverviewBuildPromise ||
                     state.accountOverviewWarmupHandle
@@ -11203,6 +11302,34 @@
                 );
             }
 
+            function isCatalogAccountPinned(account) {
+                return (
+                    !!account && state.pinnedCatalogAccounts.includes(account)
+                );
+            }
+
+            function isMultiAccountPinned(account) {
+                return !!account && state.pinnedMultiAccounts.includes(account);
+            }
+
+            function clearPinnedCatalogAccounts() {
+                state.pinnedCatalogAccounts = [];
+            }
+
+            function clearPinnedMultiAccounts() {
+                state.pinnedMultiAccounts = [];
+            }
+
+            function compareAccountPinOrder(aAccount, bAccount, pinnedList) {
+                const aIdx = pinnedList.indexOf(aAccount);
+                const bIdx = pinnedList.indexOf(bAccount);
+                const aPinned = aIdx >= 0;
+                const bPinned = bIdx >= 0;
+                if (aPinned !== bPinned) return aPinned ? -1 : 1;
+                if (aPinned && bPinned && aIdx !== bIdx) return aIdx - bIdx;
+                return 0;
+            }
+
             function accountPinToggleButtonHtml(account, isPinned) {
                 const label = isPinned
                     ? "Unpin account. Returns to normal sort order"
@@ -11227,31 +11354,38 @@
 
             function renderCatalogAccountPinHint(accountRows) {
                 if (!accountRows.length) return "";
-                if (state.selectedCatalogAccount) {
-                    return `<p class="account-pin-hint account-pin-hint--active">Account pinned to the top. Click the pin again to unpin.</p>`;
+                const pinCount = state.pinnedCatalogAccounts.length;
+                if (pinCount === 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">1 account pinned to the top. Click the pin again to unpin.</p>`;
                 }
-                return `<p class="account-pin-hint">Use the pin on an account to keep it at the top while sorting or filtering.</p>`;
+                if (pinCount > 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">${formatNumber(pinCount)} accounts pinned to the top (first pinned stays highest). Click a pin again to unpin.</p>`;
+                }
+                return `<p class="account-pin-hint">Use the pin on accounts to keep them at the top while sorting or filtering.</p>`;
             }
 
             function renderMultiAccountPinHint(accountRows) {
                 if (!accountRows.length) return "";
-                if (state.multiSelectedAccount) {
-                    return `<p class="account-pin-hint account-pin-hint--active">Account pinned to the top. Click the pin again or click outside the list to unpin.</p>`;
+                const pinCount = state.pinnedMultiAccounts.length;
+                if (pinCount === 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">1 account pinned to the top. Click the pin again or click outside the list to unpin all.</p>`;
                 }
-                return `<p class="account-pin-hint">Use the pin on an account to keep it at the top.</p>`;
+                if (pinCount > 1) {
+                    return `<p class="account-pin-hint account-pin-hint--active">${formatNumber(pinCount)} accounts pinned to the top. Click a pin again to unpin one, or click outside the list to unpin all.</p>`;
+                }
+                return `<p class="account-pin-hint">Use the pin on accounts to keep them at the top.</p>`;
             }
 
             function syncCatalogAccountPin(accountRows) {
-                if (
-                    state.selectedCatalogAccount &&
-                    accountRows.length &&
-                    !accountRows.some(
-                        (row) => row.account === state.selectedCatalogAccount,
-                    )
-                ) {
-                    state.selectedCatalogAccount = "";
+                if (!accountRows.length) {
+                    clearPinnedCatalogAccounts();
+                } else {
+                    const live = new Set(accountRows.map((row) => row.account));
+                    state.pinnedCatalogAccounts =
+                        state.pinnedCatalogAccounts.filter((account) =>
+                            live.has(account),
+                        );
                 }
-                if (!accountRows.length) state.selectedCatalogAccount = "";
                 if (
                     state.catalogPullHistoryAccount &&
                     accountRows.length &&
@@ -11267,28 +11401,35 @@
 
             function toggleCatalogAccountPin(account) {
                 if (!account) return null;
-                const wasPinned = state.selectedCatalogAccount === account;
-                state.selectedCatalogAccount = wasPinned ? "" : account;
-                return wasPinned ? "unpinned" : "pinned";
+                const idx = state.pinnedCatalogAccounts.indexOf(account);
+                if (idx >= 0) {
+                    state.pinnedCatalogAccounts.splice(idx, 1);
+                    return "unpinned";
+                }
+                state.pinnedCatalogAccounts.push(account);
+                return "pinned";
             }
 
             function syncMultiAccountPin(accountRows) {
-                if (
-                    state.multiSelectedAccount &&
-                    accountRows.length &&
-                    !accountRows.some(
-                        (row) => row.account === state.multiSelectedAccount,
-                    )
-                ) {
-                    state.multiSelectedAccount = "";
+                if (!accountRows.length) {
+                    clearPinnedMultiAccounts();
+                    return;
                 }
+                const live = new Set(accountRows.map((row) => row.account));
+                state.pinnedMultiAccounts = state.pinnedMultiAccounts.filter(
+                    (account) => live.has(account),
+                );
             }
 
             function toggleMultiAccountPin(account) {
                 if (!account) return null;
-                const wasPinned = state.multiSelectedAccount === account;
-                state.multiSelectedAccount = wasPinned ? "" : account;
-                return wasPinned ? "unpinned" : "pinned";
+                const idx = state.pinnedMultiAccounts.indexOf(account);
+                if (idx >= 0) {
+                    state.pinnedMultiAccounts.splice(idx, 1);
+                    return "unpinned";
+                }
+                state.pinnedMultiAccounts.push(account);
+                return "pinned";
             }
 
             function findAccountPinRow(account) {
@@ -11307,8 +11448,11 @@
                 );
             }
 
-            const ACCOUNT_PIN_SLIDE_MS = 520;
+            const ACCOUNT_PIN_SLIDE_MS = 820;
+            const ACCOUNT_PIN_UNPIN_SLIDE_MS = 1100;
             const ACCOUNT_PIN_SLIDE_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+            const ACCOUNT_PIN_UNPIN_SLIDE_EASE =
+                "cubic-bezier(0.33, 1, 0.38, 1)";
 
             function playAccountPinPopOnRow(row) {
                 if (!row) return;
@@ -11321,9 +11465,42 @@
                 );
             }
 
-            function playAccountPinSlideAnimation(account, action, firstRect) {
+            function captureAccountPinSlideContext(account) {
+                const row = findAccountPinRow(account);
+                const listHost =
+                    row?.closest(".catalog-account-list, .multi-result-list") ??
+                    null;
+                return {
+                    firstOffset:
+                        row && listHost
+                            ? getAccountPinRowOffsetInList(row, listHost)
+                            : null,
+                };
+            }
+
+            function getAccountPinRowOffsetInList(row, listHost) {
+                if (!row || !listHost) return 0;
+                const rowRect = row.getBoundingClientRect();
+                const listRect = listHost.getBoundingClientRect();
+                return rowRect.top - listRect.top + listHost.scrollTop;
+            }
+
+            function playAccountPinSlideAnimation(
+                account,
+                action,
+                firstOffset,
+            ) {
                 if (prefersReducedMotion() || !action || !account) return;
-                if (!firstRect) return;
+                if (!Number.isFinite(firstOffset)) return;
+
+                const slideMs =
+                    action === "unpinned"
+                        ? ACCOUNT_PIN_UNPIN_SLIDE_MS
+                        : ACCOUNT_PIN_SLIDE_MS;
+                const slideEase =
+                    action === "unpinned"
+                        ? ACCOUNT_PIN_UNPIN_SLIDE_EASE
+                        : ACCOUNT_PIN_SLIDE_EASE;
 
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -11336,22 +11513,27 @@
                         if (listHost && action === "pinned")
                             listHost.scrollTop = 0;
 
-                        const lastRect = row.getBoundingClientRect();
-                        const deltaX = firstRect.left - lastRect.left;
-                        const deltaY = firstRect.top - lastRect.top;
+                        const lastOffset = getAccountPinRowOffsetInList(
+                            row,
+                            listHost,
+                        );
+                        const deltaY = firstOffset - lastOffset;
 
-                        if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
+                        if (Math.abs(deltaY) < 2) {
                             playAccountPinPopOnRow(row);
                             return;
                         }
 
                         row.classList.add("pin-sliding");
                         listHost?.classList.add("pin-slide-active");
-                        row.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+                        listHost
+                            ?.closest(".catalog-side-list-stage")
+                            ?.classList.add("pin-slide-active");
+                        row.style.transform = `translate3d(0, ${deltaY}px, 0)`;
                         row.style.transition = "none";
 
                         requestAnimationFrame(() => {
-                            row.style.transition = `transform ${ACCOUNT_PIN_SLIDE_MS}ms ${ACCOUNT_PIN_SLIDE_EASE}, box-shadow ${ACCOUNT_PIN_SLIDE_MS}ms ${ACCOUNT_PIN_SLIDE_EASE}`;
+                            row.style.transition = `transform ${slideMs}ms ${slideEase}, box-shadow ${slideMs}ms ${slideEase}`;
                             row.style.transform = "translate3d(0, 0, 0)";
                             playAccountPinPopOnRow(row);
 
@@ -11363,6 +11545,9 @@
                                 row.style.transform = "";
                                 row.style.transition = "";
                                 listHost?.classList.remove("pin-slide-active");
+                                listHost
+                                    ?.closest(".catalog-side-list-stage")
+                                    ?.classList.remove("pin-slide-active");
                             };
                             row.addEventListener(
                                 "transitionend",
@@ -11372,10 +11557,7 @@
                                 },
                                 { once: true },
                             );
-                            window.setTimeout(
-                                cleanup,
-                                ACCOUNT_PIN_SLIDE_MS + 80,
-                            );
+                            window.setTimeout(cleanup, slideMs + 80);
                         });
                     });
                 });
@@ -11383,20 +11565,22 @@
 
             function applyCatalogAccountPinToggle(account) {
                 if (!account) return;
-                const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
+                const slideContext = captureAccountPinSlideContext(account);
                 const action = toggleCatalogAccountPin(account);
                 renderCatalogSidePanel({
                     patchOnly: true,
                     animate: false,
                 });
-                playAccountPinSlideAnimation(account, action, firstRect);
+                playAccountPinSlideAnimation(
+                    account,
+                    action,
+                    slideContext.firstOffset,
+                );
             }
 
             function applyMultiAccountPinToggle(account) {
                 if (!account) return;
-                const firstRect =
-                    findAccountPinRow(account)?.getBoundingClientRect() ?? null;
+                const slideContext = captureAccountPinSlideContext(account);
                 const action = toggleMultiAccountPin(account);
                 refreshMultiBestAccountsPanel({
                     animate: false,
@@ -11406,10 +11590,41 @@
                         playAccountPinSlideAnimation(
                             account,
                             action,
-                            firstRect,
+                            slideContext.firstOffset,
                         );
                     },
                 });
+            }
+
+            function ensureAccountPinned(account) {
+                if (!account) return;
+                if (state.view === "multisearch") {
+                    if (isMultiAccountPinned(account)) return;
+                    const slideContext = captureAccountPinSlideContext(account);
+                    state.pinnedMultiAccounts.push(account);
+                    refreshMultiBestAccountsPanel({
+                        animate: false,
+                        pinOnly: true,
+                        onComplete: () => {
+                            _attachMultiResultsPanelListeners();
+                            playAccountPinSlideAnimation(
+                                account,
+                                "pinned",
+                                slideContext.firstOffset,
+                            );
+                        },
+                    });
+                    return;
+                }
+                if (isCatalogAccountPinned(account)) return;
+                const slideContext = captureAccountPinSlideContext(account);
+                state.pinnedCatalogAccounts.push(account);
+                renderCatalogSidePanel({ patchOnly: true, animate: false });
+                playAccountPinSlideAnimation(
+                    account,
+                    "pinned",
+                    slideContext.firstOffset,
+                );
             }
 
             function attachAccountPinToggleListeners(root, onToggle) {
@@ -11857,6 +12072,10 @@
             let dashboardBootHiddenTimer = 0;
 
             const DASHBOARD_BOOT_STEP_DEFS = {
+                database_index: {
+                    label: "Building SQLite Index",
+                    shortLabel: "SQLite Index",
+                },
                 card_definitions: {
                     label: "Loading Card Definitions",
                     shortLabel: "Card Definitions",
@@ -11866,7 +12085,7 @@
                     shortLabel: "Account Summary",
                 },
                 fetch_rows: {
-                    label: "Loading Pull Rows",
+                    label: "Downloading & Processing Pull Rows",
                     shortLabel: "Pull Rows",
                 },
                 parse_summary: {
@@ -11896,6 +12115,7 @@
             };
 
             const DASHBOARD_BOOT_ALL_ORDER = [
+                "database_index",
                 "card_definitions",
                 "fetch_summary",
                 "fetch_rows",
@@ -11913,6 +12133,7 @@
             ];
 
             const DASHBOARD_BOOT_COMPACT_ONLY = [
+                "database_index",
                 "fetch_summary",
                 "fetch_rows",
                 "parse_summary",
@@ -11929,10 +12150,13 @@
                 timerId: 0,
             };
 
+            let bootLastPaintYieldAt = 0;
+
             function formatBootDuration(ms) {
                 const n = Number(ms);
                 if (!Number.isFinite(n) || n < 0) return "-";
                 if (n < 1000) return `${Math.round(n)} ms`;
+                if (n < 10000) return `${(n / 1000).toFixed(2)} s`;
                 return `${(n / 1000).toFixed(1)} s`;
             }
 
@@ -11952,6 +12176,8 @@
                 return "○";
             }
 
+            const DASHBOARD_BOOT_COMPACT_STREAM_MERGED = ["parse_rows"];
+
             function getVisibleBootSteps() {
                 const legacyPath = dashboardBootState.pathLabel
                     .toLowerCase()
@@ -11960,6 +12186,12 @@
                     const status =
                         dashboardBootState.steps[id]?.status || "pending";
                     if (status === "skipped") return false;
+                    if (
+                        !legacyPath &&
+                        DASHBOARD_BOOT_COMPACT_STREAM_MERGED.includes(id)
+                    ) {
+                        return false;
+                    }
                     if (status !== "pending") return true;
                     if (legacyPath) return !DASHBOARD_BOOT_COMPACT_ONLY.includes(id);
                     return !DASHBOARD_BOOT_LEGACY_ONLY.includes(id);
@@ -12003,7 +12235,7 @@
                     const metaHtml = meta
                         ? `<div class="dashboard-boot-check-meta">${escapeHtml(meta)}</div>`
                         : "";
-                    return `<div class="dashboard-boot-check-item" data-status="${escapeHtml(entry.status || "pending")}" role="listitem">
+                    return `<div class="dashboard-boot-check-item" data-boot-step="${escapeHtml(id)}" data-status="${escapeHtml(entry.status || "pending")}" role="listitem">
                         <div class="dashboard-boot-check-head">
                             <span class="dashboard-boot-check-icon" aria-hidden="true">${bootStepIcon(entry.status)}</span>
                             <span class="dashboard-boot-check-label">${escapeHtml(def.shortLabel || def.label)}</span>
@@ -12031,19 +12263,125 @@
                 }
             }
 
+            function updateBootProgressFill(now = performance.now()) {
+                const fillEl = document.getElementById(
+                    "dashboardBootProgressFill",
+                );
+                if (!fillEl) return;
+                const visibleOrder = getVisibleBootSteps();
+                if (!visibleOrder.length) return;
+                let doneWeight = 0;
+                for (const id of visibleOrder) {
+                    const entry = dashboardBootState.steps[id] || {
+                        status: "pending",
+                    };
+                    if (entry.status === "running") doneWeight += 0.45;
+                    else if (
+                        entry.status === "done" ||
+                        entry.status === "skipped"
+                    ) {
+                        doneWeight += 1;
+                    }
+                }
+                fillEl.style.width = `${Math.min(
+                    100,
+                    Math.round((doneWeight / visibleOrder.length) * 100),
+                )}%`;
+            }
+
+            function updateDashboardBootClocks(now = performance.now()) {
+                const elapsedEl = document.getElementById("dashboardBootElapsed");
+                if (elapsedEl && dashboardBootState.startedAt) {
+                    elapsedEl.textContent = `Elapsed: ${formatBootDuration(
+                        now - dashboardBootState.startedAt,
+                    )}`;
+                }
+                const list = document.getElementById("dashboardBootChecklist");
+                if (list) {
+                    list.querySelectorAll(
+                        '.dashboard-boot-check-item[data-status="running"]',
+                    ).forEach((item) => {
+                        const id = item.getAttribute("data-boot-step");
+                        const entry = id
+                            ? dashboardBootState.steps[id]
+                            : null;
+                        const timeEl = item.querySelector(
+                            ".dashboard-boot-check-time",
+                        );
+                        if (timeEl && entry?.startedAt) {
+                            timeEl.textContent = formatBootDuration(
+                                now - entry.startedAt,
+                            );
+                        }
+                    });
+                }
+                updateBootProgressFill(now);
+            }
+
+            function patchBootChecklistStep(id) {
+                const list = document.getElementById("dashboardBootChecklist");
+                if (!list) return false;
+                const item = list.querySelector(
+                    `[data-boot-step="${cssAttrEscape(id)}"]`,
+                );
+                if (!item) return false;
+                const entry = dashboardBootState.steps[id] || {
+                    status: "pending",
+                };
+                item.setAttribute(
+                    "data-status",
+                    entry.status || "pending",
+                );
+                const iconEl = item.querySelector(".dashboard-boot-check-icon");
+                if (iconEl) iconEl.textContent = bootStepIcon(entry.status);
+                const meta = bootChecklistMeta(id, entry);
+                let metaEl = item.querySelector(".dashboard-boot-check-meta");
+                if (meta) {
+                    if (!metaEl) {
+                        metaEl = document.createElement("div");
+                        metaEl.className = "dashboard-boot-check-meta";
+                        item.appendChild(metaEl);
+                    }
+                    metaEl.textContent = meta;
+                } else if (metaEl) {
+                    metaEl.remove();
+                }
+                return true;
+            }
+
+            async function bootYieldForPaint(force = false) {
+                const now = performance.now();
+                if (!force && now - bootLastPaintYieldAt < 24) return;
+                updateDashboardBootClocks(now);
+                await raf();
+                bootLastPaintYieldAt = performance.now();
+            }
+
+            function bootCancelElapsedTimer() {
+                if (!dashboardBootState.timerId) return;
+                cancelAnimationFrame(dashboardBootState.timerId);
+                dashboardBootState.timerId = 0;
+            }
+
             function bootStartElapsedTimer() {
-                clearInterval(dashboardBootState.timerId);
-                dashboardBootState.timerId = setInterval(() => {
+                bootCancelElapsedTimer();
+                let lastClockAt = 0;
+                const tick = (now) => {
                     if (dashboardBootDismissed) {
-                        clearInterval(dashboardBootState.timerId);
                         dashboardBootState.timerId = 0;
                         return;
                     }
-                    renderDashboardBootProgress();
-                }, 120);
+                    if (!lastClockAt || now - lastClockAt >= 48) {
+                        updateDashboardBootClocks(now);
+                        lastClockAt = now;
+                    }
+                    dashboardBootState.timerId = requestAnimationFrame(tick);
+                };
+                dashboardBootState.timerId = requestAnimationFrame(tick);
             }
 
             function bootReset(options = {}) {
+                bootLastPaintYieldAt = 0;
                 dashboardBootState.startedAt = performance.now();
                 dashboardBootState.pathLabel =
                     options.pathLabel || "Compact Index";
@@ -12091,7 +12429,8 @@
                 if (!entry || entry.status !== "running") return;
                 entry.detail = detail;
                 setDashboardBootMessage(formatBootHeroMessage(id, detail));
-                renderDashboardBootProgress();
+                if (!patchBootChecklistStep(id)) renderDashboardBootProgress();
+                else updateDashboardBootClocks();
             }
 
             function bootEndStep(id, detail = "") {
@@ -12171,7 +12510,7 @@
                     `Ready in ${formatBootDuration(totalMs)} using ${dashboardBootState.pathLabel}.`,
                 );
                 renderDashboardBootProgress();
-                clearInterval(dashboardBootState.timerId);
+                bootCancelElapsedTimer();
                 dashboardBootState.timerId = 0;
                 dashboardBootDismissed = true;
                 clearTimeout(dashboardBootHideTimer);
@@ -12715,6 +13054,64 @@
                     toLight ? "Switch to Light Mode" : "Switch to Dark Mode",
                 );
                 el.themeToggleBtn.title = label;
+            }
+
+            function cancelCatalogAsyncFills() {
+                catalogPullHistoryActiveFill = null;
+                catalogPullHistoryPendingFill = null;
+                catalogAccountListActiveFill = null;
+                catalogAccountListPendingFill = null;
+            }
+
+            function collapseCatalogPullHistoryDom() {
+                if (!state.catalogPullHistoryAccount) return;
+                resetCatalogPullHistoryState();
+                if (!el.rows) return;
+                el.rows
+                    .querySelectorAll(".catalog-pull-history-section")
+                    .forEach((node) => node.remove());
+                el.rows
+                    .querySelectorAll(
+                        "[data-toggle-catalog-pull-history].is-open",
+                    )
+                    .forEach((btn) => setPullHistoryToggleVisualState(btn, false));
+            }
+
+            function resetCatalogPullHistoryState() {
+                state.catalogPullHistoryAccount = "";
+                catalogPullHistoryActiveFill = null;
+                catalogPullHistoryPendingFill = null;
+            }
+
+            function isCatalogPullHistoryHeavy() {
+                if (!state.csvLoaded) return false;
+                if (state.catalogPullHistoryAccount) return true;
+                if (
+                    catalogPullHistoryActiveFill ||
+                    catalogPullHistoryPendingFill
+                ) {
+                    return true;
+                }
+                const root = el.rows;
+                if (!root) return false;
+                return (
+                    root.querySelectorAll(".catalog-pull-history-item").length >
+                    CATALOG_HEAVY_HISTORY_ITEMS
+                );
+            }
+
+            function isHeavyCatalogDomForCache() {
+                if (isCatalogPullHistoryHeavy()) return true;
+                const root = el.rows;
+                if (!root) return false;
+                return (
+                    root.querySelectorAll(".catalog-account-item").length >
+                    CATALOG_HEAVY_ACCOUNT_ITEMS
+                );
+            }
+
+            function shouldSkipCatalogViewCache() {
+                return isHeavyCatalogDomForCache();
             }
 
             function applyTheme(theme, persist = true, options = {}) {
@@ -13453,6 +13850,8 @@
                 state.expandedAccounts.clear();
                 state.defaultExpanded = false;
                 state.displayLimit = state.pageSize;
+                state.rowsSortedFor = null;
+                state.filterApplyToken++;
                 state.csvLoaded = false;
                 state.catalogAllKnownCardIdsCache = null;
                 state.catalogAllKnownCardIdsRowsRef = null;
@@ -13470,7 +13869,7 @@
                 state.catalogPullHistoryRowsRef = null;
                 state.catalogPullHistoryRowIndex = null;
                 state.selectedCatalogCardId = "";
-                state.selectedCatalogAccount = "";
+                clearPinnedCatalogAccounts();
                 state.catalogPullHistoryAccount = "";
                 state.catalogTradeReadyOnly = false;
                 state.multiExpansionFilter = "__all__";
@@ -13478,7 +13877,7 @@
                 state.multiSelectedRarities = new Set();
                 state.multiRaritiesInitialized = false;
                 state.multiSearchCardIds.clear();
-                state.multiSelectedAccount = "";
+                clearPinnedMultiAccounts();
                 state.multiTradeReadyOnly = false;
                 state.appliedMultiSearchCardIds.clear();
                 state.collectionAccounts = [];
@@ -13878,6 +14277,7 @@
                                 cardSearchBlob: derived.cardSearchBlob,
                                 rarityValues: derived.rarityValues,
                                 cardTypeValues: derived.cardTypeValues,
+                                isGodPack: derived.isGodPack,
                             });
                         }
                     }
@@ -14154,14 +14554,100 @@
                 };
             }
 
+            function createCompactRowParseState() {
+                return {
+                    rows: [],
+                    packs: new Map(),
+                    rarities: new Set(),
+                    missingIds: new Set(),
+                    totalCards: 0,
+                    uniqueCards: new Set(),
+                    rowNumber: 0,
+                };
+            }
+
+            function appendCompactPullRecord(compact, parseState) {
+                const account = compact
+                    ? String(compact.account ?? "").trim()
+                    : "";
+                if (!account) return false;
+
+                parseState.rowNumber++;
+                const accountLower = normaliseSearch(account);
+                const pack =
+                    String(compact.pack ?? "").trim() || "(blank pack)";
+                const sourcePack =
+                    String(compact.sourcePack ?? pack).trim() || pack;
+                const timestamp = String(compact.timestamp ?? "").trim();
+                const timestampMs = parseTimestampValue(timestamp);
+                const cardIds = Array.isArray(compact.cardIds)
+                    ? compact.cardIds
+                          .map((value) => String(value ?? "").trim())
+                          .filter(Boolean)
+                    : [];
+                if (!cardIds.length) return true;
+
+                parseState.totalCards += cardIds.length;
+                for (const id of cardIds) parseState.uniqueCards.add(id);
+
+                const blocks = splitCardsIntoExpansionBlocks(sourcePack, cardIds);
+                for (const block of blocks) {
+                    const derived = buildRowDerived(block.cardIds);
+                    const packLabel = getPackLabel(block.pack);
+                    parseState.packs.set(block.pack, packLabel);
+                    for (const rarity of derived.rarityValues)
+                        parseState.rarities.add(rarity);
+                    for (const miss of derived.missing)
+                        parseState.missingIds.add(miss);
+
+                    parseState.rows.push({
+                        index: parseState.rows.length,
+                        rowNumber: parseState.rowNumber,
+                        account,
+                        accountLower,
+                        pack: block.pack,
+                        packLabel,
+                        sourcePack,
+                        timestamp,
+                        timestampMs,
+                        cardIds: block.cardIds,
+                        cardCount: block.cardIds.length,
+                        cardSearchBlob: derived.cardSearchBlob,
+                        rarityValues: derived.rarityValues,
+                        cardTypeValues: derived.cardTypeValues,
+                        isGodPack: derived.isGodPack,
+                    });
+                }
+                return true;
+            }
+
+            function finalizeCompactRowParseState(parseState) {
+                return {
+                    rows: parseState.rows,
+                    packs: parseState.packs,
+                    rarities: parseState.rarities,
+                    missingIds: parseState.missingIds,
+                    totalCards: parseState.totalCards,
+                    uniqueCards: parseState.uniqueCards,
+                    rowCount: parseState.rows.length,
+                };
+            }
+
+            async function parseCompactRowsFromRecords(records, onProgress) {
+                const parseState = createCompactRowParseState();
+                const total = Array.isArray(records) ? records.length : 0;
+                for (let i = 0; i < total; i++) {
+                    appendCompactPullRecord(records[i], parseState);
+                    if (onProgress && (i + 1) % 4000 === 0) {
+                        onProgress(i + 1, total);
+                    }
+                    await bootYieldForPaint();
+                }
+                return finalizeCompactRowParseState(parseState);
+            }
+
             async function parseCompactRowsFromJsonl(text) {
-                const rows = [];
-                const packs = new Map();
-                const rarities = new Set();
-                const missingIds = new Set();
-                let totalCards = 0;
-                const uniqueCards = new Set();
-                let rowNumber = 0;
+                const parseState = createCompactRowParseState();
                 let lineIndex = 0;
                 let lineStart = 0;
                 const len = text.length;
@@ -14180,91 +14666,35 @@
                             } catch (_) {
                                 compact = null;
                             }
-                            const account = compact
-                                ? String(compact.account ?? "").trim()
-                                : "";
-                            if (!account) {
-                                lineStart = i + 1;
-                                continue;
-                            }
-                            rowNumber++;
-                            const accountLower = normaliseSearch(account);
-                            const pack = String(compact.pack ?? "").trim() || "(blank pack)";
-                            const sourcePack =
-                                String(compact.sourcePack ?? pack).trim() || pack;
-                            const timestamp = String(
-                                compact.timestamp ?? "",
-                            ).trim();
-                            const timestampMs = parseTimestampValue(timestamp);
-                            const cardIds = Array.isArray(compact.cardIds)
-                                ? compact.cardIds
-                                      .map((value) =>
-                                          String(value ?? "").trim(),
-                                      )
-                                      .filter(Boolean)
-                                : [];
-                            if (cardIds.length) {
-                                totalCards += cardIds.length;
-                                for (const id of cardIds) uniqueCards.add(id);
-
-                                const blocks = splitCardsIntoExpansionBlocks(
-                                    sourcePack,
-                                    cardIds,
-                                );
-                                for (const block of blocks) {
-                                    const derived = buildRowDerived(block.cardIds);
-                                    const packLabel = getPackLabel(block.pack);
-                                    packs.set(block.pack, packLabel);
-                                    for (const rarity of derived.rarityValues)
-                                        rarities.add(rarity);
-                                    for (const miss of derived.missing)
-                                        missingIds.add(miss);
-
-                                    rows.push({
-                                        index: rows.length,
-                                        rowNumber,
-                                        account,
-                                        accountLower,
-                                        pack: block.pack,
-                                        packLabel,
-                                        sourcePack,
-                                        timestamp,
-                                        timestampMs,
-                                        cardIds: block.cardIds,
-                                        cardCount: block.cardIds.length,
-                                        cardSearchBlob: derived.cardSearchBlob,
-                                        rarityValues: derived.rarityValues,
-                                        cardTypeValues: derived.cardTypeValues,
-                                    });
-                                }
-                            }
+                            appendCompactPullRecord(compact, parseState);
                         }
                         lineIndex++;
                         if (lineIndex % 4000 === 0) {
                             bootUpdateStep(
                                 "parse_rows",
-                                `${formatNumber(lineIndex)} Lines · ${formatNumber(rows.length)} Rows`,
+                                `${formatNumber(lineIndex)} Lines · ${formatNumber(parseState.rows.length)} Rows`,
                             );
-                            await raf();
                         }
+                        await bootYieldForPaint();
                     }
                     lineStart = i + 1;
                 }
 
-                return {
-                    rows,
-                    packs,
-                    rarities,
-                    missingIds,
-                    totalCards,
-                    uniqueCards,
-                    rowCount: rows.length,
-                };
+                return finalizeCompactRowParseState(parseState);
+            }
+
+            function isCompactRowParseResult(value) {
+                return (
+                    value &&
+                    Array.isArray(value.rows) &&
+                    value.packs instanceof Map &&
+                    Number.isFinite(value.rowCount)
+                );
             }
 
             async function loadDashboardIndexData(
                 summary,
-                rowsText,
+                rowsSource,
                 sourceLabel = "dashboard index",
             ) {
                 resetLoadedAccountState();
@@ -14282,15 +14712,33 @@
                     `${formatNumber(summaryBuilt.tradeAccountCount)} Trade Accounts`,
                 );
 
-                bootBeginStep(
-                    "parse_rows",
-                    formatBootDataSize(rowsText?.length || 0),
-                );
-                const rowParse = await parseCompactRowsFromJsonl(rowsText);
-                bootEndStep(
-                    "parse_rows",
-                    `${formatNumber(rowParse.rowCount)} Rows · ${formatNumber(rowParse.totalCards)} Cards`,
-                );
+                let rowParse;
+                if (isCompactRowParseResult(rowsSource)) {
+                    rowParse = rowsSource;
+                } else {
+                    const rowsIsPaged = Array.isArray(rowsSource);
+                    bootBeginStep(
+                        "parse_rows",
+                        rowsIsPaged
+                            ? `${formatNumber(rowsSource.length)} Pull Records`
+                            : formatBootDataSize(rowsSource?.length || 0),
+                    );
+                    rowParse = rowsIsPaged
+                        ? await parseCompactRowsFromRecords(
+                              rowsSource,
+                              (done, total) => {
+                                  bootUpdateStep(
+                                      "parse_rows",
+                                      `${formatNumber(done)} / ${formatNumber(total)} Pulls`,
+                                  );
+                              },
+                          )
+                        : await parseCompactRowsFromJsonl(rowsSource);
+                    bootEndStep(
+                        "parse_rows",
+                        `${formatNumber(rowParse.rowCount)} Rows · ${formatNumber(rowParse.totalCards)} Cards`,
+                    );
+                }
 
                 const hasAnyData =
                     rowParse.rowCount > 0 ||
@@ -14333,20 +14781,15 @@
                 await syncCardMarksAfterCompactLoad(summary);
 
                 clearAccountOverviewCache();
-                bootBeginStep("render_ui");
+                bootBeginStep("render_ui", "Building filters…");
+                await bootYieldForPaint(true);
                 buildFilterCheckboxes();
+                bootUpdateStep("render_ui", "Preparing rows…");
+                await bootYieldForPaint(true);
                 applyFiltersAndRender();
+                await bootYieldForPaint(true);
                 bootEndStep("render_ui", "Ready");
 
-                const prewarmCatalogModel = () => {
-                    ensureCatalogTradeShareIndex();
-                    if (!isCatalogModelWarm()) buildCatalogBaseModel();
-                };
-                if ("requestIdleCallback" in window) {
-                    requestIdleCallback(prewarmCatalogModel, { timeout: 1200 });
-                } else {
-                    setTimeout(prewarmCatalogModel, 0);
-                }
                 scheduleCatalogWarmup();
 
                 const missingMetaNote =
@@ -14442,21 +14885,15 @@
 
                 await syncCardMarksAfterAccountLoad(documents);
 
-                bootBeginStep("render_ui");
+                clearAccountOverviewCache();
+                bootBeginStep("render_ui", "Building filters…");
+                await bootYieldForPaint(true);
                 buildFilterCheckboxes();
+                bootUpdateStep("render_ui", "Preparing rows…");
+                await bootYieldForPaint(true);
                 applyFiltersAndRender();
+                await bootYieldForPaint(true);
                 bootEndStep("render_ui", "Ready");
-                const prewarmCatalogModel = () => {
-                    ensureCatalogTradeShareIndex();
-                    if (!isCatalogModelWarm()) buildCatalogBaseModel();
-                };
-                if ("requestIdleCallback" in window) {
-                    requestIdleCallback(prewarmCatalogModel, {
-                        timeout: 1200,
-                    });
-                } else {
-                    setTimeout(prewarmCatalogModel, 0);
-                }
                 scheduleCatalogWarmup();
                 const missingMetaNote =
                     parseResult.tradeMissingProfileMetaCount > 0
@@ -14777,6 +15214,7 @@
                 const cardTypeSet = new Set();
                 const searchParts = [];
                 const missing = [];
+                let isGodPack = cardIds.length === 5;
                 for (let i = 0; i < cardIds.length; i++) {
                     const id = cardIds[i];
                     const info = getCardInfo(id);
@@ -14784,6 +15222,13 @@
                     cardTypeSet.add(getCardType(id));
                     if (info.rarityValue != null)
                         raritySet.add(getCardRarityFilterKey(id, info));
+                    else if (isGodPack)
+                        isGodPack = false;
+                    if (
+                        isGodPack &&
+                        GOD_PACK_DIAMOND_RARITIES.has(Number(info.rarityValue))
+                    )
+                        isGodPack = false;
                     if (!info.raw) missing.push(id);
                 }
                 const value = {
@@ -14791,6 +15236,7 @@
                     rarityValues: [...raritySet],
                     cardTypeValues: [...cardTypeSet],
                     missing,
+                    isGodPack,
                 };
                 _buildRowDerivedCache.set(sig, { cardIds, value });
                 return value;
@@ -14957,6 +15403,7 @@
                             cardSearchBlob: derived.cardSearchBlob,
                             rarityValues: derived.rarityValues,
                             cardTypeValues: derived.cardTypeValues,
+                            isGodPack: derived.isGodPack,
                         });
                     }
                 });
@@ -15332,6 +15779,174 @@
                 );
             }
 
+            async function fetchDashboardDbBuildStatus() {
+                const response = await fetch(DASHBOARD_DB_STATUS_PATH, {
+                    cache: "no-store",
+                });
+                if (!response.ok) {
+                    throw new Error(`${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            }
+
+            function formatDatabaseIndexBootDetail(status) {
+                if (!status || typeof status !== "object") return "Working…";
+                if (status.message) return String(status.message);
+                if (status.total > 0) {
+                    return `${formatNumber(status.current || 0)} / ${formatNumber(status.total)} files`;
+                }
+                return "Working…";
+            }
+
+            async function ensureDashboardDatabaseIndex() {
+                bootBeginStep("database_index", "Preparing SQLite index…");
+                let pollTimer = 0;
+                const stopPolling = () => {
+                    if (pollTimer) {
+                        clearInterval(pollTimer);
+                        pollTimer = 0;
+                    }
+                };
+                pollTimer = setInterval(() => {
+                    void fetchDashboardDbBuildStatus()
+                        .then((live) => {
+                            if (
+                                !live ||
+                                dashboardBootDismissed ||
+                                dashboardBootState.steps.database_index?.status !==
+                                    "running"
+                            ) {
+                                return;
+                            }
+                            bootUpdateStep(
+                                "database_index",
+                                formatDatabaseIndexBootDetail(live),
+                            );
+                        })
+                        .catch(() => {});
+                }, 150);
+
+                try {
+                    const response = await fetch(DASHBOARD_DB_ENSURE_PATH, {
+                        method: "POST",
+                        cache: "no-store",
+                    });
+                    let result = {};
+                    try {
+                        result = await response.json();
+                    } catch (_) {}
+                    if (!response.ok || !result.ok) {
+                        throw new Error(
+                            result.error ||
+                                `SQLite index build failed (HTTP ${response.status})`,
+                        );
+                    }
+                    const detail =
+                        result.mode === "full_rebuild"
+                            ? `${formatNumber(result.account_count || 0)} accounts · ${formatBootDataSize(result.db_bytes || 0)}`
+                            : result.mode === "incremental_sync"
+                              ? `${formatNumber(result.reindexed_accounts || 0)} updated · ${formatNumber(result.account_count || 0)} accounts`
+                              : `${formatNumber(result.account_count || 0)} accounts ready`;
+                    bootEndStep("database_index", detail);
+                    return result;
+                } catch (err) {
+                    bootFailStep(
+                        "database_index",
+                        err?.message || "SQLite Index Failed",
+                    );
+                    throw err;
+                } finally {
+                    stopPolling();
+                }
+            }
+
+            async function fetchDashboardRowsNdjsonStream() {
+                let lastError = null;
+                for (let attempt = 1; attempt <= AUTOLOAD_RETRIES; attempt++) {
+                    try {
+                        const response = await fetch(
+                            DEFAULT_DASHBOARD_ROWS_PATH,
+                            { cache: "no-store" },
+                        );
+                        if (!response.ok) {
+                            throw new Error(
+                                `${response.status} ${response.statusText}`,
+                            );
+                        }
+
+                        const parseState = createCompactRowParseState();
+                        let pending = "";
+                        let bytesReceived = 0;
+                        let lineIndex = 0;
+
+                        const consumeLine = (rawLine) => {
+                            const line = rawLine.trim();
+                            if (!line) return;
+                            let compact = null;
+                            try {
+                                compact = JSON.parse(line);
+                            } catch (_) {
+                                compact = null;
+                            }
+                            appendCompactPullRecord(compact, parseState);
+                            lineIndex++;
+                        };
+
+                        if (response.body && response.body.getReader) {
+                            const reader = response.body.getReader();
+                            const decoder = new TextDecoder();
+                            while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                bytesReceived += value?.length || 0;
+                                pending += decoder.decode(value, { stream: true });
+                                let newlineIdx = pending.indexOf("\n");
+                                while (newlineIdx >= 0) {
+                                    let line = pending.slice(0, newlineIdx);
+                                    pending = pending.slice(newlineIdx + 1);
+                                    if (
+                                        line.length &&
+                                        line.charCodeAt(line.length - 1) === 13
+                                    ) {
+                                        line = line.slice(0, -1);
+                                    }
+                                    consumeLine(line);
+                                    newlineIdx = pending.indexOf("\n");
+                                    if (lineIndex > 0 && lineIndex % 4000 === 0) {
+                                        bootUpdateStep(
+                                            "fetch_rows",
+                                            `${formatBootDataSize(bytesReceived)} · ${formatNumber(lineIndex)} Pulls`,
+                                        );
+                                    }
+                                    await bootYieldForPaint();
+                                }
+                                await bootYieldForPaint(true);
+                            }
+                            pending += decoder.decode();
+                            if (pending.trim()) consumeLine(pending);
+                        } else {
+                            const text = await response.text();
+                            bytesReceived = text.length;
+                            return {
+                                rowParse: await parseCompactRowsFromJsonl(text),
+                                bytesReceived,
+                            };
+                        }
+
+                        return {
+                            rowParse: finalizeCompactRowParseState(parseState),
+                            bytesReceived,
+                        };
+                    } catch (err) {
+                        lastError = err;
+                        if (attempt < AUTOLOAD_RETRIES) {
+                            await waitMs(AUTOLOAD_RETRY_BASE_MS * attempt);
+                        }
+                    }
+                }
+                throw lastError || new Error("Unknown fetch error");
+            }
+
             async function fetchDefaultCsvText(path) {
                 let lastError = null;
                 for (let attempt = 1; attempt <= AUTOLOAD_RETRIES; attempt++) {
@@ -15356,6 +15971,7 @@
             async function autoLoadDefaultFiles() {
                 bootReset({ pathLabel: "Compact Index" });
                 try {
+                    await ensureDashboardDatabaseIndex();
                     bootBeginStep("card_definitions");
                     const resourcesPromise = loadResources(false).finally(() =>
                         bootEndStep("card_definitions", "Ready"),
@@ -15364,7 +15980,7 @@
                     let indexLoaded = false;
                     try {
                         bootBeginStep("fetch_summary");
-                        const summaryPromise = fetchDefaultJsonPayload(
+                        const summary = await fetchDefaultJsonPayload(
                             DEFAULT_ACCOUNTS_SUMMARY_PATH,
                         )
                             .then((summary) => {
@@ -15384,15 +16000,13 @@
                                 throw err;
                             });
                         bootBeginStep("fetch_rows");
-                        const rowsPromise = fetchDefaultCsvText(
-                            DEFAULT_DASHBOARD_ROWS_PATH,
-                        )
-                            .then((rowsText) => {
+                        const rowParse = await fetchDashboardRowsNdjsonStream()
+                            .then((result) => {
                                 bootEndStep(
                                     "fetch_rows",
-                                    formatBootDataSize(rowsText?.length || 0),
+                                    `${formatNumber(result.rowParse.rowCount)} Rows · ${formatBootDataSize(result.bytesReceived)}`,
                                 );
-                                return rowsText;
+                                return result.rowParse;
                             })
                             .catch((err) => {
                                 bootFailStep(
@@ -15401,15 +16015,11 @@
                                 );
                                 throw err;
                             });
-                        const [summary, rowsText] = await Promise.all([
-                            summaryPromise,
-                            rowsPromise,
-                        ]);
                         await resourcesPromise;
-                        if (summary?.ok && rowsText) {
+                        if (summary?.ok && rowParse) {
                             indexLoaded = await loadDashboardIndexData(
                                 summary,
-                                rowsText,
+                                rowParse,
                                 "dashboard index",
                             );
                         }
@@ -15597,6 +16207,7 @@
                     row.cardSearchBlob = derived.cardSearchBlob;
                     row.rarityValues = derived.rarityValues;
                     row.cardTypeValues = derived.cardTypeValues;
+                    row.isGodPack = derived.isGodPack;
                     for (const rarity of row.rarityValues) rarities.add(rarity);
                 }
                 state.allPacks = new Map(
@@ -15651,6 +16262,19 @@
                 });
                 el.cardTypeFilters.innerHTML = cardTypeParts.join("");
                 syncRowsWishlistFilterButton();
+                syncRowsGodPackFilterButton();
+            }
+
+            function syncRowsGodPackFilterButton() {
+                const btn =
+                    el.rowsGodPackOnlyBtn ||
+                    document.getElementById("rowsGodPackOnly");
+                if (!btn) return;
+                btn.classList.toggle("checked", state.rowsGodPackOnly);
+                btn.setAttribute(
+                    "aria-pressed",
+                    state.rowsGodPackOnly ? "true" : "false",
+                );
             }
 
             function syncRowsWishlistFilterButton() {
@@ -15800,14 +16424,141 @@
                 );
             }
 
+            function rowMatchesActiveFilters(
+                row,
+                accountTerm,
+                accountTermDigits,
+                accountMetaSearchCache,
+                filterPacks,
+                selectedPacks,
+                filterGodPack,
+                cardFilterConfig,
+                cardMatchCache,
+            ) {
+                if (accountTerm) {
+                    let meta = accountMetaSearchCache.get(row.account);
+                    if (meta === undefined) {
+                        const accountMeta =
+                            state.accountMetadataMap.get(row.account) || null;
+                        const fileLabel =
+                            state.accountFileLabelMap.get(row.account) || "";
+                        const accountName =
+                            accountMeta && accountMeta.accountName
+                                ? accountMeta.accountName
+                                : "";
+                        const friendCode =
+                            accountMeta && accountMeta.friendCode
+                                ? accountMeta.friendCode
+                                : "";
+                        meta = {
+                            blob: normaliseSearch(
+                                [fileLabel, accountName, friendCode]
+                                    .filter(Boolean)
+                                    .join(" "),
+                            ),
+                            fcDigits: String(friendCode).replace(/\D/g, ""),
+                        };
+                        accountMetaSearchCache.set(row.account, meta);
+                    }
+                    if (
+                        !row.accountLower.includes(accountTerm) &&
+                        !meta.blob.includes(accountTerm) &&
+                        !(
+                            accountTermDigits.length >= 4 &&
+                            meta.fcDigits.includes(accountTermDigits)
+                        )
+                    ) {
+                        return false;
+                    }
+                }
+                if (filterPacks && !selectedPacks.has(row.pack)) return false;
+                if (filterGodPack && !row.isGodPack) return false;
+                if (cardFilterConfig.active) {
+                    const cardIds = row.cardIds;
+                    for (let j = 0; j < cardIds.length; j++) {
+                        const cid = cardIds[j];
+                        let matched = cardMatchCache.get(cid);
+                        if (matched === undefined) {
+                            matched = cardMatchesActiveFilters(
+                                cid,
+                                cardFilterConfig,
+                            );
+                            cardMatchCache.set(cid, matched);
+                        }
+                        if (matched) return true;
+                    }
+                    return false;
+                }
+                return true;
+            }
+
+            function finalizeFilteredRows(filtered) {
+                sortRows(filtered);
+                state.filteredRows = filtered;
+                updateStats();
+                renderCurrent();
+                scheduleAccountOverviewWarmup();
+            }
+
+            async function applyHeavyRowFilters(
+                token,
+                accountTerm,
+                accountTermDigits,
+                filterPacks,
+                filterGodPack,
+                cardFilterConfig,
+            ) {
+                const rows = state.rows;
+                const accountMetaSearchCache = accountTerm ? new Map() : null;
+                const selectedPacks = state.selectedPacks;
+                const cardMatchCache = cardFilterConfig.active
+                    ? new Map()
+                    : null;
+                const filtered = [];
+                let startedAt = performance.now();
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (
+                        rowMatchesActiveFilters(
+                            row,
+                            accountTerm,
+                            accountTermDigits,
+                            accountMetaSearchCache,
+                            filterPacks,
+                            selectedPacks,
+                            filterGodPack,
+                            cardFilterConfig,
+                            cardMatchCache,
+                        )
+                    ) {
+                        filtered.push(row);
+                    }
+                    if (
+                        i > 0 &&
+                        i % 12000 === 0 &&
+                        performance.now() - startedAt > 16
+                    ) {
+                        if (token !== state.filterApplyToken) return;
+                        if (state.view === "rows" || state.view === "accounts") {
+                            el.resultNote.textContent = `Filtering… ${formatNumber(i)} / ${formatNumber(rows.length)}`;
+                        }
+                        await waitMs(0);
+                        startedAt = performance.now();
+                    }
+                }
+                if (token !== state.filterApplyToken) return;
+                finalizeFilteredRows(filtered);
+            }
+
             function applyFiltersAndRender() {
                 state.displayLimit = state.pageSize;
                 clearAccountOverviewCache();
-                invalidateViewDomCache();
+                invalidateViewDomCacheForFilterChange();
                 const accountTerm = normaliseSearch(el.accountSearch.value);
                 const accountTermDigits = accountTerm.replace(/\D/g, "");
                 const filterPacks =
                     state.selectedPacks.size !== state.allPacks.size;
+                const filterGodPack = state.rowsGodPackOnly;
                 const cardFilterConfig = getActiveCardFilterConfig(
                     el.cardSearch.value,
                 );
@@ -15825,14 +16576,33 @@
                     return;
                 }
 
-                if (!accountTerm && !filterPacks && !cardFilterConfig.active) {
-                    const filtered =
-                        state.rows.length > 0 ? state.rows.slice() : [];
-                    sortRows(filtered);
-                    state.filteredRows = filtered;
+                if (
+                    !accountTerm &&
+                    !filterPacks &&
+                    !cardFilterConfig.active &&
+                    !filterGodPack
+                ) {
+                    ensureMainRowsSorted();
+                    state.filteredRows = state.rows;
                     updateStats();
                     renderCurrent();
                     scheduleAccountOverviewWarmup();
+                    return;
+                }
+
+                if (state.rows.length > HEAVY_ROW_FILTER_THRESHOLD) {
+                    const token = ++state.filterApplyToken;
+                    if (state.view === "rows" || state.view === "accounts") {
+                        el.resultNote.textContent = "Filtering…";
+                    }
+                    void applyHeavyRowFilters(
+                        token,
+                        accountTerm,
+                        accountTermDigits,
+                        filterPacks,
+                        filterGodPack,
+                        cardFilterConfig,
+                    );
                     return;
                 }
 
@@ -15845,71 +16615,23 @@
                     : null;
                 for (let i = 0; i < rows.length; i++) {
                     const row = rows[i];
-                    if (accountTerm) {
-                        let meta = accountMetaSearchCache.get(row.account);
-                        if (meta === undefined) {
-                            const accountMeta =
-                                state.accountMetadataMap.get(row.account) ||
-                                null;
-                            const fileLabel =
-                                state.accountFileLabelMap.get(row.account) ||
-                                "";
-                            const accountName =
-                                accountMeta && accountMeta.accountName
-                                    ? accountMeta.accountName
-                                    : "";
-                            const friendCode =
-                                accountMeta && accountMeta.friendCode
-                                    ? accountMeta.friendCode
-                                    : "";
-                            meta = {
-                                blob: normaliseSearch(
-                                    [fileLabel, accountName, friendCode]
-                                        .filter(Boolean)
-                                        .join(" "),
-                                ),
-                                fcDigits: String(friendCode).replace(/\D/g, ""),
-                            };
-                            accountMetaSearchCache.set(row.account, meta);
-                        }
-                        if (
-                            !row.accountLower.includes(accountTerm) &&
-                            !meta.blob.includes(accountTerm) &&
-                            !(
-                                accountTermDigits.length >= 4 &&
-                                meta.fcDigits.includes(accountTermDigits)
-                            )
+                    if (
+                        rowMatchesActiveFilters(
+                            row,
+                            accountTerm,
+                            accountTermDigits,
+                            accountMetaSearchCache,
+                            filterPacks,
+                            selectedPacks,
+                            filterGodPack,
+                            cardFilterConfig,
+                            cardMatchCache,
                         )
-                            continue;
+                    ) {
+                        filtered.push(row);
                     }
-                    if (filterPacks && !selectedPacks.has(row.pack)) continue;
-                    if (cardFilterConfig.active) {
-                        const cardIds = row.cardIds;
-                        let matched = false;
-                        for (let j = 0; j < cardIds.length; j++) {
-                            const cid = cardIds[j];
-                            let m = cardMatchCache.get(cid);
-                            if (m === undefined) {
-                                m = cardMatchesActiveFilters(
-                                    cid,
-                                    cardFilterConfig,
-                                );
-                                cardMatchCache.set(cid, m);
-                            }
-                            if (m) {
-                                matched = true;
-                                break;
-                            }
-                        }
-                        if (!matched) continue;
-                    }
-                    filtered.push(row);
                 }
-                sortRows(filtered);
-                state.filteredRows = filtered;
-                updateStats();
-                renderCurrent();
-                scheduleAccountOverviewWarmup();
+                finalizeFilteredRows(filtered);
             }
 
             function formatAccountsStatBreakdownHtml() {
@@ -16794,6 +17516,25 @@
                 return `<span class="multi-card-chip-thumb-wrap multi-result-mini-thumb${qtyClass}">${thumb}${qtyBadge}</span>`;
             }
 
+            function buildPinnedMultiAccountStub(account, accountFirstSeenMs) {
+                return {
+                    account,
+                    matchedCardIds: new Set(),
+                    perCardCounts: new Map(),
+                    totalCopies: 0,
+                    instance: String(
+                        state.accountMetadataMap.get(account)?.instance || "",
+                    ).trim(),
+                    shinedust: state.accountShinedustMap.has(account)
+                        ? state.accountShinedustMap.get(account)
+                        : Number.NaN,
+                    ageDays: calculateAccountAgeDays(
+                        account,
+                        accountFirstSeenMs.get(account),
+                    ),
+                };
+            }
+
             function buildMultiCardAccountRows(
                 selectedCards,
                 cardToAccounts,
@@ -16843,29 +17584,17 @@
                         row.totalCopies += remaining;
                     }
                 }
-                if (
-                    state.multiSelectedAccount &&
-                    selectedCards.length &&
-                    !rowsByAccount.has(state.multiSelectedAccount)
-                ) {
-                    const account = state.multiSelectedAccount;
-                    rowsByAccount.set(account, {
-                        account,
-                        matchedCardIds: new Set(),
-                        perCardCounts: new Map(),
-                        totalCopies: 0,
-                        instance: String(
-                            state.accountMetadataMap.get(account)?.instance ||
-                                "",
-                        ).trim(),
-                        shinedust: state.accountShinedustMap.has(account)
-                            ? state.accountShinedustMap.get(account)
-                            : Number.NaN,
-                        ageDays: calculateAccountAgeDays(
+                if (selectedCards.length) {
+                    for (const account of state.pinnedMultiAccounts) {
+                        if (rowsByAccount.has(account)) continue;
+                        rowsByAccount.set(
                             account,
-                            accountFirstSeenMs.get(account),
-                        ),
-                    });
+                            buildPinnedMultiAccountStub(
+                                account,
+                                accountFirstSeenMs,
+                            ),
+                        );
+                    }
                 }
                 let rows = [...rowsByAccount.values()].map((row) => ({
                     ...row,
@@ -16878,12 +17607,12 @@
                 }));
                 rows = applyMultiAccountFilters(rows);
                 return rows.sort((a, b) => {
-                    const pinnedAccount = state.multiSelectedAccount || "";
-                    if (pinnedAccount) {
-                        const aPinned = a.account === pinnedAccount;
-                        const bPinned = b.account === pinnedAccount;
-                        if (aPinned !== bPinned) return aPinned ? -1 : 1;
-                    }
+                    const pinOrder = compareAccountPinOrder(
+                        a.account,
+                        b.account,
+                        state.pinnedMultiAccounts,
+                    );
+                    if (pinOrder !== 0) return pinOrder;
                     if (a.matchedUnique !== b.matchedUnique)
                         return b.matchedUnique - a.matchedUnique;
                     if (a.totalCopies !== b.totalCopies)
@@ -16925,8 +17654,9 @@
                             row.account,
                             rawFileLabel,
                         );
-                        const isSelectedAccount =
-                            row.account === state.multiSelectedAccount;
+                        const isSelectedAccount = isMultiAccountPinned(
+                            row.account,
+                        );
                         const shinedustTitle =
                             row.requiredShinedust > 0
                                 ? `Needs ${formatNumber(row.requiredShinedust)} Shinedust for selected tradeables`
@@ -17072,7 +17802,7 @@
                 selectedCards,
                 accountRows,
             ) {
-                return `<aside class="multi-search-results"><div class="multi-results-sticky catalog-side panel view-switch-fade-out-target"><div class="catalog-side-title">Best Accounts</div><div class="catalog-side-update-body view-switch-fade-target"><div class="catalog-side-meta-slot"><div class="catalog-side-meta"><div class="catalog-side-meta-stats"><span>Sorted by selected cards matched, then copies. Pin an account to keep it at the top.</span></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort">${multiFilterTogglesHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderMultiAccountPinHint(accountRows)}</div>${renderMultiResultList(selectedCards, accountRows)}</div></div></div></div></aside>`;
+                return `<aside class="multi-search-results"><div class="multi-results-sticky catalog-side panel view-switch-fade-out-target"><div class="catalog-side-title">Best Accounts</div><div class="catalog-side-update-body view-switch-fade-target"><div class="catalog-side-meta-slot"><div class="catalog-side-meta"><div class="catalog-side-meta-stats"><span>Sorted by selected cards matched, then copies. Pin accounts to keep them at the top.</span></div></div></div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort">${multiFilterTogglesHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderMultiAccountPinHint(accountRows)}</div>${renderMultiResultList(selectedCards, accountRows)}</div></div></div></div></aside>`;
             }
 
             function applyMultiResultsAsidePatch(
@@ -17376,6 +18106,7 @@
             }
 
             function startTradeForMultiAccount(btn, account, fileName, cardIds) {
+                ensureAccountPinned(account);
                 const matchedCardIds = Array.isArray(cardIds)
                     ? cardIds
                     : String(cardIds || "")
@@ -17414,7 +18145,7 @@
                             if (!cardId) return;
                             state.multiSearchCardIds.delete(cardId);
                             if (!state.multiSearchCardIds.size)
-                                state.multiSelectedAccount = "";
+                                clearPinnedMultiAccounts();
                             const pickerBtn = el.rows.querySelector(
                                 `[data-multi-picker-card-id="${CSS.escape(cardId)}"]`,
                             );
@@ -17434,7 +18165,7 @@
                         event.stopPropagation();
                         clearSelected.blur();
                         state.multiSearchCardIds.clear();
-                        state.multiSelectedAccount = "";
+                        clearPinnedMultiAccounts();
                         el.rows
                             .querySelectorAll(
                                 "[data-multi-picker-card-id].selected",
@@ -18205,14 +18936,7 @@
                     model.cardToAccounts,
                     model.accountFirstSeenMs,
                 );
-                if (
-                    state.multiSelectedAccount &&
-                    !accountRows.some(
-                        (row) => row.account === state.multiSelectedAccount,
-                    )
-                ) {
-                    state.multiSelectedAccount = "";
-                }
+                syncMultiAccountPin(accountRows);
 
                 const renderedCardCount = model.filteredCardCount;
                 const hiddenCardCount = 0;
@@ -18328,7 +19052,7 @@
                                 state.multiSearchCardIds.delete(cardId);
                             else state.multiSearchCardIds.add(cardId);
                             if (!state.multiSearchCardIds.size)
-                                state.multiSelectedAccount = "";
+                                clearPinnedMultiAccounts();
                             btn.classList.toggle("selected", !wasSelected);
                             btn.setAttribute(
                                 "aria-pressed",
@@ -18461,14 +19185,7 @@
                     model.cardToAccounts,
                     model.accountFirstSeenMs,
                 );
-                if (
-                    state.multiSelectedAccount &&
-                    !accountRows.some(
-                        (row) => row.account === state.multiSelectedAccount,
-                    )
-                ) {
-                    state.multiSelectedAccount = "";
-                }
+                syncMultiAccountPin(accountRows);
                 const renderedCardCount = model.filteredCardCount;
                 const hiddenCardCount = 0;
                 const controlsHtml = renderCatalogControlsForMulti(
@@ -18532,8 +19249,8 @@
                     if (state.view !== "multisearch") return;
                     if (event.target.closest("[data-multi-result-account]"))
                         return;
-                    if (!state.multiSelectedAccount) return;
-                    state.multiSelectedAccount = "";
+                    if (!state.pinnedMultiAccounts.length) return;
+                    clearPinnedMultiAccounts();
                     rebuildMultiSelectionUI();
                 };
 
@@ -18892,7 +19609,8 @@
                 scheduleCatalogAccountListFill(
                     sideRoot,
                     listEl,
-                    pending.htmls,
+                    pending.selected,
+                    pending.rows,
                     pending.fromIdx,
                 );
             }
@@ -18900,10 +19618,11 @@
             function scheduleCatalogAccountListFill(
                 sideRoot,
                 listEl,
-                htmls,
+                selected,
+                rows,
                 fromIdx,
             ) {
-                const fill = { sideRoot, listEl, htmls, idx: fromIdx };
+                const fill = { sideRoot, listEl, selected, rows, idx: fromIdx };
                 catalogAccountListActiveFill = fill;
                 const scheduleNext = (fn) => {
                     if (typeof window.requestIdleCallback === "function") {
@@ -18924,10 +19643,13 @@
                     let html = "";
                     let cnt = 0;
                     while (
-                        fill.idx < fill.htmls.length &&
+                        fill.idx < fill.rows.length &&
                         cnt < CATALOG_ACCOUNT_LIST_ASYNC_MAX_CHUNK
                     ) {
-                        html += fill.htmls[fill.idx++];
+                        html += buildCatalogAccountItemHtml(
+                            fill.selected,
+                            fill.rows[fill.idx++],
+                        );
                         cnt++;
                         if (
                             cnt >= CATALOG_ACCOUNT_LIST_ASYNC_MIN_CHUNK &&
@@ -18951,7 +19673,7 @@
                             activateCatalogPullHistoryFill(fill.sideRoot);
                         }
                     }
-                    if (fill.idx < fill.htmls.length) {
+                    if (fill.idx < fill.rows.length) {
                         scheduleNext(step);
                     } else {
                         catalogAccountListActiveFill = null;
@@ -18993,6 +19715,7 @@
                 accountItemsHtml,
                 catalogTradeReadyToggleHtml,
                 accountRows,
+                accountListNoteHtml,
             ) {
                 const metaSlot = sideEl.querySelector(
                     ".catalog-side-meta-slot",
@@ -19020,6 +19743,10 @@
                 if (hintSlot)
                     hintSlot.innerHTML =
                         renderCatalogAccountPinHint(accountRows);
+                const noteSlot = sideEl.querySelector(
+                    ".catalog-account-list-note-slot",
+                );
+                if (noteSlot) noteSlot.innerHTML = accountListNoteHtml || "";
                 attachCatalogSideDynamicListeners(sideEl);
                 return true;
             }
@@ -19054,8 +19781,7 @@
                     : accountTradeBlocked
                       ? `<button type="button" class="primary start-trade-btn" disabled title="Account must be at least ${TRADE_READY_MIN_AGE_DAYS} days old to trade">Start trade</button>`
                       : `<button type="button" class="primary start-trade-btn" data-start-trade-account="${escapeHtml(row.account)}" data-start-trade-card="${escapeHtml(selected.id)}" data-start-trade-file="${escapeHtml(mappedFileName)}" title="Inject this account into a MuMu instance and start the trade">Start trade</button>`;
-                const isPinned =
-                    row.account === state.selectedCatalogAccount;
+                const isPinned = isCatalogAccountPinned(row.account);
                 const isHistoryOpen =
                     row.account === state.catalogPullHistoryAccount;
                 const historyButton = catalogPullHistoryToggleButtonHtml(
@@ -19078,33 +19804,49 @@
                 requiredShinedust,
             ) {
                 let accountListFillAttr = "";
+                let accountListNoteHtml = "";
                 let accountItemsHtml;
                 if (!selected) {
                     accountItemsHtml = `<div class="empty panel" style="padding:14px">Select a card to view account availability.</div>`;
-                    return { accountItemsHtml, accountListFillAttr };
+                    return {
+                        accountItemsHtml,
+                        accountListFillAttr,
+                        accountListNoteHtml,
+                    };
                 }
-                const accountItemHtmls = accountRows.map((row) =>
-                    buildCatalogAccountItemHtml(selected, row),
+                const totalAccounts = accountRows.length;
+                const listRows =
+                    totalAccounts > CATALOG_ACCOUNT_LIST_MAX_DISPLAY
+                        ? accountRows.slice(0, CATALOG_ACCOUNT_LIST_MAX_DISPLAY)
+                        : accountRows;
+                if (totalAccounts > listRows.length) {
+                    accountListNoteHtml = `<div class="catalog-account-list-note">Showing top ${formatNumber(listRows.length)} of ${formatNumber(totalAccounts)} accounts (sorted).</div>`;
+                }
+                const initialCount = Math.min(
+                    listRows.length,
+                    CATALOG_ACCOUNT_LIST_INITIAL_CHUNK,
                 );
-                if (!accountItemHtmls.length) {
-                    accountItemsHtml = `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`;
-                } else if (
-                    accountItemHtmls.length > CATALOG_ACCOUNT_LIST_INITIAL_CHUNK
-                ) {
-                    accountItemsHtml = accountItemHtmls
-                        .slice(0, CATALOG_ACCOUNT_LIST_INITIAL_CHUNK)
-                        .join("");
+                accountItemsHtml = listRows
+                    .slice(0, initialCount)
+                    .map((row) => buildCatalogAccountItemHtml(selected, row))
+                    .join("");
+                if (listRows.length > initialCount) {
                     const token = String(++catalogAccountListFillCounter);
                     catalogAccountListPendingFill = {
                         token,
-                        htmls: accountItemHtmls,
-                        fromIdx: CATALOG_ACCOUNT_LIST_INITIAL_CHUNK,
+                        selected,
+                        rows: listRows,
+                        fromIdx: initialCount,
                     };
                     accountListFillAttr = ` data-account-list-fill="${token}"`;
-                } else {
-                    accountItemsHtml = accountItemHtmls.join("");
+                } else if (!accountItemsHtml) {
+                    accountItemsHtml = `<div class="empty panel" style="padding:14px">${getCatalogNoAccountMessage(allAccountRows, requiredShinedust)}</div>`;
                 }
-                return { accountItemsHtml, accountListFillAttr };
+                return {
+                    accountItemsHtml,
+                    accountListFillAttr,
+                    accountListNoteHtml,
+                };
             }
 
             function buildCatalogSelectedMetaHtml(
@@ -19145,8 +19887,9 @@
                 accountRows,
                 accountItemsHtml,
                 accountListFillAttr,
+                accountListNoteHtml = "",
             }) {
-                return `<aside class="catalog-side panel view-switch-fade-out-target"><div class="catalog-side-title">Card Availability</div><div class="catalog-side-update-body view-switch-fade-target"><div class="catalog-side-meta-slot">${selectedMeta}</div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort Accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="lastPulled" ${state.catalogAccountSort === "lastPulled" ? "selected" : ""}>Last pulled</option><option value="firstPulled" ${state.catalogAccountSort === "firstPulled" ? "selected" : ""}>First pulled</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div>${catalogTradeReadyToggleHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderCatalogAccountPinHint(accountRows)}</div><div class="catalog-account-list"${accountListFillAttr}>${accountItemsHtml}</div></div></div></div></aside>`;
+                return `<aside class="catalog-side panel view-switch-fade-out-target"><div class="catalog-side-title">Card Availability</div><div class="catalog-side-update-body view-switch-fade-target"><div class="catalog-side-meta-slot">${selectedMeta}</div><div class="catalog-control-section"><div class="catalog-control-head"><div class="catalog-control-title">Accounts</div></div><div class="catalog-account-sort"><label class="field-label" for="catalogAccountSort">Sort Accounts</label><div style="display:flex;gap:6px;align-items:center"><select id="catalogAccountSort" style="flex:1"><option value="copies" ${state.catalogAccountSort === "copies" ? "selected" : ""}>Copies</option><option value="lastPulled" ${state.catalogAccountSort === "lastPulled" ? "selected" : ""}>Last pulled</option><option value="firstPulled" ${state.catalogAccountSort === "firstPulled" ? "selected" : ""}>First pulled</option><option value="instance" ${state.catalogAccountSort === "instance" ? "selected" : ""}>Instance</option><option value="shinedust" ${state.catalogAccountSort === "shinedust" ? "selected" : ""}>Shinedust</option><option value="age" ${state.catalogAccountSort === "age" ? "selected" : ""}>Age</option></select><button id="catalogAccountSortDir" type="button" class="icon-btn sort-dir-btn" title="Toggle sort direction">${state.catalogAccountSortAsc ? "↑" : "↓"}</button></div>${catalogTradeReadyToggleHtml}</div><div class="catalog-side-list-stage"><div class="account-pin-hint-slot">${renderCatalogAccountPinHint(accountRows)}</div><div class="catalog-account-list"${accountListFillAttr}>${accountItemsHtml}</div><div class="catalog-account-list-note-slot">${accountListNoteHtml}</div></div></div></div></aside>`;
             }
 
             function renderCatalogSidePanel(options) {
@@ -19207,9 +19950,9 @@
                     requiredShinedust,
                 );
                 syncCatalogAccountPin(accountRows);
-                if (!selected) state.selectedCatalogAccount = "";
+                if (!selected) clearPinnedCatalogAccounts();
 
-                const { accountItemsHtml, accountListFillAttr } =
+                const { accountItemsHtml, accountListFillAttr, accountListNoteHtml } =
                     buildCatalogAccountListParts(
                         selected,
                         accountRows,
@@ -19229,6 +19972,7 @@
                     accountRows,
                     accountItemsHtml,
                     accountListFillAttr,
+                    accountListNoteHtml,
                 });
 
                 const sideEl = el.rows.querySelector(".catalog-side");
@@ -19259,6 +20003,7 @@
                                 accountItemsHtml,
                                 catalogTradeReadyToggleHtml,
                                 accountRows,
+                                accountListNoteHtml,
                             );
                         };
                         if (swapMode) {
@@ -19307,7 +20052,7 @@
                 if ("requestIdleCallback" in window) {
                     state.catalogWarmupHandle = window.requestIdleCallback(
                         run,
-                        { timeout: 2000 },
+                        { timeout: 5000 },
                     );
                 } else {
                     state.catalogWarmupHandle = window.setTimeout(run, 650);
@@ -19463,7 +20208,7 @@
                 state.catalogCardSearch =
                     String(info.name || "").trim() || cardId;
                 state.selectedCatalogCardId = cardId;
-                state.selectedCatalogAccount = "";
+                clearPinnedCatalogAccounts();
                 state.catalogPullHistoryAccount = "";
                 _viewDomCache.delete("allcards");
                 if (state.view === "allcards") {
@@ -19599,7 +20344,10 @@
 
             const CATALOG_PULL_HISTORY_INITIAL_CHUNK = 60;
             const CATALOG_PULL_HISTORY_ASYNC_MIN_CHUNK = 40;
-            const CATALOG_PULL_HISTORY_ASYNC_MAX_CHUNK = 160;
+            const CATALOG_PULL_HISTORY_ASYNC_MAX_CHUNK = 120;
+            const CATALOG_PULL_HISTORY_MAX_DISPLAY = 250;
+            const CATALOG_HEAVY_HISTORY_ITEMS = 60;
+            const CATALOG_HEAVY_ACCOUNT_ITEMS = 120;
             let catalogPullHistoryActiveFill = null;
             let catalogPullHistoryPendingFill = null;
             let catalogPullHistoryFillCounter = 0;
@@ -19607,6 +20355,7 @@
             const CATALOG_ACCOUNT_LIST_INITIAL_CHUNK = 60;
             const CATALOG_ACCOUNT_LIST_ASYNC_MIN_CHUNK = 30;
             const CATALOG_ACCOUNT_LIST_ASYNC_MAX_CHUNK = 80;
+            const CATALOG_ACCOUNT_LIST_MAX_DISPLAY = 350;
             let catalogAccountListActiveFill = null;
             let catalogAccountListPendingFill = null;
             let catalogAccountListFillCounter = 0;
@@ -19629,15 +20378,31 @@
                         perRowCounts.set(rid, (perRowCounts.get(rid) || 0) + 1);
                     }
                     for (const [rid, c] of perRowCounts) {
-                        let bucket = index.get(rid);
+                        let byAccount = index.get(rid);
+                        if (!byAccount) {
+                            byAccount = new Map();
+                            index.set(rid, byAccount);
+                        }
+                        let bucket = byAccount.get(row.account);
                         if (!bucket) {
                             bucket = [];
-                            index.set(rid, bucket);
+                            byAccount.set(row.account, bucket);
                         }
                         bucket.push({ row, count: c });
                     }
                 }
                 state.catalogPullHistoryRowIndex = index;
+            }
+
+            function getCatalogPullHistoryAccountMatches(cardId, account) {
+                const id = String(cardId || "").trim();
+                const accountKey = String(account || "");
+                if (!id || !accountKey) return [];
+                ensureCatalogPullHistoryIndex();
+                return (
+                    state.catalogPullHistoryRowIndex.get(id)?.get(accountKey) ||
+                    []
+                );
             }
 
             function getCatalogPullHistorySummary(cardId) {
@@ -19658,41 +20423,50 @@
                 let firstMs = Number.NaN;
                 let lastMs = Number.NaN;
 
-                const matches = state.catalogPullHistoryRowIndex.get(id) || [];
-                for (const { row, count } of matches) {
-                    totalCopies += count;
-                    const timestampMs = Number.isFinite(row.timestampMs)
-                        ? row.timestampMs
-                        : Number.NaN;
-                    if (Number.isFinite(timestampMs)) {
-                        if (!Number.isFinite(firstMs) || timestampMs < firstMs)
-                            firstMs = timestampMs;
-                        if (!Number.isFinite(lastMs) || timestampMs > lastMs)
-                            lastMs = timestampMs;
-                    }
-                    let stat = accountStats.get(row.account);
-                    if (!stat) {
-                        stat = {
-                            firstMs: Number.NaN,
-                            lastMs: Number.NaN,
-                            rowCount: 0,
-                            totalCopies: 0,
-                        };
-                        accountStats.set(row.account, stat);
-                    }
-                    stat.rowCount++;
-                    stat.totalCopies += count;
-                    if (Number.isFinite(timestampMs)) {
-                        if (
-                            !Number.isFinite(stat.firstMs) ||
-                            timestampMs < stat.firstMs
-                        )
-                            stat.firstMs = timestampMs;
-                        if (
-                            !Number.isFinite(stat.lastMs) ||
-                            timestampMs > stat.lastMs
-                        )
-                            stat.lastMs = timestampMs;
+                const byAccount =
+                    state.catalogPullHistoryRowIndex.get(id) || new Map();
+                for (const [account, matches] of byAccount) {
+                    for (const { row, count } of matches) {
+                        totalCopies += count;
+                        const timestampMs = Number.isFinite(row.timestampMs)
+                            ? row.timestampMs
+                            : Number.NaN;
+                        if (Number.isFinite(timestampMs)) {
+                            if (
+                                !Number.isFinite(firstMs) ||
+                                timestampMs < firstMs
+                            )
+                                firstMs = timestampMs;
+                            if (
+                                !Number.isFinite(lastMs) ||
+                                timestampMs > lastMs
+                            )
+                                lastMs = timestampMs;
+                        }
+                        let stat = accountStats.get(account);
+                        if (!stat) {
+                            stat = {
+                                firstMs: Number.NaN,
+                                lastMs: Number.NaN,
+                                rowCount: 0,
+                                totalCopies: 0,
+                            };
+                            accountStats.set(account, stat);
+                        }
+                        stat.rowCount++;
+                        stat.totalCopies += count;
+                        if (Number.isFinite(timestampMs)) {
+                            if (
+                                !Number.isFinite(stat.firstMs) ||
+                                timestampMs < stat.firstMs
+                            )
+                                stat.firstMs = timestampMs;
+                            if (
+                                !Number.isFinite(stat.lastMs) ||
+                                timestampMs > stat.lastMs
+                            )
+                                stat.lastMs = timestampMs;
+                        }
                     }
                 }
 
@@ -19710,12 +20484,13 @@
                 const id = String(cardId || "").trim();
                 const accountKey = String(account || "");
                 if (!id || !accountKey) return [];
-                ensureCatalogPullHistoryIndex();
 
-                const matches = state.catalogPullHistoryRowIndex.get(id) || [];
+                const matches = getCatalogPullHistoryAccountMatches(
+                    id,
+                    accountKey,
+                );
                 const entries = [];
                 for (const { row, count } of matches) {
-                    if (row.account !== accountKey) continue;
                     const timestampMs = Number.isFinite(row.timestampMs)
                         ? row.timestampMs
                         : Number.NaN;
@@ -19855,10 +20630,16 @@
             }
 
             function renderCatalogPullHistoryHtml(cardId, account) {
-                const entries = getCatalogPullHistoryEntriesForAccount(
+                const allEntries = getCatalogPullHistoryEntriesForAccount(
                     cardId,
                     account,
                 );
+                const totalEntries = allEntries.length;
+                const entries =
+                    totalEntries > CATALOG_PULL_HISTORY_MAX_DISPLAY
+                        ? allEntries.slice(0, CATALOG_PULL_HISTORY_MAX_DISPLAY)
+                        : allEntries;
+                const truncated = totalEntries > entries.length;
 
                 let bodyHtml;
                 if (!entries.length) {
@@ -19884,22 +20665,25 @@
                     bodyHtml = `<div ${listAttrs}>${initialEntries
                         .map(buildCatalogPullHistoryRowHtml)
                         .join("")}</div>`;
+                    if (truncated) {
+                        bodyHtml += `<div class="catalog-pull-history-note">Showing the latest ${formatNumber(entries.length)} of ${formatNumber(totalEntries)} pulls.</div>`;
+                    }
                 }
 
                 return `<div class="catalog-control-section catalog-pull-history-section"><div class="catalog-control-head"><div class="catalog-control-title">Pull History</div></div>${bodyHtml}</div>`;
             }
 
             function sortCatalogAccounts(rows) {
-                const pinned = state.selectedCatalogAccount || "";
                 const mode = state.catalogAccountSort;
                 const asc = state.catalogAccountSortAsc;
                 const dir = asc ? 1 : -1;
                 rows.sort((a, b) => {
-                    if (pinned) {
-                        const aPinned = a.account === pinned;
-                        const bPinned = b.account === pinned;
-                        if (aPinned !== bPinned) return aPinned ? -1 : 1;
-                    }
+                    const pinOrder = compareAccountPinOrder(
+                        a.account,
+                        b.account,
+                        state.pinnedCatalogAccounts,
+                    );
+                    if (pinOrder !== 0) return pinOrder;
                     if (mode === "shinedust") {
                         const aDust = Number.isFinite(a.shinedust)
                             ? a.shinedust
@@ -20082,7 +20866,7 @@
                 }
                 if (!selectedStillValid) {
                     state.selectedCatalogCardId = "";
-                    state.selectedCatalogAccount = "";
+                    clearPinnedCatalogAccounts();
                 }
 
                 const selected = state.selectedCatalogCardId
@@ -20256,17 +21040,20 @@
                 );
 
                 syncCatalogAccountPin(accountRows);
-                if (!selected) state.selectedCatalogAccount = "";
+                if (!selected) clearPinnedCatalogAccounts();
 
                 let sideHtml = "";
                 if (includeSide) {
-                    const { accountItemsHtml, accountListFillAttr } =
-                        buildCatalogAccountListParts(
-                            selected,
-                            accountRows,
-                            allAccountRows,
-                            requiredShinedust,
-                        );
+                    const {
+                        accountItemsHtml,
+                        accountListFillAttr,
+                        accountListNoteHtml,
+                    } = buildCatalogAccountListParts(
+                        selected,
+                        accountRows,
+                        allAccountRows,
+                        requiredShinedust,
+                    );
                     sideHtml = buildCatalogSideAsideHtml({
                         selectedMeta: buildCatalogSelectedMetaHtml(
                             selected,
@@ -20278,6 +21065,7 @@
                         accountRows,
                         accountItemsHtml,
                         accountListFillAttr,
+                        accountListNoteHtml,
                     });
                 }
 
@@ -20470,7 +21258,7 @@
                 }
                 if (!selectedStillValid) {
                     state.selectedCatalogCardId = "";
-                    state.selectedCatalogAccount = "";
+                    clearPinnedCatalogAccounts();
                 }
 
                 const clippedNote = hiddenCardCount
@@ -20802,7 +21590,7 @@
                             const tile = btn.querySelector(".card-tile");
                             if (tile) tile.classList.add("selected");
                             state.selectedCatalogCardId = cardId;
-                            state.selectedCatalogAccount = "";
+                            clearPinnedCatalogAccounts();
                             state.catalogPullHistoryAccount = "";
                             renderCatalogSidePanel({ animate: "selection" });
                         });
@@ -21042,25 +21830,163 @@
             }
 
             const ROW_EXPAND_OPEN_MS = 320;
-            const ROW_EXPAND_CLOSE_MS = 240;
+            const ROW_EXPAND_CLOSE_MS = 260;
+            const BULK_EXPAND_MOUNT_CHUNK = 8;
+            const CARD_GRID_HTML_CHUNK = 120;
+            const ACCOUNT_OVERVIEW_GRID_CAP = 60;
+
+            let accountOverviewGridObserver = null;
+            const accountOverviewGridMountQueue = [];
+            let accountOverviewGridMountActive = false;
 
             function rowExpandMotionReduced() {
                 return window.matchMedia("(prefers-reduced-motion: reduce)")
                     .matches;
             }
 
-            function setExpandableRowBodyExpanded(body, expanded, renderGrid) {
+            function cancelLazyAccountGridMount(body) {
+                if (!body) return;
+                if (accountOverviewGridObserver)
+                    accountOverviewGridObserver.unobserve(body);
+                delete body._pendingGridRenderer;
+            }
+
+            function ensureAccountOverviewGridObserver() {
+                if (accountOverviewGridObserver) return accountOverviewGridObserver;
+                accountOverviewGridObserver = new IntersectionObserver(
+                    (entries) => {
+                        for (const entry of entries) {
+                            if (!entry.isIntersecting) continue;
+                            const body = entry.target;
+                            accountOverviewGridObserver.unobserve(body);
+                            const renderGrid = body._pendingGridRenderer;
+                            delete body._pendingGridRenderer;
+                            if (renderGrid)
+                                void enqueueAccountOverviewGridMount(
+                                    body,
+                                    renderGrid,
+                                );
+                        }
+                    },
+                    { root: null, rootMargin: "280px 0px", threshold: 0.01 },
+                );
+                return accountOverviewGridObserver;
+            }
+
+            async function drainAccountOverviewGridMountQueue() {
+                if (accountOverviewGridMountActive) return;
+                accountOverviewGridMountActive = true;
+                while (accountOverviewGridMountQueue.length) {
+                    const job = accountOverviewGridMountQueue.shift();
+                    if (
+                        job.body?.classList.contains("is-expanded") &&
+                        !job.body.dataset.rendered
+                    ) {
+                        await mountExpandableRowGrid(job.body, job.renderGrid);
+                    }
+                    job.resolve?.();
+                    await raf();
+                }
+                accountOverviewGridMountActive = false;
+            }
+
+            function enqueueAccountOverviewGridMount(body, renderGrid) {
+                return new Promise((resolve) => {
+                    accountOverviewGridMountQueue.push({
+                        body,
+                        renderGrid,
+                        resolve,
+                    });
+                    void drainAccountOverviewGridMountQueue();
+                });
+            }
+
+            function scheduleAccountOverviewGridMount(
+                body,
+                renderGrid,
+                expandOptions = {},
+            ) {
+                if (expandOptions.lazyMount) {
+                    cancelLazyAccountGridMount(body);
+                    body._pendingGridRenderer = renderGrid;
+                    ensureAccountOverviewGridObserver().observe(body);
+                    return Promise.resolve();
+                }
+                if (expandOptions.directMount)
+                    return mountExpandableRowGrid(body, renderGrid);
+                return enqueueAccountOverviewGridMount(body, renderGrid);
+            }
+
+            function buildAccountOverviewRowCache() {
+                const cache = new Map();
+                el.rows
+                    .querySelectorAll(".db-row--account[data-account-key]")
+                    .forEach((article) => {
+                        const key = article.dataset.accountKey;
+                        if (!key) return;
+                        cache.set(key, {
+                            body: article.querySelector(".row-body"),
+                            btn: article.querySelector(".toggle-btn"),
+                        });
+                    });
+                return cache;
+            }
+
+            async function mountExpandableRowGrid(body, renderGrid) {
+                if (!body || body.dataset.rendered || typeof renderGrid !== "function")
+                    return;
+                let grid = renderGrid();
+                if (grid && typeof grid.then === "function")
+                    grid = await grid;
+                if (
+                    !grid ||
+                    body.dataset.rendered ||
+                    !body.classList.contains("is-expanded")
+                ) {
+                    return;
+                }
+                body.appendChild(grid);
+                body.dataset.rendered = "1";
+            }
+
+            function waitForRowBodyTransition(body, propertyName, fallbackMs) {
+                return new Promise((resolve) => {
+                    let done = false;
+                    const finish = () => {
+                        if (done) return;
+                        done = true;
+                        body.removeEventListener("transitionend", onEnd);
+                        resolve();
+                    };
+                    const onEnd = (event) => {
+                        if (
+                            event.target !== body ||
+                            event.propertyName !== propertyName
+                        )
+                            return;
+                        finish();
+                    };
+                    body.addEventListener("transitionend", onEnd);
+                    window.setTimeout(finish, fallbackMs + 40);
+                });
+            }
+
+            async function setExpandableRowBodyExpanded(
+                body,
+                expanded,
+                renderGrid,
+                expandOptions = {},
+            ) {
                 if (!body || body.dataset.animating === "1") return;
 
                 const article = body.closest(".db-row--expandable");
-                const instant = rowExpandMotionReduced();
+                const instant =
+                    rowExpandMotionReduced() || !!expandOptions.instant;
+                const parallel = !!expandOptions.parallel;
 
                 const clearBody = () => {
-                    body.classList.remove(
-                        "is-expanded",
-                        "is-opening",
-                        "is-closing",
-                    );
+                    cancelLazyAccountGridMount(body);
+                    body.classList.remove("is-expanded", "is-opening", "is-closing");
                     body.textContent = "";
                     delete body.dataset.rendered;
                     body.dataset.animating = "0";
@@ -21068,47 +21994,55 @@
                 };
 
                 if (expanded) {
-                    if (body.classList.contains("is-expanded")) return;
-
                     if (
-                        !body.dataset.rendered &&
-                        typeof renderGrid === "function"
-                    ) {
-                        body.appendChild(renderGrid());
-                        body.dataset.rendered = "1";
-                    }
-
-                    article?.classList.add("is-row-expanded");
-                    body.classList.add("is-expanded");
-
-                    if (instant) return;
+                        article?.classList.contains("is-row-expanded") &&
+                        body.dataset.rendered
+                    )
+                        return;
 
                     body.dataset.animating = "1";
                     body.classList.remove("is-closing");
-                    body.classList.add("is-opening");
+                    body.classList.add("is-expanded");
+                    article?.classList.remove("is-row-expanded");
 
-                    let done = false;
-                    const finish = () => {
-                        if (done) return;
-                        done = true;
-                        body.classList.remove("is-opening");
+                    if (!body.dataset.rendered && typeof renderGrid === "function") {
+                        await scheduleAccountOverviewGridMount(body, renderGrid, {
+                            directMount: true,
+                            ...expandOptions,
+                        });
+                    }
+
+                    if (!body.dataset.rendered) {
                         body.dataset.animating = "0";
-                    };
-                    const onEnd = (event) => {
-                        if (
-                            event.target !== body ||
-                            event.animationName !== "row-expand-open"
-                        )
-                            return;
-                        body.removeEventListener("animationend", onEnd);
-                        finish();
-                    };
-                    body.addEventListener("animationend", onEnd);
-                    window.setTimeout(finish, ROW_EXPAND_OPEN_MS + 40);
+                        body.classList.remove("is-expanded");
+                        return;
+                    }
+
+                    if (instant) {
+                        article?.classList.add("is-row-expanded");
+                        body.dataset.animating = "0";
+                        return;
+                    }
+
+                    void body.offsetHeight;
+                    article?.classList.add("is-row-expanded");
+                    if (parallel) {
+                        body.dataset.animating = "0";
+                        return;
+                    }
+                    await waitForRowBodyTransition(
+                        body,
+                        "grid-template-rows",
+                        ROW_EXPAND_OPEN_MS,
+                    );
+                    body.dataset.animating = "0";
                     return;
                 }
 
-                if (!body.classList.contains("is-expanded")) {
+                if (
+                    !body.classList.contains("is-expanded") &&
+                    !article?.classList.contains("is-row-expanded")
+                ) {
                     clearBody();
                     return;
                 }
@@ -21119,26 +22053,21 @@
                 }
 
                 body.dataset.animating = "1";
-                body.classList.remove("is-opening");
-                body.classList.add("is-closing");
-
-                let done = false;
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    body.removeEventListener("animationend", onEnd);
-                    clearBody();
-                };
-                const onEnd = (event) => {
-                    if (
-                        event.target !== body ||
-                        event.animationName !== "row-expand-close"
-                    )
-                        return;
-                    finish();
-                };
-                body.addEventListener("animationend", onEnd);
-                window.setTimeout(finish, ROW_EXPAND_CLOSE_MS + 40);
+                article?.classList.remove("is-row-expanded");
+                if (parallel) {
+                    window.setTimeout(() => {
+                        if (!article?.classList.contains("is-row-expanded")) {
+                            clearBody();
+                        }
+                    }, ROW_EXPAND_CLOSE_MS + 24);
+                    return;
+                }
+                await waitForRowBodyTransition(
+                    body,
+                    "grid-template-rows",
+                    ROW_EXPAND_CLOSE_MS,
+                );
+                clearBody();
             }
 
             function getPackRowGridRenderer(row) {
@@ -21155,29 +22084,96 @@
                 account,
                 cardFilterConfig = getActiveCardFilterConfig(),
             ) {
-                return () =>
-                    renderCardGrid(
-                        sortCardEntriesByRarity(
-                            getAccountVisibleCardEntries(
-                                account,
-                                cardFilterConfig,
-                            ),
+                const entries = sortCardEntriesByRarity(
+                    filterAccountOverviewVisibleEntries(
+                        getAccountVisibleCardEntries(
+                            account,
+                            cardFilterConfig,
                         ),
-                        {
-                            showQuantity: true,
-                            entries: true,
-                            account: account.account,
-                            disableTrade: true,
-                        },
-                    );
+                    ),
+                );
+                const gridOptions = {
+                    showQuantity: true,
+                    entries: true,
+                    account: account.account,
+                    disableTrade: true,
+                };
+                return () => renderAccountOverviewGrid(entries, gridOptions);
             }
 
-            function animateShownPackRows(expanded) {
+            async function mountExpandableRowCollapsed(body, renderGrid) {
+                if (!body || body.dataset.rendered || typeof renderGrid !== "function")
+                    return false;
+                const article = body.closest(".db-row--expandable");
+                body.classList.add("is-expanded");
+                article?.classList.remove("is-row-expanded");
+                await scheduleAccountOverviewGridMount(body, renderGrid, {
+                    directMount: true,
+                });
+                return !!body.dataset.rendered;
+            }
+
+            function openExpandableRowParallel(body) {
+                if (!body?.dataset.rendered) return;
+                const article = body.closest(".db-row--expandable");
+                void body.offsetHeight;
+                article?.classList.add("is-row-expanded");
+                body.dataset.animating = "0";
+            }
+
+            async function runBulkExpandableRowJobs(jobs, expanded) {
+                if (!jobs.length) return false;
+                const collapseOpts = { parallel: true };
+
+                if (expanded) {
+                    const mounted = [];
+                    for (
+                        let i = 0;
+                        i < jobs.length;
+                        i += BULK_EXPAND_MOUNT_CHUNK
+                    ) {
+                        const chunk = jobs.slice(
+                            i,
+                            i + BULK_EXPAND_MOUNT_CHUNK,
+                        );
+                        const results = await Promise.all(
+                            chunk.map((job) =>
+                                mountExpandableRowCollapsed(
+                                    job.body,
+                                    job.renderGrid,
+                                ),
+                            ),
+                        );
+                        for (let j = 0; j < chunk.length; j++) {
+                            if (results[j]) mounted.push(chunk[j].body);
+                        }
+                        if (i + BULK_EXPAND_MOUNT_CHUNK < jobs.length)
+                            await raf();
+                    }
+                    await raf();
+                    for (const body of mounted) openExpandableRowParallel(body);
+                    return mounted.length > 0;
+                }
+
+                for (const job of jobs) {
+                    void setExpandableRowBodyExpanded(
+                        job.body,
+                        false,
+                        null,
+                        collapseOpts,
+                    );
+                }
+                if (!rowExpandMotionReduced())
+                    await waitMs(ROW_EXPAND_CLOSE_MS + 32);
+                return true;
+            }
+
+            async function animateShownPackRows(expanded) {
                 const limit = Math.min(
                     state.displayLimit,
                     state.filteredRows.length,
                 );
-                let matched = 0;
+                const jobs = [];
                 for (let i = 0; i < limit; i++) {
                     const row = state.filteredRows[i];
                     const article = el.rows.querySelector(
@@ -21187,59 +22183,61 @@
                     const body = article.querySelector(".row-body");
                     const btn = article.querySelector(".toggle-btn");
                     if (!body || !btn) continue;
-                    matched++;
                     btn.textContent = expanded ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(
+                    jobs.push({
                         body,
-                        expanded,
-                        expanded ? getPackRowGridRenderer(row) : null,
-                    );
+                        renderGrid: expanded
+                            ? getPackRowGridRenderer(row)
+                            : null,
+                    });
                 }
-                return matched > 0;
+                return runBulkExpandableRowJobs(jobs, expanded);
             }
 
-            function animateShownAccountRows(expanded) {
+            async function animateShownAccountRows(expanded) {
                 const accounts = state.accountRows;
                 if (!accounts?.length) return false;
                 const cardFilterConfig = getActiveCardFilterConfig();
                 const limit = Math.min(state.displayLimit, accounts.length);
-                let matched = 0;
+                const rowCache = buildAccountOverviewRowCache();
+                const jobs = [];
                 for (let i = 0; i < limit; i++) {
                     const account = accounts[i];
-                    const article = el.rows.querySelector(
-                        `.db-row[data-account-key="${CSS.escape(account.key)}"]`,
-                    );
-                    if (!article) continue;
-                    const body = article.querySelector(".row-body");
-                    const btn = article.querySelector(".toggle-btn");
-                    if (!body || !btn) continue;
-                    matched++;
-                    btn.textContent = expanded ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(
-                        body,
-                        expanded,
-                        expanded
+                    const cached = rowCache.get(account.key);
+                    if (!cached?.body || !cached?.btn) continue;
+                    cached.btn.textContent = expanded ? "Compact" : "Expand";
+                    jobs.push({
+                        body: cached.body,
+                        renderGrid: expanded
                             ? getAccountRowGridRenderer(
                                   account,
                                   cardFilterConfig,
                               )
                             : null,
-                    );
+                    });
                 }
-                return matched > 0;
+                return runBulkExpandableRowJobs(jobs, expanded);
             }
 
-            function animateBulkExpandableRows(expanded) {
-                const animated =
-                    state.view === "rows"
-                        ? animateShownPackRows(expanded)
-                        : state.view === "accounts"
-                          ? animateShownAccountRows(expanded)
-                          : false;
-                if (!animated) {
-                    invalidateViewDomCache();
-                    renderCurrent();
+            async function animateBulkExpandableRows(expanded) {
+                if (state.view === "rows") {
+                    const animated = await animateShownPackRows(expanded);
+                    if (!animated) {
+                        invalidateViewDomCache();
+                        renderCurrent();
+                    }
+                    return;
                 }
+                if (state.view === "accounts") {
+                    const animated = await animateShownAccountRows(expanded);
+                    if (!animated) {
+                        invalidateViewDomCache();
+                        renderCurrent();
+                    }
+                    return;
+                }
+                invalidateViewDomCache();
+                renderCurrent();
             }
 
             function renderRows() {
@@ -21314,12 +22312,11 @@
                     const willExpand = !rowIsExpanded(row);
                     setRowExpanded(row.index, willExpand);
                     btn.textContent = willExpand ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(body, willExpand, () =>
-                        renderCardGrid(visibleCardIds, {
-                            showQuantity: false,
-                            account: row.account,
-                            disableTrade: true,
-                        }),
+                    void setExpandableRowBodyExpanded(
+                        body,
+                        willExpand,
+                        willExpand ? getPackRowGridRenderer(row) : null,
+                        { directMount: true },
                     );
                 });
                 return article;
@@ -22687,6 +23684,8 @@
                 cardFilterConfig = getActiveCardFilterConfig(),
             ) {
                 const expanded = accountIsExpanded(account.key);
+                const domExpanded =
+                    expanded && !state.deferAccountGridRender;
                 const article = document.createElement("article");
                 article.className =
                     "db-row db-row--account db-row--expandable panel";
@@ -22732,7 +23731,7 @@
                     rawFileLabel,
                     expanded,
                 );
-                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${titleMain}</strong><div class="meta">${accountMeta}<span>${countLabel}</span><span>${uniqueLabel}</span></div></div><div class="row-actions">${overviewActionsHtml}</div></div><div class="row-body${expanded ? " is-expanded" : ""}"></div>`;
+                article.innerHTML = `<div class="row-head"><div class="row-title"><strong>${titleMain}</strong><div class="meta">${accountMeta}<span>${countLabel}</span><span>${uniqueLabel}</span></div></div><div class="row-actions">${overviewActionsHtml}</div></div><div class="row-body${domExpanded ? " is-expanded" : ""}"></div>`;
                 const rowHead = article.firstElementChild;
                 const body = article.lastElementChild;
                 const btn = rowHead.querySelector(".toggle-btn");
@@ -22750,15 +23749,18 @@
                             ),
                         ),
                     );
-                if (expanded) {
+                if (domExpanded) {
                     article.classList.add("is-row-expanded");
                     body.appendChild(
-                        renderCardGrid(getVisibleEntriesForGrid(), {
-                            showQuantity: true,
-                            entries: true,
-                            account: account.account,
-                            disableTrade: true,
-                        }),
+                        renderAccountOverviewGrid(
+                            getVisibleEntriesForGrid(),
+                            {
+                                showQuantity: true,
+                                entries: true,
+                                account: account.account,
+                                disableTrade: true,
+                            },
+                        ),
                     );
                     body.dataset.rendered = "1";
                 }
@@ -22812,13 +23814,16 @@
                     const willExpand = !accountIsExpanded(account.key);
                     setAccountExpanded(account.key, willExpand);
                     btn.textContent = willExpand ? "Compact" : "Expand";
-                    setExpandableRowBodyExpanded(body, willExpand, () =>
-                        renderCardGrid(getVisibleEntriesForGrid(), {
-                            showQuantity: true,
-                            entries: true,
-                            account: account.account,
-                            disableTrade: true,
-                        }),
+                    void setExpandableRowBodyExpanded(
+                        body,
+                        willExpand,
+                        willExpand
+                            ? getAccountRowGridRenderer(
+                                  account,
+                                  cardFilterConfig,
+                              )
+                            : null,
+                        { directMount: true },
                     );
                 });
 
@@ -22904,84 +23909,82 @@
                 return article;
             }
 
-            function renderCardGrid(items, options) {
-                const parts = [];
+            function buildCardTileHtml(item, options) {
                 const account = options.account || "";
                 const disableTrade = !!options.disableTrade;
-                for (const item of items) {
-                    const id = options.entries ? item.id : item;
-                    const pulledCount = options.entries
-                        ? Number(item.pulledCount ?? item.count) || 0
-                        : 0;
-                    const count = options.entries ? item.count : 0;
-                    const card = options.entries ? item.info : getCardInfo(id);
-                    const imgPart = card.imageUrl
-                        ? `<img src="${escapeHtml(card.imageUrl)}" loading="lazy" alt="${escapeHtml(card.name)}" ${cardImageOnErrorAttr(card, "catalog")}>`
-                        : "";
-                    const fallbackClass = card.imageUrl
-                        ? "hidden empty"
-                        : "empty";
-                    let copyCount = 0;
-                    if (options.showCopyCount && account) {
-                        copyCount = options.sharedView
-                            ? getSharedCount(account, id)
-                            : getTradedCount(account, id);
-                    }
-                    const qtyValue = options.showQuantity
-                        ? count
-                        : copyCount > 1
-                          ? copyCount
-                          : 0;
-                    const qtyPart =
-                        options.showQuantity || qtyValue > 1
-                            ? `<div class="qty">×${formatNumber(qtyValue)}</div>`
-                            : "";
-                    const noTrade =
-                        card.rarityValue === 800 ||
-                        card.rarityValue === 900 ||
-                        isPromoCard(id);
-                    const isInShared =
-                        !disableTrade && account && isShared(account, id);
-                    const isInTraded =
-                        !disableTrade && account && isTraded(account, id);
-                    const tradedClass = isInTraded ? " traded" : "";
-                    const sharedClass = isInShared ? " shared" : "";
-                    const tradedCnt =
-                        account && !options.sharedView
-                            ? getTradedCount(account, id)
-                            : 0;
-                    const tradedMarkGlyph = isInTraded ? "\u2715" : "\u2713";
-                    const tradedMarkTitle = isInTraded
-                        ? tradedCnt > 1
-                            ? "Remove one traded copy"
-                            : "Remove from traded"
-                        : "Toggle traded status";
-                    const tradedBtn =
-                        !disableTrade &&
-                        account &&
-                        !noTrade &&
-                        !options.sharedView
-                            ? `<button class="traded-btn traded-mark-btn" type="button" data-account="${escapeHtml(account)}" data-card-id="${escapeHtml(id)}" title="${escapeHtml(tradedMarkTitle)}">${tradedMarkGlyph}</button>`
-                            : "";
-                    const sharedCnt =
-                        options.sharedView && account
-                            ? getSharedCount(account, id)
-                            : 0;
-                    const sharedRemoveTitle =
-                        options.sharedView && account && sharedCnt > 1
-                            ? "Remove one shared copy"
-                            : "Remove from shared";
-                    const sharedRemoveBtn =
-                        options.sharedView && account
-                            ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="${escapeHtml(sharedRemoveTitle)}">\u2715</button>`
-                            : "";
-                    parts.push(
-                        `<div class="card-tile${tradedClass}${sharedClass}" data-catalog-navigate-card="${escapeHtml(id)}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(id, card))}</span></div></div>`,
-                    );
+                const id = options.entries ? item.id : item;
+                const count = options.entries ? item.count : 0;
+                const card = options.entries ? item.info : getCardInfo(id);
+                const imgPart = card.imageUrl
+                    ? `<img src="${escapeHtml(card.imageUrl)}" loading="lazy" alt="${escapeHtml(card.name)}" ${cardImageOnErrorAttr(card, "catalog")}>`
+                    : "";
+                const fallbackClass = card.imageUrl ? "hidden empty" : "empty";
+                let copyCount = 0;
+                if (options.showCopyCount && account) {
+                    copyCount = options.sharedView
+                        ? getSharedCount(account, id)
+                        : getTradedCount(account, id);
                 }
-                const grid = document.createElement("div");
-                grid.className = "cards-grid";
-                grid.innerHTML = parts.join("");
+                const qtyValue = options.showQuantity
+                    ? count
+                    : copyCount > 1
+                      ? copyCount
+                      : 0;
+                const qtyPart =
+                    options.showQuantity || qtyValue > 1
+                        ? `<div class="qty">×${formatNumber(qtyValue)}</div>`
+                        : "";
+                const noTrade =
+                    card.rarityValue === 800 ||
+                    card.rarityValue === 900 ||
+                    isPromoCard(id);
+                const isInShared =
+                    !disableTrade && account && isShared(account, id);
+                const isInTraded =
+                    !disableTrade && account && isTraded(account, id);
+                const tradedClass = isInTraded ? " traded" : "";
+                const sharedClass = isInShared ? " shared" : "";
+                const tradedCnt =
+                    account && !options.sharedView
+                        ? getTradedCount(account, id)
+                        : 0;
+                const tradedMarkGlyph = isInTraded ? "\u2715" : "\u2713";
+                const tradedMarkTitle = isInTraded
+                    ? tradedCnt > 1
+                        ? "Remove one traded copy"
+                        : "Remove from traded"
+                    : "Toggle traded status";
+                const tradedBtn =
+                    !disableTrade && account && !noTrade && !options.sharedView
+                        ? `<button class="traded-btn traded-mark-btn" type="button" data-account="${escapeHtml(account)}" data-card-id="${escapeHtml(id)}" title="${escapeHtml(tradedMarkTitle)}">${tradedMarkGlyph}</button>`
+                        : "";
+                const sharedCnt =
+                    options.sharedView && account
+                        ? getSharedCount(account, id)
+                        : 0;
+                const sharedRemoveTitle =
+                    options.sharedView && account && sharedCnt > 1
+                        ? "Remove one shared copy"
+                        : "Remove from shared";
+                const sharedRemoveBtn =
+                    options.sharedView && account
+                        ? `<button class="traded-btn shared-remove-btn" type="button" data-shared-remove-account="${escapeHtml(account)}" data-shared-remove-card="${escapeHtml(id)}" title="${escapeHtml(sharedRemoveTitle)}">\u2715</button>`
+                        : "";
+                return `<div class="card-tile${tradedClass}${sharedClass}" data-catalog-navigate-card="${escapeHtml(id)}">${tradedBtn}${sharedRemoveBtn}<div class="card-media">${imgPart}<div class="${fallbackClass}" style="padding:22px 8px">No image</div>${qtyPart}</div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-badges"><span class="mini-badge">${getMultiPickerRarityBadgeHtml(getCardRarityFilterKey(id, card))}</span></div></div>`;
+            }
+
+            function appendCardGridHtml(grid, items, options, start = 0, end) {
+                const last = end == null ? items.length : end;
+                if (start >= last) return;
+                const parts = [];
+                for (let i = start; i < last; i++)
+                    parts.push(buildCardTileHtml(items[i], options));
+                grid.insertAdjacentHTML("beforeend", parts.join(""));
+            }
+
+            function attachCardGridListeners(grid, options) {
+                const account = options.account || "";
+                const disableTrade = !!options.disableTrade;
                 grid.addEventListener("click", async (e) => {
                     const sharedBtn = e.target.closest(
                         "[data-shared-remove-account]",
@@ -23139,6 +24142,67 @@
                             partnerReceivedId,
                         );
                 });
+            }
+
+            function renderAccountOverviewGrid(entries, options) {
+                const cap = ACCOUNT_OVERVIEW_GRID_CAP;
+                if (entries.length <= cap) {
+                    if (entries.length <= CARD_GRID_HTML_CHUNK)
+                        return renderCardGrid(entries, options);
+                    return renderCardGridChunked(entries, options);
+                }
+                const wrap = document.createElement("div");
+                wrap.className = "account-overview-grid-wrap";
+                wrap.appendChild(renderCardGrid(entries.slice(0, cap), options));
+                const moreBtn = document.createElement("button");
+                moreBtn.type = "button";
+                moreBtn.className = "ghost account-overview-show-all-btn";
+                moreBtn.textContent = `Show all ${formatNumber(entries.length)} cards (${formatNumber(entries.length - cap)} more)`;
+                moreBtn.addEventListener("click", async () => {
+                    moreBtn.disabled = true;
+                    moreBtn.textContent = "Loading cards…";
+                    const rest = entries.slice(cap);
+                    const extra =
+                        rest.length <= CARD_GRID_HTML_CHUNK
+                            ? renderCardGrid(rest, options)
+                            : await renderCardGridChunked(rest, options);
+                    moreBtn.remove();
+                    wrap.appendChild(extra);
+                });
+                wrap.appendChild(moreBtn);
+                return wrap;
+            }
+
+            function renderCardGrid(items, options) {
+                const grid = document.createElement("div");
+                grid.className = "cards-grid";
+                appendCardGridHtml(grid, items, options);
+                attachCardGridListeners(grid, options);
+                return grid;
+            }
+
+            async function renderCardGridChunked(items, options) {
+                const grid = document.createElement("div");
+                grid.className = "cards-grid";
+                attachCardGridListeners(grid, options);
+                if (items.length <= CARD_GRID_HTML_CHUNK) {
+                    appendCardGridHtml(grid, items, options);
+                    return grid;
+                }
+                for (
+                    let i = 0;
+                    i < items.length;
+                    i += CARD_GRID_HTML_CHUNK
+                ) {
+                    appendCardGridHtml(
+                        grid,
+                        items,
+                        options,
+                        i,
+                        Math.min(i + CARD_GRID_HTML_CHUNK, items.length),
+                    );
+                    if (i + CARD_GRID_HTML_CHUNK < items.length) await raf();
+                }
                 return grid;
             }
 
@@ -23511,12 +24575,38 @@
             }
 
             function applyViewSwitch(view, previousView) {
+                cancelCatalogAsyncFills();
+                const hadOpenPullHistory = !!state.catalogPullHistoryAccount;
+                const isCatalogSectionSwitch =
+                    CATALOG_VIEWS.includes(previousView) &&
+                    CATALOG_VIEWS.includes(view) &&
+                    previousView !== view;
+                const leavingCatalog =
+                    CATALOG_VIEWS.includes(previousView) &&
+                    !CATALOG_VIEWS.includes(view);
+                const forceCatalogSectionRender =
+                    isCatalogSectionSwitch &&
+                    (hadOpenPullHistory ||
+                        catalogPullHistoryActiveFill !== null ||
+                        catalogPullHistoryPendingFill !== null ||
+                        (el.rows &&
+                            el.rows.querySelectorAll(
+                                ".catalog-pull-history-item",
+                            ).length > CATALOG_HEAVY_HISTORY_ITEMS));
+
+                if (leavingCatalog) {
+                    collapseCatalogPullHistoryDom();
+                } else if (isCatalogSectionSwitch) {
+                    resetCatalogPullHistoryState();
+                }
+
                 const wasCacheable = CACHEABLE_VIEWS.includes(previousView);
                 const isCacheable = CACHEABLE_VIEWS.includes(view);
                 const lockedHeight = el.rows.offsetHeight;
                 if (lockedHeight > 0)
                     el.rows.style.minHeight = `${lockedHeight}px`;
-                if (wasCacheable) captureViewDom(previousView);
+                if (wasCacheable && !forceCatalogSectionRender)
+                    captureViewDom(previousView);
                 if (previousView === "multisearch" && view !== "multisearch")
                     disconnectMultiSearchStickyLayoutWatch();
                 state.view = view;
@@ -23559,7 +24649,11 @@
                 const releaseHeightLock = () => {
                     el.rows.style.minHeight = "";
                 };
-                if (isCacheable && restoreViewDom(view)) {
+                if (
+                    !forceCatalogSectionRender &&
+                    isCacheable &&
+                    restoreViewDom(view)
+                ) {
                     releaseHeightLock();
                     return false;
                 }
@@ -23603,7 +24697,7 @@
                 buildFilterCheckboxes();
                 deferRender(applyFiltersAndRender);
             }
-            const debouncedFilter = debounce(applyFiltersAndRender, 180);
+            const debouncedFilter = debounce(applyFiltersAndRender, 250);
             const debouncedCatalogRender = debounce(() => {
                 if (state.view === "allcards") refreshCatalogLibraryMainOnly();
                 else if (state.view === "multisearch")
@@ -23663,6 +24757,7 @@
             });
             el.rowSort.addEventListener("change", () => {
                 state.rowSort = el.rowSort.value;
+                state.rowsSortedFor = null;
                 applyFiltersAndRender();
             });
             el.accountSort.addEventListener("change", () => {
@@ -23831,6 +24926,13 @@
                     deferRender(applyFiltersAndRender);
                 });
             }
+            if (el.rowsGodPackOnlyBtn) {
+                el.rowsGodPackOnlyBtn.addEventListener("click", () => {
+                    state.rowsGodPackOnly = !state.rowsGodPackOnly;
+                    syncRowsGodPackFilterButton();
+                    deferRender(applyFiltersAndRender);
+                });
+            }
             document
                 .querySelectorAll("[data-pack-action]")
                 .forEach((button) =>
@@ -23869,45 +24971,71 @@
             });
 
             el.expandAllBtn.addEventListener("click", async () => {
+                if (state.bulkExpandBusy) return;
+                state.bulkExpandBusy = true;
+                el.expandAllBtn.disabled = true;
+                el.compactAllBtn.disabled = true;
                 state.defaultExpanded = true;
-                if (state.view === "rows") {
-                    const limit = Math.min(
-                        state.displayLimit,
-                        state.filteredRows.length,
-                    );
-                    for (let i = 0; i < limit; i++)
-                        setRowExpanded(state.filteredRows[i].index, true);
-                    animateBulkExpandableRows(true);
-                } else if (state.view === "accounts") {
-                    let accounts = state.accountRows;
-                    if (!accounts) {
-                        renderAccountOverviewPending(
-                            "Preparing Account Overview...",
+                try {
+                    if (state.view === "rows") {
+                        const limit = Math.min(
+                            state.displayLimit,
+                            state.filteredRows.length,
                         );
-                        accounts = await ensureAccountOverviewBuild();
-                        if (!accounts || state.view !== "accounts") return;
+                        for (let i = 0; i < limit; i++)
+                            setRowExpanded(state.filteredRows[i].index, true);
+                        await animateBulkExpandableRows(true);
+                    } else if (state.view === "accounts") {
+                        let accounts = state.accountRows;
+                        if (!accounts) {
+                            renderAccountOverviewPending(
+                                "Preparing Account Overview...",
+                            );
+                            accounts = await ensureAccountOverviewBuild();
+                            if (!accounts || state.view !== "accounts") return;
+                            const limit = Math.min(
+                                state.displayLimit,
+                                accounts.length,
+                            );
+                            for (let i = 0; i < limit; i++)
+                                setAccountExpanded(accounts[i].key, true);
+                            state.deferAccountGridRender = true;
+                            invalidateViewDomCache();
+                            renderAccountOverview();
+                            state.deferAccountGridRender = false;
+                            await animateShownAccountRows(true);
+                            return;
+                        }
                         const limit = Math.min(
                             state.displayLimit,
                             accounts.length,
                         );
                         for (let i = 0; i < limit; i++)
                             setAccountExpanded(accounts[i].key, true);
-                        invalidateViewDomCache();
-                        renderAccountOverview();
-                        return;
+                        await animateBulkExpandableRows(true);
                     }
-                    const limit = Math.min(state.displayLimit, accounts.length);
-                    for (let i = 0; i < limit; i++)
-                        setAccountExpanded(accounts[i].key, true);
-                    animateBulkExpandableRows(true);
+                } finally {
+                    state.bulkExpandBusy = false;
+                    el.expandAllBtn.disabled = false;
+                    el.compactAllBtn.disabled = false;
                 }
             });
 
-            el.compactAllBtn.addEventListener("click", () => {
+            el.compactAllBtn.addEventListener("click", async () => {
+                if (state.bulkExpandBusy) return;
+                state.bulkExpandBusy = true;
+                el.expandAllBtn.disabled = true;
+                el.compactAllBtn.disabled = true;
                 state.defaultExpanded = false;
                 state.expandedRows.clear();
                 state.expandedAccounts.clear();
-                animateBulkExpandableRows(false);
+                try {
+                    await animateBulkExpandableRows(false);
+                } finally {
+                    state.bulkExpandBusy = false;
+                    el.expandAllBtn.disabled = false;
+                    el.compactAllBtn.disabled = false;
+                }
             });
 
             state.cardmaster = readCachedJson(LS_MASTER);

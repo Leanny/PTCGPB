@@ -197,12 +197,15 @@ ExportGameHistoryToFile(ByRef localPath) {
 
 InvalidateDashboardAccountsCache() {
     cacheDir := getScriptBaseFolder() . "\Accounts\Cards\database_cache"
-    cacheJson := cacheDir . "\accounts-data.cache.json"
-    cacheMeta := cacheDir . "\accounts-data.cache.meta.json"
-    if (FileExist(cacheJson))
-        FileDelete, %cacheJson%
-    if (FileExist(cacheMeta))
-        FileDelete, %cacheMeta%
+    archiveMeta := cacheDir . "\archive\accounts-repair.archive.meta.json"
+    legacyCacheJson := cacheDir . "\accounts-data.cache.json"
+    legacyCacheMeta := cacheDir . "\accounts-data.cache.meta.json"
+    if (FileExist(archiveMeta))
+        FileDelete, %archiveMeta%
+    if (FileExist(legacyCacheJson))
+        FileDelete, %legacyCacheJson%
+    if (FileExist(legacyCacheMeta))
+        FileDelete, %legacyCacheMeta%
 }
 
 ImportMainCollection(instanceName := "") {
