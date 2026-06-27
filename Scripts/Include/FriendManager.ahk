@@ -242,41 +242,7 @@ AddFriends(renew := false, getFC := false) {
                 adbClick_wbb(243, 258)
                 MarkFriendCleanupPending("Friend request submitted")
                 Delay(1)
-
-                waitSendResult := A_TickCount
-                interceptProc := true
-                Loop{
-                    Delay(0.25)
-                    if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
-                        MarkFriendCleanupPending("Friend request pending")
-                        break
-                    }
-                    else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
-                        MarkFriendCleanupPending("Friend accepted")
-                        break
-                    }
-                    else if(interceptErrorCheck("ADD")){
-                        ; LogToFile("Rate limit hit while adding friend; retrying same ID | index=" . friendIDIdx . " | id=" . value)
-                        isContinue := true
-                        break
-                    }
-                    else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
-                        LogToFile("Skipping friend ID because cannot send friend request to this user | index=" . friendIDIdx)
-                        break
-                    }
-                    if(!isSendReqeest
-                        && (A_TickCount - waitSendResult) > 2500
-                        && FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 40, true)
-                        && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
-                        && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
-                        adbClick_wbb(243, 258)
-                        MarkFriendCleanupPending("Friend request resubmitted")
-                        isSendReqeest := true
-                    }
-                    if ((A_TickCount - waitSendResult) > 10000)
-                        break
-                }
-                interceptProc := false
+                gosub, WaitAfterFriendRequestSend
                 break
             }
             else if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
@@ -289,8 +255,8 @@ AddFriends(renew := false, getFC := false) {
                 MarkFriendCleanupPending("Friend request submitted from details")
                 Delay(1)
 
-                waitSendResult := A_TickCount
                 interceptProc := true
+                waitSendResult := A_TickCount
                 Loop{
                     Delay(0.25)
                     if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
@@ -338,13 +304,23 @@ AddFriends(renew := false, getFC := false) {
             else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
                 MarkFriendCleanupPending("Friend accepted")
                 if(renew){
+                    interceptProc := true
                     FindImageAndClick("Friend_RemoveConfirmButtonInSearchResult", 193, 258)
+                    if(interceptErrorCheck("ADD")) {
+                        interceptProc := false
+                        isContinue := true
+                        break
+                    }
                     FindImageAndClick("Friend_RequestButtonInSearchResult", 200, 372)
+                    if(interceptErrorCheck("ADD")) {
+                        interceptProc := false
+                        isContinue := true
+                        break
+                    }
                     Delay(1) ; otherwise it will sometimes click before UI finishes loading
                     adbClick_wbb(243, 258)
                     MarkFriendCleanupPending("Friend request renewed")
-                    ; adbClick_wbb(243, 258)
-                    ; adbClick_wbb(243, 258)
+                    gosub, WaitAfterFriendRequestSend
                 }
                 break
             }
@@ -366,6 +342,10 @@ AddFriends(renew := false, getFC := false) {
             continue
 
         if(friendIDIdx != session.get("friendIDs").maxIndex()) {
+            if(interceptErrorCheck("ADD")) {
+                isContinue := true
+                continue
+            }
             if (!FindFriendIDInputAndClick(1000, "next ID " . (friendIDIdx + 1) . "/" . n))
                 break
             EraseInput(friendIDIdx, n)
@@ -460,6 +440,44 @@ AddFriends(renew := false, getFC := false) {
     }
     clearLastActivityEpoch(session.get("scriptName"))
     return n ;return added friends so we can dynamically update the .txt in the middle of a run without leaving friends at the end
+
+    WaitAfterFriendRequestSend:
+    interceptProc := true
+    waitSendResult := A_TickCount
+    Loop{
+        Delay(0.25)
+        if(interceptErrorCheck("ADD")){
+            isContinue := true
+            break
+        }
+        if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
+            MarkFriendCleanupPending("Friend request pending")
+            break
+        }
+        else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
+            MarkFriendCleanupPending("Friend accepted")
+            break
+        }
+        else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+            LogToFile("Skipping friend ID because cannot send friend request to this user | index=" . friendIDIdx)
+            break
+        }
+        if(!isSendReqeest
+            && (A_TickCount - waitSendResult) > 2500
+            && FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 40, true)
+            && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
+            && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
+            adbClick_wbb(243, 258)
+            MarkFriendCleanupPending("Friend request resubmitted")
+            isSendReqeest := true
+        }
+        if ((A_TickCount - waitSendResult) > 10000)
+            break
+    }
+    if(interceptErrorCheck("ADD"))
+        isContinue := true
+    interceptProc := false
+    return
 }
 
 ;-------------------------------------------------------------------------------
@@ -685,19 +703,40 @@ RemoveFriends() {
 }
 
 interceptErrorCheck(actionType){
-    global interceptProc
+    global interceptProc, errorImageList
 
     Delay(1)
-    isErrorOccured := FindOrLoseImage("Common_Error", 0)
-    if(isErrorOccured){
-        adbClick_wbb(137, 380)
-        CreateStatusMessage("An error occurred while processing friends. Restarting.`n(" . failSafeTime . "/45 seconds)")
-        Delay(1)
-        interceptProc := false
-        ReEnterSocial(actionType)
+    priorIntercept := interceptProc
+    interceptProc := true
+
+    matchedError := ""
+    For index, needleName in errorImageList {
+        if(FindOrLoseImage(needleName, 0, , , true)) {
+            matchedError := needleName
+            break
+        }
+    }
+    if(matchedError = "")
+    {
+        interceptProc := priorIntercept
+        return false
+    }
+    if(matchedError = "Common_Error_3ButtonError_Nodata")
+    {
+        interceptProc := priorIntercept
+        return false
     }
 
-    return isErrorOccured
+    if(matchedError = "Common_Error_Cache")
+        adbClick_wbb(137, 430)
+    else if(matchedError = "Common_Error_NoResponse" || matchedError = "Common_Error_NoResponseDark")
+        adbClick_wbb(46, 299)
+    else
+        adbClick_wbb(137, 380)
+    CreateStatusMessage("An error occurred while processing friends. Restarting.`n(" . failSafeTime . "/45 seconds)")
+    Delay(1)
+    ReEnterSocial(actionType)
+    return true
 }
 
 ReEnterSocial(prevAction){
