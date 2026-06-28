@@ -25,7 +25,4 @@ if exist "%CARDDB%" (
   set "URL=http://localhost:%PORT%/Accounts/Cards/card_database.html?v=%HTMLVER%"
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$deadline=(Get-Date).AddSeconds(20); $ready=$false; while((Get-Date) -lt $deadline){ try { $r=Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:%PORT%/__dashboard/ping' -TimeoutSec 2; if($r.StatusCode -eq 204){ $ready=$true; break } } catch {}; Start-Sleep -Milliseconds 250 }; if(-not $ready){ Write-Host 'Dashboard server did not become ready in time.' }"
-
 start "" "%URL%"
