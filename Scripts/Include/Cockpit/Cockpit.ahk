@@ -384,26 +384,39 @@ Cockpit_IsLaunchAllowed() {
 }
 
 Cockpit_ListViewGetHeaderAndItemHeight(hLv, ByRef hdrH, ByRef itemH) {
-    global g_lvColOrder
+    global g_lvColOrder, AGE_INST_HWND
     hdrH := 22
     itemH := 17
     if (!hLv)
         return
-    Gui, Cockpit:Default
-    Gui, ListView, InstancesLv
-    colN := g_lvColOrder.Length()
-    if (colN <= 0)
-        colN := 1
-    cells := []
-    cells.Push("1")
-    Loop, % colN - 1
-        cells.Push("")
-    LV_Add("", cells*)
+    SendMessage, 0x1004, 0, 0, , ahk_id %hLv%  ; LVM_GETITEMCOUNT
+    addedTempRow := (ErrorLevel + 0 <= 0)
+    if (addedTempRow) {
+        if (hLv = AGE_INST_HWND) {
+            Gui, CockpitAge:Default
+            Gui, ListView, AgeInstLv
+            LV_Add("", "1", "1", "1", "1")
+        } else {
+            Gui, Cockpit:Default
+            Gui, ListView, InstancesLv
+            colN := g_lvColOrder.Length()
+            if (colN <= 0)
+                colN := 1
+            cells := []
+            cells.Push("1")
+            Loop, % colN - 1
+                cells.Push("")
+            LV_Add("", cells*)
+        }
+    }
     VarSetCapacity(rcItem, 16, 0)
     NumPut(0, rcItem, 0, "Int")
-    SendMessage, 0x100E, 0, &rcItem, , ahk_id %hLv%
+    SendMessage, 0x100E, 0, &rcItem, , ahk_id %hLv%  ; LVM_GETITEMRECT
     itemH := NumGet(rcItem, 12, "Int") - NumGet(rcItem, 4, "Int")
-    LV_Delete()
+    if (addedTempRow) {
+        Gui, ListView
+        LV_Delete()
+    }
     if (itemH <= 0)
         itemH := 17
     SendMessage, 0x101F, 0, 0, , ahk_id %hLv%
