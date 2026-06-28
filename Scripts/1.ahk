@@ -432,11 +432,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("keepAccount", false)
         session.set("s4tFoundTradeable", false)
 
-        ; BallCity 2025.02.21 - Track monitor
-        now := A_NowUTC
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartTimeUTC
-        EnvSub, now, 1970, seconds
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastStartEpoch
 
         startPreProcess(botConfig.get("deleteMethod"))
 
