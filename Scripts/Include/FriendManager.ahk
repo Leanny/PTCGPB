@@ -367,7 +367,7 @@ AddFriends(renew := false, getFC := false) {
     }
 
     ; ratelimit, only use this route when number of added ids is 6-10, 16-20, etc
-    if (Mod(n - 1, 10) >= 5) {
+    if (Mod(n - 1, 10) >= 10) {
         inventoryIconPos := FindImageAndClick("Menu_InventoryIconInMenu", 240, 494)
         DelayH(600)
 
