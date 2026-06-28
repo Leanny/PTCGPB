@@ -609,9 +609,8 @@ loadAccount() {
 
     ; Launch the app with both commands in quick succession
     UpdateInjectUi("Launching game...", 80)
-    if !RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/jp.pokemon.pokemontcgp.UnityPlayerActivity") {
-        ShowInjectStepError("start UnityPlayerActivity")
-        return 0
+    if RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/jp.pokemon.pokemontcgp.UnityPlayerActivity") {
+        return 1
     }
     Sleep, 100
 
