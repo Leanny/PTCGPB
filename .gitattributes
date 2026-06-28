@@ -5,7 +5,7 @@
 *.ahk         text eol=lf
 *.rs          text eol=lf
 *.ps1         text eol=lf
-*.bat         text eol=lf
+*.bat         text eol=crlf
 
 # Project metadata and structured data
 *.md          text eol=lf
