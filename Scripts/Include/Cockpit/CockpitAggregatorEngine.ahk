@@ -202,8 +202,6 @@ Agg_TickBody() {
             }
         }
         activeByRunClock := (info.lastStartEpoch > info.lastEndEpoch)
-        activeByLiveAccount := (isAlive && Trim(info.currentAccount) != "")
-        activeWithoutClock := (activeByLiveAccount && uiState != "idle")
 
         status := "idle"
         statusSince := nowEpoch
@@ -219,10 +217,6 @@ Agg_TickBody() {
         } else if (activeByRunClock) {
             status := "running"
             statusSince := info.lastStartEpoch
-        } else if (activeWithoutClock) {
-            status := "running"
-            statusSince := (prev.lastStatus = "running" && prev.HasKey("statusSince"))
-                ? prev.statusSince : nowEpoch
         } else if (uiState = "idle" || queueExhausted) {
             status := "idle"
             statusSince := (prev.lastStatus = "idle" && prev.HasKey("statusSince"))
@@ -236,10 +230,10 @@ Agg_TickBody() {
         prev.lastStatus := status
 
         currentRunSeconds := 0
-        if (status = "running" || status = "stuck" || status = "pausing") {
-            if (activeByRunClock)
-                currentRunSeconds := Agg_Max(0, nowEpoch - info.lastStartEpoch)
-            else if (statusSince > 0)
+        if (status = "running" && activeByRunClock) {
+            currentRunSeconds := Agg_Max(0, nowEpoch - info.lastStartEpoch)
+        } else if (status = "stuck" || status = "pausing") {
+            if (statusSince > 0)
                 currentRunSeconds := Agg_Max(0, nowEpoch - statusSince)
         }
 

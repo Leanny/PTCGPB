@@ -7945,6 +7945,8 @@
             const ONE_HOUR = 60 * 60 * 1000;
             const AUTOLOAD_RETRIES = 4;
             const AUTOLOAD_RETRY_BASE_MS = 220;
+            const DASHBOARD_SERVER_READY_RETRIES = 40;
+            const DASHBOARD_SERVER_READY_RETRY_MS = 250;
             const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
             const INITIAL_LIMIT = 25;
             const ACCOUNT_OVERVIEW_CHUNK_MS = 10;
@@ -12072,6 +12074,10 @@
             let dashboardBootHiddenTimer = 0;
 
             const DASHBOARD_BOOT_STEP_DEFS = {
+                server_ready: {
+                    label: "Connecting to Dashboard Server",
+                    shortLabel: "Server",
+                },
                 database_index: {
                     label: "Building SQLite Index",
                     shortLabel: "SQLite Index",
@@ -12115,6 +12121,7 @@
             };
 
             const DASHBOARD_BOOT_ALL_ORDER = [
+                "server_ready",
                 "database_index",
                 "card_definitions",
                 "fetch_summary",
@@ -15798,6 +15805,45 @@
                 return "Working…";
             }
 
+            async function waitForDashboardServerReady() {
+                bootBeginStep("server_ready", "Waiting for dashboard server…");
+                let lastError = null;
+                for (
+                    let attempt = 1;
+                    attempt <= DASHBOARD_SERVER_READY_RETRIES;
+                    attempt++
+                ) {
+                    try {
+                        const response = await fetch(DASHBOARD_PING_PATH, {
+                            method: "GET",
+                            cache: "no-store",
+                        });
+                        if (response.status === 204 || response.ok) {
+                            bootEndStep("server_ready", "Server ready");
+                            return true;
+                        }
+                        lastError = new Error(
+                            `Unexpected ping status ${response.status}`,
+                        );
+                    } catch (err) {
+                        lastError = err;
+                    }
+                    bootUpdateStep(
+                        "server_ready",
+                        `Waiting… (${attempt}/${DASHBOARD_SERVER_READY_RETRIES})`,
+                    );
+                    await waitMs(DASHBOARD_SERVER_READY_RETRY_MS);
+                }
+                bootFailStep(
+                    "server_ready",
+                    lastError?.message || "Server not ready",
+                );
+                throw (
+                    lastError ||
+                    new Error("Dashboard server did not become ready in time")
+                );
+            }
+
             async function ensureDashboardDatabaseIndex() {
                 bootBeginStep("database_index", "Preparing SQLite index…");
                 let pollTimer = 0;
@@ -15850,11 +15896,15 @@
                     bootEndStep("database_index", detail);
                     return result;
                 } catch (err) {
-                    bootFailStep(
+                    bootEndStep(
                         "database_index",
-                        err?.message || "SQLite Index Failed",
+                        "Skipped — using legacy loader",
                     );
-                    throw err;
+                    console.warn(
+                        "SQLite index unavailable, falling back to legacy path:",
+                        err,
+                    );
+                    return null;
                 } finally {
                     stopPolling();
                 }
@@ -15971,6 +16021,7 @@
             async function autoLoadDefaultFiles() {
                 bootReset({ pathLabel: "Compact Index" });
                 try {
+                    await waitForDashboardServerReady();
                     await ensureDashboardDatabaseIndex();
                     bootBeginStep("card_definitions");
                     const resourcesPromise = loadResources(false).finally(() =>

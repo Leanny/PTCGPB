@@ -704,6 +704,33 @@ writeLastEndEpoch(scriptName) {
     return writeMetricEpoch(scriptName, "LastEndEpoch")
 }
 
+writeLastStartEpoch(scriptName) {
+    if(InStr(scriptName, "Main"))
+        return 0
+
+    scriptName := StrReplace(scriptName, ".ahk")
+    iniPath := GetScriptIniPathByName(scriptName)
+    nowUtc := A_NowUTC
+    IniWrite, %nowUtc%, %iniPath%, Metrics, LastStartTimeUTC
+    EnvSub, nowUtc, 1970, seconds
+    IniWrite, %nowUtc%, %iniPath%, Metrics, LastStartEpoch
+    return nowUtc
+}
+
+; Stamp LastStartEpoch before the boot gate when a new run cycle begins (LastEnd >= LastStart).
+markRunStartEpochIfPending(scriptName) {
+    if(InStr(scriptName, "Main"))
+        return 0
+
+    scriptName := StrReplace(scriptName, ".ahk")
+    iniPath := GetScriptIniPathByName(scriptName)
+    IniRead, lastEnd, %iniPath%, Metrics, LastEndEpoch, 0
+    IniRead, lastStart, %iniPath%, Metrics, LastStartEpoch, 0
+    if ((lastEnd + 0) >= (lastStart + 0))
+        return writeLastStartEpoch(scriptName)
+    return lastStart + 0
+}
+
 writeLastActivityEpoch(scriptName, minIntervalMs := 0) {
     static lastWriteTick := Object()
 
