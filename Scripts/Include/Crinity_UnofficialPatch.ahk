@@ -37,6 +37,9 @@ processPrivacyAgreement()
 waitForAppBootScreen() {
     global session
 
+    if (IsFunc("markRunStartEpochIfPending"))
+        markRunStartEpochIfPending(session.get("scriptName"))
+
     bootTimeoutSec := 90
     session.set("failSafe", A_TickCount)
     CreateStatusMessage("Waiting for app boot screen...",,,, false)
