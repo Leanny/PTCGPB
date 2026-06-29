@@ -22,6 +22,7 @@ SetWorkingDir %A_ScriptDir%\..\..
 #Include Config.ahk
 #Include Profiler.ahk
 #Include Logging.ahk
+#Include MumuHelper.ahk
 #Include Utils.ahk
 #Include AccountMetadata.ahk
 #Include Cockpit\CockpitState.ahk

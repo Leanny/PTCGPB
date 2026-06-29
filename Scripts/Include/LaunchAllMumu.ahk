@@ -4,6 +4,7 @@ SetTitleMatchMode, 3
 
 #Include %A_ScriptDir%\Config.ahk
 #Include %A_ScriptDir%\Profiler.ahk
+#Include %A_ScriptDir%\MumuHelper.ahk
 #Include %A_ScriptDir%\Utils.ahk
 
 global botConfig := new BotConfig()

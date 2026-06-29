@@ -142,6 +142,9 @@ needlesDict.Add(new Needle("Common_SpeedModMenuButton", "speedmodMenu", new Coor
 needlesDict.Add(new Needle("Common_SpeedMod1x", "One", new Coordinate(18, 159, 23, 166)))
 needlesDict.Add(new Needle("Common_SpeedMod2x", "Two", new Coordinate(102, 159, 107, 164)))
 needlesDict.Add(new Needle("Common_SpeedMod3x", "Three", new Coordinate(183, 157, 191, 167)))
+needlesDict.Add(new Needle("Common_SpeedMod1x_15", "One-15", new Coordinate(14, 162, 21, 170)))
+needlesDict.Add(new Needle("Common_SpeedMod2x_15", "Two-15", new Coordinate(97, 160, 105, 171)))
+needlesDict.Add(new Needle("Common_SpeedMod3x_15", "Three-15", new Coordinate(180, 161, 188, 170)))
 
 ;==============================================================================================================================
 
@@ -259,3 +262,47 @@ needlesDict.Add(new Needle("Privacy_Green", "Privacy3", new Coordinate(31, 353, 
 
 ; Unknown
 ;Proceed
+
+GetSpeedModNeedle(speed) {
+    global session
+
+    if (speed = 1)
+        base := "Common_SpeedMod1x"
+    else if (speed = 2)
+        base := "Common_SpeedMod2x"
+    else
+        base := "Common_SpeedMod3x"
+
+    if (session.get("muMuAndroid15"))
+        return base . "_15"
+    return base
+}
+
+GetSpeedModClickX(speed) {
+    global session
+
+    if (session.get("muMuAndroid15")) {
+        if (speed = 1)
+            return 18
+        if (speed = 2)
+            return 101
+        return 184
+    }
+
+    if (speed = 1)
+        return 21
+    if (speed = 2)
+        return 106
+    return 187
+}
+
+GetSpeedModClickY(speed) {
+    global session
+    return session.get("muMuAndroid15") ? 166 : 172
+}
+
+IsSpeedModImageName(imageName) {
+    return (imageName = "speedmodMenu"
+        || imageName = "One" || imageName = "Two" || imageName = "Three"
+        || imageName = "One-15" || imageName = "Two-15" || imageName = "Three-15")
+}

@@ -2,6 +2,36 @@
 ; PTCGPHelper.ahk - Android ptcgpb helper install/runtime utilities
 ;===============================================================================
 
+; Run ptcgpb via a one-off adb shell so the persistent shell is not desynced by nohup.
+StartPtcgpbWatchCards(full := false) {
+    global session
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    if (full)
+        watchArgs := " watch-cards --full --duplicate"
+    else
+        watchArgs := " watch-cards --duplicate"
+    RunWait, % adbCommand . " shell ""nohup /data/ptcgp/ptcgpb" . watchArgs . " >/dev/null 2>&1 </dev/null &""", , Hide
+    Sleep, 300
+    return true
+}
+
+GetPtcgpbPackCount() {
+    global session
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    output := Trim(CmdRet(adbCommand . " shell /data/ptcgp/ptcgpb packcount"), "`r`n`t ")
+    output := StrReplace(output, "`r")
+    output := Trim(output, "`n ")
+    if !RegExMatch(output, "^-?\d+$") {
+        LogDebug("GetPtcgpbPackCount returned non-numeric output: " . output)
+        return 0
+    }
+
+    LogDebug("GetPtcgpbPackCount result=" . output)
+    return output + 0
+}
+
 EnsurePTCGPBHelperInstalled() {
     global session
 
@@ -14,7 +44,6 @@ EnsurePTCGPBHelperInstalled() {
     helperUrl := "https://leanny.github.io/ptcgpb-helper/ptcgpb-helper-android"
     localPath := A_Temp . "\ptcgpb-helper-android." . safeScriptName
     minHelperSize := 2500000
-
     adbWriteRaw("mkdir -p /data/ptcgp")
     remoteSize := Trim(StrReplace(adbWriteRaw("if [ -x " . remotePath . " ]; then wc -c < " . remotePath . "; else echo 0; fi", true), "`r"), "`n`t ")
     remoteSize := RegExReplace(remoteSize, "[^\d]")
@@ -38,10 +67,10 @@ EnsurePTCGPBHelperInstalled() {
         LogWarn("Downloaded ptcgpb helper is unexpectedly small: " . helperSize . " bytes")
         return false
     }
-
     adbCommand := """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort")
     LogTrace("Pushing ptcgpb helper to " . sdcardTmpPath, "ADB.txt")
     RunWait, % adbCommand . " push """ . localPath . """ " . sdcardTmpPath,, Hide
+
     if (ErrorLevel) {
         LogWarn("Failed to push ptcgpb helper to device. ErrorLevel=" . ErrorLevel)
         return false

@@ -2,6 +2,7 @@
 #Include %A_ScriptDir%\Profiler.ahk
 #Include %A_ScriptDir%\Logging.ahk
 #Include %A_ScriptDir%\GitManager.ahk
+#Include %A_ScriptDir%\MumuHelper.ahk
 #Include %A_ScriptDir%\Utils.ahk
 
 #SingleInstance, force
