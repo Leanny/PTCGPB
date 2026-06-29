@@ -433,7 +433,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("keepAccount", false)
         session.set("s4tFoundTradeable", false)
 
-
         startPreProcess(botConfig.get("deleteMethod"))
 
         methodType := botConfig.get("deleteMethod")
@@ -1895,7 +1894,7 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
     postSnapshot := PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
     resultLog := PullPackOpeningResultLog(failedDir, uniquePrefix)
 
-    message := reason . "\nVersion: 0.14.0\nPlease submit these files for the bug report as well."
+    message := reason . "\nVersion: 0.15.0\nPlease submit these files for the bug report as well."
     for _, snapshot in [preSnapshot, postSnapshot] {
         localPathForMessage := StrReplace(snapshot.localPath, "\", "/")
         if (snapshot.exists) {
