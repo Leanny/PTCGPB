@@ -135,18 +135,15 @@ if (!hwnd) {
     ExitWithCleanup(2)
 }
 
-; Strip caption + force the canonical 283x532 client size the needle
-; coordinates are calibrated against (matches DirectlyPositionWindow in 1.ahk).
-WinGetPos, wx, wy, ww, wh, ahk_id %hwnd%
-WinGet, curStyle, Style, ahk_id %hwnd%
-needsCaptionStrip := (curStyle & 0x00C00000) != 0
-needsResize := (ww != 283 || wh != 532)
-if (needsCaptionStrip)
+global g_mumuHwnd := hwnd
+WinGetPos, g_savedWndX, g_savedWndY, g_savedWndW, g_savedWndH, ahk_id %hwnd%
+WinGet, g_savedWndStyle, Style, ahk_id %hwnd%
+if (g_savedWndStyle & 0x00C00000)
     WinSet, Style, -0xC00000, ahk_id %hwnd%
-if (needsResize)
+WinGetPos, wx, wy, ww, wh, ahk_id %hwnd%
+if (ww != 283 || wh != 532)
     WinMove, ahk_id %hwnd%, , %wx%, %wy%, 283, 532
-if (needsCaptionStrip || needsResize)
-    Sleep, 180
+Sleep, 180
 
 setADBBaseInfo()
 ConnectAdb()
@@ -203,13 +200,13 @@ GetNeedle(Path) {
 }
 
 findNeedle(needleName, searchVariation := 20) {
-    global needlesDict, session
+    global needlesDict, g_mumuHwnd
 
     needleObj := needlesDict.Get(needleName)
     if (!needleObj)
         return false
 
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
+    pBitmap := from_window(g_mumuHwnd)
     if (!pBitmap)
         return false
 
@@ -410,6 +407,7 @@ gotoFriendSearchPanel(timeoutSec := 60) {
 
 ExitWithCleanup(code := 0) {
     global pToken, session
+    RestoreMuMuWindow()
     try {
         if (session.get("adbShell"))
             session.get("adbShell").Terminate()
@@ -420,6 +418,18 @@ ExitWithCleanup(code := 0) {
     } catch e {
     }
     ExitApp, % code
+}
+
+RestoreMuMuWindow() {
+    global g_mumuHwnd, g_savedWndX, g_savedWndY, g_savedWndW, g_savedWndH, g_savedWndStyle
+
+    if (!g_mumuHwnd || !WinExist("ahk_id " . g_mumuHwnd))
+        return
+
+    if (g_savedWndStyle & 0x00C00000)
+        WinSet, Style, +0xC00000, ahk_id %g_mumuHwnd%
+    WinMove, ahk_id %g_mumuHwnd%, , %g_savedWndX%, %g_savedWndY%, %g_savedWndW%, %g_savedWndH%
+    WinSet, Redraw, , ahk_id %g_mumuHwnd%
 }
 
 OnGuiClose:
