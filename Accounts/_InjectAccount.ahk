@@ -607,16 +607,15 @@ loadAccount() {
         return 0
     }
 
-    ; Launch the app with both commands in quick succession
+    ; Launch the app (same activity/flags as Scripts\Include\ADB.ahk startPTCGPApp)
     UpdateInjectUi("Launching game...", 80)
-    if RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/jp.pokemon.pokemontcgp.UnityPlayerActivity") {
-        return 1
-    }
-    Sleep, 100
-
-    if !RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity") {
-        ShowInjectStepError("start com.unity3d.player.UnityPlayerActivity")
-        return 0
+    RunAdbRootCommand("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+    if !RunAdbRootCommand("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000") {
+        Sleep, 100
+        if !RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x20000000") {
+            ShowInjectStepError("start Pokemon TCG Pocket")
+            return 0
+        }
     }
 
     return 1
