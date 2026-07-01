@@ -11,8 +11,7 @@ The new license applies to this and all future releases; unfortunately, previous
 
 ------------------------------------------
 
-*Hi, I'm kevinnnn, the sole developer of PTCGP Bot since June 2025. Many community members have put countless hours into this bot. I now maintain it by myself since June 2025 and have put hundreds of hours into it myself. The bot will always be free, but you can "buy me a coffee" at:*
-https://ko-fi.com/kevnitg
+*Hi, I'm kevinnnn, the sole developer of PTCGP Bot since June 2025. Many community members have put countless hours into this bot. I now maintain it by myself since June 2025 and have put hundreds of hours into it myself. The bot will always be free.
 
 *Thanks for your support, and let’s keep those god packs coming!* 😄
 
@@ -20,7 +19,7 @@ https://ko-fi.com/kevnitg
 *Special thanks to all [contributors](https://github.com/Arturo-1212/PTCGPB/graphs/contributors)! Thanks to everyone else who has helped test or has contributed their suggestions to make the bot better!*
 
 **__What does this do?__**
-Creates bots and looks for desireable cards to save and trade to your main account, or to wonderpick from your main account. Getting setup for wonderpick takes weeks of daily pulls to reach 96 packs opened before being elibile to be visible within Wonder Pick, but if you wish to simply find cards to trade to your main, you can get setup quickly! 
+Creates bots and looks for desireable cards to save and trade to your main account, or to wonderpick from your main account. Getting setup for wonderpick takes weeks of daily pulls to reach 96 packs opened before being elibile to be visible within Wonder Pick, but if you wish to simply find cards to trade to your main, you can get setup quickly!
 
 Join the discord for an updated guide, latest links, and support: https://discord.gg/C9Nyf7P4sT
 

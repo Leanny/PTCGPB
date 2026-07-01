@@ -456,8 +456,6 @@ NextStep:
     Gui, Add, Text, x535 y93 w180 h20 Center BackgroundTrans cWhite, Modder: Lean && xedranort
     Gui, Add, Text, x535 y113 w180 h20 Center BackgroundTrans cWhite, % modVersion
 
-    Gui, Add, Picture, gBuyMeCoffee x550 y145 w150, %A_ScriptDir%\GUI\Images\support_me_on_kofi.png
-
     ; =================== UI - Icon ===================
     Gui, Font, s10 cWhite
     Gui, Add, Picture, gOpenDiscord x560 y194 w32 h32, %A_ScriptDir%\GUI\Images\discord-icon.png
@@ -2253,10 +2251,6 @@ return
 DiscordLink:
     Run, https://discord.com/invite/C9Nyf7P4sT
 Return
-
-BuyMeCoffee:
-    Run, https://ko-fi.com/kevnitg
-return
 
 OpenToolTip:
     Run, https://mixman208.github.io/PTCGPB/
