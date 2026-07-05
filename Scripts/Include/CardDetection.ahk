@@ -349,7 +349,7 @@ FoundStars(star, cards := "") {
     }
 
     ; Validate before saving metadata
-    if (username = "" || !username)
+    if (username = "")
         username := "Unknown"
     if (friendCode = "" || !friendCode)
         friendCode := "Unknown"
@@ -358,7 +358,7 @@ FoundStars(star, cards := "") {
 
     statusPrefix := isWishlist ? Chr(0x2B50) . " Wishlist match" : (star . " found")
     statusMessage := statusPrefix
-    if (username && username != "Unknown")
+    if (username != "" && username != "Unknown")
         statusMessage .= " by " . username
     if (friendCode && friendCode != "Unknown")
         statusMessage .= " (" . friendCode . ")"
@@ -446,7 +446,7 @@ GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreensho
     }
 
     ; Validate before saving
-    if (username = "" || !username)
+    if (username = "")
         username := "Unknown"
     if (friendCode = "" || !friendCode)
         friendCode := "Unknown"
@@ -463,7 +463,7 @@ GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreensho
     CreateStatusMessage(Interjection . (invalid ? " " . invalid : "") . " God Pack found!",,,, false)
 
     logMessage := Interjection . "\n"
-    if (username && username != "Unknown")
+    if (username != "" && username != "Unknown")
         logMessage .= username
     if (friendCode && friendCode != "Unknown")
         logMessage .= " (" . friendCode . ")"
