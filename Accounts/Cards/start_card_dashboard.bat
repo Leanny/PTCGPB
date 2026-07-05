@@ -21,8 +21,7 @@ if exist "%CARDDB%" (
     "Start-Process -FilePath '%CARDDB%' -ArgumentList @('--root','%ROOT%','serve','--port','%PORT%','--legacy-port','%LEGACY_PORT%') -WorkingDirectory '%ROOT%' -WindowStyle Hidden"
 ) else (
   echo carddb.exe not found at %CARDDB% — falling back to legacy server only on port %LEGACY_PORT%
-  set "PORT=%LEGACY_PORT%"
-  set "URL=http://localhost:%PORT%/Accounts/Cards/card_database.html?v=%HTMLVER%"
+  set "URL=http://localhost:%LEGACY_PORT%"
 )
 
 start "" "%URL%"
