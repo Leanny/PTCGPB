@@ -21,6 +21,7 @@ Accounts/Cards/metadata.json
 Accounts/Cards/database_cache/
 Accounts/Cards/*.tmp
 Accounts/Cards/**
+!Accounts/Cards/diagnose_start_dashboard.bat
 Accounts/SpecificCards
 Lab
 tmp.ahk

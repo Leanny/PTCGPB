@@ -1173,6 +1173,8 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
                 FSTime := 60
             else if(imageName = "Proceed") ; Decrease time for Marowak
                 FSTime := 8
+            else if(imageName = "OpeningMultiple") ; Increase time for 10 pulls
+                FSTime := 300 ; based on user reports it takes around 2 minutes on average with no immersive and every special effect increases it. 3-4 minutes seems to be sufficient for the average run, 5 minutes should be for the worst case
             else
                 FSTime := 45
             if(!skip) {
@@ -1894,7 +1896,7 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
     postSnapshot := PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
     resultLog := PullPackOpeningResultLog(failedDir, uniquePrefix)
 
-    message := reason . "\nVersion: 0.15.0\nPlease submit these files for the bug report as well."
+    message := reason . "\nVersion: 0.15.1\nPlease submit these files for the bug report as well."
     for _, snapshot in [preSnapshot, postSnapshot] {
         localPathForMessage := StrReplace(snapshot.localPath, "\", "/")
         if (snapshot.exists) {
