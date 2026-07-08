@@ -349,19 +349,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             EnvSub, EndCurrentTimeDiff, %EndTime%, Seconds
         }
 
-        session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
-        if(session.get("VRAMUsage").Usage > 1){
-            LogInfo("[" . A_ScriptName . "] GPU usage exceeds the threshold and restarts. VRAM Usage(" . session.get("VRAMUsage").Mode . "): " . session.get("VRAMUsage").Usage . " GB", "Restart.txt")
-            CreateStatusMessage("Restarting Instance...",,,, false)
-            restartInstance()
-            RefreshAdbConnectionAfterInstanceRestart(45000)
-            DirectlyPositionWindow()
-            RestoreMuMuCoverWindow(GetMuMuCoverWindowForMaintenance(session.get("winTitle")), session.get("winTitle"))
-            CreateStatusMessage("Restart complete!",,,, false)
-            LogInfo("[" . A_ScriptName . "] Restart complete!", "Restart.txt")
-            session.set("loadedAccount", false)
-        }
-
         resetShowcaseLikesIfNewCycle()
 
         ; Only refresh account lists if we're not in injection mode or if no account is loaded
@@ -738,8 +725,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("aminutes", Floor(session.get("avgtotalSeconds") / 60)) ; Average minutes
         session.set("aseconds", Mod(session.get("avgtotalSeconds"), 60)) ; Average remaining seconds
         updateTotalTime()
-
-        session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
 
         ; Add total time, Logging.ahk #31: guiheight := 30
 
@@ -3104,7 +3089,6 @@ Return
 
 LiveMetricsTimer:
     updateTotalTime()
-    session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
     CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
 Return
 

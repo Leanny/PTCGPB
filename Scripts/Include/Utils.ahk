@@ -1298,7 +1298,6 @@ generateStatusText(){
     viewStr .= session.get("aseconds") . "s`n"
     viewStr .= "Runs: " . session.get("rerolls") . " | "
     viewStr .= "Packs: " . session.get("accountOpenPacks") . " | "
-    viewStr .= "VRAM(" . session.get("VRAMUsage").Mode . "): " . session.get("VRAMUsage").Usage . " GB"
 
     return viewStr
 }

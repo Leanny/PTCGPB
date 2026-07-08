@@ -567,7 +567,6 @@ UpdateAccount() {
 
     updateTotalTime()
 
-    session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
     ; Direct display of metrics rather than calling function
     CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
 }
