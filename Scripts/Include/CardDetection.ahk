@@ -467,8 +467,6 @@ GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreensho
         logMessage .= username
     if (friendCode && friendCode != "Unknown")
         logMessage .= " (" . friendCode . ")"
-    if (session.get("accountFileName") != "")
-        logMessage .= " (" . friendCode . ")"
     logMessage .= "\n[" . starCount . "/5][" . session.get("packsInPool") . "P][" . packDisplayName . "] "
     logMessage .= invalid . " God Pack found in instance: " . session.get("scriptName") . "\nFile name: " . accountFile . "\nBacking up to the Accounts\\GodPacks folder and continuing..."
 
