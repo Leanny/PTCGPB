@@ -194,7 +194,7 @@ needlesDict.Add(new Needle("Pack_GetItemDialogAfterOpenPack", "GetItemDialogAfte
 ; Missions
 needlesDict.Add(new Needle("Mission_PremiumLockImage", "PremiumLock", new Coordinate(250, 452, 258, 459)))
 needlesDict.Add(new Needle("Mission_FirstWonderpickMissionIconInDetails", "FirstMission", new Coordinate(130, 188, 145, 206)))
-needlesDict.Add(new Needle("Mission_ActivatedBeginnerMissionTabButton", "Missions", new Coordinate(15, 451, 18, 468)))
+needlesDict.Add(new Needle("Mission_ActivatedBeginnerMissionTabButton", "List", new Coordinate(22, 492, 40, 499)))
 needlesDict.Add(new Needle("Mission_ThemeCollectionButtonIcon", "Mission_dino1", new Coordinate(180, 493, 190, 503)))
 needlesDict.Add(new Needle("Mission_MissionIconTopAreaInDetails", "Mission_dino2", new Coordinate(130, 160, 150, 180)))
 needlesDict.Add(new Needle("Mission_MissionIconTopAreaInDetailsAlt", "Mission_dino3", new Coordinate(52, 159, 69, 171)))
