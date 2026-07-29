@@ -2958,7 +2958,7 @@ function Resolve-RequestedPath {
     return $candidate
 }
 
-$script:CardImageBaseUrl = "https://leanny.github.io/pocket_tcg_resources/img/S/US"
+$script:CardImageBaseUrl = "https://leanny.github.io/pocket_tcg_resources/img/M/US"
 $script:CardImageCacheDir = Join-Path $resolvedRoot "Helper\CardImageCache"
 $script:CardImagePrefetchPowerShell = $null
 $script:CardImagePrefetchHandle = $null

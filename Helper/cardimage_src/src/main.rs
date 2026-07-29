@@ -540,7 +540,7 @@ async fn main() -> anyhow::Result<()> {
     // cardmaster here is actually cardmap.json (has ExpansionID + CollectionNumber + IllustrationID)
     fs::create_dir_all(&cli.cache_dir).await?;
 
-    let base_url = "https://leanny.github.io/pocket_tcg_resources/img/S/US";
+    let base_url = "https://leanny.github.io/pocket_tcg_resources/img/M/US";
 
     let mut ill_ids: Vec<Option<String>> = Vec::with_capacity(card_ids.len());
     let mut cached_paths: Vec<Option<PathBuf>> = Vec::with_capacity(card_ids.len());
