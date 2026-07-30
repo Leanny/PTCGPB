@@ -34,6 +34,27 @@ processPrivacyAgreement()
     adbClick(138, 479)
 }
 
+; Dismiss the intermittent "Welcome Back" account popup.
+; Returns true when a dismiss click was issued this tick.
+TryDismissWelcomeBackPopup(logContext, ByRef advancing, ByRef useSecondClick) {
+    if (FindOrLoseImage("Boot_WelcomeBack", 0, 0, 20, true)) {
+        if (!advancing)
+            LogInfo(logContext . ": advancing past Welcome Back popup", "ADB.txt")
+        advancing := true
+        CreateStatusMessage("Dismissing Welcome Back popup...",,,, false)
+        if (useSecondClick)
+            adbClick_wbb(194, 433)
+        else
+            adbClick_wbb(139, 432)
+        useSecondClick := !useSecondClick
+        Sleep, 500
+        return true
+    }
+    advancing := false
+    useSecondClick := false
+    return false
+}
+
 waitForAppBootScreen() {
     global session
 
@@ -46,11 +67,16 @@ waitForAppBootScreen() {
     LogInfo("Boot gate: waiting for startup screen", "ADB.txt")
 
     lastStatusSec := -1
+    welcomeBackAdvancing := false
+    welcomeBackUseSecondClick := false
     Loop {
         if (handleAppHealthDuringSearch("boot", true))
             return false
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (TryDismissWelcomeBackPopup("Boot gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
+            continue
+
         if (FindOrLoseImage("Boot_Welcome", 0, 0, 30, true)) {
             LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
             return true
@@ -153,11 +179,16 @@ startPreProcess(methodType){
 
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
+    welcomeBackAdvancing := false
+    welcomeBackUseSecondClick := false
     Loop, {
         skipGenericButtonFallback := false
 
         if (handleAppHealthDuringSearch(findImageName))
             break
+
+        if (TryDismissWelcomeBackPopup("Entering gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
+            continue
 
         if(methodType = "Inject Wonderpick 96P+" && DismissFriendFlowBlockingPopup("Entering Social"))
             continue
