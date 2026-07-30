@@ -474,6 +474,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             Goto, EndOfRun
 
         if(botConfig.get("deleteMethod") = "Create Bots (13P)"){
+            EnterGameFromWelcomeIfNeeded() ; 1.7.0 forces restart onto Welcome; tap before GoToMain ESC
             GoToMain()
             wonderPicked := DoWonderPick()
         }
@@ -3802,18 +3803,28 @@ DoTutorial() {
 
     Delay(2)
 
-    FindImageAndClick("Create_SelectedWPItem", 202, 347, , 500) ; confirm wonder pick selection
-
+    adbClick_wbb(202, 347) ; select Wonder Pick item to open Bonus Pick confirm
     Delay(2)
 
-    adbClick_wbb(208, 461)
+    ; Bonus Pick confirm (No cost / OK). Wonder4 selection needle often never matches on current UI.
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        adbClick_wbb(208, 461) ; OK
+        Delay(1)
+        if(FindOrLoseImage("Create_TitleBottomBorderInWPSelectCard", 0, failSafeTime))
+            break
+        ; Dialog may not have opened yet — retry select
+        adbClick_wbb(202, 347)
+        Delay(1)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Confirming WonderPick`n(" . failSafeTime . "/45 seconds)")
+    }
 
     if(session.get("setSpeed") = 3) ;time the animation
         Sleep, 1500
     else
         Sleep, 2500
-
-    FindImageAndClick("Create_TitleBottomBorderInWPSelectCard", 208, 461, 10, 350) ;stop at pick a card
 
     Delay(1)
 
@@ -3827,7 +3838,9 @@ DoTutorial() {
         else
             continueTime := 3
 
-        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
+        if (TryWonderPickDexSwipeRegister()) {
+            failSafeTime := 0
+        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
         } else if(FindOrLoseImage("Create_WelcomePopup", 0, failSafeTime)) { ;click through to end of tut screen
             break
@@ -3857,6 +3870,7 @@ DoTutorial() {
     }
 
     FindImageAndClick("Create_FullFreepackInMainCenter", 192, 449) ;click until at main menu
+    EnterGameFromWelcomeIfNeeded() ; 1.7.0 forces restart after WP onto Welcome before GoToMain
 
     return true
 }
@@ -3931,6 +3945,47 @@ DismissMainCloseAlertWindow(context := "") {
     adbClick_wbb(75, 365)
     Delay(1)
     return true
+}
+
+; After create-tutorial WP, 1.7.0 always forces an app restart onto Welcome (Tap to Start).
+; ESC there opens quit confirmation — tap to enter instead.
+; Returns true once past title screen (home/shop/news X/etc.).
+EnterGameFromWelcomeIfNeeded(timeoutSec := 60) {
+    global session
+
+    session.set("failSafe", A_TickCount)
+    Loop {
+        ; Already in-game (including News/X overlays) — let GoToMain use ESC.
+        if (FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true)
+            || FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, 0, , true)
+            || FindOrLoseImage("Pack_PackPointButton", 0, 0, , true)
+            || FindOrLoseImage("Create_FullFreepackInMainCenter", 0, 0, , true)
+            || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, 0, , true)
+            || FindOrLoseImage("Common_PopupXButtonInMain", 0, 0, , true))
+            return true
+
+        if (DismissMainCloseAlertWindow("Welcome gate")) {
+            Delay(1)
+            adbClick_wbb(140, 450) ; Tap to Start under quit dialog
+            Delay(2)
+            CreateStatusMessage("Entering game from Welcome...")
+            continue
+        }
+
+        if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            adbClick_wbb(140, 450) ; Tap to Start
+            Delay(2)
+            CreateStatusMessage("Entering game from Welcome...")
+            continue
+        }
+
+        Delay(1)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting past Welcome`n(" . failSafeTime . "/" . timeoutSec . " seconds)")
+        if (failSafeTime >= timeoutSec)
+            return false
+    }
 }
 
 WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
@@ -4756,16 +4811,36 @@ HandleSingleGiftPackOpening() {
     }
 }
 
+; Wonder Pick reveals can show the first-time card-dex register tutorial.
+; Skip dismisses it; no swipe needed.
+TryWonderPickDexSwipeRegister() {
+    global session
+
+    if (!FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 0, 20, 1))
+        return false
+
+    CreateStatusMessage("WonderPick: skip card dex tutorial...")
+    adbClick_wbb(239, 497)
+    Delay(1)
+    session.set("failSafe", A_TickCount)
+    return true
+}
+
 DoWonderPickOnly() {
     global session
 
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
+    pickAlreadyRevealed := false
 
     if (isTerminatePTCGPHelperApp()) {
         InitPackOpening()
     }
     Loop {
+        if (TryWonderPickDexSwipeRegister()) {
+            pickAlreadyRevealed := true
+            break
+        }
         adbClick_wbb(80, 390) ; first wonderpick slot
         adbClick_wbb(80, 460) ; backup, second wonderpick slot
         if(FindOrLoseImage("WonderPick_NoEnergy", 0, failSafeTime)) {
@@ -4791,24 +4866,34 @@ DoWonderPickOnly() {
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for WonderPick`n(" . failSafeTime . "/45 seconds)")
     }
-    Sleep, 300
-    if(botConfig.get("slowMotion"))
-        Sleep, 3000
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        adbClick_wbb(183, 350) ; click card
-        if(FindOrLoseImage("WonderPick_SelectCards", 1, failSafeTime)) {
-            break
+    if (!pickAlreadyRevealed) {
+        Sleep, 300
+        if(botConfig.get("slowMotion"))
+            Sleep, 3000
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop {
+            if (TryWonderPickDexSwipeRegister()) {
+                pickAlreadyRevealed := true
+                break
+            }
+            adbClick_wbb(183, 350) ; click card
+            if(FindOrLoseImage("WonderPick_SelectCards", 1, failSafeTime)) {
+                break
+            }
+            Delay(1)
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Waiting for Card`n(" . failSafeTime . "/45 seconds)")
         }
-        Delay(1)
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Waiting for Card`n(" . failSafeTime . "/45 seconds)")
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     ;TODO thanks and wonder pick 5 times for missions
     Loop {
+        if (TryWonderPickDexSwipeRegister()) {
+            failSafeTime := 0
+            continue
+        }
         adbClick_wbb(146, 494)
         Delay(1)
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime) || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, failSafeTime))
@@ -4825,6 +4910,10 @@ DoWonderPickOnly() {
     failSafeTime := 0
     Loop {
         Delay(1)
+        if (TryWonderPickDexSwipeRegister()) {
+            failSafeTime := 0
+            continue
+        }
         if(FindOrLoseImage("Common_ShopButtonInMain", 0, failSafeTime))
             break
         else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime))
@@ -5199,6 +5288,35 @@ GoToMain() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
+        ; 1.7.0: tutorials during GoToMain always force an app restart onto Welcome.
+        ; ESC on Welcome opens quit confirmation — Cancel (if needed) + Tap to Start.
+        if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            if (FindOrLoseImage("Common_CloseAlertWindowInMain", 0, 0, , true)) {
+                adbClick_wbb(75, 365) ; Cancel quit dialog
+                Delay(1)
+            }
+            adbClick_wbb(140, 450) ; Tap to Start
+            Delay(2)
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            CreateStatusMessage("Moving to Main`n(tap Welcome after restart)")
+            continue
+        }
+
+        ; Quit dialog covering Welcome (needle may not see Welcome behind it).
+        if (FindOrLoseImage("Common_CloseAlertWindowInMain", 0, 0, , true)
+            && !FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, 0, , true)) {
+            adbClick_wbb(75, 365) ; Cancel
+            Delay(1)
+            adbClick_wbb(140, 450) ; Tap to Start
+            Delay(2)
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            CreateStatusMessage("Moving to Main`n(cancel quit after restart)")
+            continue
+        }
+
         if(FindOrLoseImage("Common_CloseAlertWindowInMain", 0, failSafeTime, , true) && FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, failSafeTime, , true)){
             Loop, {
                 adbInputEvent("111") ;send ESC
