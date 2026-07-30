@@ -2358,14 +2358,14 @@ Cockpit_OpenSelectedAccountMetadata() {
 
 Cockpit_OpenCardDatabase:
     base := getScriptBaseFolder()
-    cardDbStartScript := base . "\Accounts\Cards\start_card_dashboard.bat"
+    cardDbVbs := base . "\Accounts\Cards\start_card_dashboard.vbs"
     cardDbHtml := base . "\Accounts\Cards\card_database.html"
-    if (FileExist(cardDbStartScript))
-        Run, %cardDbStartScript%
+    if (FileExist(cardDbVbs))
+        Run, wscript.exe //nologo "%cardDbVbs%", , Hide
     else if (FileExist(cardDbHtml))
         Run, %cardDbHtml%
     else {
-        nf := "Could not find Card Database launcher.`nChecked:`n" . cardDbStartScript
+        nf := "Could not find Card Database launcher.`nChecked:`n" . cardDbVbs
         MsgBox, 48, PTCGPB Cockpit, %nf%
     }
 return

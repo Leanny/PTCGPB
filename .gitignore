@@ -22,6 +22,9 @@ Accounts/Cards/database_cache/
 Accounts/Cards/*.tmp
 Accounts/Cards/**
 !Accounts/Cards/diagnose_start_dashboard.bat
+!Accounts/Cards/start_card_dashboard.vbs
+!Accounts/Cards/start_card_dashboard_server.ps1
+!Accounts/Cards/card_database.html
 Accounts/SpecificCards
 Lab
 tmp.ahk

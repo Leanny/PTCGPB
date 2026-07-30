@@ -8850,7 +8850,7 @@
                 )
                     return;
                 showNotice(
-                    "This webpage is only usable when you start it from start_card_dashboard.bat or PTCGPB.ahk.",
+                    "This webpage is only usable when you start it from start_card_dashboard.vbs or PTCGPB.ahk.",
                 );
             }
 
@@ -10658,12 +10658,12 @@
                         .then((r) => {
                             if (!r.ok)
                                 console.warn(
-                                    `Wishlist sync to bot failed: HTTP ${r.status}. Restart the dashboard via start_card_dashboard.bat so the bot can read wishlist.json.`,
+                                    `Wishlist sync to bot failed: HTTP ${r.status}. Restart the dashboard via start_card_dashboard.vbs so the bot can read wishlist.json.`,
                                 );
                         })
                         .catch((err) => {
                             console.warn(
-                                `Wishlist sync to bot failed (server unreachable). Restart the dashboard via start_card_dashboard.bat. (${err && err.message ? err.message : err})`,
+                                `Wishlist sync to bot failed (server unreachable). Restart the dashboard via start_card_dashboard.vbs. (${err && err.message ? err.message : err})`,
                             );
                         });
                 } catch (_) {}
@@ -12903,7 +12903,7 @@
                 }
                 if (!canControlLocalDashboardServer()) {
                     showToast(
-                        "Local card images require the dashboard started from start_card_dashboard.bat or PTCGPB.ahk.",
+                        "Local card images require the dashboard started from start_card_dashboard.vbs or PTCGPB.ahk.",
                         "warn",
                     );
                     return;
@@ -12940,7 +12940,7 @@
                     if (!res.ok && res.status !== 202) {
                         if (res.status === 405) {
                             throw new Error(
-                                "Card image prefetch is not available on this server (HTTP 405). Restart via start_card_dashboard.bat or PTCGPB.ahk and ensure Accounts/Cards/start_card_dashboard_server.ps1 from this branch is running.",
+                                "Card image prefetch is not available on this server (HTTP 405). Restart via start_card_dashboard.vbs or PTCGPB.ahk and ensure Accounts/Cards/start_card_dashboard_server.ps1 from this branch is running.",
                             );
                         }
                         throw new Error(
@@ -16155,12 +16155,12 @@
                         location.protocol === "https:";
                     if (!overHttp) {
                         setStatus(
-                            `Automatic account loading needs http(s). Current origin: ${location.protocol}//${location.host || "(none)"}. Start the dashboard from start_card_dashboard.bat or PTCGPB.ahk.`,
+                            `Automatic account loading needs http(s). Current origin: ${location.protocol}//${location.host || "(none)"}. Start the dashboard from start_card_dashboard.vbs or PTCGPB.ahk.`,
                             "warn",
                         );
                     } else {
                         setStatus(
-                            `Automatic account loading failed (${err && err.message ? err.message : "unknown error"}). Restart the dashboard from start_card_dashboard.bat or PTCGPB.ahk.`,
+                            `Automatic account loading failed (${err && err.message ? err.message : "unknown error"}). Restart the dashboard from start_card_dashboard.vbs or PTCGPB.ahk.`,
                             "warn",
                         );
                     }
@@ -18139,7 +18139,7 @@
                 } catch (err) {
                     pending();
                     showToast(
-                        `Failed to ${actionLabel}: ${err && err.message ? err.message : err}\nMake sure the dashboard server is running (start_card_dashboard.bat).`,
+                        `Failed to ${actionLabel}: ${err && err.message ? err.message : err}\nMake sure the dashboard server is running (start_card_dashboard.vbs).`,
                         "error",
                         9000,
                     );
