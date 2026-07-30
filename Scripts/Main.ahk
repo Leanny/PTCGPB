@@ -1122,6 +1122,25 @@ CheckFriendOpsRateLimit() {
     return true
 }
 
+; Click the remove-friend button, alternating ~30px lower in case UI layout shifts.
+; Returns true once the Remove confirmation dialog is visible.
+ClickFriendRemoveConfirmButton() {
+    maxAttempts := 6
+    Loop, %maxAttempts% {
+        if (Mod(A_Index, 2) = 1)
+            adbClick(145, 407)
+        else
+            adbClick(145, 437)
+
+        Delay(1)
+        Sleep, 350
+
+        if (FindOrLoseImage("Friend_RemoveConfirmButtonInFriendDetails", 0))
+            return true
+    }
+    return false
+}
+
 ; FavoriteVipFriends - Mark all VIP friends as favourites
 FavoriteVipFriends() {
     global session, interceptProc
@@ -1343,7 +1362,10 @@ FavoriteVipFriends() {
                         return
                     }
                     rateLimitHit := false
-                    FindImageAndClick("Friend_RemoveConfirmButtonInFriendDetails", 145, 407, , 500)
+                    if (!ClickFriendRemoveConfirmButton()) {
+                        CreateStatusMessage("Remove button not found after alternate clicks. Skipping removal.",,,, false)
+                        continue 2
+                    }
                     removeWaitStart := A_TickCount
                     interceptProc := true
                     Loop {
@@ -1649,7 +1671,12 @@ RemoveNonVipFriends() {
                 return
             }
             rateLimitHit := false
-            FindImageAndClick("Friend_RemoveConfirmButtonInFriendDetails", 145, 407, , 500)
+            if (!ClickFriendRemoveConfirmButton()) {
+                CreateStatusMessage("Remove button not found after alternate clicks. Returning to list.",,,, false)
+                FindImageAndClick("Friend_AddButtonInFriendList", 143, 507, , 1500)
+                Delay(2)
+                continue
+            }
             removeWaitStart := A_TickCount
             interceptProc := true
             Loop {
