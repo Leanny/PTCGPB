@@ -12,6 +12,8 @@ $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
 if (-not (Test-Path -LiteralPath $resolvedRoot -PathType Container)) {
     throw "Root path not found: $resolvedRoot"
 }
+$serverPidPath = Join-Path $resolvedRoot "Accounts\Cards\.dashboard_server.pid"
+[System.IO.File]::WriteAllText($serverPidPath, [string]$PID)
 
 $defaultDocument = "Accounts/Cards/card_database.html"
 $shutdownAt = $null
@@ -2959,6 +2961,7 @@ function Resolve-RequestedPath {
 }
 
 $script:CardImageBaseUrl = "https://leanny.github.io/pocket_tcg_resources/img/M/US"
+$script:CardMapUrl = "https://leanny.github.io/pocket_tcg_resources/data/cardmap.json"
 $script:CardImageCacheDir = Join-Path $resolvedRoot "Helper\CardImageCache"
 $script:CardImagePrefetchPowerShell = $null
 $script:CardImagePrefetchHandle = $null
@@ -2998,7 +3001,26 @@ function Test-ValidCachedCardImage {
 function Get-UniqueIllustrationIdsFromCardmap {
     $cardmapPath = Join-Path $resolvedRoot "Helper\cardmap.json"
     if (-not (Test-Path -LiteralPath $cardmapPath -PathType Leaf)) {
-        throw "Helper\cardmap.json was not found."
+        $cardmapDirectory = Split-Path -Parent $cardmapPath
+        $cardmapTemporaryPath = "$cardmapPath.download"
+        try {
+            if (-not (Test-Path -LiteralPath $cardmapDirectory -PathType Container)) {
+                New-Item -ItemType Directory -Path $cardmapDirectory -Force | Out-Null
+            }
+            Invoke-WebRequest `
+                -Uri $script:CardMapUrl `
+                -OutFile $cardmapTemporaryPath `
+                -UseBasicParsing `
+                -ErrorAction Stop
+
+            # Validate the response before replacing the local cache.
+            $downloadedRaw = [System.IO.File]::ReadAllText($cardmapTemporaryPath)
+            $null = $downloadedRaw | ConvertFrom-Json -ErrorAction Stop
+            Move-Item -LiteralPath $cardmapTemporaryPath -Destination $cardmapPath -Force
+        } catch {
+            Remove-Item -LiteralPath $cardmapTemporaryPath -Force -ErrorAction SilentlyContinue
+            throw "Could not download Helper\cardmap.json from $($script:CardMapUrl): $($_.Exception.Message)"
+        }
     }
     try {
         $raw = [System.IO.File]::ReadAllText($cardmapPath)
@@ -3633,4 +3655,12 @@ try {
 finally {
     $listener.Stop()
     $listener.Close()
+    try {
+        if (
+            (Test-Path -LiteralPath $serverPidPath -PathType Leaf) -and
+            ([System.IO.File]::ReadAllText($serverPidPath).Trim() -eq [string]$PID)
+        ) {
+            Remove-Item -LiteralPath $serverPidPath -Force
+        }
+    } catch {}
 }

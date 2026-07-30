@@ -124,6 +124,7 @@ pub async fn run_serve(
 
     let app = Router::new()
         .nest("/__dashboard", dashboard_routes)
+        .route("/Helper/cardmap.json", get(get_cardmap))
         .fallback_service(static_files)
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -141,6 +142,26 @@ pub async fn run_serve(
         .await
         .context("HTTP server stopped with error")?;
     Ok(())
+}
+
+async fn get_cardmap(State(state): State<ServeState>) -> Result<Response, AppError> {
+    let root = state.root.clone();
+    let bytes = tokio::task::spawn_blocking(move || {
+        let path = crate::ensure_cardmap(&root)?;
+        std::fs::read(&path).with_context(|| format!("Could not read {:?}", path))
+    })
+    .await
+    .context("cardmap download task failed")??;
+
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/json; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-cache"),
+        ],
+        bytes,
+    )
+        .into_response())
 }
 
 fn spawn_background_sync(state: ServeState, interval_secs: u64) {

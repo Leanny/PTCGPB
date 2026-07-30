@@ -11,7 +11,7 @@ set "CARDDB=%ROOT%\Helper\carddb.exe"
 
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$ports=@(%PORT%,%LEGACY_PORT%); foreach($port in $ports){ Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }"
+  "$pidFile='%~dp0.dashboard_server.pid'; if(Test-Path -LiteralPath $pidFile){ $serverPid=[int](Get-Content -LiteralPath $pidFile -Raw); Stop-Process -Id $serverPid -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue }; $serverScript='%~dp0start_card_dashboard_server.ps1'; Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine.IndexOf($serverScript, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $ports=@(%PORT%,%LEGACY_PORT%); foreach($port in $ports){ Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -ne 4 } | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }"
 
 powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ^
   "Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','%~dp0start_card_dashboard_server.ps1','-Port','%LEGACY_PORT%','-Root','%ROOT%') -WorkingDirectory '%ROOT%' -WindowStyle Hidden"
