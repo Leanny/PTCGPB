@@ -5118,7 +5118,8 @@ GetEventRewards(frommain := true){
             continue
         }
 
-        if(FindOrLoseImage("Mission_PremiumLockImage", 0, failSafeTime) || (movedRightCount > 0 && FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime)))
+        ; Stop at Premium tab only. List is always visible on Missions pages - do not use as exit.
+        if (FindOrLoseImage("Mission_PremiumLockImage", 0, failSafeTime))
             break
 
         adbClick_wbb(235, 460)
