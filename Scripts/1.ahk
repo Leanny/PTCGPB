@@ -5042,19 +5042,40 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
         accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
     }
 
-    if (IsObject(accountMeta) && AccountEligibility_FlagIsSet(accountMeta, "X"))
+    syncSpecialEvents()
+
+    if (IsObject(accountMeta) && !AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
         return false
 
-    syncSpecialEvents()
+    session.set("specialMissionClaimedEvents", {})
 
     if (frommain)
         GoToMain()
 
     GetEventRewards(frommain) ; collects all the Special mission hourglass
+
+    advancedAny := false
+    accountMetaPath := ""
+    if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "")
+        accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
+
+    for eventName, advanced in session.get("specialMissionClaimedEvents") {
+        if (!advanced)
+            continue
+        advancedAny := true
+        if (accountMetaPath != "")
+            AccountMetadata_BumpSpecialEventClaim(session.get("scriptName"), session.get("accountFileName"), eventName, accountMetaPath)
+    }
+
+    ; Avoid re-entering Special Missions again this session even if nothing was found.
     session.get("missionDoneList")["specialMissionsDone"] := 1
     session.set("cantOpenMorePacks", 0)
-    if (session.get("injectMethod") && session.get("loadedAccount"))
+
+    if (advancedAny && accountMetaPath != "") {
+        accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+        AccountMetadata_ApplySpecialMissionXFlag(session.get("scriptName"), session.get("accountFileName"), accountMeta)
         setMetaData()
+    }
 
     return true
 }
@@ -5118,7 +5139,8 @@ GetEventRewards(frommain := true){
             continue
         }
 
-        if(FindOrLoseImage("Mission_PremiumLockImage", 0, failSafeTime) || (movedRightCount > 0 && FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime)))
+        ; Stop at Premium tab only. List is always visible on Missions pages - do not use as exit.
+        if (FindOrLoseImage("Mission_PremiumLockImage", 0, failSafeTime))
             break
 
         adbClick_wbb(235, 460)
@@ -5169,6 +5191,11 @@ ClaimVisibleEventRewards(eventResult) {
         }
 
         if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2){
+            ; Needle match advances the claim step for this game-day even if nothing is claimable.
+            if (!IsObject(session.get("specialMissionClaimedEvents")))
+                session.set("specialMissionClaimedEvents", {})
+            session.get("specialMissionClaimedEvents")[specialEventName] := 1
+
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
             Loop{

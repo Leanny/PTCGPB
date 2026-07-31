@@ -38,10 +38,12 @@ Gui, Add, Picture, hwndhScreenPic vScreenCtrl w%PicWidth% h%PicHeight% x15 y+10 
 
 Gui, Add, Text, x10 y+15 w170, Name:
 Gui, Add, Edit, vInputName w100 x+10 yp-5
-Gui, Add, Text, x10 y+15 w170, Expiry Date(yyyy-mm-dd):
-Gui, Add, Edit, vInputExpDate w100 x+10 yp-5
+Gui, Add, Text, x10 y+15 w170, Expires in (days):
+Gui, Add, Edit, vInputExpiresInDays w100 x+10 yp-5
 Gui, Add, Text, x10 y+15 w170, Expiry Time(UTC,hh:mm:ss):
 Gui, Add, Edit, vInputExpTime w100 x+10 yp-5, 05:59:59
+Gui, Add, Text, x10 y+15 w170, Claim Steps (Days):
+Gui, Add, Edit, vInputClaimSteps w100 x+10 yp-5, 1
 
 Gui, Add, Button, gBtnSave x50 y+20 w100, Save
 Gui, Add, Button, gBtnClose x+10 yp w100, Close
@@ -86,18 +88,23 @@ return
 BtnSave:
     Gui, Submit, NoHide
 
-    if !RegExMatch(InputExpDate, "^\d{4}-\d{2}-\d{2}$") {
-        MsgBox, 48, Format Error, Invalid Expiry Date format. (yyyy-mm-dd)`nExample: 2024-12-31
+    if (!InputName) {
+        MsgBox, 48, Notice, Please enter a Name.
+        return
+    }
+
+    if (InputExpiresInDays = "" || !RegExMatch(InputExpiresInDays, "^\d+$") || (InputExpiresInDays + 0) < 1) {
+        MsgBox, 48, Format Error, Expires in (days) must be an integer >= 1.`nUse the in-game countdown (e.g. 8 if it says expires in 8 days).
         return
     }
 
     if !RegExMatch(InputExpTime, "^\d{2}:\d{2}:\d{2}$") {
-        MsgBox, 48, Format Error, Invalid Expiry Time format. (hh:mm:ss)`nExample: 23:59:59
+        MsgBox, 48, Format Error, Invalid Expiry Time format. (hh:mm:ss)`nExample: 05:59:59
         return
     }
 
-    if (!InputName) {
-        MsgBox, 48, Notice, Please enter a Name.
+    if (InputClaimSteps = "" || !RegExMatch(InputClaimSteps, "^\d+$") || (InputClaimSteps + 0) < 1) {
+        MsgBox, 48, Format Error, Claim Steps (Days) must be an integer >= 1.`nExample: 7 for a 7-day login event`nUse 1 for a one-shot claim.
         return
     }
     if (!RedBox.exists || !BlueBox.exists) {
@@ -105,11 +112,15 @@ BtnSave:
         return
     }
 
-    ; 2. ìµœì¢… í™•ì¸ ì°½ (Yes/No)
+    convExpTime := StrReplace(InputExpTime, ":")
+    convExpDate := CalcExpiryDateFromRemainingDays(InputExpiresInDays + 0, convExpTime)
+    displayExpDate := SubStr(convExpDate, 1, 4) . "-" . SubStr(convExpDate, 5, 2) . "-" . SubStr(convExpDate, 7, 2)
+
     ConfirmMsg := "Are you sure you want to save the following details?`n`n"
         . "Event Name: " . InputName . "`n"
-        . "Expiry Date: " . InputExpDate . "`n"
-        . "Expiry Time: " . InputExpTime . "`n"
+        . "Expires in: " . InputExpiresInDays . " day(s)`n"
+        . "Calculated End (UTC): " . displayExpDate . " " . InputExpTime . "`n"
+        . "Claim Steps (Days): " . InputClaimSteps . "`n"
         . "Box Coordinates: Set"
 
     MsgBox, 4, Final Confirmation, %ConfirmMsg%
@@ -134,15 +145,13 @@ BtnSave:
     BlueBase64 := BitmapToBase64(pCroppedBlue)
     Gdip_DisposeImage(pCroppedBlue)
 
-    convExpDate := StrReplace(InputExpDate, "-")
-    convExpTime := StrReplace(InputExpTime, ":")
-
     SaveContent =
     (LTrim
         [TargetInfo]
         EventName=%InputName%
         ExpiryDate=%convExpDate%
         ExpiryTime=%convExpTime%
+        ClaimSteps=%InputClaimSteps%
 
         [RedBox]
         Coords=%rx1%, %ry1%, %rx2%, %ry2%
@@ -157,7 +166,7 @@ BtnSave:
     FileDelete, %FileName%
     FileAppend, %SaveContent%, %FileName%
 
-    MsgBox, 64, Success, The file %InputName%.sevt has been successfully saved in the Events folder.
+    MsgBox, 64, Success, The file %InputName%.sevt has been successfully saved in the Events folder.`nEnd (UTC): %displayExpDate% %InputExpTime%
 return
 
 BtnClose:
@@ -168,6 +177,26 @@ GuiClose:
         Gdip_DisposeImage(pDisplayBitmap)
     Gdip_Shutdown(pToken)
 ExitApp
+
+; Convert in-game "expires in N days" + UTC cutoff time into ExpiryDate (YYYYMMDD).
+; Uses the next UTC ExpiryTime as day 0 boundary, then adds remainingDays.
+CalcExpiryDateFromRemainingDays(remainingDays, expiryTimeCompact := "055959") {
+    if (remainingDays = "" || (remainingDays + 0) < 1)
+        remainingDays := 1
+    if (expiryTimeCompact = "")
+        expiryTimeCompact := "055959"
+
+    utcNow := A_NowUTC
+    utcDate := SubStr(utcNow, 1, 8)
+    utcTime := SubStr(utcNow, 9, 6)
+    nextCutoffDate := utcDate
+    if (utcTime >= expiryTimeCompact)
+        nextCutoffDate += 1, Days
+
+    endDate := nextCutoffDate
+    endDate += remainingDays, Days
+    return endDate
+}
 
 ResolveMuMuFolder(){
     mumuFolder := getMuMuFolderInConfig()

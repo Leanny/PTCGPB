@@ -1659,7 +1659,7 @@ saveToGit_Click:
 return
 
 ClearSpecialMissionHistory:
-    MsgBox, 4, Clear Special Mission History, Reset Special Mission completion history for the current account metadata files? This will clear the X flag in Accounts\Cards\accounts so that PTCGPB will try collecting Special Missions again for those accounts.
+    MsgBox, 4, Clear Special Mission History, Reset Special Mission completion history for the current account metadata files? This will clear the X flag and specialEvents claim counts in Accounts\Cards\accounts so that PTCGPB will try collecting Special Missions again for those accounts.
     IfMsgBox, Yes
     {
         changed := AccountMetadata_ClearFlagEverywhere("X")
