@@ -119,7 +119,7 @@ if (stopAfterRunPending = 1) {
 
 originalDeleteMethod := botConfig.get("deleteMethod")
 if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
-    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+"
+    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account"
     if (!InStr(validMethods, originalDeleteMethod)) {
         botConfig.set("deleteMethod", "Create Bots (13P)", "General")
         botConfig.saveConfigToSettings("General")
@@ -221,7 +221,7 @@ Loop {
 
 session.set("setSpeed", 3) ;always 1x/3x
 
-if(InStr(botConfig.get("deleteMethod"), "Inject"))
+if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account")
     session.set("injectMethod", true)
 
 initializeAdbShell()
@@ -476,6 +476,24 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(botConfig.get("deleteMethod") = "Inject Rewards")
             Goto, EndOfRun
 
+        if(botConfig.get("deleteMethod") = "Rename Account") {
+            renamedUsername := DoRenameAccount()
+            if (renamedUsername != "") {
+                accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+                accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
+                accountMeta["accountName"] := renamedUsername
+                AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
+                session.set("accountName", renamedUsername)
+                LogInfo("Renamed account to: " . renamedUsername)
+            }
+            if (session.get("injectMethod") && session.get("loadedAccount")) {
+                MarkAccountAsClaimed()
+                LogDebug("Marked renamed account as claimed (reusable): " . session.get("accountFileName"))
+                session.set("loadedAccount", false)
+            }
+            continue
+        }
+
         if(botConfig.get("deleteMethod") = "Create Bots (13P)"){
             EnterGameFromWelcomeIfNeeded() ; 1.7.0 forces restart onto Welcome; tap before GoToMain ESC
             GoToMain()
@@ -698,7 +716,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         ; Hourglass spending
-        if (botConfig.get("spendHourGlass") = 1 && !(botConfig.get("deleteMethod") = "Inject 13P+" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")) && botConfig.get("deleteMethod") != "Inject Rewards") {
+        if (botConfig.get("spendHourGlass") = 1 && !(botConfig.get("deleteMethod") = "Inject 13P+" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")) && botConfig.get("deleteMethod") != "Inject Rewards" && botConfig.get("deleteMethod") != "Rename Account") {
             SpendAllHourglass()
         }
 
@@ -771,8 +789,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if (session.get("injectMethod") && session.get("loadedAccount")) {
             ; For injection methods, mark the account as used
             if (!session.get("keepAccount") || session.get("s4tFoundTradeable")) {
-                if (botConfig.get("deleteMethod") = "Inject Rewards" && !session.get("s4tFoundTradeable")) {
-                    MarkAccountAsClaimed()  ; No 24h lock ï¿½ account stays available for pack-opening
+                if ((botConfig.get("deleteMethod") = "Inject Rewards" || botConfig.get("deleteMethod") = "Rename Account") && !session.get("s4tFoundTradeable")) {
+                    MarkAccountAsClaimed()  ; No 24h lock — account stays available for pack-opening
                     LogDebug("Marked injected account as claimed: " . session.get("accountFileName"))
                 } else {
                     MarkAccountAsUsed()  ; Remove account from queue
@@ -3473,6 +3491,153 @@ GetNeedle(Path) {
         needleObj.needle := pNeedle
         NeedleBitmaps[Path] := needleObj
         return needleObj
+    }
+}
+
+; Pick a username using AccountName prefix or usernames(_default).txt (same rules as Create Bots).
+PickRenameUsername() {
+    global botConfig
+
+    if (botConfig.get("AccountName") != "ERROR" && botConfig.get("AccountName") != "") {
+        Random, randomNum, 1, 500
+        username := botConfig.get("AccountName") . "-" . randomNum
+        username := SubStr(username, 1, 14)
+        LogDebug("Rename using AccountName: " . username)
+        return username
+    }
+
+    fileName := A_ScriptDir . "\..\usernames.txt"
+    if (FileExist(fileName))
+        name := ReadFile("usernames")
+    else
+        name := ReadFile("usernames_default")
+
+    Random, randomIndex, 1, name.MaxIndex()
+    username := name[randomIndex]
+    username := SubStr(username, 1, 14)
+    LogDebug("Rename using random username: " . username)
+    return username
+}
+
+; Inject Rename Account: Home → profile → edit name → type username → confirm.
+; Returns the applied username, or "" on failure/timeout.
+DoRenameAccount() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    CreateStatusMessage("Rename Account`nOpening profile...",,,, false)
+    GoToMain()
+
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        adbClick_wbb(143, 89) ; profile avatar
+        Delay(1)
+        ; Dismiss mission / tutorial popups (top-left).
+        Loop, 3 {
+            adbClick_wbb(69, 156)
+            Delay(0.5)
+        }
+
+        if (FindOrLoseImage("Profile_UsernamePencil", 0, failSafeTime))
+            break
+
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Rename Account`nFinding profile... (" . failSafeTime . "/60s)")
+        if (failSafeTime >= 60) {
+            LogWarn("Rename Account: timed out waiting for UsernamePencil")
+            return ""
+        }
+    }
+
+    CreateStatusMessage("Rename Account`nOpening name editor...",,,, false)
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        adbClick_wbb(136, 278) ; edit username row
+        Delay(1)
+
+        ; 30-day rename cooldown: error popup, dismiss and skip this account.
+        if (FindOrLoseImage("Profile_AlreadyRenamed", 0, 0, , true)) {
+            CreateStatusMessage("Rename Account`nAlready renamed (30d) — skip",,,, false)
+            LogInfo("Rename Account: AlreadyRenamed cooldown — skipping account")
+            adbClick_wbb(133, 367)
+            Delay(1)
+            return ""
+        }
+
+        if (FindOrLoseImage("Profile_PreRename", 0, failSafeTime))
+            break
+
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Rename Account`nWaiting PreRename... (" . failSafeTime . "/45s)")
+        if (failSafeTime >= 45) {
+            LogWarn("Rename Account: timed out waiting for PreRename")
+            return ""
+        }
+    }
+
+    username := PickRenameUsername()
+    if (username = "")
+        return ""
+
+    CreateStatusMessage("Rename Account`nTyping: " . username,,,, false)
+    adbClick_wbb(133, 260) ; focus editable text field
+    Delay(0.5)
+    ; Clear existing name (Shift+Home+Backspace); do not use friend EraseInput.
+    Loop, 4 {
+        adbInputEvent("59 122 67")
+        Delay(0.25)
+    }
+    adbInput(username)
+    Delay(1)
+
+    ; Confirm OK a couple of times on the PreRename OK region.
+    Loop, 2 {
+        adbClick_wbb(146, 366)
+        Delay(1)
+    }
+
+    ; Success only when pencil stays visible for >= 2s (avoids flash between the two OKs).
+    ; Keep tapping OK while waiting — the 2nd confirm dialog may not match PreRename.
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    pencilSeenAt := 0
+    lastOkClick := 0
+    Loop {
+        if (FindOrLoseImage("Profile_UsernamePencil", 0, 0, , true)) {
+            if (pencilSeenAt = 0)
+                pencilSeenAt := A_TickCount
+            else if (A_TickCount - pencilSeenAt >= 2000) {
+                CreateStatusMessage("Rename Account`nDone: " . username,,,, false)
+                LogInfo("DoRenameAccount applied username: " . username)
+                return username
+            }
+        } else {
+            pencilSeenAt := 0
+            ; Pencil gone / still on OK dialog — press OK again.
+            if (A_TickCount - lastOkClick >= 800) {
+                adbClick_wbb(146, 366)
+                lastOkClick := A_TickCount
+                Delay(0.3)
+            }
+        }
+
+        ; Also OK if PreRename needle is still up (first confirm page).
+        if (FindOrLoseImage("Profile_PreRename", 0, 0, , true) && A_TickCount - lastOkClick >= 800) {
+            pencilSeenAt := 0
+            adbClick_wbb(146, 366)
+            lastOkClick := A_TickCount
+            Delay(0.3)
+        }
+
+        Delay(0.25)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Rename Account`nConfirming rename... (" . failSafeTime . "/30s)")
+        if (failSafeTime >= 30) {
+            LogWarn("Rename Account: rename not confirmed (pencil not stable 2s)")
+            return ""
+        }
     }
 }
 
