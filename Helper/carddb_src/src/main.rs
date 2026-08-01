@@ -2476,7 +2476,7 @@ fn inject_pack_eligible(account: &Value, options: &ScheduleOptions) -> bool {
 
 fn eligible(account: &Value, options: &ScheduleOptions) -> bool {
     match options.delete_method.as_str() {
-        "Create Bots (13P)" => true,
+        "Create Bots (13P)" | "Rename Account" => true,
         "Inject Rewards" => inject_rewards_eligible(account, options),
         "Inject 13P+" | "Inject Wonderpick 96P+" => inject_pack_eligible(account, options),
         _ => true,
@@ -2777,7 +2777,10 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
         let device_account = extract_device_account_from_xml(&path);
-        if used_account_matches(&used_state.used, &file_name, &device_account) {
+        // Rename Account sweeps every saved XML, including those in used_accounts.txt.
+        if options.delete_method != "Rename Account"
+            && used_account_matches(&used_state.used, &file_name, &device_account)
+        {
             continue;
         }
 
@@ -2876,7 +2879,9 @@ fn count_eligible_for_all_instances(
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_default();
             let device_account = extract_device_account_from_xml(&path);
-            if used_account_matches(&used_state.used, &file_name, &device_account) {
+            if options.delete_method != "Rename Account"
+                && used_account_matches(&used_state.used, &file_name, &device_account)
+            {
                 continue;
             }
 

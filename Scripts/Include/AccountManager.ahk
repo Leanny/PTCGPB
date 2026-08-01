@@ -830,6 +830,9 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (method = "Inject Rewards")
         return AccountEligibility_InjectRewardsEligible(accountMeta)
 
+    if (method = "Rename Account")
+        return true
+
     packCount := accountMeta["packCount"] + 0
     if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
         return false
@@ -899,8 +902,9 @@ CreateAccountList(instance) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig
 
-    ; Clean up stale used accounts first
-    CleanupUsedAccounts()
+    ; Clean up stale used accounts first (skipped for Rename — used accounts stay eligible)
+    if (botConfig.get("deleteMethod") != "Rename Account")
+        CleanupUsedAccounts()
 
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . instance
     outputTxt := saveDir . "\list.txt"
@@ -910,6 +914,11 @@ CreateAccountList(instance) {
     ; Check if we need to regenerate the lists
     needRegeneration := false
     forceRegeneration := false
+
+    ; Rename Account must rescan all XMLs (including used) whenever the queue is built.
+    ; Do not set forceRegeneration — that passes --force-clear-used and wipes used_accounts.txt.
+    if (botConfig.get("deleteMethod") = "Rename Account")
+        needRegeneration := true
 
     ; First check: Do list files exist and are they not empty?
     if (!FileExist(outputTxt) || !FileExist(outputTxt_current)) {
@@ -980,7 +989,7 @@ CreateAccountList(instance) {
         command .= " --s4t-enabled"
     if (botConfig.get("spendHourGlass"))
         command .= " --spend-hourglass"
-    if (forceRegeneration)
+    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account")
         command .= " --force-clear-used"
 
     hScheduleLock := CreateAccountListSchedule_AcquireLock()

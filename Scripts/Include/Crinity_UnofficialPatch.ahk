@@ -168,6 +168,12 @@ startPreProcess(methodType){
         clickX := getPackCoordXInHome()
         clickY := 203
     }
+    else if(methodType = "Rename Account"){
+        findImageName := "Home"
+        needleName := "Pack_PackPointButton"
+        clickX := getPackCoordXInHome()
+        clickY := 203
+    }
 
     findImageName .= "`n(Selected pack: " . session.get("openPack") . ")"
 
