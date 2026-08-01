@@ -4278,6 +4278,13 @@ PackOpening(tenPackOpening := false) {
             failsafeClickExecuted := false
             continue
         }
+        ; 2nd+ pack: game may force Welcome Back missions tab while Waiting for Pack
+        if(TryRecoverWelcomeBackMissionsAfterPack("PackOpening", recoveryPack)) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            failsafeClickExecuted := false
+            continue
+        }
         adbClick_wbb(146, 434)
         Delay(0.2)
         adbClick_wbb(170, 455)
@@ -4430,6 +4437,12 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
                     return
                 recoveredPackOpening := true
                 break
+            }
+            if(TryRecoverWelcomeBackMissionsAfterPack("HourglassOpening", recoveryPack)) {
+                session.set("failSafe", A_TickCount)
+                failSafeTime := 0
+                failsafeClickExecuted := false
+                continue
             }
             if(FindHourglassOpenConfirmation(tenPackOpening, failSafeTime)) {
                 break
@@ -5144,12 +5157,12 @@ MoveToDailyMissionPageForRewards() {
             return true
         else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
             Delay(1)
-            adbClick(42, 465)
+            ClickMissionSubTab(42, 465)
             Delay(2)
             return true
         }
 
-        adbClick(165, 465)
+        ClickMissionSubTab(165, 465)
         Sleep, 500
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         if (failSafeTime > 10)
@@ -5205,7 +5218,7 @@ GetAllRewards(tomain := true, dailies := false) {
             break
         else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
             Delay(2)
-            adbClick(42, 465) ; move to DailyMissions page
+            ClickMissionSubTab(42, 465) ; Daily / WB-shifted tabs
             Delay(2)
             break
         }
@@ -5227,7 +5240,7 @@ GetAllRewards(tomain := true, dailies := false) {
                 break
             else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
                 Sleep, 500
-                adbClick(42, 465) ; move to DailyMissions page
+                ClickMissionSubTab(42, 465) ; Daily / WB-shifted tabs
                 Sleep, 500
                 break
             }
@@ -5238,7 +5251,7 @@ GetAllRewards(tomain := true, dailies := false) {
                 GotRewards := false
                 return GotRewards
             }
-            adbClick(165, 465)
+            ClickMissionSubTab(165, 465)
             Sleep, 500
         }
 
