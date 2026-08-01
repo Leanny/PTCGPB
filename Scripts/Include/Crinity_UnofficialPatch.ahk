@@ -34,25 +34,27 @@ processPrivacyAgreement()
     adbClick(138, 479)
 }
 
-; Dismiss the intermittent "Welcome Back" account popup.
+; Welcome Back appears AFTER Welcome, while Finding Home/Points/Social.
+; Multi-page: keep Next/OK sticky after page-1 needle until the mode target appears.
+; Do NOT call from boot — boot only waits for Welcome / cinematic / already-main.
 ; Returns true when a dismiss click was issued this tick.
-TryDismissWelcomeBackPopup(logContext, ByRef advancing, ByRef useSecondClick) {
+TryAdvanceWelcomeBackWhileFinding(logContext, ByRef advancing, ByRef useSecondClick) {
     if (FindOrLoseImage("Boot_WelcomeBack", 0, 0, 20, true)) {
         if (!advancing)
-            LogInfo(logContext . ": advancing past Welcome Back popup", "ADB.txt")
+            LogInfo(logContext . ": Welcome Back during Finding — advancing pages", "ADB.txt")
         advancing := true
-        CreateStatusMessage("Dismissing Welcome Back popup...",,,, false)
-        if (useSecondClick)
-            adbClick_wbb(194, 433)
-        else
-            adbClick_wbb(139, 432)
-        useSecondClick := !useSecondClick
-        Sleep, 500
-        return true
+        CreateStatusMessage("Dismissing Welcome Back`n(Finding mode target)...",,,, false)
     }
-    advancing := false
-    useSecondClick := false
-    return false
+    if (!advancing)
+        return false
+
+    if (useSecondClick)
+        adbClick_wbb(194, 433) ; OK / second-page button
+    else
+        adbClick_wbb(139, 432) ; Next
+    useSecondClick := !useSecondClick
+    Sleep, 500
+    return true
 }
 
 waitForAppBootScreen() {
@@ -67,16 +69,12 @@ waitForAppBootScreen() {
     LogInfo("Boot gate: waiting for startup screen", "ADB.txt")
 
     lastStatusSec := -1
-    welcomeBackAdvancing := false
-    welcomeBackUseSecondClick := false
     Loop {
         if (handleAppHealthDuringSearch("boot", true))
             return false
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (TryDismissWelcomeBackPopup("Boot gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
-            continue
-
+        ; Boot only: Welcome / setup / already in main. Welcome Back is handled later while Finding.
         if (FindOrLoseImage("Boot_Welcome", 0, 0, 30, true)) {
             LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
             return true
@@ -187,14 +185,16 @@ startPreProcess(methodType){
         if (handleAppHealthDuringSearch(findImageName))
             break
 
-        if (TryDismissWelcomeBackPopup("Entering gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
-            continue
+        ; Done only when the mode target (Points / Home / Social / Country) is actually visible.
+        if(FindOrLoseImage(needleName, 0, failSafeTime, , true))
+            break
 
         if(methodType = "Inject Wonderpick 96P+" && DismissFriendFlowBlockingPopup("Entering Social"))
             continue
 
-        if(FindOrLoseImage(needleName, 0, failSafeTime, , true))
-            break
+        ; After Welcome: Welcome Back may appear while Finding — advance pages until target above returns.
+        if (TryAdvanceWelcomeBackWhileFinding("Entering gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
+            continue
 
         adbClick_wbb(clickX, clickY)
         Delay(0.5)
