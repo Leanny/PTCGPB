@@ -1,11 +1,171 @@
 param(
     [int]$Port = 8081,
-    [string]$Root = (Get-Location).Path
+    [string]$Root = (Get-Location).Path,
+    [switch]$LaunchDashboard,
+    [switch]$Splash,
+    [int]$SplashPort = 8099,
+    [int]$PrimaryPort = 8081,
+    [int]$LegacyPort = 8083,
+    [string]$HtmlVersion = "0",
+    [int]$SplashTimeoutSec = 60
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Stop-DashboardPidFile([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    try {
+        $oldPid = 0
+        [void][int]::TryParse(([string](Get-Content -LiteralPath $Path -Raw)).Trim(), [ref]$oldPid)
+        if ($oldPid -gt 4) {
+            Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+        }
+    } catch {}
+    Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+}
+
+function Stop-LocalListenPorts([int[]]$Ports) {
+    $rows = netstat -ano -p tcp
+    foreach ($port in $Ports) {
+        $needle = ":$port "
+        foreach ($row in $rows) {
+            if ($row -notlike "*LISTENING*") { continue }
+            if ($row -notlike "*$needle*") { continue }
+            if ($row -match "\s(\d+)\s*$") {
+                $procId = [int]$Matches[1]
+                if ($procId -gt 4) {
+                    Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    }
+}
+
+function Wait-LocalPortOpen([int]$Port, [int]$TimeoutMs = 1500) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($sw.ElapsedMilliseconds -lt $TimeoutMs) {
+        $client = $null
+        try {
+            $client = New-Object System.Net.Sockets.TcpClient
+            $iar = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
+            if ($iar.AsyncWaitHandle.WaitOne(40) -and $client.Connected) {
+                return $true
+            }
+        } catch {
+        } finally {
+            if ($client) { try { $client.Close() } catch {} }
+        }
+        Start-Sleep -Milliseconds 20
+    }
+    return $false
+}
+
+if ($LaunchDashboard) {
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $serverScript = $MyInvocation.MyCommand.Path
+    $serverPidPath = Join-Path $cardsDir ".dashboard_server.pid"
+    $splashPidPath = Join-Path $cardsDir ".dashboard_splash.pid"
+    $cardDbExe = Join-Path $resolvedRoot "Helper\carddb.exe"
+
+    Stop-DashboardPidFile $splashPidPath
+    Stop-DashboardPidFile $serverPidPath
+    Get-Process -Name carddb -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Stop-LocalListenPorts @($PrimaryPort, $LegacyPort, $SplashPort)
+
+    Start-Process -FilePath "powershell.exe" -WorkingDirectory $cardsDir -WindowStyle Hidden -ArgumentList @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $serverScript,
+        "-Splash",
+        "-Root", $resolvedRoot,
+        "-SplashPort", "$SplashPort",
+        "-PrimaryPort", "$PrimaryPort",
+        "-LegacyPort", "$LegacyPort",
+        "-HtmlVersion", "$HtmlVersion"
+    ) | Out-Null
+
+    [void](Wait-LocalPortOpen -Port $SplashPort -TimeoutMs 1500)
+    Start-Process ("http://127.0.0.1:{0}/?t={1}" -f $SplashPort, [Environment]::TickCount) | Out-Null
+
+    Start-Process -FilePath "powershell.exe" -WorkingDirectory $resolvedRoot -WindowStyle Hidden -ArgumentList @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $serverScript,
+        "-Port", "$LegacyPort",
+        "-Root", $resolvedRoot
+    ) | Out-Null
+
+    if (Test-Path -LiteralPath $cardDbExe) {
+        Start-Process -FilePath $cardDbExe -WorkingDirectory $resolvedRoot -WindowStyle Hidden -ArgumentList @(
+            "--root", $resolvedRoot,
+            "serve",
+            "--port", "$PrimaryPort",
+            "--legacy-port", "$LegacyPort"
+        ) | Out-Null
+    }
+    return
+}
+
+if ($Splash) {
+    $splashRoot = if ($PSBoundParameters.ContainsKey("Root")) {
+        [System.IO.Path]::GetFullPath($Root)
+    } else {
+        [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
+    }
+    $splashPidPath = Join-Path $splashRoot "Accounts\Cards\.dashboard_splash.pid"
+    try {
+        [System.IO.File]::WriteAllText($splashPidPath, [string]$PID)
+    } catch {}
+
+    $targetPath = "/Accounts/Cards/card_database.html?v=$HtmlVersion"
+    $targetJson = ($targetPath | ConvertTo-Json)
+    # Keep splash HTML ASCII-only so Windows PowerShell file encoding cannot mojibake it.
+    $html = '<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Loading Card Database</title><style>'
+    $html += 'body{margin:0;min-height:100vh;display:grid;place-items:center;font:600 15px/1.45 Segoe UI,sans-serif;color:#edf2ff;background:radial-gradient(1200px 600px at 20% -10%,rgba(142,180,255,.18),transparent),radial-gradient(900px 500px at 90% 10%,rgba(176,240,208,.12),transparent),#0b1020}'
+    $html += '.panel{width:min(420px,92vw);padding:28px 26px;border:1px solid #2c385d;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02)),#121a2f;box-shadow:0 14px 40px rgba(0,0,0,.28)}'
+    $html += 'h1{margin:0 0 8px;font-size:1.15rem}p{margin:0;color:#aeb9d4;font-weight:600}'
+    $html += '.bar{margin-top:18px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}'
+    $html += '.fill{height:100%;width:30%;border-radius:inherit;background:linear-gradient(90deg,#8eb4ff,#b0f0d0);animation:slide 1.2s ease-in-out infinite}'
+    $html += '@keyframes slide{0%{transform:translateX(-60%)}100%{transform:translateX(280%)}}</style></head><body>'
+    $html += '<div class="panel"><h1>Loading Card Database</h1><p id="m">Starting dashboard server...</p>'
+    $html += '<div class="bar" aria-hidden="true"><div class="fill"></div></div></div><script>'
+    $html += 'const primary=' + $PrimaryPort + ';const legacy=' + $LegacyPort + ';const targetPath=' + $targetJson + ';'
+    $html += 'const preferUntil=Date.now()+20000;const deadline=Date.now()+45000;const m=document.getElementById("m");'
+    $html += 'async function probe(port){const bases=["http://127.0.0.1:"+port,"http://localhost:"+port];for(const base of bases){try{const ping=await fetch(base+"/__dashboard/ping",{cache:"no-store"});if(ping.status===204||ping.ok)return base+targetPath;}catch(_){}try{const page=await fetch(base+targetPath,{cache:"no-store"});if(page.ok)return page.url||(base+targetPath);}catch(_){}try{const root=await fetch(base+"/",{cache:"no-store"});if(root.ok)return base+targetPath;}catch(_){}}return null;}'
+    $html += '(async()=>{let n=0;while(Date.now()<deadline){n+=1;m.textContent="Starting dashboard server... ("+n+")";let url=await probe(primary);if(!url&&Date.now()>=preferUntil)url=await probe(legacy);if(url){m.textContent="Server ready - opening dashboard...";location.replace(url);return;}await new Promise(r=>setTimeout(r,400));}m.textContent="Server did not start in time. Retry Open Card Database.";})();'
+    $html += '</script></body></html>'
+
+    $listener = New-Object System.Net.HttpListener
+    $listener.Prefixes.Add("http://127.0.0.1:$SplashPort/")
+    $listener.Start()
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $bytes = $utf8.GetBytes($html)
+    $deadline = (Get-Date).AddSeconds([Math]::Max(15, $SplashTimeoutSec))
+    try {
+        while ((Get-Date) -lt $deadline -and $listener.IsListening) {
+            $task = $listener.GetContextAsync()
+            while (-not $task.AsyncWaitHandle.WaitOne(500)) {
+                if ((Get-Date) -ge $deadline) { break }
+            }
+            if (-not $task.IsCompleted) { break }
+            $ctx = $task.Result
+            $res = $ctx.Response
+            $res.StatusCode = 200
+            $res.ContentType = "text/html; charset=utf-8"
+            $res.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            $res.Headers["Pragma"] = "no-cache"
+            $res.ContentLength64 = $bytes.Length
+            $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            $res.OutputStream.Close()
+        }
+    } finally {
+        try { $listener.Stop() } catch {}
+        try { $listener.Close() } catch {}
+    }
+    return
+}
 $script:AccountJsonSerializer = $null
 
 $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
