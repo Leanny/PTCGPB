@@ -223,7 +223,9 @@ SpecialEvent_GetGameDayKey(timestamp := "", expiryTime := "055959") {
 
     offset := SpecialEvent_GetLocalUtcOffsetHours()
     utcTs := timestamp
-    EnvSub, utcTs, %offset%, Hours
+    ; EnvSub,var,N,Hours treats N as a timestamp (difference mode) and clears var.
+    ; Use += to shift a YYYYMMDDHHMMSS stamp by local→UTC offset hours.
+    utcTs += -offset, Hours
     utcDate := SubStr(utcTs, 1, 8)
     utcTime := SubStr(utcTs, 9, 6)
     if (utcTime >= expiryTime) {
