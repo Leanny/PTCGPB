@@ -3508,29 +3508,38 @@ PickRenameUsername() {
     return username
 }
 
-; Inject Rename Account: Home → profile → edit name → type username → confirm.
+; Inject Rename Account: hamburger → profile → edit name → type username → confirm.
 ; Returns the applied username, or "" on failure/timeout.
 DoRenameAccount() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
     CreateStatusMessage("Rename Account`nOpening profile...",,,, false)
-    GoToMain()
 
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
+    pencilSeenAt := 0
     Loop {
-        adbClick_wbb(143, 89) ; profile avatar
-        Delay(1)
-        ; Dismiss mission / tutorial popups (top-left).
-        Loop, 3 {
-            adbClick_wbb(69, 156)
-            Delay(0.5)
+        ; UsernamePencil is a tiny low-contrast gray icon; default variation 20
+        ; false-positives. Require it stable for >= 1s (same idea as exit confirm).
+        if (FindOrLoseImage("Profile_UsernamePencil", 0, 0, 5, true)) {
+            if (pencilSeenAt = 0)
+                pencilSeenAt := A_TickCount
+            else if (A_TickCount - pencilSeenAt >= 1000)
+                break
+        } else {
+            pencilSeenAt := 0
+            ; Faster than Home→avatar: hamburger menu → profile row.
+            if (FindOrLoseImage("Profile_UserNameArrowInSettingMenu", 0, 0, , true)) {
+                adbClick_wbb(242, 131) ; user profile row in hamburger
+                Delay(1)
+            } else {
+                adbClick_wbb(240, 494) ; hamburger menu button
+                Delay(1)
+            }
         }
 
-        if (FindOrLoseImage("Profile_UsernamePencil", 0, failSafeTime))
-            break
-
+        Delay(0.25)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Rename Account`nFinding profile... (" . failSafeTime . "/60s)")
         if (failSafeTime >= 60) {
@@ -3547,7 +3556,7 @@ DoRenameAccount() {
         Delay(1)
 
         ; 30-day rename cooldown: error popup, dismiss and skip this account.
-        if (FindOrLoseImage("Profile_AlreadyRenamed", 0, 0, , true)) {
+        if (FindOrLoseImage("Profile_AlreadyRenamed", 0, 0, 8, true)) {
             CreateStatusMessage("Rename Account`nAlready renamed (30d) — skip",,,, false)
             LogInfo("Rename Account: AlreadyRenamed cooldown — skipping account")
             adbClick_wbb(133, 367)
@@ -3555,7 +3564,8 @@ DoRenameAccount() {
             return ""
         }
 
-        if (FindOrLoseImage("Profile_PreRename", 0, failSafeTime))
+        ; PreRename needle is a small blue curve — keep variation low to avoid false opens.
+        if (FindOrLoseImage("Profile_PreRename", 0, 0, 8, true))
             break
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -3594,7 +3604,7 @@ DoRenameAccount() {
     pencilSeenAt := 0
     lastOkClick := 0
     Loop {
-        if (FindOrLoseImage("Profile_UsernamePencil", 0, 0, , true)) {
+        if (FindOrLoseImage("Profile_UsernamePencil", 0, 0, 5, true)) {
             if (pencilSeenAt = 0)
                 pencilSeenAt := A_TickCount
             else if (A_TickCount - pencilSeenAt >= 2000) {
@@ -3613,7 +3623,7 @@ DoRenameAccount() {
         }
 
         ; Also OK if PreRename needle is still up (first confirm page).
-        if (FindOrLoseImage("Profile_PreRename", 0, 0, , true) && A_TickCount - lastOkClick >= 800) {
+        if (FindOrLoseImage("Profile_PreRename", 0, 0, 8, true) && A_TickCount - lastOkClick >= 800) {
             pencilSeenAt := 0
             adbClick_wbb(146, 366)
             lastOkClick := A_TickCount
