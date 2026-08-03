@@ -152,21 +152,36 @@ if ($LaunchDashboard) {
     $portsPath = Join-Path $cardsDir ".dashboard_ports.txt"
     $cardDbExe = Join-Path $resolvedRoot "Helper\carddb.exe"
 
-    # Reuse a live dashboard from the port cache (validated via /__dashboard/ping).
+    # Reuse a live dashboard only when the full stack is healthy.
+    # carddb primary can ping while legacy is dead; ui-prefs and other APIs then 500.
     $cached = Read-DashboardPortsFile $portsPath
-    if (Test-DashboardPing $cached.primary) {
-        Start-Process (Get-DashboardPageUrl $cached.primary $HtmlVersion) | Out-Null
-        return
-    }
-    if (Test-DashboardPing $cached.legacy) {
-        Start-Process (Get-DashboardPageUrl $cached.legacy $HtmlVersion) | Out-Null
-        return
+    $primaryOk = Test-DashboardPing $cached.primary
+    $legacyOk = Test-DashboardPing $cached.legacy
+    $hasCardDb = Test-Path -LiteralPath $cardDbExe -PathType Leaf
+    if ($hasCardDb) {
+        if ($primaryOk -and $legacyOk) {
+            Start-Process (Get-DashboardPageUrl $cached.primary $HtmlVersion) | Out-Null
+            return
+        }
+    } else {
+        if ($primaryOk) {
+            Start-Process (Get-DashboardPageUrl $cached.primary $HtmlVersion) | Out-Null
+            return
+        }
+        if ($legacyOk) {
+            Start-Process (Get-DashboardPageUrl $cached.legacy $HtmlVersion) | Out-Null
+            return
+        }
     }
 
     # Cache miss / dead server: stop only our previous launcher PIDs (no fixed-port kills).
     Stop-DashboardPidFile $splashPidPath
     Stop-DashboardPidFile $serverPidPath
     Get-Process -Name carddb -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    if (Get-Process -Name carddb -ErrorAction SilentlyContinue) {
+        # Some sessions deny Stop-Process; taskkill is best-effort so a new port bind can proceed.
+        Start-Process -FilePath "taskkill.exe" -ArgumentList @("/F", "/IM", "carddb.exe") -WindowStyle Hidden -Wait -ErrorAction SilentlyContinue | Out-Null
+    }
 
     if ($PrimaryPort -gt 0 -and $LegacyPort -gt 0 -and $SplashPort -gt 0) {
         # Explicit ports kept for debugging / manual override.
@@ -1488,7 +1503,6 @@ function Normalize-DashboardUiPrefs {
     }
 
     return [pscustomobject]@{
-        version = 2
         language = $language
         theme = $theme
         cardSize = $cardSize
@@ -1517,7 +1531,6 @@ function Invoke-GetDashboardUiPrefs {
     $prefs = Read-DashboardUiPrefsObject
     Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
         ok = $true
-        version = [int]$prefs.version
         language = [string]$prefs.language
         theme = [string]$prefs.theme
         cardSize = [int]$prefs.cardSize
@@ -1559,8 +1572,6 @@ function Invoke-SaveDashboardUiPrefs {
 
     $normalized = Normalize-DashboardUiPrefs $merged
     $payloadOut = [ordered]@{
-        version = 2
-        updatedAt = (Get-Date).ToString("o")
         language = [string]$normalized.language
         theme = [string]$normalized.theme
         cardSize = [int]$normalized.cardSize

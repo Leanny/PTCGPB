@@ -13162,8 +13162,9 @@
                 const localSnap = collectLocalUiPrefsSnapshot();
                 const prefs = await fetchDashboardUiPrefs().catch(() => null);
                 if (!prefs || prefs.ok === false) {
-                    await saveDashboardUiPrefs(localSnap);
-                    return localSnap;
+                    // Endpoint down/proxy broken: keep local UI state and do NOT overwrite
+                    // Accounts/Cards/.dashboard_ui_prefs.json with browser defaults.
+                    return null;
                 }
 
                 const merged = {
