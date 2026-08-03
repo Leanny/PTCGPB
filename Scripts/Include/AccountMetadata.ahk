@@ -259,7 +259,9 @@ SpecialEvent_IsSameGameDay(timestampA, timestampB := "", expiryTime := "055959")
     return SpecialEvent_GetGameDayKey(timestampA, expiryTime) = SpecialEvent_GetGameDayKey(timestampB, expiryTime)
 }
 
-; Lightweight list for eligibility (no bitmaps). Returns array of {eventName, claimSteps, expiryDate, expiryTime}.
+; Lightweight list for eligibility (no bitmaps).
+; Returns {eventName, claimSteps, claimDays, giftDays, expiryDate, expiryTime}.
+; claimDays/giftDays are arrays of ints; empty claimDays = claim every step.
 SpecialEvent_ListActiveEventInfos() {
     infos := []
     TargetPath := getScriptBaseFolder() . "\SpecialEvents\Events"
@@ -272,9 +274,11 @@ SpecialEvent_ListActiveEventInfos() {
         IniRead, vDate, %FilePath%, TargetInfo, ExpiryDate
         IniRead, vTime, %FilePath%, TargetInfo, ExpiryTime
         vClaimSteps := SpecialEvent_ReadClaimSteps(FilePath)
+        vClaimDays := SpecialEvent_ReadDayList(FilePath, "ClaimDays")
+        vGiftDays := SpecialEvent_ReadDayList(FilePath, "GiftDays")
         if (SpecialEvent_IsExpiredByDateTime(vDate, vTime))
             continue
-        infos.Push({"eventName": vName, "claimSteps": vClaimSteps, "expiryDate": vDate, "expiryTime": vTime})
+        infos.Push({"eventName": vName, "claimSteps": vClaimSteps, "claimDays": vClaimDays, "giftDays": vGiftDays, "expiryDate": vDate, "expiryTime": vTime})
     }
     return infos
 }
@@ -288,6 +292,41 @@ SpecialEvent_ReadClaimSteps(filePath) {
     if (vClaimSteps = "ERROR" || vClaimSteps = "" || (vClaimSteps + 0) < 1)
         return 1
     return vClaimSteps + 0
+}
+
+; Parse comma-separated day list from .sevt (e.g. "2,4"). Empty/missing → [].
+SpecialEvent_ReadDayList(filePath, keyName) {
+    days := []
+    IniRead, raw, %filePath%, TargetInfo, %keyName%, ERROR
+    if (raw = "ERROR" || raw = "")
+        return days
+    raw := RegExReplace(raw, "\s+", "")
+    Loop, Parse, raw, `,
+    {
+        part := A_LoopField
+        if (part = "" || !RegExMatch(part, "^\d+$"))
+            continue
+        n := part + 0
+        if (n < 1)
+            continue
+        days.Push(n)
+    }
+    return days
+}
+
+; Empty list = "all steps" when forClaim=true; empty = "none" when forClaim=false (gift).
+SpecialEvent_DayListContains(dayList, step, emptyMeansAll := false) {
+    step := step + 0
+    if (step < 1)
+        return false
+    maxIndex := IsObject(dayList) ? dayList.MaxIndex() : ""
+    if (maxIndex = "" || maxIndex < 1)
+        return emptyMeansAll ? true : false
+    Loop, % maxIndex {
+        if ((dayList[A_Index] + 0) = step)
+            return true
+    }
+    return false
 }
 
 SpecialEvent_IsExpiredByDateTime(expiryDate, expiryTime) {
@@ -354,6 +393,61 @@ AccountMetadata_BumpSpecialEventClaim(instance, fileName, eventName, filePath :=
     progress["lastClaimAt"] := AccountMetadata_Now()
     account["specialEvents"][eventName] := progress
     return AccountMetadata_SaveAccount(instance, fileName, account)
+}
+
+; Advance each active event by +1 on a new game day. Returns:
+; { advancedAny, needClaimUi, forceGift, claimUiEvents }
+; claimUiEvents maps eventName → newStep for events that should open claim UI.
+AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
+    result := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "claimUiEvents": {}}
+    if (instance = "" || fileName = "")
+        return result
+
+    account := AccountMetadata_Get(instance, fileName, filePath)
+    if (account["deviceAccount"] = "") {
+        deviceAccount := AccountMetadata_CurrentDeviceAccount()
+        if (deviceAccount = "")
+            deviceAccount := AccountMetadata_GetDeviceAccountFromFile(filePath)
+        if (deviceAccount != "")
+            account["deviceAccount"] := deviceAccount
+    }
+    if (!IsObject(account["specialEvents"]))
+        account["specialEvents"] := {}
+
+    activeEvents := SpecialEvent_ListActiveEventInfos()
+    eventCount := activeEvents.MaxIndex()
+    if (eventCount = "")
+        eventCount := 0
+    changed := false
+    Loop, % eventCount {
+        info := activeEvents[A_Index]
+        eventName := info["eventName"]
+        progress := AccountMetadata_GetSpecialEventProgress(account, eventName)
+        if (progress["claimCount"] >= info["claimSteps"])
+            continue
+        if (SpecialEvent_IsSameGameDay(progress["lastClaimAt"], "", info["expiryTime"]))
+            continue
+
+        newStep := progress["claimCount"] + 1
+        progress["claimCount"] := newStep
+        progress["lastClaimAt"] := AccountMetadata_Now()
+        account["specialEvents"][eventName] := progress
+        changed := true
+        result["advancedAny"] := true
+
+        ; Empty ClaimDays = claim every step.
+        if (SpecialEvent_DayListContains(info["claimDays"], newStep, true)) {
+            result["needClaimUi"] := true
+            result["claimUiEvents"][eventName] := newStep
+        }
+        ; Empty GiftDays = no forced gift.
+        if (SpecialEvent_DayListContains(info["giftDays"], newStep, false))
+            result["forceGift"] := true
+    }
+
+    if (changed)
+        AccountMetadata_SaveAccount(instance, fileName, account)
+    return result
 }
 
 ; After successful claims: X=1 with validUntil=next game-day while under ClaimSteps; permanent when all done.

@@ -736,7 +736,9 @@ AccountEligibility_FlagIsSet(accountMeta, flag) {
     return flagObj["value"] ? true : false
 }
 
-; True when at least one active .sevt event still needs a claim this game-day.
+; True when at least one active .sevt event needs a game-day advance
+; (new game day and claimCount still below ClaimSteps). Claim UI / gift
+; filtering happens inside ClaimSpecialMissionRewards via ClaimDays/GiftDays.
 AccountEligibility_NeedsSpecialMissionClaim(accountMeta) {
     activeEvents := SpecialEvent_ListActiveEventInfos()
     eventCount := activeEvents.MaxIndex()

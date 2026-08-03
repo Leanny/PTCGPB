@@ -44,6 +44,10 @@ Gui, Add, Text, x10 y+15 w170, Expiry Time(UTC,hh:mm:ss):
 Gui, Add, Edit, vInputExpTime w100 x+10 yp-5, 05:59:59
 Gui, Add, Text, x10 y+15 w170, Claim Steps (Days):
 Gui, Add, Edit, vInputClaimSteps w100 x+10 yp-5, 1
+Gui, Add, Text, x10 y+15 w170, Claim Days (opt, e.g. 3,5):
+Gui, Add, Edit, vInputClaimDays w100 x+10 yp-5,
+Gui, Add, Text, x10 y+15 w170, Gift Days (opt, e.g. 2,4):
+Gui, Add, Edit, vInputGiftDays w100 x+10 yp-5,
 
 Gui, Add, Button, gBtnSave x50 y+20 w100, Save
 Gui, Add, Button, gBtnClose x+10 yp w100, Close
@@ -107,6 +111,14 @@ BtnSave:
         MsgBox, 48, Format Error, Claim Steps (Days) must be an integer >= 1.`nExample: 7 for a 7-day login event`nUse 1 for a one-shot claim.
         return
     }
+    if (InputClaimDays != "" && !RegExMatch(InputClaimDays, "^(\d+)(\s*,\s*\d+)*$")) {
+        MsgBox, 48, Format Error, Claim Days must be empty or a comma-separated list of integers.`nExample: 3,5`nLeave empty to claim every step.
+        return
+    }
+    if (InputGiftDays != "" && !RegExMatch(InputGiftDays, "^(\d+)(\s*,\s*\d+)*$")) {
+        MsgBox, 48, Format Error, Gift Days must be empty or a comma-separated list of integers.`nExample: 2,4`nLeave empty for no forced gift days.
+        return
+    }
     if (!RedBox.exists || !BlueBox.exists) {
         MsgBox, 48, Notice, Please draw both Red and Blue boxes.
         return
@@ -115,12 +127,16 @@ BtnSave:
     convExpTime := StrReplace(InputExpTime, ":")
     convExpDate := CalcExpiryDateFromRemainingDays(InputExpiresInDays + 0, convExpTime)
     displayExpDate := SubStr(convExpDate, 1, 4) . "-" . SubStr(convExpDate, 5, 2) . "-" . SubStr(convExpDate, 7, 2)
+    claimDaysDisplay := (InputClaimDays = "") ? "(all steps)" : InputClaimDays
+    giftDaysDisplay := (InputGiftDays = "") ? "(none)" : InputGiftDays
 
     ConfirmMsg := "Are you sure you want to save the following details?`n`n"
         . "Event Name: " . InputName . "`n"
         . "Expires in: " . InputExpiresInDays . " day(s)`n"
         . "Calculated End (UTC): " . displayExpDate . " " . InputExpTime . "`n"
         . "Claim Steps (Days): " . InputClaimSteps . "`n"
+        . "Claim Days: " . claimDaysDisplay . "`n"
+        . "Gift Days: " . giftDaysDisplay . "`n"
         . "Box Coordinates: Set"
 
     MsgBox, 4, Final Confirmation, %ConfirmMsg%
@@ -152,6 +168,8 @@ BtnSave:
         ExpiryDate=%convExpDate%
         ExpiryTime=%convExpTime%
         ClaimSteps=%InputClaimSteps%
+        ClaimDays=%InputClaimDays%
+        GiftDays=%InputGiftDays%
 
         [RedBox]
         Coords=%rx1%, %ry1%, %rx2%, %ry2%

@@ -94,6 +94,8 @@ session.set("rerollStartTime_local", A_TickCount)
 
 session.set("maxAccountPackNum", 9999)
 session.set("missionDoneList", {"beginnerMissionsDone": 0, "specialMissionsDone": 0, "resetSpecialMissionsDone": 0, "accountHasPackInTesting": 0, "receivedGiftDone": 0})
+session.set("forceReceiveGiftThisRun", 0)
+session.set("specialMissionClaimUiEvents", {})
 activatedPackList := []
 For idx, value in botConfig.packSettings {
     if(value == 1){
@@ -671,7 +673,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         ; Special missions
         ClaimSpecialMissionRewards(true, accountMeta)
 
-        if(!session.get("missionDoneList")["receivedGiftDone"] && botConfig.get("receiveGift") && session.get("injectMethod") && (!IsObject(accountMeta) || !AccountEligibility_FlagIsSet(accountMeta, "R"))) {
+        forceGift := session.get("forceReceiveGiftThisRun")
+        if(!session.get("missionDoneList")["receivedGiftDone"] && botConfig.get("receiveGift") && session.get("injectMethod") && (forceGift || !IsObject(accountMeta) || !AccountEligibility_FlagIsSet(accountMeta, "R"))) {
             GoToMain()
             if (isTerminatePTCGPHelperApp()) {
                 InitPackOpening(true)
@@ -687,6 +690,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 TerminateHelper()
             }
             session.get("missionDoneList")["receivedGiftDone"] := 1
+            session.set("forceReceiveGiftThisRun", 0)
 
             if (session.get("injectMethod") && session.get("loadedAccount"))
                 setMetaData()
@@ -5047,31 +5051,33 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
     if (IsObject(accountMeta) && !AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
         return false
 
-    session.set("specialMissionClaimedEvents", {})
+    session.set("forceReceiveGiftThisRun", 0)
+    session.set("specialMissionClaimUiEvents", {})
 
-    if (frommain)
-        GoToMain()
-
-    GetEventRewards(frommain) ; collects all the Special mission hourglass
-
-    advancedAny := false
     accountMetaPath := ""
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "")
         accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
 
-    for eventName, advanced in session.get("specialMissionClaimedEvents") {
-        if (!advanced)
-            continue
-        advancedAny := true
-        if (accountMetaPath != "")
-            AccountMetadata_BumpSpecialEventClaim(session.get("scriptName"), session.get("accountFileName"), eventName, accountMetaPath)
+    advance := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "claimUiEvents": {}}
+    if (accountMetaPath != "")
+        advance := AccountMetadata_AdvanceSpecialEventSteps(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+
+    if (advance["forceGift"])
+        session.set("forceReceiveGiftThisRun", 1)
+    if (IsObject(advance["claimUiEvents"]))
+        session.set("specialMissionClaimUiEvents", advance["claimUiEvents"])
+
+    if (advance["needClaimUi"]) {
+        if (frommain)
+            GoToMain()
+        GetEventRewards(frommain) ; claim UI only for events advanced onto ClaimDays
     }
 
     ; Avoid re-entering Special Missions again this session even if nothing was found.
     session.get("missionDoneList")["specialMissionsDone"] := 1
     session.set("cantOpenMorePacks", 0)
 
-    if (advancedAny && accountMetaPath != "") {
+    if (advance["advancedAny"] && accountMetaPath != "") {
         accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
         AccountMetadata_ApplySpecialMissionXFlag(session.get("scriptName"), session.get("accountFileName"), accountMeta)
         setMetaData()
@@ -5182,6 +5188,16 @@ MoveToDailyMissionPageForRewards() {
 ClaimVisibleEventRewards(eventResult) {
     global session
 
+    claimUiEvents := session.get("specialMissionClaimUiEvents")
+    hasClaimFilter := IsObject(claimUiEvents)
+    if (hasClaimFilter) {
+        filterCount := 0
+        for k, v in claimUiEvents
+            filterCount++
+        if (filterCount < 1)
+            hasClaimFilter := false
+    }
+
     for specialEventName, specialEventObj in session.get("specialEventList") {
         if(eventResult.HasKey(specialEventName) && eventResult[specialEventName])
             continue
@@ -5189,13 +5205,13 @@ ClaimVisibleEventRewards(eventResult) {
             eventResult[specialEventName] := true
             continue
         }
+        ; Only attempt claim UI for events advanced onto a ClaimDay this run.
+        if (hasClaimFilter && !claimUiEvents.HasKey(specialEventName)) {
+            eventResult[specialEventName] := true
+            continue
+        }
 
         if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2){
-            ; Needle match advances the claim step for this game-day even if nothing is claimable.
-            if (!IsObject(session.get("specialMissionClaimedEvents")))
-                session.set("specialMissionClaimedEvents", {})
-            session.get("specialMissionClaimedEvents")[specialEventName] := 1
-
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
             Loop{
