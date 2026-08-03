@@ -5,9 +5,9 @@ use axum::{
     http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::{any, get, post},
-    Router,
+    Json, Router,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -104,6 +104,7 @@ pub async fn run_serve(
     let dashboard_routes = Router::new()
         .route("/ping", get(ping))
         .route("/shutdown", post(post_dashboard_shutdown))
+        .route("/ui-prefs", get(get_ui_prefs).post(post_ui_prefs))
         .route(
             "/database-index/status",
             get(get_database_index_status),
@@ -250,6 +251,153 @@ async fn ping(State(state): State<ServeState>) -> StatusCode {
     state.shutdown.cancel();
     notify_legacy_ping(&state.client, state.legacy_port);
     StatusCode::NO_CONTENT
+}
+
+const UI_PREFS_CARD_SIZES: [u32; 4] = [96, 120, 150, 190];
+const UI_PREFS_PAGE_SIZES: [u32; 4] = [10, 25, 50, 100];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DashboardUiPrefs {
+    #[serde(default = "default_ui_prefs_language")]
+    language: String,
+    #[serde(default = "default_ui_prefs_theme")]
+    theme: String,
+    #[serde(default = "default_ui_prefs_card_size")]
+    card_size: u32,
+    #[serde(default = "default_ui_prefs_page_size")]
+    page_size: u32,
+    #[serde(default)]
+    use_local_card_images: bool,
+}
+
+fn default_ui_prefs_language() -> String {
+    "en_US".into()
+}
+fn default_ui_prefs_theme() -> String {
+    "dark".into()
+}
+fn default_ui_prefs_card_size() -> u32 {
+    120
+}
+fn default_ui_prefs_page_size() -> u32 {
+    25
+}
+
+fn ui_prefs_path(root: &Path) -> PathBuf {
+    root.join("Accounts").join("Cards").join(".dashboard_ui_prefs.json")
+}
+
+fn normalize_ui_prefs(raw: Option<DashboardUiPrefs>) -> DashboardUiPrefs {
+    let mut prefs = raw.unwrap_or(DashboardUiPrefs {
+        language: default_ui_prefs_language(),
+        theme: default_ui_prefs_theme(),
+        card_size: default_ui_prefs_card_size(),
+        page_size: default_ui_prefs_page_size(),
+        use_local_card_images: false,
+    });
+    if prefs.language.trim().is_empty() {
+        prefs.language = default_ui_prefs_language();
+    }
+    if prefs.theme != "light" && prefs.theme != "dark" {
+        prefs.theme = default_ui_prefs_theme();
+    }
+    if !UI_PREFS_CARD_SIZES.contains(&prefs.card_size) {
+        prefs.card_size = default_ui_prefs_card_size();
+    }
+    if !UI_PREFS_PAGE_SIZES.contains(&prefs.page_size) {
+        prefs.page_size = default_ui_prefs_page_size();
+    }
+    prefs
+}
+
+fn read_ui_prefs(root: &Path) -> DashboardUiPrefs {
+    let path = ui_prefs_path(root);
+    match std::fs::read_to_string(&path) {
+        Ok(text) => normalize_ui_prefs(serde_json::from_str(&text).ok()),
+        Err(_) => normalize_ui_prefs(None),
+    }
+}
+
+fn write_ui_prefs(root: &Path, prefs: &DashboardUiPrefs) -> Result<()> {
+    let path = ui_prefs_path(root);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("Could not create {:?}", parent))?;
+    }
+    let json = serde_json::to_string_pretty(prefs).context("Could not serialize ui prefs")?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json.as_bytes())
+        .with_context(|| format!("Could not write {:?}", tmp))?;
+    std::fs::rename(&tmp, &path)
+        .with_context(|| format!("Could not replace {:?}", path))?;
+    Ok(())
+}
+
+async fn get_ui_prefs(State(state): State<ServeState>) -> Result<Response, AppError> {
+    let root = state.root.clone();
+    let prefs = tokio::task::spawn_blocking(move || read_ui_prefs(&root))
+        .await
+        .context("ui-prefs read join failed")?;
+    Ok(json_response(json!({
+        "ok": true,
+        "language": prefs.language,
+        "theme": prefs.theme,
+        "cardSize": prefs.card_size,
+        "pageSize": prefs.page_size,
+        "useLocalCardImages": prefs.use_local_card_images,
+    })))
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UiPrefsPatch {
+    language: Option<String>,
+    theme: Option<String>,
+    card_size: Option<u32>,
+    page_size: Option<u32>,
+    use_local_card_images: Option<bool>,
+}
+
+async fn post_ui_prefs(
+    State(state): State<ServeState>,
+    Json(patch): Json<UiPrefsPatch>,
+) -> Result<Response, AppError> {
+    let root = state.root.clone();
+    let prefs = tokio::task::spawn_blocking(move || {
+        let mut current = read_ui_prefs(&root);
+        if let Some(language) = patch.language {
+            if !language.trim().is_empty() {
+                current.language = language;
+            }
+        }
+        if let Some(theme) = patch.theme {
+            current.theme = theme;
+        }
+        if let Some(card_size) = patch.card_size {
+            current.card_size = card_size;
+        }
+        if let Some(page_size) = patch.page_size {
+            current.page_size = page_size;
+        }
+        if let Some(use_local) = patch.use_local_card_images {
+            current.use_local_card_images = use_local;
+        }
+        let normalized = normalize_ui_prefs(Some(current));
+        write_ui_prefs(&root, &normalized)?;
+        Ok::<_, anyhow::Error>(normalized)
+    })
+    .await
+    .context("ui-prefs write join failed")??;
+
+    Ok(json_response(json!({
+        "ok": true,
+        "language": prefs.language,
+        "theme": prefs.theme,
+        "cardSize": prefs.card_size,
+        "pageSize": prefs.page_size,
+        "useLocalCardImages": prefs.use_local_card_images,
+    })))
 }
 
 async fn post_dashboard_shutdown(State(state): State<ServeState>) -> StatusCode {
