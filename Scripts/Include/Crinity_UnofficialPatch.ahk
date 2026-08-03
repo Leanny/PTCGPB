@@ -44,11 +44,32 @@ IsFindingMainUiVisible() {
         || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, , , true)
 }
 
+; Pack-crash recovery dialog that appears after Welcome Back pages during Finding.
+TryDismissPackOpeningRecoveryFinding(failSafeTime := 0) {
+    if (FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0, 0, , true)) {
+        CreateStatusMessage("Dismissing pack recovery`n(Finding) " . failSafeTime . "/90s",,,, false)
+        adbClick_wbb(139, 371) ; OK on "closed during pack opening"
+        Delay(1)
+        return true
+    }
+    return false
+}
+
 ; Welcome Back appears AFTER Welcome, while Finding Home/Points/Social.
 ; Multi-page: sticky Next/OK after page-1 needle until main UI is visible, then stop
 ; so mode clicks (e.g. Social tab) can run. Do NOT call from boot.
 ; Returns true when a dismiss click was issued this tick.
 TryAdvanceWelcomeBackWhileFinding(logContext, ByRef advancing, ByRef useSecondClick, failSafeTime := 0) {
+    ; Pack recovery can land right after the two Welcome Back pages; stop sticky so Finding can dismiss it.
+    if (FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0, 0, , true)) {
+        if (advancing) {
+            LogInfo(logContext . ": Welcome Back done — pack recovery on screen", "ADB.txt")
+            advancing := false
+            useSecondClick := false
+        }
+        return false
+    }
+
     if (FindOrLoseImage("Boot_WelcomeBack", 0, 0, 20, true)) {
         if (!advancing)
             LogInfo(logContext . ": Welcome Back during Finding — advancing pages", "ADB.txt")
@@ -153,6 +174,7 @@ TryRecoverWelcomeBackMissionsAfterPack(logContext, recoveryPack := "") {
     ; List still up — ESC returns to the 2nd pack screen
     LogInfo(logContext . ": Welcome Back claim done — ESC to 2nd pack", "ADB.txt")
     CreateStatusMessage("Welcome Back claimed`nESC to pack...",,,, false)
+    Delay(1)
     adbInputEvent("111")
     Delay(1.5)
 
@@ -310,6 +332,10 @@ startPreProcess(methodType){
 
         ; After Welcome: Welcome Back may appear while Finding — advance pages until target above returns.
         if (TryAdvanceWelcomeBackWhileFinding("Entering gate", welcomeBackAdvancing, welcomeBackUseSecondClick, failSafeTime))
+            continue
+
+        ; Pack-crash recovery appears after both Welcome Back pages are dismissed.
+        if (TryDismissPackOpeningRecoveryFinding(failSafeTime))
             continue
 
         adbClick_wbb(clickX, clickY)
