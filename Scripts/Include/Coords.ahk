@@ -1,4 +1,4 @@
-﻿class Coordinate{
+class Coordinate{
     startX := 0
     startY := 0
     endX := 0
@@ -195,6 +195,8 @@ needlesDict.Add(new Needle("Pack_GetItemDialogAfterOpenPack", "GetItemDialogAfte
 needlesDict.Add(new Needle("Mission_PremiumLockImage", "PremiumLock", new Coordinate(250, 452, 258, 459)))
 needlesDict.Add(new Needle("Mission_FirstWonderpickMissionIconInDetails", "FirstMission", new Coordinate(130, 188, 145, 206)))
 needlesDict.Add(new Needle("Mission_ActivatedBeginnerMissionTabButton", "List", new Coordinate(22, 492, 40, 499)))
+needlesDict.Add(new Needle("Mission_WelcomeBackMissions", "WelcomeBackMissions", new Coordinate(1, 453, 7, 466)))
+needlesDict.Add(new Needle("Mission_WelcomeBackPreClaim", "WelcomeBackPreClaim", new Coordinate(105, 180, 173, 200)))
 needlesDict.Add(new Needle("Mission_ThemeCollectionButtonIcon", "Mission_dino1", new Coordinate(180, 493, 190, 503)))
 needlesDict.Add(new Needle("Mission_MissionIconTopAreaInDetails", "Mission_dino2", new Coordinate(130, 160, 150, 180)))
 needlesDict.Add(new Needle("Mission_MissionIconTopAreaInDetailsAlt", "Mission_dino3", new Coordinate(52, 159, 69, 171)))
@@ -219,7 +221,7 @@ needlesDict.Add(new Needle("Create_DownloadComplete", "Complete", new Coordinate
 needlesDict.Add(new Needle("Create_CinematicBackground", "Cinematic", new Coordinate(0, 40, 7, 47)))
 needlesDict.Add(new Needle("Create_WelcomePopup", "Welcome", new Coordinate(72, 234, 125, 239)))
 needlesDict.Add(new Needle("Boot_Welcome", "Welcome", new Coordinate(70, 278, 140, 295)))
-needlesDict.Add(new Needle("Boot_WelcomeBack", "WelcomeBack", new Coordinate(200, 222, 228, 250)))
+needlesDict.Add(new Needle("Boot_WelcomeBack", "WelcomeBack", new Coordinate(236, 123, 248, 133)))
 needlesDict.Add(new Needle("Create_NameInputIcon", "Name", new Coordinate(190, 241, 209, 257)))
 needlesDict.Add(new Needle("Create_DeactivatedOKButton", "OK", new Coordinate(0, 455, 30, 500)))
 needlesDict.Add(new Needle("Create_PackReturnButtonIcon", "Return", new Coordinate(127, 501, 147, 509)))

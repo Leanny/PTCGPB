@@ -34,25 +34,151 @@ processPrivacyAgreement()
     adbClick(138, 479)
 }
 
-; Dismiss the intermittent "Welcome Back" account popup.
-; Returns true when a dismiss click was issued this tick.
-TryDismissWelcomeBackPopup(logContext, ByRef advancing, ByRef useSecondClick) {
-    if (FindOrLoseImage("Boot_WelcomeBack", 0, 0, 20, true)) {
-        if (!advancing)
-            LogInfo(logContext . ": advancing past Welcome Back popup", "ADB.txt")
-        advancing := true
-        CreateStatusMessage("Dismissing Welcome Back popup...",,,, false)
-        if (useSecondClick)
-            adbClick_wbb(194, 433)
-        else
-            adbClick_wbb(139, 432)
-        useSecondClick := !useSecondClick
-        Sleep, 500
+; True when Finding main UI is visible — Welcome Back is behind us (not Social.png;
+; that only appears after the Social tab click in Inject 96P+).
+IsFindingMainUiVisible() {
+    return FindOrLoseImage("Pack_PackPointButton", 0, , , true)
+        || FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, , , true)
+        || FindOrLoseImage("Friend_BottomDarkHomeIcon", 0, , , true)
+        || FindOrLoseImage("Common_ShopButtonInMain", 0, , , true)
+        || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, , , true)
+}
+
+; Pack-crash recovery dialog that appears after Welcome Back pages during Finding.
+TryDismissPackOpeningRecoveryFinding(failSafeTime := 0) {
+    if (FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0, 0, , true)) {
+        CreateStatusMessage("Dismissing pack recovery`n(Finding) " . failSafeTime . "/90s",,,, false)
+        adbClick_wbb(139, 371) ; OK on "closed during pack opening"
+        Delay(1)
         return true
     }
-    advancing := false
-    useSecondClick := false
     return false
+}
+
+; Welcome Back appears AFTER Welcome, while Finding Home/Points/Social.
+; Multi-page: sticky Next/OK after page-1 needle until main UI is visible, then stop
+; so mode clicks (e.g. Social tab) can run. Do NOT call from boot.
+; Returns true when a dismiss click was issued this tick.
+TryAdvanceWelcomeBackWhileFinding(logContext, ByRef advancing, ByRef useSecondClick, failSafeTime := 0) {
+    ; Pack recovery can land right after the two Welcome Back pages; stop sticky so Finding can dismiss it.
+    if (FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0, 0, , true)) {
+        if (advancing) {
+            LogInfo(logContext . ": Welcome Back done — pack recovery on screen", "ADB.txt")
+            advancing := false
+            useSecondClick := false
+        }
+        return false
+    }
+
+    if (FindOrLoseImage("Boot_WelcomeBack", 0, 0, 20, true)) {
+        if (!advancing)
+            LogInfo(logContext . ": Welcome Back during Finding — advancing pages", "ADB.txt")
+        advancing := true
+        CreateStatusMessage("Dismissing Welcome Back`n(Finding mode target) " . failSafeTime . "/90s",,,, false)
+    } else if (advancing && IsFindingMainUiVisible()) {
+        ; Needle gone and main UI up — WB finished; release sticky so Social/pack clicks run.
+        LogInfo(logContext . ": Welcome Back done (main UI visible) — resume mode click", "ADB.txt")
+        advancing := false
+        useSecondClick := false
+        return false
+    }
+
+    if (!advancing)
+        return false
+
+    CreateStatusMessage("Dismissing Welcome Back`n(Finding mode target) " . failSafeTime . "/90s",,,, false)
+
+    if (useSecondClick)
+        adbClick_wbb(194, 433) ; OK / second-page button
+    else
+        adbClick_wbb(139, 432) ; Next
+    useSecondClick := !useSecondClick
+    Sleep, 500
+    return true
+}
+
+; After first pack, game teleports to Missions: List appears first.
+IsWelcomeBackMissionsScreen() {
+    return FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, 0, , true)
+}
+
+; Welcome Back layout shifts the missions sub-tab strip — use (213,463) instead of normal tab clicks.
+HasWelcomeBackMissionsLayout() {
+    return FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, 0, , true)
+        && FindOrLoseImage("Mission_WelcomeBackMissions", 0, 0, , true)
+}
+
+ClickMissionSubTab(defaultX := 42, defaultY := 465) {
+    if (HasWelcomeBackMissionsLayout()) {
+        adbClick(213, 463)
+        return true
+    }
+    adbClick(defaultX, defaultY)
+    return false
+}
+
+; List → wait WelcomeBackPreClaim → dismiss (137,389) → claim → confirm → ESC to 2nd pack.
+; Call from PackOpening "Waiting for Pack".
+TryRecoverWelcomeBackMissionsAfterPack(logContext, recoveryPack := "") {
+    global session
+
+    if (!IsWelcomeBackMissionsScreen())
+        return false
+
+    LogInfo(logContext . ": Welcome Back missions (List) — wait PreClaim, dismiss, claim, ESC", "ADB.txt")
+    CreateStatusMessage("Welcome Back missions`nWaiting PreClaim...",,,, false)
+
+    ; Game loads WelcomeBackPreClaim slowly after List
+    preClaimStart := A_TickCount
+    Loop {
+        if (FindOrLoseImage("Mission_WelcomeBackPreClaim", 0, 0, , true))
+            break
+        if ((A_TickCount - preClaimStart) // 1000 >= 20) {
+            LogWarn(logContext . ": WelcomeBackPreClaim not found — continue to claim anyway", "ADB.txt")
+            break
+        }
+        Delay(0.5)
+    }
+
+    if (FindOrLoseImage("Mission_WelcomeBackPreClaim", 0, 0, , true)) {
+        LogInfo(logContext . ": dismissing WelcomeBackPreClaim", "ADB.txt")
+        CreateStatusMessage("Welcome Back missions`nDismissing PreClaim...",,,, false)
+        adbClick_wbb(137, 389)
+        Delay(1)
+    }
+
+    CreateStatusMessage("Welcome Back missions`nClaiming...",,,, false)
+
+    ; Same claim clicks as Daily GetAllRewards(dailies)
+    claimStart := A_TickCount
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        Delay(2)
+        adbClick(174, 427)
+        adbClick(174, 427)
+        Delay(1)
+
+        if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, 0)) {
+            LogInfo(logContext . ": Welcome Back claim OK (GotAllMissions)", "ADB.txt")
+            break
+        }
+
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime > 20) {
+            LogWarn(logContext . ": Welcome Back claim timeout without GotAllMissions", "ADB.txt")
+            break
+        }
+    }
+
+    ; List still up — ESC returns to the 2nd pack screen
+    LogInfo(logContext . ": Welcome Back claim done — ESC to 2nd pack", "ADB.txt")
+    CreateStatusMessage("Welcome Back claimed`nESC to pack...",,,, false)
+    Delay(1)
+    adbInputEvent("111")
+    Delay(1.5)
+
+    return true
 }
 
 waitForAppBootScreen() {
@@ -67,16 +193,12 @@ waitForAppBootScreen() {
     LogInfo("Boot gate: waiting for startup screen", "ADB.txt")
 
     lastStatusSec := -1
-    welcomeBackAdvancing := false
-    welcomeBackUseSecondClick := false
     Loop {
         if (handleAppHealthDuringSearch("boot", true))
             return false
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (TryDismissWelcomeBackPopup("Boot gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
-            continue
-
+        ; Boot only: Welcome / setup / already in main. Welcome Back is handled later while Finding.
         if (FindOrLoseImage("Boot_Welcome", 0, 0, 30, true)) {
             LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
             return true
@@ -168,6 +290,12 @@ startPreProcess(methodType){
         clickX := getPackCoordXInHome()
         clickY := 203
     }
+    else if(methodType = "Rename Account"){
+        findImageName := "Home"
+        needleName := "Pack_PackPointButton"
+        clickX := getPackCoordXInHome()
+        clickY := 203
+    }
 
     findImageName .= "`n(Selected pack: " . session.get("openPack") . ")"
 
@@ -187,14 +315,28 @@ startPreProcess(methodType){
         if (handleAppHealthDuringSearch(findImageName))
             break
 
-        if (TryDismissWelcomeBackPopup("Entering gate", welcomeBackAdvancing, welcomeBackUseSecondClick))
-            continue
+        ; Done only when the mode target (Points / Home / Social / Country) is actually visible.
+        if(FindOrLoseImage(needleName, 0, failSafeTime, , true))
+            break
 
         if(methodType = "Inject Wonderpick 96P+" && DismissFriendFlowBlockingPopup("Entering Social"))
             continue
 
-        if(FindOrLoseImage(needleName, 0, failSafeTime, , true))
-            break
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime > 90) {
+            LogWarn("Entering gate: stuck Finding after 90s — " . findImageName, "ADB.txt")
+            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended"))
+                IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+            restartGameInstance("Stuck at Finding " . findImageName . "...")
+        }
+
+        ; After Welcome: Welcome Back may appear while Finding — advance pages until target above returns.
+        if (TryAdvanceWelcomeBackWhileFinding("Entering gate", welcomeBackAdvancing, welcomeBackUseSecondClick, failSafeTime))
+            continue
+
+        ; Pack-crash recovery appears after both Welcome Back pages are dismissed.
+        if (TryDismissPackOpeningRecoveryFinding(failSafeTime))
+            continue
 
         adbClick_wbb(clickX, clickY)
         Delay(0.5)
@@ -328,6 +470,12 @@ startPreProcess(methodType){
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Entering...(" . failSafeTime "/90 seconds)`nFinding: " . findImageName)
+        if (failSafeTime > 90) {
+            LogWarn("Entering gate: stuck Finding after 90s — " . findImageName, "ADB.txt")
+            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended"))
+                IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+            restartGameInstance("Stuck at Finding " . findImageName . "...")
+        }
     }
 }
 
