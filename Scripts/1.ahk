@@ -86,6 +86,7 @@ session.set("packsInPool", 0)
 session.set("packsThisRun", 0)
 session.set("cantOpenMorePacks", 0)
 session.set("isSkipSelectExpansion", 0)
+session.set("creationDate", "")
 
 session.set("specialEventList", {})
 
@@ -798,6 +799,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
                     SplitPath, existingXmlPath, oldFileName, saveDir
                     accountMeta := AccountMetadata_Get(session.get("scriptName"), oldFileName, existingXmlPath)
+                    if (session.get("creationDate") != "")
+                        accountMeta["createdAt"] := session.get("creationDate")
                     accountMeta["packCount"] := session.get("accountOpenPacks") + 0
                     flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
                         , "X": session.get("missionDoneList")["specialMissionsDone"]
@@ -827,6 +830,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                         session.set("accountFileName", xmlFileName)
                     }
                 }
+
+                EnsureAccountLanguageMetadata()
 
                 if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo"))
                     EnsureAccountFriendInfo("Create Bots (13P)", false, true)
@@ -1699,9 +1704,11 @@ AccountCreationDate_ToUnix(creationDate) {
 
 EnsureAccountLanguageMetadata() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
+    global botConfig, session
 
-    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+    if (session.get("accountFileName") = "")
+        return false
+    if ((!session.get("injectMethod") || !session.get("loadedAccount")) && botConfig.get("deleteMethod") != "Create Bots (13P)")
         return false
 
     deviceAccount := GetCurrentDeviceAccountForMetadata()
@@ -3472,6 +3479,8 @@ GetNeedle(Path) {
 DoTutorial() {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
+
+    session.set("creationDate", A_Now)
 
     FindImageAndClick("Create_CountryComboBoxButton", 143, 370) ;select month and year and click
 
