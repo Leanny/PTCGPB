@@ -440,6 +440,8 @@ saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag :
     if (file = "All" && xmlFile != "" && filePath != "") {
         accountMeta := AccountMetadata_Get(session.get("scriptName"), xmlFile, filePath)
 
+        if (session.get("creationDate") != "")
+            accountMeta["createdAt"] := session.get("creationDate")
         accountMeta["packCount"] := session.get("accountOpenPacks")
         flags := {"B": session.get("missionDoneList")["beginnerMissionsDone"]
             , "X": session.get("missionDoneList")["specialMissionsDone"]
