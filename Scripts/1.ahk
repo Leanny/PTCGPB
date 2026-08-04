@@ -28,6 +28,7 @@ pToken := Gdip_Startup()
 #Include CardDetection.ahk
 #Include AccountManager.ahk
 #Include FriendManager.ahk
+#Include RateLimitBypasser.ahk
 ;#Include %A_ScriptDir%\Include\Recorder.ahk
 #Include Packs.ahk
 #Include Error.ahk
@@ -129,8 +130,16 @@ if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
 session.set("packMethod", botConfig.get("packMethod"))
 if(botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
     session.set("packMethod", 0)
+; Rate Limit Bypasser: One Pack Method unavailable
+if (RLB_IsEligible() || RLB_IsActive()) {
+    session.set("packMethod", 0)
+}
 session.set("packMethodSkipFriendRenew", 0)
 session.set("packMethodStayOnPackScreen", 0)
+session.set("rlbActiveThisRun", 0)
+session.set("rlbCurrentAccIdx", 0)
+session.set("rlbDoPacks", 1)
+session.set("rlbSkipEndMetrics", 0)
 
 IniRead, DeadCheck, % session.get("scriptIniFile"), UserSettings, DeadCheck, 0
 IniRead, friendCleanupPending, % session.get("scriptIniFile"), UserSettings, friendCleanupPending, 0
@@ -373,6 +382,67 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             createAccountList(session.get("scriptName"))
         }
 
+        ; Download friend IDs for injection methods when group reroll is enabled
+        if(session.get("injectMethod")) {
+            if(botConfig.get("groupRerollEnabled")) {
+                mainIdsURL := botConfig.get("mainIdsURL")
+                if(mainIdsURL) {
+                    DownloadFile(mainIdsURL, "ids.txt")
+                }
+            }
+        }
+
+        session.set("rlbActiveThisRun", 0)
+        session.set("rlbCurrentAccIdx", 0)
+        session.set("rlbDoPacks", 1)
+        session.set("rlbSkipEndMetrics", 0)
+        session.set("rlbPendingRegister", 0)
+        session.set("rlbPacksOnly", 0)
+
+        ; Rate Limit Bypasser: decide resume/fresh/wait before loading
+        if (session.get("injectMethod") && botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" && botConfig.get("groupRerollEnabled")) {
+            if (RLB_IsEligible() || RLB_IsActive()) {
+                if (RLB_EnsureWave()) {
+                    session.set("packMethod", 0)
+                    RLB_PickNextAction()
+                    rlbAction := session.get("rlbAction")
+                    if (rlbAction = "exit") {
+                        RLB_ClearWave()
+                        CleanupBeforeExit()
+                        ExitApp
+                    }
+                    if (rlbAction = "wait") {
+                        RLB_WaitCooldown(session.get("rlbWaitMs"))
+                        continue
+                    }
+                    if (rlbAction = "resume") {
+                        accIdx := session.get("rlbResumeIdx") + 0
+                        acc := RLB_ReadAccount(accIdx)
+                        if (!session.get("loadedAccount"))
+                            session.set("loadedAccount", loadAccountByFileName(acc["fileName"]))
+                        if (!session.get("loadedAccount")) {
+                            LogWarn("RLB failed to resume account idx=" . accIdx, "GroupReroll.txt")
+                            continue
+                        }
+                        session.set("rlbActiveThisRun", 1)
+                        session.set("rlbCurrentAccIdx", accIdx)
+                        if (acc["phase"] = "readyForPacks") {
+                            session.set("rlbDoPacks", 1)
+                            session.set("rlbPacksOnly", 1)
+                            session.set("rlbSkipEndMetrics", 1)
+                            session.set("friended", acc["friended"] ? true : false)
+                        } else {
+                            session.set("rlbDoPacks", 0)
+                        }
+                    } else if (rlbAction = "fresh") {
+                        session.set("rlbActiveThisRun", 1)
+                        session.set("rlbDoPacks", 0)
+                        session.set("rlbPendingRegister", 1)
+                    }
+                }
+            }
+        }
+
         ; For injection methods, load account only if we don't already have one
         if(session.get("injectMethod")) {
             ; Only load account if we don't already have one loaded
@@ -391,6 +461,10 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
                     ; Check stopToggle immediately, then wait 1 minute before checking again
                     if (session.get("stopToggle")){
+                        if (RLB_IsActive()) {
+                            RLB_SetStopDrain(1)
+                            continue
+                        }
                         CleanupBeforeExit()
                         ExitApp
                     }
@@ -408,15 +482,10 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             Gui, %guiName%:+LastFoundExist
             if WinExist()
                 Gui, %guiName%:Destroy
-        }
 
-        ; Download friend IDs for injection methods when group reroll is enabled
-        if(session.get("injectMethod")) {
-            if(botConfig.get("groupRerollEnabled")) {
-                mainIdsURL := botConfig.get("mainIdsURL")
-                if(mainIdsURL) {
-                    DownloadFile(mainIdsURL, "ids.txt")
-                }
+            if (session.get("rlbPendingRegister")) {
+                session.set("rlbPendingRegister", 0)
+                session.set("rlbCurrentAccIdx", RLB_RegisterCurrentAccount())
             }
         }
 
@@ -482,7 +551,51 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             wonderPicked := DoWonderPick()
         }
 
-        session.set("friendsAdded", AddFriends())
+        if (session.get("rlbActiveThisRun") && session.get("rlbPacksOnly")) {
+            ; Adds already complete — skip AddFriends, go to packs
+            session.set("friendsAdded", RLB_IdsCount())
+            RLB_WaitForFriendAccepts()
+            Goto, RLB_AfterFriends
+        }
+
+        if (session.get("rlbActiveThisRun")) {
+            RLB_LoadFrozenIdsIntoSession()
+            accIdx := session.get("rlbCurrentAccIdx") + 0
+            if (accIdx < 1)
+                accIdx := RLB_RegisterCurrentAccount()
+            session.set("rlbCurrentAccIdx", accIdx)
+            acc := RLB_ReadAccount(accIdx)
+            RLB_RefreshWindowIfExpired(acc)
+            RLB_WriteAccount(accIdx, acc)
+            startIdx := acc["nextIndex"]
+            opsLeft := 10 - (acc["opsInWindow"] + 0)
+            if (opsLeft < 1)
+                opsLeft := 10
+            if (opsLeft > 10)
+                opsLeft := 10
+            session.set("friendsAdded", AddFriends(false, false, startIdx, opsLeft))
+            nextIdx := session.get("rlbNextIdx") + 0
+            if (nextIdx < 1)
+                nextIdx := startIdx
+            rateLimited := session.get("rlbRateLimited") ? 1 : 0
+            RLB_AfterTranche(accIdx, nextIdx, rateLimited)
+            ; Cockpit runs are credited only after RemoveFriends of the last account in the batch
+            session.set("rlbSkipEndMetrics", 1)
+
+            acc := RLB_ReadAccount(accIdx)
+            if (acc["phase"] = "readyForPacks") {
+                session.set("rlbDoPacks", 1)
+                RLB_WaitForFriendAccepts()
+            } else {
+                ; Park and rotate — next iteration closes app + injects next account (no full game restart)
+                RLB_ParkCurrentAccount(accIdx)
+                continue
+            }
+        } else {
+            session.set("friendsAdded", AddFriends())
+        }
+
+        RLB_AfterFriends:
 
         if(botConfig.get("deleteMethod") = "Inject Wonderpick 96P+"){
             if(session.get("friendsAdded") == false){
@@ -504,6 +617,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 WaitForPackPointButtonFromHome(clickX, 203, "after friend reload")
             }
 
+        }
+
+        if (session.get("rlbActiveThisRun") && !session.get("rlbDoPacks")) {
+            RLB_ParkCurrentAccount(session.get("rlbCurrentAccIdx"))
+            continue
         }
 
         SelectPack("First")
@@ -728,15 +846,30 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             RemoveFriends()
         }
 
-        ; BallCity 2025.02.21 - Track monitor
-        now := A_NowUTC
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
-        EnvSub, now, 1970, seconds
-        IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
+        if (session.get("rlbActiveThisRun")) {
+            accIdx := session.get("rlbCurrentAccIdx") + 0
+            if (accIdx > 0)
+                RLB_MarkAccountDone(accIdx)
+            RLB_FinishWaveIfDone()
+        }
 
-        session.set("rerolls", session.get("rerolls") + 1)
-        session.set("rerolls_local", session.get("rerolls_local") + 1)
-        IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
+        ; BallCity 2025.02.21 - Track monitor / cockpit
+        ; Rate Limit Bypasser credits cockpit runs when a full account-batch finishes RemoveFriends
+        if (!session.get("rlbSkipEndMetrics")) {
+            now := A_NowUTC
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
+            EnvSub, now, 1970, seconds
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
+
+            session.set("rerolls", session.get("rerolls") + 1)
+            session.set("rerolls_local", session.get("rerolls_local") + 1)
+            IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
+        } else {
+            now := A_NowUTC
+            EnvSub, now, 1970, seconds
+            ; Keep Monitor heartbeating after packs without counting another cockpit run
+            writeLastActivityEpoch(session.get("scriptName"), 0)
+        }
 
         totalSeconds := Round((A_TickCount - session.get("rerollStartTime")) / 1000) ; Total time in seconds
         totalSeconds_local := Round((A_TickCount - session.get("rerollStartTime_local")) / 1000) ; Total time in seconds
@@ -2875,6 +3008,15 @@ return
 ToggleStop() {
     global botConfig, session, dictionaryData
 
+    ; Rate Limit Bypasser: always drain cache (stop at end of run)
+    if (IsFunc("RLB_IsActive") && RLB_IsActive()) {
+        session.set("stopToggle", true)
+        RLB_SetStopDrain(1)
+        CreateStatusMessage("Rate Limit Bypasser: stopping after cached accounts...",,,, false)
+        LogInfo("RLB stop armed — draining cache", "GroupReroll.txt")
+        return
+    }
+
     ; Check if user has a saved preference for single instance stop
     botConfig.loadIniSectionFromSettingsFile("Extra")
     savedStopPreferenceSingle := (botConfig.get("stopPreferenceSingle") = "") ? "none" : botConfig.get("stopPreferenceSingle")
@@ -2886,6 +3028,8 @@ ToggleStop() {
             ExitApp
         } else if (savedStopPreferenceSingle = "wait_end") {
             session.set("stopToggle", true)
+            if (IsFunc("RLB_IsActive") && RLB_IsActive())
+                RLB_SetStopDrain(1)
             CreateStatusMessage("Stopping script at the end of the run...",,,, false)
         }
         return

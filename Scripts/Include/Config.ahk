@@ -43,6 +43,7 @@
         , "heartBeat": 0
         , "heartBeatDelay": 30
         , "groupRerollEnabled": 0
+        , "rateLimitBypasserMaxCache": ""
         , "autoUseGPTest": 0
         , "hasUnopenedPack": 0
         , "applyRoleFilters": 0

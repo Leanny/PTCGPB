@@ -53,8 +53,13 @@ loadAccount() {
     session.get("missionDoneList")["receivedGiftDone"] := 0
 
     if (session.get("stopToggle")) {
-        CreateStatusMessage("Stopping...",,,, false)
-        ExitApp
+        if (IsFunc("RLB_IsActive") && RLB_IsActive()) {
+            RLB_SetStopDrain(1)
+            ; Continue loading — RLB uses stopToggle as mandatory stop-at-end, not immediate abort
+        } else {
+            CreateStatusMessage("Stopping...",,,, false)
+            ExitApp
+        }
     }
 
     CreateStatusMessage("Loading account...",,,, false)

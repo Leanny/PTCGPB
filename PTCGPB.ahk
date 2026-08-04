@@ -1184,16 +1184,21 @@ ShowGroupRerollSettings:
     yPos += 20
     gpTestModeChoose := botConfig.get("hasUnopenedPack") ? 2 : 1
     Gui, GroupRerollSelect:Add, DropDownList, vui_gpTestMode_Popup choose%gpTestModeChoose% gGroupRerollGpTestMode x15 y%yPos% w210 Background2A2A2A cWhite, Standard|Unopened Pack
+    yPos += 35
+    Gui, GroupRerollSelect:Add, Text, vui_rlbMaxCacheLabel x15 y%yPos% cWhite, Rate Limit Bypasser max cache:
+    yPos += 20
+    Gui, GroupRerollSelect:Add, Edit, vui_rateLimitBypasserMaxCache_Popup w50 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("rateLimitBypasserMaxCache")
+    yPos += 22
+    Gui, GroupRerollSelect:Add, Text, vui_rlbMaxCacheHint x15 y%yPos% w220 cAAAAAA, Empty/0 = unlimited (ids>=11)
     yPos += 30
+    GroupReroll_yBtnCollapsed := yPos
     Gui, GroupRerollSelect:Add, Text, vui_gpTestWaitLabel x15 y%yPos% cWhite, GP Test Wait (s):
     yPos += 20
     Gui, GroupRerollSelect:Add, Edit, vui_gpTestWaitTime_Popup w50 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("gpTestWaitTime")
-    yPos += 30
-    yPos += 40
+    yPos += 35
+    GroupReroll_yBtnExpanded := yPos
     Gui, GroupRerollSelect:Add, Button, vui_GroupRerollApplyBtn x30 y%yPos% w90 h30 gApplyGroupRerollSettings, Apply
     Gui, GroupRerollSelect:Add, Button, vui_GroupRerollCancelBtn x130 y%yPos% w90 h30 gCancelGroupRerollSettings, Cancel
-    GroupReroll_yBtnExpanded := yPos
-    GroupReroll_yBtnCollapsed := GroupReroll_yBtnExpanded - 50
     yPos += 40
 
     Gui, GroupRerollSelect:Default
@@ -1253,6 +1258,12 @@ saveGroupReroll:
         botConfig.set("gpTestWaitTime", 150, "GroupReroll")
     else
         botConfig.set("gpTestWaitTime", ui_gpTestWaitTime_Popup, "GroupReroll")
+
+    cacheVal := Trim(ui_rateLimitBypasserMaxCache_Popup)
+    if (cacheVal = "" || cacheVal = "0")
+        botConfig.set("rateLimitBypasserMaxCache", "", "GroupReroll")
+    else
+        botConfig.set("rateLimitBypasserMaxCache", cacheVal + 0, "GroupReroll")
 
     newUnopened := (ui_gpTestMode_Popup = "Unopened Pack") ? 1 : 0
     priorHasUnopened := (botConfig.get("hasUnopenedPack") + 0)

@@ -68,8 +68,12 @@ Loop {
         IniRead, LastEndEpoch, %iniPath%, Metrics, LastEndEpoch, 0
         IniRead, LastStartEpoch, %iniPath%, Metrics, LastStartEpoch, 0
         IniRead, LastActivityEpoch, %iniPath%, Metrics, LastActivityEpoch, 0
-        ; Set threshold: 30 minutes for Create Bots, 11 minutes for others
+        ; Set threshold: 30 minutes for Create Bots, 11 minutes for others.
+        ; Rate Limit Bypasser cooldowns are 300s — allow headroom when Active.
         threshold := (deleteMethod == "Create Bots (13P)") ? (30 * 60) : (11 * 60)
+        IniRead, rlbActive, %iniPath%, RateLimitBypasser, Active, 0
+        if (rlbActive = 1)
+            threshold := 12 * 60
         ; Use LastEndEpoch if available, otherwise fall back to LastStartEpoch for first-run detection
         if (LastEndEpoch > 0) {
             secondsSinceLastProgress := nowEpoch - LastEndEpoch

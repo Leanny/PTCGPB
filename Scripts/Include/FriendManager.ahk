@@ -110,19 +110,24 @@ PackMethod_ConsumeStayOnPackScreen() {
 ;-------------------------------------------------------------------------------
 ; AddFriends - Add friends from friend code list
 ;-------------------------------------------------------------------------------
-AddFriends(renew := false, getFC := false) {
+AddFriends(renew := false, getFC := false, trancheStart := 0, trancheMaxOps := 0) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, interceptProc
 
     writeLastActivityEpoch(session.get("scriptName"), 4000)
+    isTranche := (trancheMaxOps > 0)
+    session.set("rlbTrancheMode", isTranche ? 1 : 0)
+    session.set("rlbRateLimited", 0)
+    session.set("rlbSendAttempts", 0)
 
     ; Friend adding is Inject Wonderpick-only; own friend-code lookup is allowed wherever the caller explicitly asks for it.
     if (!getFC && botConfig.get("deleteMethod") != "Inject Wonderpick 96P+") {
         clearLastActivityEpoch(session.get("scriptName"))
+        session.set("rlbTrancheMode", 0)
         return false
     }
 
-    if (!getFC && (botConfig.get("groupRerollEnabled") || botConfig.get("useSoloIdsFile"))) {
+    if (!isTranche && !getFC && (botConfig.get("groupRerollEnabled") || botConfig.get("useSoloIdsFile"))) {
         friendIDs := ReadFile("ids")
         if (!friendIDs)
             friendIDs := []
@@ -130,12 +135,13 @@ AddFriends(renew := false, getFC := false) {
 
         if(!HasVal(session.get("friendIDs"), botConfig.get("FriendID")) && botConfig.get("FriendID") != "")
             session.get("friendIDs").Push(botConfig.get("FriendID"))
-    } else if (!getFC) {
+    } else if (!getFC && !isTranche) {
         session.set("friendIDs", false)
     }
     friendIDsAvailable := IsObject(session.get("friendIDs")) && session.get("friendIDs").MaxIndex()
     if(!getFC && !friendIDsAvailable && botConfig.get("FriendID") = "") {
         clearLastActivityEpoch(session.get("scriptName"))
+        session.set("rlbTrancheMode", 0)
         return false
     }
 
@@ -209,17 +215,26 @@ AddFriends(renew := false, getFC := false) {
 
     ;randomize friend id list to not back up mains if running in groups since they'll be sent in a random order.
     n := session.get("friendIDs").MaxIndex()
-    Loop % n
-    {
-        i := n - A_Index + 1
-        Random, j, 1, %i%
-        ; Force string assignment with quotes
-        temp := session.get("friendIDs")[i] . ""  ; Concatenation ensures string type
-        session.get("friendIDs")[i] := session.get("friendIDs")[j] . ""
-        session.get("friendIDs")[j] := temp . ""
+    if (!isTranche) {
+        Loop % n
+        {
+            i := n - A_Index + 1
+            Random, j, 1, %i%
+            ; Force string assignment with quotes
+            temp := session.get("friendIDs")[i] . ""  ; Concatenation ensures string type
+            session.get("friendIDs")[i] := session.get("friendIDs")[j] . ""
+            session.get("friendIDs")[j] := temp . ""
+        }
+        friendIDIdx := 1
+    } else {
+        friendIDIdx := trancheStart + 0
+        if (friendIDIdx < 1)
+            friendIDIdx := 1
     }
-    friendIDIdx := 1
     while(friendIDIdx <= session.get("friendIDs").maxIndex()){
+        if (isTranche && (session.get("rlbSendAttempts") + 0) >= trancheMaxOps)
+            break
+
         value := session.get("friendIDs")[friendIDIdx]
 
         if (StrLen(value) != 16) {
@@ -240,6 +255,7 @@ AddFriends(renew := false, getFC := false) {
             Delay(1)
             if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 80)) {
                 adbClick_wbb(243, 258)
+                RLB_NoteSendAttempt()
                 MarkFriendCleanupPending("Friend request submitted")
                 Delay(1)
                 gosub, WaitAfterFriendRequestSend
@@ -252,6 +268,7 @@ AddFriends(renew := false, getFC := false) {
             else if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime)) {
                 LogToFile("Friend details request button detected during AddFriends | index=" . friendIDIdx)
                 adbClick_wbb(143, 407)
+                RLB_NoteSendAttempt()
                 MarkFriendCleanupPending("Friend request submitted from details")
                 Delay(1)
 
@@ -264,7 +281,12 @@ AddFriends(renew := false, getFC := false) {
                         break
                     }
                     else if(interceptErrorCheck("ADD")){
-                        skipCurrentID := true
+                        if (isTranche) {
+                            session.set("rlbRateLimited", 1)
+                            skipCurrentID := false
+                        } else {
+                            skipCurrentID := true
+                        }
                         LogToFile("Skipping friend ID after ADD error from details | index=" . friendIDIdx)
                         break
                     }
@@ -277,6 +299,7 @@ AddFriends(renew := false, getFC := false) {
                         && FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime, , true)
                         && !FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime, , true)) {
                         adbClick_wbb(143, 407)
+                        RLB_NoteSendAttempt()
                         MarkFriendCleanupPending("Friend request resubmitted from details")
                         isSendReqeest := true
                     }
@@ -298,6 +321,10 @@ AddFriends(renew := false, getFC := false) {
             }
             else if(interceptErrorCheck("ADD")) {
                 ; LogToFile("Rate limit hit while adding friend; retrying same ID | index=" . friendIDIdx . " | id=" . value)
+                if (isTranche) {
+                    session.set("rlbRateLimited", 1)
+                    break
+                }
                 isContinue := true
                 break
             }
@@ -319,6 +346,7 @@ AddFriends(renew := false, getFC := false) {
                     }
                     Delay(1) ; otherwise it will sometimes click before UI finishes loading
                     adbClick_wbb(243, 258)
+                    RLB_NoteSendAttempt()
                     MarkFriendCleanupPending("Friend request renewed")
                     gosub, WaitAfterFriendRequestSend
                 }
@@ -338,11 +366,18 @@ AddFriends(renew := false, getFC := false) {
         if(skipCurrentID)
             LogDebug("Skipped friend ID during AddFriends | index=" . friendIDIdx)
 
+        if (isTranche && session.get("rlbRateLimited"))
+            break
+
         if(isContinue)
             continue
 
         if(friendIDIdx != session.get("friendIDs").maxIndex()) {
             if(interceptErrorCheck("ADD")) {
+                if (isTranche) {
+                    session.set("rlbRateLimited", 1)
+                    break
+                }
                 isContinue := true
                 continue
             }
@@ -364,6 +399,24 @@ AddFriends(renew := false, getFC := false) {
             break
         else if(FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, failSafeTime))
             adbClick_wbb(80, 365)
+    }
+
+    if (isTranche) {
+        ; Leave home quickly; waitTime runs once when the account hits N/N
+        Loop {
+            if(FindOrLoseImage("Friend_BottomDarkHomeIcon", 0))
+                break
+            else{
+                adbClick_wbb(40, 516)
+                Delay(0.1)
+                adbClick_wbb(175, 445)
+                DelayH(500)
+            }
+        }
+        session.set("rlbNextIdx", friendIDIdx)
+        clearLastActivityEpoch(session.get("scriptName"))
+        session.set("rlbTrancheMode", 0)
+        return friendIDIdx
     }
 
     ; ratelimit, only use this route when number of added ids is 6-10, 16-20, etc
@@ -447,6 +500,8 @@ AddFriends(renew := false, getFC := false) {
     Loop{
         Delay(0.25)
         if(interceptErrorCheck("ADD")){
+            if (session.get("rlbTrancheMode"))
+                session.set("rlbRateLimited", 1)
             isContinue := true
             break
         }
@@ -468,16 +523,31 @@ AddFriends(renew := false, getFC := false) {
             && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
             && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
             adbClick_wbb(243, 258)
+            RLB_NoteSendAttempt()
             MarkFriendCleanupPending("Friend request resubmitted")
             isSendReqeest := true
         }
         if ((A_TickCount - waitSendResult) > 10000)
             break
     }
-    if(interceptErrorCheck("ADD"))
+    if(interceptErrorCheck("ADD")) {
+        if (session.get("rlbTrancheMode"))
+            session.set("rlbRateLimited", 1)
         isContinue := true
+    }
     interceptProc := false
     return
+}
+
+; Count a friend-request send attempt for Rate Limit Bypasser (flush per attempt).
+RLB_NoteSendAttempt() {
+    global session
+    if (!session.get("rlbTrancheMode"))
+        return
+    session.set("rlbSendAttempts", session.get("rlbSendAttempts") + 1)
+    accIdx := session.get("rlbCurrentAccIdx") + 0
+    if (accIdx > 0 && IsFunc("RLB_OnSendAttempt"))
+        RLB_OnSendAttempt(accIdx)
 }
 
 ;-------------------------------------------------------------------------------
@@ -697,6 +767,22 @@ RemoveFriends() {
     CreateStatusMessage("Friends removed successfully!",,,, false)
 
     if(session.get("stopToggle")) {
+        ; Rate Limit Bypasser may still have cached accounts to drain
+        if (IsFunc("RLB_IsActive") && RLB_IsActive()) {
+            hasMore := false
+            count := RLB_AccountCount()
+            Loop, % count {
+                acc := RLB_ReadAccount(A_Index)
+                if (acc["phase"] = "adding" || acc["phase"] = "readyForPacks") {
+                    hasMore := true
+                    break
+                }
+            }
+            if (hasMore) {
+                LogInfo("RLB RemoveFriends: stopToggle set but cache still has work — continuing drain", "GroupReroll.txt")
+                return
+            }
+        }
         CreateStatusMessage("Stopping...",,,, false)
         ExitApp
     }
