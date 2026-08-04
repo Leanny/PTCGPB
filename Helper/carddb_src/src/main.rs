@@ -2344,6 +2344,27 @@ fn hours_since(timestamp: &str) -> i64 {
         .unwrap_or(999_999)
 }
 
+fn days_since(timestamp: &str) -> i64 {
+    hours_since(timestamp) / 24
+}
+
+const RENAME_MIN_AGE_DAYS: i64 = 31;
+
+fn rename_account_eligible(account: &Value) -> bool {
+    let created_at = field_str(account, "createdAt");
+    if created_at != "0" && !created_at.is_empty() && days_since(created_at) < RENAME_MIN_AGE_DAYS {
+        return false;
+    }
+    let last_renamed_at = field_str(account, "lastRenamedAt");
+    if last_renamed_at != "0"
+        && !last_renamed_at.is_empty()
+        && days_since(last_renamed_at) < RENAME_MIN_AGE_DAYS
+    {
+        return false;
+    }
+    true
+}
+
 fn timestamp_to_utc(timestamp: &str) -> Option<DateTime<Utc>> {
     parse_local(timestamp).map(|dt| dt.with_timezone(&Utc))
 }
@@ -2476,7 +2497,8 @@ fn inject_pack_eligible(account: &Value, options: &ScheduleOptions) -> bool {
 
 fn eligible(account: &Value, options: &ScheduleOptions) -> bool {
     match options.delete_method.as_str() {
-        "Create Bots (13P)" | "Rename Account" => true,
+        "Create Bots (13P)" => true,
+        "Rename Account" => rename_account_eligible(account),
         "Inject Rewards" => inject_rewards_eligible(account, options),
         "Inject 13P+" | "Inject Wonderpick 96P+" => inject_pack_eligible(account, options),
         _ => true,

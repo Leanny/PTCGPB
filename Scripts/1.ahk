@@ -477,13 +477,25 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             Goto, EndOfRun
 
         if(botConfig.get("deleteMethod") = "Rename Account") {
+            if (!AccountRename_CanRenameCurrentAccount()) {
+                CreateStatusMessage("Rename Account`nSkipped (age/rename cooldown)",,,, false)
+                if (session.get("injectMethod") && session.get("loadedAccount")) {
+                    MarkAccountAsClaimed()
+                    LogDebug("Marked non-renameable account as claimed: " . session.get("accountFileName"))
+                    session.set("loadedAccount", false)
+                }
+                continue
+            }
+
             renamedUsername := DoRenameAccount()
             if (renamedUsername != "") {
                 accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
                 accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
                 accountMeta["accountName"] := renamedUsername
+                accountMeta["lastRenamedAt"] := AccountMetadata_Now()
                 AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
                 session.set("accountName", renamedUsername)
+                session.set("accountLastRenamedAt", accountMeta["lastRenamedAt"])
                 LogInfo("Renamed account to: " . renamedUsername)
             }
             if (session.get("injectMethod") && session.get("loadedAccount")) {
@@ -1669,6 +1681,7 @@ GetAccountCreationDate() {
                 accountMeta["createdAt"] := normalizedExistingCreatedAt
                 AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
             }
+            session.set("accountCreatedAt", normalizedExistingCreatedAt)
             LogDebug("Using existing account createdAt for " . session.get("accountFileName"))
             return true
         }
@@ -1691,6 +1704,7 @@ GetAccountCreationDate() {
 
     accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
     accountMeta["createdAt"] := creationDate
+    session.set("accountCreatedAt", creationDate)
     saveOk := AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
     if (saveOk)
         LogInfo("Saved account createdAt for " . session.get("accountFileName") . ": " . creationDate)
@@ -3519,6 +3533,51 @@ PickRenameUsername() {
     return username
 }
 
+; True when current loaded account is old enough and outside rename cooldown.
+; Uses metadata createdAt/lastRenamedAt; if createdAt was missing, relies on
+; GetAccountCreationDate() (already run after boot) + session.accountCreatedAt.
+AccountRename_CanRenameCurrentAccount() {
+    global session
+
+    accountPath := session.get("loadedAccount")
+    if (accountPath = "" || session.get("accountFileName") = "")
+        return false
+
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountPath)
+    createdAt := AccountMetadata_NormalizeCreatedAt(accountMeta["createdAt"])
+    sessionCreatedAt := AccountMetadata_NormalizeCreatedAt(session.get("accountCreatedAt"))
+    if ((createdAt = "" || createdAt = "0") && sessionCreatedAt != "" && sessionCreatedAt != "0") {
+        createdAt := sessionCreatedAt
+        accountMeta["createdAt"] := createdAt
+        AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
+    }
+    if (createdAt != "" && createdAt != "0")
+        session.set("accountCreatedAt", createdAt)
+
+    if (!AccountEligibility_RenameAccountEligible(accountMeta)) {
+        minDays := AccountEligibility_RenameMinAgeDays()
+        LogInfo("Rename Account: not eligible (need " . minDays . "d since create/rename) for " . session.get("accountFileName"))
+        return false
+    }
+    return true
+}
+
+AccountRename_RecordCooldown(reason := "") {
+    global session
+    if (!session.get("injectMethod") || session.get("accountFileName") = "")
+        return
+    accountPath := session.get("loadedAccount")
+    if (accountPath = "")
+        return
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountPath)
+    accountMeta["lastRenamedAt"] := AccountMetadata_Now()
+    accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
+    AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
+    session.set("accountLastRenamedAt", accountMeta["lastRenamedAt"])
+    if (reason != "")
+        LogInfo("Rename Account: recorded lastRenamedAt (" . reason . ") for " . session.get("accountFileName"))
+}
+
 ; Inject Rename Account: hamburger → profile → edit name → type username → confirm.
 ; Returns the applied username, or "" on failure/timeout.
 DoRenameAccount() {
@@ -3570,6 +3629,7 @@ DoRenameAccount() {
         if (FindOrLoseImage("Profile_AlreadyRenamed", 0, 0, 8, true)) {
             CreateStatusMessage("Rename Account`nAlready renamed (30d) — skip",,,, false)
             LogInfo("Rename Account: AlreadyRenamed cooldown — skipping account")
+            AccountRename_RecordCooldown("AlreadyRenamed popup")
             adbClick_wbb(133, 367)
             Delay(1)
             return ""

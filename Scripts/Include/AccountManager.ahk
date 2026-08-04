@@ -695,6 +695,37 @@ AccountEligibility_HoursSince(timestamp) {
     return hoursDiff
 }
 
+; Whole days since timestamp (local). Unknown/empty → very large (treated as old enough).
+AccountEligibility_DaysSince(timestamp) {
+    return AccountEligibility_HoursSince(timestamp) // 24
+}
+
+; In-game rename cooldown is ~30 days; require 31 full days before retrying.
+AccountEligibility_RenameMinAgeDays() {
+    return 31
+}
+
+AccountEligibility_RenameAccountEligible(accountMeta) {
+    if (!IsObject(accountMeta))
+        return true
+
+    minDays := AccountEligibility_RenameMinAgeDays()
+
+    createdAt := AccountMetadata_NormalizeCreatedAt(accountMeta["createdAt"])
+    if (createdAt != "" && createdAt != "0") {
+        if (AccountEligibility_DaysSince(createdAt) < minDays)
+            return false
+    }
+
+    lastRenamedAt := AccountMetadata_NormalizeCreatedAt(accountMeta["lastRenamedAt"])
+    if (lastRenamedAt != "" && lastRenamedAt != "0") {
+        if (AccountEligibility_DaysSince(lastRenamedAt) < minDays)
+            return false
+    }
+
+    return true
+}
+
 AccountEligibility_ToUTC(timestamp) {
     if (timestamp = "" || timestamp = "0")
         return "0"
@@ -889,7 +920,7 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
         return AccountEligibility_InjectRewardsEligible(accountMeta)
 
     if (method = "Rename Account")
-        return true
+        return AccountEligibility_RenameAccountEligible(accountMeta)
 
     packCount := accountMeta["packCount"] + 0
     if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
