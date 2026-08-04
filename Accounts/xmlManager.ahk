@@ -23,6 +23,7 @@ global XM_LastMinPacks := 0
 global XM_LastMaxPacks := 0
 global XM_ShowPullReport := false
 global XM_PullFilterOptions := "Last pull beyond 24 hours|Last pull within 24 hours|No last pull recorded"
+global XM_ChipSeq := []
 
 if (!FileExist(XM_JsonDir)) {
     MsgBox, 16, XML Account Manager, Metadata folder not found:`n%XM_JsonDir%
@@ -44,131 +45,155 @@ XM_BuildGui() {
     border := "2A3136"
 
     Gui, Destroy
-    Gui, +Resize +MinSize1000x720
     Gui, Color, %bg%, %bg2%
-    Gui, Margin, 22, 18
+    Gui, Margin, 10, 8
 
-    Gui, Font, s15 c%text%, Segoe UI
-    Gui, Add, Text, x24 y18 w360 h32, XML Account Manager
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x520 y28 w456 h20 Right, Manage saved accounts safely.
-    Gui, Add, Progress, x24 y62 w952 h2 c%accent% Background%border% Disabled, 100
-
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Tab3, x24 y82 w952 h360 vMainTab gMainTabChanged, Overview|Batch Rename|Separate/Copy
-
-    Gui, Tab, 1
-    Gui, Font, s11 c%text%, Segoe UI
-    Gui, Add, Text, x54 y120 w250 h24, Account Library
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x54 y146 w420 h20, Current JSON metadata and matching XML files in Saved.
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Button, x690 y124 w120 h30 gLastPullReport, Last pull report
-    Gui, Add, Button, x822 y124 w120 h30 gScanNow, Refresh scan
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x54 y178 w147 h18 Center, JSON accounts
-    Gui, Add, Text, x201 y178 w147 h18 Center, XML in Saved
-    Gui, Add, Text, x348 y178 w147 h18 Center, Missing XML
-    Gui, Add, Text, x495 y178 w147 h18 Center, 96+ packs
-    Gui, Add, Text, x642 y178 w147 h18 Center, 0-13 packs
-    Gui, Add, Text, x789 y178 w147 h18 Center, 14-95 packs
-    Gui, Font, s18 c%text%, Segoe UI
-    Gui, Add, Text, x54 y200 w147 h34 Center vMetricJson, -
-    Gui, Add, Text, x201 y200 w147 h34 Center vMetricXml, -
-    Gui, Add, Text, x348 y200 w147 h34 Center vMetricMissing, -
-    Gui, Add, Text, x495 y200 w147 h34 Center vMetricReady, -
-    Gui, Add, Text, x642 y200 w147 h34 Center vMetricLow, -
-    Gui, Add, Text, x789 y200 w147 h34 Center vMetricMid, -
-    Gui, Add, Progress, x54 y248 w886 h1 c%border% Background%border% Disabled, 100
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, GroupBox, x54 y262 w250 h148 c%muted%, Pack ranges
-    Gui, Add, GroupBox, x346 y262 w250 h148 c%muted%, Languages
-    Gui, Add, GroupBox, x638 y262 w302 h148 c%muted%, Instances
+    ; Content column x32..x828 (w796) = equal 32px side margins.
     Gui, Font, s9 c%text%, Segoe UI
-    Gui, Add, Text, x74 y292 w126 h96 vPackBreakdownLabels, Refresh scan.
-    Gui, Add, Text, x205 y292 w70 h96 Right vPackBreakdownValues,
-    Gui, Add, Text, x366 y292 w166 h96 vLanguageBreakdownLabels, Refresh scan.
-    Gui, Add, Text, x535 y292 w40 h96 Right vLanguageBreakdownValues,
-    Gui, Add, Text, x658 y292 w78 h96 vInstanceLeftLabels, Refresh scan.
-    Gui, Add, Text, x738 y292 w45 h96 Right vInstanceLeftValues,
-    Gui, Add, Text, x804 y292 w78 h96 vInstanceRightLabels,
-    Gui, Add, Text, x884 y292 w45 h96 Right vInstanceRightValues,
+    Gui, Add, Tab3, x12 y12 w836 h320 vMainTab gMainTabChanged, Overview|Batch Rename|Separate/Copy
 
+    ; --- Overview ---
+    Gui, Tab, 1
+    Gui, Font, s9 c%text%, Segoe UI
+    Gui, Add, Text, x32 y44 w280 h18, Account Library
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x32 y62 w420 h14, JSON metadata and matching XML in Saved.
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Button, x602 y48 w110 h24 gLastPullReport, Last pull report
+    Gui, Add, Button, x722 y48 w106 h24 gScanNow, Refresh
+
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x32 y96 w133 h12 Center, JSON accounts
+    Gui, Add, Text, x165 y96 w133 h12 Center, XML in Saved
+    Gui, Add, Text, x298 y96 w133 h12 Center, Missing XML
+    Gui, Add, Text, x431 y96 w133 h12 Center, 96+ packs
+    Gui, Add, Text, x564 y96 w132 h12 Center, 0-13 packs
+    Gui, Add, Text, x696 y96 w132 h12 Center, 14-95 packs
+    Gui, Font, s13 c%text%, Segoe UI
+    Gui, Add, Text, x32 y112 w133 h24 Center vMetricJson, -
+    Gui, Add, Text, x165 y112 w133 h24 Center vMetricXml, -
+    Gui, Add, Text, x298 y112 w133 h24 Center vMetricMissing, -
+    Gui, Add, Text, x431 y112 w133 h24 Center vMetricReady, -
+    Gui, Add, Text, x564 y112 w132 h24 Center vMetricLow, -
+    Gui, Add, Text, x696 y112 w132 h24 Center vMetricMid, -
+
+    Gui, Add, Progress, x32 y144 w796 h1 c%border% Background%border% Disabled, 100
+    Gui, Font, s8 c%muted%, Segoe UI
+    Gui, Add, GroupBox, x32 y154 w258 h160 c%muted%, Pack ranges
+    Gui, Add, GroupBox, x301 y154 w258 h160 c%muted%, Languages
+    Gui, Add, GroupBox, x570 y154 w258 h160 c%muted%, Instances
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Text, x48 y176 w140 h124 vPackBreakdownLabels, -
+    Gui, Add, Text, x194 y176 w76 h124 Right vPackBreakdownValues,
+    Gui, Add, Text, x317 y176 w170 h124 vLanguageBreakdownLabels, -
+    Gui, Add, Text, x493 y176 w46 h124 Right vLanguageBreakdownValues,
+    Gui, Add, Text, x586 y176 w80 h124 vInstanceLeftLabels, -
+    Gui, Add, Text, x668 y176 w45 h124 Right vInstanceLeftValues,
+    Gui, Add, Text, x726 y176 w60 h124 vInstanceRightLabels,
+    Gui, Add, Text, x788 y176 w28 h124 Right vInstanceRightValues,
+
+    ; --- Batch Rename ---
     Gui, Tab, 2
-    Gui, Font, s12 c%text%, Segoe UI
-    Gui, Add, Text, x54 y124 w260 h28, Batch Rename XMLs
-    Gui, Font, s10 c%muted%, Segoe UI
-    Gui, Add, Text, x54 y154 w700 h24, Rename XML files and update their JSON metadata fileName references.
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Text, x54 y198 w100 h24, Rename style
-    Gui, Add, DropDownList, x170 y194 w360 vRenameStyle AltSubmit Choose1 gRenameStyleChanged Background%inputBg% c%text%, Standard pack archive|Pack archive by language|Name + friend code|Name + packs + friend code|Language + name + packs|Device ID|Device ID + packs|Instance + device ID|Custom template
-    Gui, Add, Text, x54 y238 w100 h24, Template
-    Gui, Add, Edit, x170 y234 w650 h26 vRenameTemplate hwndXM_RenameTemplateHwnd Disabled Background%inputBg% c%text%, {packCount}P_{createdAt}_{instance}.xml
-    Gui, Add, Button, x838 y232 w80 h30 gResetTemplate, Reset
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x54 y274 w100 h24, Fields
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x170 y270 w720 h52, {packCount}=packs   {createdAt}=created   {instance}=bot   {language}=language`n{accountName}=name   {friendCode}=friend code   {deviceAccount}=account ID   {lastPackPulled}=last pull
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Button, x170 y314 w140 h32 gPreviewRename, Preview rename
-    Gui, Add, Button, x326 y314 w140 h32 gApplyRename, Apply rename
+    Gui, Font, s9 c%text%, Segoe UI
+    Gui, Add, Text, x32 y44 w280 h18, Batch Rename
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x32 y62 w560 h14, Click pieces, reorder, then preview or apply.
 
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Button, x32 y88 w152 h24 gAddChip_packCount, Pack count
+    Gui, Add, Button, x193 y88 w152 h24 gAddChip_createdAt, Created date
+    Gui, Add, Button, x354 y88 w152 h24 gAddChip_instance, Instance
+    Gui, Add, Button, x515 y88 w152 h24 gAddChip_language, Language
+    Gui, Add, Button, x676 y88 w152 h24 gAddChip_accountName, Account name
+    Gui, Add, Button, x32 y116 w152 h24 gAddChip_friendCode, Friend code
+    Gui, Add, Button, x193 y116 w152 h24 gAddChip_deviceAccount, Device ID
+    Gui, Add, Button, x354 y116 w152 h24 gAddChip_lastPackPulled, Last pack pull
+    Gui, Add, Button, x515 y116 w152 h24 gAddChip_shinedust, Shinedust
+    Gui, Add, Button, x676 y116 w152 h24 gAddChip_fileName, Current filename
+
+    Gui, Add, Button, x32 y148 w30 h22 gAddChip_Underscore, _
+    Gui, Add, Button, x66 y148 w30 h22 gAddChip_Dash, -
+    Gui, Add, Button, x100 y148 w30 h22 gAddChip_OpenParen, (
+    Gui, Add, Button, x134 y148 w30 h22 gAddChip_CloseParen, )
+    Gui, Add, Edit, x170 y148 w140 h22 vChipLiteral Background%inputBg% c%text%
+    Gui, Add, Button, x316 y146 w50 h26 gAddChip_Literal, Add
+
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, ListBox, x32 y180 w796 h90 vChipSequence Background%inputBg% c%text%
+    Gui, Font, s8 c%muted%, Segoe UI
+    Gui, Add, Text, x32 y278 w46 h14, Result
+    Gui, Font, s8 c%accent%, Segoe UI
+    Gui, Add, Edit, x78 y274 w750 h20 vRenameTemplatePreview ReadOnly -Wrap Background%inputBg% c%accent%, (empty)
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Button, x32 y302 w64 h22 gChipMoveUp, Up
+    Gui, Add, Button, x100 y302 w64 h22 gChipMoveDown, Down
+    Gui, Add, Button, x168 y302 w64 h22 gChipRemove, Remove
+    Gui, Add, Button, x236 y302 w64 h22 gChipClear, Clear
+    Gui, Add, Button, x660 y300 w78 h24 gPreviewRename, Preview
+    Gui, Add, Button, x746 y300 w82 h24 gApplyRename, Apply
+
+    ; --- Separate/Copy ---
     Gui, Tab, 3
-    Gui, Font, s12 c%text%, Segoe UI
-    Gui, Add, Text, x54 y124 w300 h28, Separate/Copy XMLs
-    Gui, Font, s10 c%muted%, Segoe UI
-    Gui, Add, Text, x54 y154 w500 h24, Copy accounts for export, or move them fully out of active bot folders.
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Text, x54 y198 w100 h24, Selection
-    Gui, Add, DropDownList, x170 y194 w360 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Portuguese|Language Traditional Chinese|Language Korean|Custom pack range|%XM_PullFilterOptions%
-    Gui, Add, Text, x54 y238 w100 h24 vRangeLabel, Pack range
-    Gui, Add, Edit, x170 y234 w70 h26 Number vMinPacks Center Disabled Background%inputBg% c%text%, 96
-    Gui, Add, Text, x252 y238 w24 h24 vRangeToLabel, to
-    Gui, Add, Edit, x286 y234 w70 h26 Number vMaxPacks Center Disabled Background%inputBg% c%text%, 999
-    Gui, Add, Text, x170 y238 w190 h24 vRangeHint c%muted%, Preset range is fixed
-    Gui, Add, Text, x390 y238 w210 h24 c%muted%, JSON included automatically
-    Gui, Add, Text, x54 y278 w100 h24, XML output
-    Gui, Add, Text, x170 y278 w650 h24 c%accent%, Accounts\Sorted\{group}\XML
-    Gui, Add, Text, x54 y304 w100 h24, JSON output
-    Gui, Add, Text, x170 y304 w650 h24 c%accent%, Accounts\Sorted\{group}\JSON
-    Gui, Font, s12 c%text%, Segoe UI
-    Gui, Add, Text, x610 y124 w250 h28, Actions
-    Gui, Add, Progress, x610 y154 w300 h1 c%border% Background%border% Disabled, 100
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Text, x610 y184 w150 h20, Preview
-    Gui, Add, Button, x780 y178 w130 h30 gPreviewSort, Preview
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x610 y205 w150 h18, Check selection
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Text, x610 y246 w150 h20, Copy
-    Gui, Add, Button, x780 y240 w130 h30 gApplySort, Copy accounts
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x610 y267 w150 h18, Keep Saved
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Text, x610 y308 w150 h20, Move
-    Gui, Add, Button, x780 y302 w130 h30 gMoveSort, Move accounts
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x610 y329 w150 h18, Remove from Saved
+    Gui, Font, s9 c%text%, Segoe UI
+    Gui, Add, Text, x32 y44 w280 h18, Separate/Copy
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x32 y62 w560 h14, Copy for export, or move accounts out of active folders.
 
+    Gui, Font, s8 c%muted%, Segoe UI
+    Gui, Add, GroupBox, x32 y84 w392 h168 c%muted%, Selection
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Text, x48 y106 w70 h18, Filter
+    Gui, Add, DropDownList, x118 y102 w288 vSortFilter AltSubmit Choose3 gSortFilterChanged Background%inputBg% c%text%, 0-13 packs|14-95 packs|96+ packs|Missing XML or JSON pair|Claim completed|Receive gift completed|Language Japanese|Language English|Language French|Language Italian|Language German|Language Spanish|Language Portuguese|Language Traditional Chinese|Language Korean|Custom pack range|%XM_PullFilterOptions%
+    Gui, Add, Text, x48 y134 w70 h18 vRangeLabel, Range
+    Gui, Add, Edit, x118 y130 w60 h22 Number vMinPacks Center Disabled Background%inputBg% c%text%, 96
+    Gui, Add, Text, x186 y134 w18 h18 vRangeToLabel, to
+    Gui, Add, Edit, x208 y130 w60 h22 Number vMaxPacks Center Disabled Background%inputBg% c%text%, 999
+    Gui, Add, Text, x118 y134 w200 h18 vRangeHint c%muted%,
+
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Text, x48 y166 w70 h16, XML out
+    Gui, Font, s8 c%accent%, Segoe UI
+    Gui, Add, Text, x118 y166 w288 h16, Accounts\Sorted\{group}\XML
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Text, x48 y188 w70 h16, JSON out
+    Gui, Font, s8 c%accent%, Segoe UI
+    Gui, Add, Text, x118 y188 w288 h16, Accounts\Sorted\{group}\JSON
+    Gui, Font, s8 c%muted%, Segoe UI
+    Gui, Add, Text, x48 y216 w360 h24, Preview first if unsure. Move permanently removes files from Saved.
+
+    Gui, Font, s8 c%muted%, Segoe UI
+    Gui, Add, GroupBox, x436 y84 w392 h168 c%muted%, Actions
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Button, x542 y110 w180 h24 gPreviewSort, Preview
+    Gui, Add, Button, x542 y146 w180 h24 gApplySort, Copy
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x542 y172 w180 h14 Center, Keeps originals in Saved
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Button, x542 y194 w180 h24 gMoveSort, Move
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x542 y220 w180 h14 Center, Removes from Saved
+
+    ; Shared bottom chrome
     Gui, Tab
-    Gui, Font, s11 c%text%, Segoe UI
-    Gui, Add, Text, x24 y466 w250 h26 vPreviewTitle, Preview/Results
-    Gui, Font, s9 c%muted%, Segoe UI
-    Gui, Add, Text, x720 y472 w255 h20 Right vPreviewHint, Preview is read-only.
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Edit, x24 y498 w952 h148 vLogBox ReadOnly -Wrap +VScroll Background%inputBg% c%text%, Ready.
-    Gui, Font, s10 c%text%, Segoe UI
-    Gui, Add, Text, x204 y654 w592 h18 Center vProgressText, Ready.
-    Gui, Add, Progress, x204 y674 w592 h12 vActionProgress Range0-100 c%accent% Background%border%, 0
-    Gui, Add, Button, x804 y664 w80 h32 gClearLog, Clear
-    Gui, Add, Button, x896 y664 w80 h32 gCloseGui, Close
+    Gui, Font, s9 c%text%, Segoe UI
+    Gui, Add, Text, x12 y344 w200 h18 vPreviewTitle, Results
+    Gui, Font, s7 c%muted%, Segoe UI
+    Gui, Add, Text, x580 y346 w268 h14 Right vPreviewHint,
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Edit, x12 y362 w836 h90 vLogBox ReadOnly -Wrap +VScroll Background%inputBg% c%text%, Ready.
 
-    Gui, Show, w1000 h715, XML Account Manager
-    XM_SetTemplateReadOnly(true)
+    Gui, Font, s8 c%text%, Segoe UI
+    Gui, Add, Text, x12 y462 w420 h14 vProgressText, Ready.
+    Gui, Add, Progress, x12 y480 w660 h8 vActionProgress Range0-100 c%accent% Background%border%, 0
+    Gui, Add, Button, x688 y462 w76 h26 vClearLogBtn gClearLog, Clear
+    Gui, Add, Button, x770 y462 w78 h26 vCloseGuiBtn gCloseGui, Close
+
+    Gui, Show, w860 h512, XML Account Manager
+    XM_ChipSeq := []
+    XM_RefreshChipList()
     XM_UpdateSortRangeControls()
     XM_UpdatePreviewVisibility()
 }
-
 MainTabChanged:
     Gui, Submit, NoHide
     XM_ShowPullReport := false
@@ -183,12 +208,73 @@ LastPullReport:
     XM_ShowLastPullReport()
 return
 
-RenameStyleChanged:
-    XM_SetTemplateFromStyle()
+AddChip_packCount:
+    XM_AddChip("{packCount}")
+return
+AddChip_createdAt:
+    XM_AddChip("{createdAt}")
+return
+AddChip_instance:
+    XM_AddChip("{instance}")
+return
+AddChip_language:
+    XM_AddChip("{language}")
+return
+AddChip_accountName:
+    XM_AddChip("{accountName}")
+return
+AddChip_friendCode:
+    XM_AddChip("{friendCode}")
+return
+AddChip_deviceAccount:
+    XM_AddChip("{deviceAccount}")
+return
+AddChip_lastPackPulled:
+    XM_AddChip("{lastPackPulled}")
+return
+AddChip_shinedust:
+    XM_AddChip("{shinedust}")
+return
+AddChip_fileName:
+    XM_AddChip("{fileName}")
+return
+AddChip_Underscore:
+    XM_AddChip("_")
+return
+AddChip_Dash:
+    XM_AddChip("-")
+return
+AddChip_OpenParen:
+    XM_AddChip("(")
+return
+AddChip_CloseParen:
+    XM_AddChip(")")
+return
+AddChip_Literal:
+    GuiControlGet, literal,, ChipLiteral
+    literal := Trim(literal)
+    if (literal = "")
+        return
+    XM_AddChip(literal)
+    GuiControl,, ChipLiteral,
 return
 
-ResetTemplate:
-    XM_SetTemplateFromStyle(true)
+ChipMoveUp:
+    XM_MoveSelectedChip(-1)
+return
+
+ChipMoveDown:
+    XM_MoveSelectedChip(1)
+return
+
+ChipRemove:
+    XM_RemoveSelectedChip()
+return
+
+ChipClear:
+    global XM_ChipSeq
+    XM_ChipSeq := []
+    XM_RefreshChipList()
 return
 
 SortFilterChanged:
@@ -198,7 +284,11 @@ return
 
 PreviewRename:
     Gui, Submit, NoHide
-    GuiControlGet, template,, RenameTemplate
+    template := XM_ChipSeqToTemplate()
+    if (template = "" || template = ".xml") {
+        MsgBox, 48, XML Account Manager, Add at least one field to the template sequence first.
+        return
+    }
     XM_LastAction := "rename"
     XM_LastTemplate := template
     XM_LastPlan := XM_BuildRenamePlan(template)
@@ -207,9 +297,9 @@ return
 
 ApplyRename:
     Gui, Submit, NoHide
-    GuiControlGet, template,, RenameTemplate
-    if (template = "") {
-        MsgBox, 48, XML Account Manager, Choose a rename template first.
+    template := XM_ChipSeqToTemplate()
+    if (template = "" || template = ".xml") {
+        MsgBox, 48, XML Account Manager, Add at least one field to the template sequence first.
         return
     }
     plan := XM_BuildRenamePlan(template)
@@ -278,18 +368,17 @@ ClearLog:
     GuiControlGet, tab,, MainTab
     XM_ShowPullReport := false
     if (tab = "Overview") {
-        GuiControl,, PackBreakdownLabels, Refresh scan.
+        GuiControl,, PackBreakdownLabels, -
         GuiControl,, PackBreakdownValues,
-        GuiControl,, LanguageBreakdownLabels, Refresh scan.
+        GuiControl,, LanguageBreakdownLabels, -
         GuiControl,, LanguageBreakdownValues,
-        GuiControl,, InstanceLeftLabels, Refresh scan.
+        GuiControl,, InstanceLeftLabels, -
         GuiControl,, InstanceLeftValues,
-        GuiControl,, InstanceRightLabels, Refresh scan.
+        GuiControl,, InstanceRightLabels,
         GuiControl,, InstanceRightValues,
-        XM_UpdatePreviewVisibility()
-    } else {
-        XM_SetLog("Ready.")
     }
+    XM_SetLog("Ready.")
+    XM_UpdatePreviewVisibility()
     XM_ProgressReset()
 return
 
@@ -298,45 +387,115 @@ GuiClose:
 ExitApp
 return
 
-XM_SetTemplateFromStyle(resetCustom := false) {
-    GuiControlGet, style,, RenameStyle
-    style += 0
-
-    if (style = 1)
-        template := "{packCount}P_{createdAt}_{instance}.xml"
-    else if (style = 2)
-        template := "{packCount}P_{language}_{createdAt}_{instance}.xml"
-    else if (style = 3)
-        template := "{accountName}({friendCode}).xml"
-    else if (style = 4)
-        template := "{accountName}_{packCount}P({friendCode}).xml"
-    else if (style = 5)
-        template := "{language}_{accountName}_{packCount}P.xml"
-    else if (style = 6)
-        template := "{deviceAccount}.xml"
-    else if (style = 7)
-        template := "{deviceAccount}_{packCount}P.xml"
-    else if (style = 8)
-        template := "{instance}_{deviceAccount}.xml"
-    else {
-        XM_SetTemplateReadOnly(false)
-        if (resetCustom) {
-            template := "{packCount}P_{createdAt}_{instance}.xml"
-            GuiControl,, RenameTemplate, %template%
-        }
-        GuiControl, Focus, RenameTemplate
-        return
-    }
-    GuiControl,, RenameTemplate, %template%
-    XM_SetTemplateReadOnly(true)
+XM_ChipSeqToTemplate() {
+    global XM_ChipSeq
+    name := ""
+    count := XM_ChipSeq.MaxIndex()
+    if (count = "")
+        count := 0
+    Loop, %count%
+        name .= XM_ChipSeq[A_Index]
+    name := Trim(name)
+    if (name = "")
+        return ""
+    if (SubStr(name, -3) != ".xml")
+        name .= ".xml"
+    return name
 }
 
-XM_SetTemplateReadOnly(readOnly) {
-    global XM_RenameTemplateHwnd
-    option := readOnly ? "Disable" : "Enable"
-    GuiControl, %option%, RenameTemplate
-    if (XM_RenameTemplateHwnd)
-        DllCall("SendMessage", "Ptr", XM_RenameTemplateHwnd, "UInt", 0xCF, "Ptr", 0, "Ptr", 0)
+XM_ChipDisplayLabel(chip) {
+    if (chip = "{packCount}")
+        return "Pack count"
+    if (chip = "{createdAt}")
+        return "Created date"
+    if (chip = "{instance}")
+        return "Instance"
+    if (chip = "{language}")
+        return "Language"
+    if (chip = "{accountName}")
+        return "Account name"
+    if (chip = "{friendCode}")
+        return "Friend code"
+    if (chip = "{deviceAccount}")
+        return "Device ID"
+    if (chip = "{lastPackPulled}")
+        return "Last pack pull"
+    if (chip = "{shinedust}")
+        return "Shinedust"
+    if (chip = "{fileName}")
+        return "Current filename"
+    if (chip = " ")
+        return "[space]"
+    return chip
+}
+
+XM_RefreshChipList(selectIndex := 0) {
+    global XM_ChipSeq
+    list := ""
+    count := XM_ChipSeq.MaxIndex()
+    if (count = "")
+        count := 0
+    Loop, %count% {
+        label := XM_ChipDisplayLabel(XM_ChipSeq[A_Index])
+        list .= (A_Index = 1 ? "" : "|") . A_Index . ". " . label
+    }
+    GuiControl,, ChipSequence, |
+    if (list != "")
+        GuiControl,, ChipSequence, %list%
+    template := XM_ChipSeqToTemplate()
+    if (template = "")
+        template := "(empty)"
+    GuiControl,, RenameTemplatePreview, %template%
+    if (selectIndex > 0 && selectIndex <= count)
+        GuiControl, Choose, ChipSequence, %selectIndex%
+    else if (count > 0)
+        GuiControl, Choose, ChipSequence, %count%
+}
+
+XM_AddChip(chip) {
+    global XM_ChipSeq
+    if (chip = "")
+        return
+    XM_ChipSeq.Push(chip)
+    XM_RefreshChipList(XM_ChipSeq.MaxIndex())
+}
+
+XM_GetSelectedChipIndex() {
+    GuiControlGet, selected,, ChipSequence
+    if (selected = "")
+        return 0
+    if (!RegExMatch(selected, "^(\d+)\.", m))
+        return 0
+    return m1 + 0
+}
+
+XM_RemoveSelectedChip() {
+    global XM_ChipSeq
+    idx := XM_GetSelectedChipIndex()
+    if (idx < 1)
+        return
+    XM_ChipSeq.RemoveAt(idx)
+    nextIdx := idx
+    if (nextIdx > XM_ChipSeq.MaxIndex())
+        nextIdx := XM_ChipSeq.MaxIndex()
+    if (nextIdx = "")
+        nextIdx := 0
+    XM_RefreshChipList(nextIdx)
+}
+
+XM_MoveSelectedChip(direction) {
+    global XM_ChipSeq
+    idx := XM_GetSelectedChipIndex()
+    if (idx < 1)
+        return
+    newIdx := idx + direction
+    count := XM_ChipSeq.MaxIndex()
+    if (count = "" || newIdx < 1 || newIdx > count)
+        return
+    temp := XM_ChipSeq[idx]
+    XM_ChipSeq[idx] := XM_ChipSeq[newIdx]
+    XM_ChipSeq[newIdx] := temp
+    XM_RefreshChipList(newIdx)
 }
 
 XM_UpdateSortRangeControls() {
@@ -346,23 +505,7 @@ XM_UpdateSortRangeControls() {
     packOption := packRange ? "Enable" : "Disable"
     GuiControl, %packOption%, MinPacks
     GuiControl, %packOption%, MaxPacks
-
-    if (packRange) {
-        GuiControl, Show, RangeLabel
-        GuiControl, Show, MinPacks
-        GuiControl, Show, RangeToLabel
-        GuiControl, Show, MaxPacks
-        GuiControl, Hide, RangeHint
-    } else {
-        GuiControl, Hide, RangeLabel
-        GuiControl, Hide, MinPacks
-        GuiControl, Hide, RangeToLabel
-        GuiControl, Hide, MaxPacks
-        if (filter >= 1 && filter <= 15)
-            GuiControl, Show, RangeHint
-        else
-            GuiControl, Hide, RangeHint
-    }
+    GuiControl, Hide, RangeHint
 }
 
 XM_ValidateSortInputs() {
@@ -374,22 +517,7 @@ XM_ValidateSortInputs() {
 }
 
 XM_UpdatePreviewVisibility() {
-    global XM_ShowPullReport
-    GuiControlGet, tab,, MainTab
-    hidePreview := (tab = "Overview" && !XM_ShowPullReport)
-    previewOption := hidePreview ? "Hide" : "Show"
-    tabHeight := hidePreview ? 360 : 300
-    GuiControl, Move, MainTab, h%tabHeight%
-
-    if (!hidePreview) {
-        GuiControl, Move, PreviewTitle, y406
-        GuiControl, Move, PreviewHint, x720 y412
-        GuiControl, Move, LogBox, y438 h208
-    }
-
-    GuiControl, %previewOption%, PreviewTitle
-    GuiControl, %previewOption%, PreviewHint
-    GuiControl, %previewOption%, LogBox
+    GuiControl,, PreviewHint,
 }
 
 XM_RefreshSummary(updateLog := true) {
@@ -522,10 +650,25 @@ XM_LoadAccounts(progressLabel := "") {
             , PackCount: account["packCount"] + 0
             , CreatedAt: account["createdAt"]
             , LastPackPulled: account["lastPackPulled"]
+            , Shinedust: XM_GetShinedustValue(account)
             , Raw: account})
     }
 
     return accounts
+}
+
+XM_GetShinedustValue(account) {
+    if (!IsObject(account) || !account.HasKey("shinedust"))
+        return -1
+    shinedust := account["shinedust"]
+    if (IsObject(shinedust)) {
+        if (!shinedust.HasKey("value"))
+            return -1
+        return shinedust["value"] + 0
+    }
+    if (shinedust = "" || shinedust = "0")
+        return -1
+    return shinedust + 0
 }
 
 XM_CountXmlFiles(progressLabel := "") {
@@ -837,6 +980,10 @@ XM_TemplateName(template, account) {
         return ""
     if (InStr(template, "{language}") && XM_NormalizeLanguage(account.Language) = "")
         return ""
+    if (InStr(template, "{shinedust}") && (account.Shinedust = "" || account.Shinedust = -1))
+        return ""
+    if (InStr(template, "{fileName}") && account.FileName = "")
+        return ""
 
     createdAt := account.CreatedAt
     if (createdAt = "" || createdAt = "0")
@@ -845,6 +992,11 @@ XM_TemplateName(template, account) {
     lastPackPulled := XM_GetLastPackPulled(account)
     if (lastPackPulled = "")
         lastPackPulled := "unknown"
+
+    currentFileName := account.FileName
+    SplitPath, currentFileName, , , , fileBase
+    if (fileBase = "")
+        fileBase := currentFileName
 
     name := template
     name := StrReplace(name, "{packCount}", account.PackCount)
@@ -855,6 +1007,8 @@ XM_TemplateName(template, account) {
     name := StrReplace(name, "{accountName}", account.AccountName)
     name := StrReplace(name, "{friendCode}", account.FriendCode)
     name := StrReplace(name, "{deviceAccount}", account.DeviceAccount)
+    name := StrReplace(name, "{shinedust}", account.Shinedust)
+    name := StrReplace(name, "{fileName}", fileBase)
     name := RegExReplace(name, "[\\/:*?""<>|]", "_")
     name := RegExReplace(name, "\s+", " ")
     name := Trim(name)
