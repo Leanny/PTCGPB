@@ -204,6 +204,335 @@ AccountMetadata_NewFlag(value := 0, setAt := "", validUntil := "") {
     return {"value": value ? 1 : 0, "setAt": setAt, "validUntil": validUntil}
 }
 
+;-------------------------------------------------------------------------------
+; Special-event helpers (no Gdip). Shared by AccountManager / Cockpit / SpecialEvent.
+;-------------------------------------------------------------------------------
+SpecialEvent_GetLocalUtcOffsetHours() {
+    offset := A_Now
+    currenttimeutc := A_NowUTC
+    EnvSub, offset, %currenttimeutc%, Hours
+    return offset
+}
+
+; Game-day key (UTC YYYYMMDD of the cutoff that ends the current period).
+SpecialEvent_GetGameDayKey(timestamp := "", expiryTime := "055959") {
+    if (timestamp = "" || timestamp = "0")
+        timestamp := A_Now
+    if (expiryTime = "" || expiryTime = "ERROR")
+        expiryTime := "055959"
+
+    offset := SpecialEvent_GetLocalUtcOffsetHours()
+    utcTs := timestamp
+    ; EnvSub,var,N,Hours treats N as a timestamp (difference mode) and clears var.
+    ; Use += to shift a YYYYMMDDHHMMSS stamp by local→UTC offset hours.
+    utcTs += -offset, Hours
+    utcDate := SubStr(utcTs, 1, 8)
+    utcTime := SubStr(utcTs, 9, 6)
+    if (utcTime >= expiryTime) {
+        nextDay := utcDate
+        nextDay += 1, Days
+        return SubStr(nextDay, 1, 8)
+    }
+    return utcDate
+}
+
+SpecialEvent_GetNextDailyResetLocal(expiryTime := "055959") {
+    if (expiryTime = "" || expiryTime = "ERROR")
+        expiryTime := "055959"
+
+    offset := SpecialEvent_GetLocalUtcOffsetHours()
+    utcNow := A_NowUTC
+    utcDate := SubStr(utcNow, 1, 8)
+    utcTime := SubStr(utcNow, 9, 6)
+    nextResetUtc := utcDate . expiryTime
+    if (utcTime >= expiryTime) {
+        nextResetUtc += 1, Days
+    }
+    nextResetLocal := nextResetUtc
+    nextResetLocal += offset, Hours
+    return nextResetLocal
+}
+
+SpecialEvent_IsSameGameDay(timestampA, timestampB := "", expiryTime := "055959") {
+    if (timestampA = "" || timestampA = "0")
+        return false
+    return SpecialEvent_GetGameDayKey(timestampA, expiryTime) = SpecialEvent_GetGameDayKey(timestampB, expiryTime)
+}
+
+; Lightweight list for eligibility (no bitmaps).
+; Returns {eventName, claimSteps, claimDays, giftDays, expiryDate, expiryTime}.
+; claimDays/giftDays are arrays of ints; empty claimDays = claim every step.
+SpecialEvent_ListActiveEventInfos() {
+    infos := []
+    TargetPath := getScriptBaseFolder() . "\SpecialEvents\Events"
+    Loop, Files, %TargetPath%\*.sevt, F
+    {
+        FilePath := A_LoopFileFullPath
+        IniRead, vName, %FilePath%, TargetInfo, EventName
+        if (vName = "ERROR" || vName = "")
+            continue
+        IniRead, vDate, %FilePath%, TargetInfo, ExpiryDate
+        IniRead, vTime, %FilePath%, TargetInfo, ExpiryTime
+        vClaimSteps := SpecialEvent_ReadClaimSteps(FilePath)
+        vClaimDays := SpecialEvent_ReadDayList(FilePath, "ClaimDays")
+        vGiftDays := SpecialEvent_ReadDayList(FilePath, "GiftDays")
+        if (SpecialEvent_IsExpiredByDateTime(vDate, vTime))
+            continue
+        infos.Push({"eventName": vName, "claimSteps": vClaimSteps, "claimDays": vClaimDays, "giftDays": vGiftDays, "expiryDate": vDate, "expiryTime": vTime})
+    }
+    return infos
+}
+
+; ClaimSteps = number of daily claim days. Falls back to legacy MaxClaims.
+SpecialEvent_ReadClaimSteps(filePath) {
+    IniRead, vClaimSteps, %filePath%, TargetInfo, ClaimSteps, ERROR
+    if (vClaimSteps = "ERROR" || vClaimSteps = "") {
+        IniRead, vClaimSteps, %filePath%, TargetInfo, MaxClaims, 1
+    }
+    if (vClaimSteps = "ERROR" || vClaimSteps = "" || (vClaimSteps + 0) < 1)
+        return 1
+    return vClaimSteps + 0
+}
+
+; Parse comma-separated day list from .sevt (e.g. "2,4"). Empty/missing → [].
+SpecialEvent_ReadDayList(filePath, keyName) {
+    days := []
+    IniRead, raw, %filePath%, TargetInfo, %keyName%, ERROR
+    if (raw = "ERROR" || raw = "")
+        return days
+    raw := RegExReplace(raw, "\s+", "")
+    Loop, Parse, raw, `,
+    {
+        part := A_LoopField
+        if (part = "" || !RegExMatch(part, "^\d+$"))
+            continue
+        n := part + 0
+        if (n < 1)
+            continue
+        days.Push(n)
+    }
+    return days
+}
+
+; Empty list = "all steps" when forClaim=true; empty = "none" when forClaim=false (gift).
+SpecialEvent_DayListContains(dayList, step, emptyMeansAll := false) {
+    step := step + 0
+    if (step < 1)
+        return false
+    maxIndex := IsObject(dayList) ? dayList.MaxIndex() : ""
+    if (maxIndex = "" || maxIndex < 1)
+        return emptyMeansAll ? true : false
+    Loop, % maxIndex {
+        if ((dayList[A_Index] + 0) = step)
+            return true
+    }
+    return false
+}
+
+SpecialEvent_IsExpiredByDateTime(expiryDate, expiryTime) {
+    if (expiryDate = "" || expiryTime = "" || expiryDate = "ERROR" || expiryTime = "ERROR")
+        return true
+    waitTime := -5
+    currentDateTime := A_Now
+    offset := SpecialEvent_GetLocalUtcOffsetHours()
+    expireEventTime := expiryDate . expiryTime
+    expireEventTime += offset, Hours
+    expireEventTime += waitTime, Minutes
+    return currentDateTime > expireEventTime
+}
+
+AccountMetadata_NewSpecialEventProgress(claimCount := 0, lastClaimAt := "") {
+    return {"claimCount": claimCount + 0, "lastClaimAt": lastClaimAt}
+}
+
+AccountMetadata_NormalizeSpecialEvents(specialEvents) {
+    normalized := {}
+    if (!IsObject(specialEvents))
+        return normalized
+    for eventName, progress in specialEvents {
+        if (!IsObject(progress))
+            continue
+        claimCount := progress.HasKey("claimCount") ? progress["claimCount"] + 0 : 0
+        lastClaimAt := progress.HasKey("lastClaimAt") ? progress["lastClaimAt"] : ""
+        if (claimCount <= 0 && lastClaimAt = "")
+            continue
+        normalized[eventName] := AccountMetadata_NewSpecialEventProgress(claimCount, lastClaimAt)
+    }
+    return normalized
+}
+
+AccountMetadata_GetSpecialEventProgress(accountMeta, eventName) {
+    if (!IsObject(accountMeta) || eventName = "")
+        return AccountMetadata_NewSpecialEventProgress(0, "")
+    if (!IsObject(accountMeta["specialEvents"]) || !accountMeta["specialEvents"].HasKey(eventName))
+        return AccountMetadata_NewSpecialEventProgress(0, "")
+    progress := accountMeta["specialEvents"][eventName]
+    if (!IsObject(progress))
+        return AccountMetadata_NewSpecialEventProgress(0, "")
+    claimCount := progress.HasKey("claimCount") ? progress["claimCount"] + 0 : 0
+    lastClaimAt := progress.HasKey("lastClaimAt") ? progress["lastClaimAt"] : ""
+    return AccountMetadata_NewSpecialEventProgress(claimCount, lastClaimAt)
+}
+
+AccountMetadata_BumpSpecialEventClaim(instance, fileName, eventName, filePath := "") {
+    if (eventName = "" || instance = "" || fileName = "")
+        return false
+
+    account := AccountMetadata_Get(instance, fileName, filePath)
+    if (account["deviceAccount"] = "") {
+        deviceAccount := AccountMetadata_CurrentDeviceAccount()
+        if (deviceAccount = "")
+            deviceAccount := AccountMetadata_GetDeviceAccountFromFile(filePath)
+        if (deviceAccount != "")
+            account["deviceAccount"] := deviceAccount
+    }
+    if (!IsObject(account["specialEvents"]))
+        account["specialEvents"] := {}
+    progress := AccountMetadata_GetSpecialEventProgress(account, eventName)
+    progress["claimCount"] := progress["claimCount"] + 1
+    progress["lastClaimAt"] := AccountMetadata_Now()
+    account["specialEvents"][eventName] := progress
+    return AccountMetadata_SaveAccount(instance, fileName, account)
+}
+
+; Advance each active event by +1 on a new game day. Returns:
+; { advancedAny, needClaimUi, forceGift, claimUiEvents }
+; claimUiEvents maps eventName → newStep for events that should open claim UI.
+AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
+    result := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "claimUiEvents": {}}
+    if (instance = "" || fileName = "")
+        return result
+
+    account := AccountMetadata_Get(instance, fileName, filePath)
+    if (account["deviceAccount"] = "") {
+        deviceAccount := AccountMetadata_CurrentDeviceAccount()
+        if (deviceAccount = "")
+            deviceAccount := AccountMetadata_GetDeviceAccountFromFile(filePath)
+        if (deviceAccount != "")
+            account["deviceAccount"] := deviceAccount
+    }
+    if (!IsObject(account["specialEvents"]))
+        account["specialEvents"] := {}
+
+    activeEvents := SpecialEvent_ListActiveEventInfos()
+    eventCount := activeEvents.MaxIndex()
+    if (eventCount = "")
+        eventCount := 0
+    changed := false
+    Loop, % eventCount {
+        info := activeEvents[A_Index]
+        eventName := info["eventName"]
+        progress := AccountMetadata_GetSpecialEventProgress(account, eventName)
+        if (progress["claimCount"] >= info["claimSteps"])
+            continue
+        if (SpecialEvent_IsSameGameDay(progress["lastClaimAt"], "", info["expiryTime"]))
+            continue
+
+        newStep := progress["claimCount"] + 1
+        progress["claimCount"] := newStep
+        progress["lastClaimAt"] := AccountMetadata_Now()
+        account["specialEvents"][eventName] := progress
+        changed := true
+        result["advancedAny"] := true
+
+        ; Empty ClaimDays = claim every step.
+        if (SpecialEvent_DayListContains(info["claimDays"], newStep, true)) {
+            result["needClaimUi"] := true
+            result["claimUiEvents"][eventName] := newStep
+        }
+        ; Empty GiftDays = no forced gift.
+        if (SpecialEvent_DayListContains(info["giftDays"], newStep, false))
+            result["forceGift"] := true
+    }
+
+    if (changed)
+        AccountMetadata_SaveAccount(instance, fileName, account)
+    return result
+}
+
+; After successful claims: X=1 with validUntil=next game-day while under ClaimSteps; permanent when all done.
+AccountMetadata_ApplySpecialMissionXFlag(instance, fileName, accountMeta := "") {
+    if (instance = "" || fileName = "")
+        return false
+    if (!IsObject(accountMeta))
+        accountMeta := AccountMetadata_Get(instance, fileName, "")
+
+    activeEvents := SpecialEvent_ListActiveEventInfos()
+    stillNeeds := false
+    nextReset := SpecialEvent_GetNextDailyResetLocal("055959")
+    eventCount := activeEvents.MaxIndex()
+    if (eventCount = "")
+        eventCount := 0
+    Loop, % eventCount {
+        info := activeEvents[A_Index]
+        progress := AccountMetadata_GetSpecialEventProgress(accountMeta, info["eventName"])
+        if (progress["claimCount"] < info["claimSteps"]) {
+            stillNeeds := true
+            nextReset := SpecialEvent_GetNextDailyResetLocal(info["expiryTime"])
+            break
+        }
+    }
+
+    if (!IsObject(accountMeta["flags"]))
+        accountMeta["flags"] := {}
+    if (!accountMeta["flags"].HasKey("X") || !IsObject(accountMeta["flags"]["X"]))
+        accountMeta["flags"]["X"] := AccountMetadata_NewFlag(0)
+
+    accountMeta["flags"]["X"]["value"] := 1
+    if (accountMeta["flags"]["X"]["setAt"] = "")
+        accountMeta["flags"]["X"]["setAt"] := AccountMetadata_Now()
+    accountMeta["flags"]["X"]["validUntil"] := stillNeeds ? nextReset : ""
+    return AccountMetadata_SaveAccount(instance, fileName, accountMeta)
+}
+
+AccountMetadata_ClearSpecialEventsEverywhere() {
+    changed := 0
+    accountDir := AccountMetadata_AccountDir()
+    if (FileExist(accountDir)) {
+        Loop, Files, %accountDir%\*.json, F
+        {
+            SplitPath, A_LoopFileName,,,, deviceAccount
+            if (deviceAccount = "")
+                continue
+            account := AccountMetadata_ReadAccountUnlocked(deviceAccount)
+            if (!IsObject(account["specialEvents"]))
+                continue
+            hasAny := false
+            for k, v in account["specialEvents"] {
+                hasAny := true
+                break
+            }
+            if (!hasAny)
+                continue
+            account["specialEvents"] := {}
+            AccountMetadata_WriteAccountUnlocked(deviceAccount, account)
+            changed++
+        }
+    }
+
+    hMutex := AccountMetadata_AcquireLock()
+    if (hMutex) {
+        store := AccountMetadata_ReadStoreUnlocked()
+        for key, account in store["accounts"] {
+            if (!IsObject(account["specialEvents"]))
+                continue
+            hasAny := false
+            for k, v in account["specialEvents"] {
+                hasAny := true
+                break
+            }
+            if (!hasAny)
+                continue
+            account["specialEvents"] := {}
+            store["accounts"][key] := account
+            changed++
+        }
+        AccountMetadata_WriteStoreUnlocked(store)
+        AccountMetadata_ReleaseLock(hMutex)
+    }
+    return changed
+}
+
 AccountMetadata_NewShinedust(value := -1, lastUpdatedAt := "0") {
     if (value = "")
         value := -1
@@ -245,6 +574,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["lastLoggedIn"] := "0"
     account["shinedust"] := AccountMetadata_NewShinedust()
     account["flags"] := {}
+    account["specialEvents"] := {}
 
     flags := ["B", "X", "T", "R", "W", "H", "SH"]
     Loop, % flags.MaxIndex()
@@ -566,6 +896,32 @@ AccountMetadata_ParseAccount(accountJson) {
         }
     }
 
+    account["specialEvents"] := {}
+    specialPos := InStr(accountJson, """specialEvents""")
+    specialBrace := specialPos ? InStr(accountJson, "{", false, specialPos) : 0
+    specialBody := AccountMetadata_ExtractObjectBody(accountJson, specialBrace)
+    if (specialBody != "") {
+        pos := 1
+        Loop {
+            if (!RegExMatch(specialBody, "s)""([^""]+)""\s*:\s*\{", m, pos))
+                break
+            eventName := m1
+            eventNamePos := InStr(specialBody, """" . eventName . """", false, pos)
+            eventBrace := eventNamePos ? InStr(specialBody, "{", false, eventNamePos) : 0
+            eventBody := AccountMetadata_ExtractObjectBody(specialBody, eventBrace)
+            if (eventBody = "" || eventBrace < 1) {
+                pos := pos + 1
+                continue
+            }
+            eventJson := "{" . eventBody . "}"
+            claimCount := AccountMetadata_ParseNumber(eventJson, "claimCount", 0)
+            lastClaimAt := AccountMetadata_ParseString(eventJson, "lastClaimAt", "")
+            if (claimCount > 0 || lastClaimAt != "")
+                account["specialEvents"][eventName] := AccountMetadata_NewSpecialEventProgress(claimCount, lastClaimAt)
+            pos := eventBrace + StrLen(eventBody) + 2
+        }
+    }
+
     return account
 }
 
@@ -658,6 +1014,26 @@ AccountMetadata_SerializeAccount(account, indent := "") {
     if (flagsJson != "") {
         AccountMetadata_AppendComma(json, firstField)
         json .= "      ""flags"": {" . flagsJson . "`r`n      }"
+    }
+
+    specialEvents := AccountMetadata_NormalizeSpecialEvents(account["specialEvents"])
+    specialJson := ""
+    firstSpecial := true
+    for eventName, progress in specialEvents {
+        if (!firstSpecial)
+            specialJson .= ","
+        specialJson .= "`r`n        """ . AccountMetadata_Escape(eventName) . """: {"
+        firstSpecialField := true
+        if ((progress["claimCount"] + 0) != 0)
+            AccountMetadata_AppendJsonNumber(specialJson, firstSpecialField, "claimCount", progress["claimCount"] + 0, "")
+        if (progress["lastClaimAt"] != "")
+            AccountMetadata_AppendJsonString(specialJson, firstSpecialField, "lastClaimAt", progress["lastClaimAt"], "")
+        specialJson .= "}"
+        firstSpecial := false
+    }
+    if (specialJson != "") {
+        AccountMetadata_AppendComma(json, firstField)
+        json .= "      ""specialEvents"": {" . specialJson . "`r`n      }"
     }
 
     if (!firstField)
@@ -791,6 +1167,13 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
             baseAccount["flags"][flag] := patchFlag
         else if (!baseAccount["flags"].HasKey(flag))
             baseAccount["flags"][flag] := AccountMetadata_NewFlag(0)
+    }
+
+    if (!IsObject(baseAccount["specialEvents"]))
+        baseAccount["specialEvents"] := {}
+    patchSpecial := AccountMetadata_NormalizeSpecialEvents(patchAccount["specialEvents"])
+    for eventName, progress in patchSpecial {
+        baseAccount["specialEvents"][eventName] := progress
     }
 
     return baseAccount
@@ -949,6 +1332,8 @@ AccountMetadata_MergeAllTemp_AhkFallback() {
 
 AccountMetadata_Get(instance, fileName, filePath := "") {
     deviceAccount := AccountMetadata_GetDeviceAccountFromFile(filePath)
+    if (deviceAccount = "")
+        deviceAccount := AccountMetadata_CurrentDeviceAccount()
 
     if (deviceAccount != "")
         return AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
@@ -1051,7 +1436,10 @@ AccountMetadata_GetAccountMap() {
 
 AccountMetadata_SaveAccount(instance, fileName, account) {
     deviceAccount := account["deviceAccount"]
+    if (deviceAccount = "")
+        deviceAccount := AccountMetadata_CurrentDeviceAccount()
     if (deviceAccount != "") {
+        account["deviceAccount"] := deviceAccount
         existing := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
         account["instance"] := instance
         account["fileName"] := fileName
@@ -1608,9 +1996,25 @@ AccountMetadata_ClearFlagEverywhere(flag) {
     store := AccountMetadata_ReadStoreUnlocked()
     changed := 0
     for key, account in store["accounts"] {
+        accountChanged := false
         if (IsObject(account["flags"]) && account["flags"].HasKey(flag) && account["flags"][flag]["value"]) {
             account["flags"][flag]["value"] := 0
             account["flags"][flag]["setAt"] := ""
+            account["flags"][flag]["validUntil"] := ""
+            accountChanged := true
+        }
+        if (flag = "X" && IsObject(account["specialEvents"])) {
+            hasSpecial := false
+            for k, v in account["specialEvents"] {
+                hasSpecial := true
+                break
+            }
+            if (hasSpecial) {
+                account["specialEvents"] := {}
+                accountChanged := true
+            }
+        }
+        if (accountChanged) {
             store["accounts"][key] := account
             changed++
         }
@@ -1636,14 +2040,27 @@ AccountMetadata_ClearFlagInAccountFiles(flag) {
             continue
 
         account := AccountMetadata_ReadAccountUnlocked(deviceAccount)
-        if (!IsObject(account["flags"]) || !account["flags"].HasKey(flag))
-            continue
-        if (!account["flags"][flag]["value"])
+        accountChanged := false
+        if (IsObject(account["flags"]) && account["flags"].HasKey(flag) && account["flags"][flag]["value"]) {
+            account["flags"][flag]["value"] := 0
+            account["flags"][flag]["setAt"] := ""
+            account["flags"][flag]["validUntil"] := ""
+            accountChanged := true
+        }
+        if (flag = "X" && IsObject(account["specialEvents"])) {
+            hasSpecial := false
+            for k, v in account["specialEvents"] {
+                hasSpecial := true
+                break
+            }
+            if (hasSpecial) {
+                account["specialEvents"] := {}
+                accountChanged := true
+            }
+        }
+        if (!accountChanged)
             continue
 
-        account["flags"][flag]["value"] := 0
-        account["flags"][flag]["setAt"] := ""
-        account["flags"][flag]["validUntil"] := ""
         AccountMetadata_WriteAccountUnlocked(deviceAccount, account)
         changed++
     }

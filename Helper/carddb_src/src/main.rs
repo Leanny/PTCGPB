@@ -3390,24 +3390,29 @@ fn clear_flag(root: &Path, flag: &str) -> Result<()> {
                 }
                 continue;
             };
-            let Some(flags) = metadata.get_mut("flags").and_then(Value::as_object_mut) else {
-                if index % 50 == 0 {
-                    let percent = 5 + ((index + 1) * 90 / total) as u8;
-                    write_clear_flag_progress(root, percent, "Resetting account status")?;
-                }
-                continue;
-            };
-            let active = flags
-                .get(flag)
-                .and_then(|value| value.get("value"))
-                .map(|value| value.as_bool().unwrap_or(false) || value.as_i64().unwrap_or(0) != 0)
-                .unwrap_or(false);
 
-            if active {
-                flags.remove(flag);
-                if flags.is_empty() {
-                    metadata.remove("flags");
+            let mut account_changed = false;
+            if let Some(flags) = metadata.get_mut("flags").and_then(Value::as_object_mut) {
+                let active = flags
+                    .get(flag)
+                    .and_then(|value| value.get("value"))
+                    .map(|value| value.as_bool().unwrap_or(false) || value.as_i64().unwrap_or(0) != 0)
+                    .unwrap_or(false);
+
+                if active {
+                    flags.remove(flag);
+                    if flags.is_empty() {
+                        metadata.remove("flags");
+                    }
+                    account_changed = true;
                 }
+            }
+
+            if flag == "X" && metadata.remove("specialEvents").is_some() {
+                account_changed = true;
+            }
+
+            if account_changed {
                 let device_account = doc
                     .get("deviceAccount")
                     .and_then(Value::as_str)

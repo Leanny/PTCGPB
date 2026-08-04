@@ -596,8 +596,15 @@ getMetaData() {
             session.get("missionDoneList")["receivedGiftDone"] := 1
         if(accountMeta["flags"]["B"]["value"])
             session.get("missionDoneList")["beginnerMissionsDone"] := 1
-        if(accountMeta["flags"]["X"]["value"])
-            session.get("missionDoneList")["specialMissionsDone"] := 1
+        if(accountMeta["flags"]["X"]["value"]) {
+            ; Daily X cooldown: expired validUntil means special missions are due again.
+            if (accountMeta["flags"]["X"]["validUntil"] != "" && A_Now >= accountMeta["flags"]["X"]["validUntil"])
+                session.get("missionDoneList")["specialMissionsDone"] := 0
+            else if (AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
+                session.get("missionDoneList")["specialMissionsDone"] := 0
+            else
+                session.get("missionDoneList")["specialMissionsDone"] := 1
+        }
         if(accountMeta["flags"]["T"]["value"])
             session.get("missionDoneList")["accountHasPackInTesting"] := 1
     }
@@ -646,6 +653,9 @@ setMetaData() {
             validUntil := accountMeta["flags"][flag]["setAt"]
             validUntil += 5, Days
             accountMeta["flags"][flag]["validUntil"] := validUntil
+        } else if (flag = "X" && value) {
+            ; Keep validUntil from AccountMetadata_ApplySpecialMissionXFlag (daily cooldown).
+            ; Empty validUntil means permanent / all ClaimSteps done.
         } else if (!value) {
             accountMeta["flags"][flag]["validUntil"] := ""
         }
@@ -728,6 +738,52 @@ AccountEligibility_FlagIsSet(accountMeta, flag) {
     return flagObj["value"] ? true : false
 }
 
+; True when at least one active .sevt event needs a game-day advance
+; (new game day and claimCount still below ClaimSteps). Claim UI / gift
+; filtering happens inside ClaimSpecialMissionRewards via ClaimDays/GiftDays.
+AccountEligibility_NeedsSpecialMissionClaim(accountMeta) {
+    activeEvents := SpecialEvent_ListActiveEventInfos()
+    eventCount := activeEvents.MaxIndex()
+    if (eventCount = "" || eventCount < 1)
+        return false
+
+    hasSpecialProgress := false
+    if (IsObject(accountMeta["specialEvents"])) {
+        for k, v in accountMeta["specialEvents"] {
+            hasSpecialProgress := true
+            break
+        }
+    }
+
+    ; Legacy permanent X without per-event progress: treat as fully done.
+    if (AccountEligibility_FlagIsSet(accountMeta, "X") && !hasSpecialProgress) {
+        xFlag := AccountEligibility_GetFlag(accountMeta, "X")
+        if (xFlag["validUntil"] = "")
+            return false
+    }
+
+    needsClaim := false
+    Loop, % eventCount {
+        info := activeEvents[A_Index]
+        progress := AccountMetadata_GetSpecialEventProgress(accountMeta, info["eventName"])
+        if (progress["claimCount"] >= info["claimSteps"])
+            continue
+        if (SpecialEvent_IsSameGameDay(progress["lastClaimAt"], "", info["expiryTime"]))
+            continue
+        needsClaim := true
+        break
+    }
+
+    if (!needsClaim)
+        return false
+
+    ; Still inside today's cooldown window from X.validUntil.
+    if (AccountEligibility_FlagIsSet(accountMeta, "X") && !AccountEligibility_FlagIsExpired(accountMeta, "X", 24))
+        return false
+
+    return true
+}
+
 AccountEligibility_FlagIsExpired(accountMeta, flag, hoursValid) {
     flagObj := AccountEligibility_GetFlag(accountMeta, flag)
     if (!flagObj["value"])
@@ -793,7 +849,7 @@ AccountEligibility_InjectRewardsEligible(accountMeta) {
 
     if (doWonderpick && AccountEligibility_FlagIsExpired(accountMeta, "W", 24))
         return true
-    if (doSpecialMissions && !AccountEligibility_FlagIsSet(accountMeta, "X"))
+    if (doSpecialMissions && AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
         return true
     if (doGift && !AccountEligibility_FlagIsSet(accountMeta, "R"))
         return true
