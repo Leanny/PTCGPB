@@ -3586,12 +3586,59 @@ DoRenameAccount() {
 
     CreateStatusMessage("Rename Account`nOpening profile...",,,, false)
 
+    ; 1) Open hamburger until the settings-menu username arrow is visible.
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if (FindOrLoseImage("Profile_UserNameArrowInSettingMenu", 0, 0, , true))
+            break
+        adbClick_wbb(240, 494) ; hamburger menu button
+        Delay(1)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Rename Account`nOpening menu... (" . failSafeTime . "/30s)")
+        if (failSafeTime >= 30) {
+            LogWarn("Rename Account: timed out waiting for hamburger menu arrow")
+            return ""
+        }
+    }
+
+    ; 2) Enter profile. Arrow gone = we left the hamburger / entered profile.
+    CreateStatusMessage("Rename Account`nEntering profile...",,,, false)
+    adbClick_wbb(242, 131) ; user profile row in hamburger
+    Delay(1)
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    lastProfileClick := A_TickCount
+    Loop {
+        if (!FindOrLoseImage("Profile_UserNameArrowInSettingMenu", 0, 0, , true))
+            break
+        ; Still on menu — re-tap profile row, never the hamburger.
+        if (A_TickCount - lastProfileClick >= 1200) {
+            adbClick_wbb(242, 131)
+            lastProfileClick := A_TickCount
+            Delay(1)
+        }
+        Delay(0.25)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Rename Account`nWaiting profile... (" . failSafeTime . "/20s)")
+        if (failSafeTime >= 20) {
+            LogWarn("Rename Account: timed out waiting for profile entry (arrow still visible)")
+            return ""
+        }
+    }
+
+    ; 3) Dismiss mission / tutorial overlays on profile (top-left).
+    CreateStatusMessage("Rename Account`nDismissing missions...",,,, false)
+    Loop, 4 {
+        adbClick_wbb(69, 156)
+        Delay(0.5)
+    }
+
+    ; 4) Wait for UsernamePencil stable >= 1s.
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     pencilSeenAt := 0
     Loop {
-        ; UsernamePencil is a tiny low-contrast gray icon; default variation 20
-        ; false-positives. Require it stable for >= 1s (same idea as exit confirm).
         if (FindOrLoseImage("Profile_UsernamePencil", 0, 0, 5, true)) {
             if (pencilSeenAt = 0)
                 pencilSeenAt := A_TickCount
@@ -3599,20 +3646,15 @@ DoRenameAccount() {
                 break
         } else {
             pencilSeenAt := 0
-            ; Faster than Home→avatar: hamburger menu → profile row.
-            if (FindOrLoseImage("Profile_UserNameArrowInSettingMenu", 0, 0, , true)) {
-                adbClick_wbb(242, 131) ; user profile row in hamburger
-                Delay(1)
-            } else {
-                adbClick_wbb(240, 494) ; hamburger menu button
-                Delay(1)
-            }
+            ; Extra dismiss taps while overlays may still be covering the pencil.
+            adbClick_wbb(69, 156)
+            Delay(0.4)
         }
 
         Delay(0.25)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Rename Account`nFinding profile... (" . failSafeTime . "/60s)")
-        if (failSafeTime >= 60) {
+        CreateStatusMessage("Rename Account`nFinding pencil... (" . failSafeTime . "/30s)")
+        if (failSafeTime >= 30) {
             LogWarn("Rename Account: timed out waiting for UsernamePencil")
             return ""
         }
