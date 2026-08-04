@@ -140,6 +140,71 @@ PTCGPB_KillProcessByName(processName) {
     }
 }
 
+PTCGPB_CheckHelperPrograms() {
+    helperNames := ["carddb.exe", "cardimage.exe"]
+    missingHelpers := ""
+    failedHelpers := ""
+
+    for _, helperName in helperNames {
+        helperPath := A_ScriptDir . "\Helper\" . helperName
+        if (!FileExist(helperPath)) {
+            missingHelpers .= (missingHelpers = "" ? "" : "`n") . "- Helper\" . helperName
+            continue
+        }
+
+        ; Remove Windows' downloaded-file marker, if present, before launching the helper.
+        DllCall("DeleteFileW", "WStr", helperPath . ":Zone.Identifier")
+        if (!PTCGPB_TestHelperProgram(helperPath, helperName)) {
+            PTCGPB_UnblockHelperWithPowerShell(helperPath)
+            if (PTCGPB_TestHelperProgram(helperPath, helperName))
+                continue
+            failedHelpers .= (failedHelpers = "" ? "" : "`n") . "- Helper\" . helperName
+        }
+    }
+
+    if (missingHelpers != "") {
+        message := "Helper programs were not found:`n`n" . missingHelpers
+        message .= "`n`nPlease ask for help in Discord."
+        MsgBox, 48, Helper Programs Missing, %message%
+    }
+
+    if (failedHelpers != "") {
+        message := "These helper programs could not be started, even after attempting to unblock them:`n`n" . failedHelpers
+        message .= "`n`nPlease ask for help in Discord."
+        MsgBox, 48, Helper Program Startup Failed, %message%
+    }
+
+    return (missingHelpers = "" && failedHelpers = "")
+}
+
+PTCGPB_UnblockHelperWithPowerShell(helperPath) {
+    powerShellPath := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (!FileExist(powerShellPath))
+        return false
+
+    escapedPath := StrReplace(helperPath, "'", "''")
+    command := """" . powerShellPath . """ -NoProfile -NonInteractive -Command ""Unblock-File -LiteralPath '" . escapedPath . "'"""
+    RunWait, %command%,, Hide UseErrorLevel
+    return (ErrorLevel = 0)
+}
+
+PTCGPB_TestHelperProgram(helperPath, helperName) {
+    testDir := A_Temp . "\PTCGPB_HelperTest_" . DllCall("GetCurrentProcessId") . "_" . A_TickCount
+    FileCreateDir, %testDir%
+    if (ErrorLevel)
+        return false
+
+    command := """" . helperPath . """"
+    if (helperName = "carddb.exe")
+        command .= " --root """ . testDir . """"
+    command .= " --help"
+
+    RunWait, %command%, %testDir%, Hide UseErrorLevel
+    helperExitCode := ErrorLevel
+    FileRemoveDir, %testDir%, 1
+    return (helperExitCode = 0)
+}
+
 GuiLabel(labelText) {
     return RegExReplace(labelText, "[:：]\s*$", "")
 }
@@ -252,6 +317,7 @@ NextStep:
 
     KillADBProcesses()
     CheckForUpdate()
+    PTCGPB_CheckHelperPrograms()
 
     scriptName := StrReplace(A_ScriptName, ".ahk")
     winTitle := scriptName
