@@ -67,7 +67,18 @@
         , "waitAfterBulkLaunch": 40000
         , "WishlistCheck": 0
         , "s4tWishlist": 0
-        , "saveAccountFriendInfo": 0}
+        , "saveAccountFriendInfo": 0
+        , "saveToGit": 0
+        , "saveToDisk": 0
+        , "backupIntervalMinutes": 60
+        , "diskBackupFolder": ""
+        , "backupAccountsXml": 1
+        , "backupAccountsJson": 1
+        , "backupSettingsIni": 1
+        , "backupShowcaseIds": 1
+        , "backupManualVipIds": 1
+        , "backupFriendsGPTested": 1
+        , "backupSpecialEvents": 1}
 
     generalSettings := {}
     packSettings := {}
