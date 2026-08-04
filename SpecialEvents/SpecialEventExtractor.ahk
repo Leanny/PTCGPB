@@ -213,7 +213,7 @@ CalcExpiryDateFromRemainingDays(remainingDays, expiryTimeCompact := "055959") {
 
     endDate := nextCutoffDate
     endDate += remainingDays, Days
-    return endDate
+    return SubStr(endDate, 1, 8)
 }
 
 ResolveMuMuFolder(){
