@@ -28,6 +28,7 @@ CoordMode, Pixel, Screen
 #Include CardDetection.ahk
 #Include AccountManager.ahk
 #Include FriendManager.ahk
+#Include RateLimitBypasser.ahk
 #Include Dictionary.ahk
 
 #Include Coords.ahk
