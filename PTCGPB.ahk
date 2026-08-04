@@ -2295,15 +2295,15 @@ OpenCockpit:
 return
 
 OpenCardDatabase:
-    cardDbStartScript := A_ScriptDir . "\Accounts\Cards\start_card_dashboard.bat"
+    cardDbVbs := A_ScriptDir . "\Accounts\Cards\start_card_dashboard.vbs"
     cardDbHtml := A_ScriptDir . "\Accounts\Cards\card_database.html"
 
-    if (FileExist(cardDbStartScript)) {
-        Run, %cardDbStartScript%
+    if (FileExist(cardDbVbs)) {
+        Run, wscript.exe //nologo "%cardDbVbs%", , Hide
     } else if (FileExist(cardDbHtml)) {
         Run, %cardDbHtml%
     } else {
-        MsgBox, 48, Card Database, Could not find Card Database launcher.`nChecked:`n%cardDbStartScript%
+        MsgBox, 48, Card Database, Could not find Card Database launcher.`nChecked:`n%cardDbVbs%
     }
 return
 

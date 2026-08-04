@@ -1,11 +1,298 @@
 param(
     [int]$Port = 8081,
-    [string]$Root = (Get-Location).Path
+    [string]$Root = (Get-Location).Path,
+    [switch]$LaunchDashboard,
+    [switch]$Splash,
+    # 0 = auto-pick a free ephemeral port (LaunchDashboard default path).
+    [int]$SplashPort = 0,
+    [int]$PrimaryPort = 0,
+    [int]$LegacyPort = 0,
+    [string]$HtmlVersion = "0",
+    [int]$SplashTimeoutSec = 60
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Stop-DashboardPidFile([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    try {
+        $oldPid = 0
+        [void][int]::TryParse(([string](Get-Content -LiteralPath $Path -Raw)).Trim(), [ref]$oldPid)
+        if ($oldPid -gt 4) {
+            Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+        }
+    } catch {}
+    Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+}
+
+function Wait-LocalPortOpen([int]$Port, [int]$TimeoutMs = 1500) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($sw.ElapsedMilliseconds -lt $TimeoutMs) {
+        $client = $null
+        try {
+            $client = New-Object System.Net.Sockets.TcpClient
+            $iar = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
+            if ($iar.AsyncWaitHandle.WaitOne(40) -and $client.Connected) {
+                return $true
+            }
+        } catch {
+        } finally {
+            if ($client) { try { $client.Close() } catch {} }
+        }
+        Start-Sleep -Milliseconds 20
+    }
+    return $false
+}
+
+function Test-LocalPortFree([int]$Port) {
+    $listener = $null
+    try {
+        $listener = New-Object System.Net.Sockets.TcpListener ([System.Net.IPAddress]::Loopback, $Port)
+        $listener.Start()
+        return $true
+    } catch {
+        return $false
+    } finally {
+        if ($listener) {
+            try { $listener.Stop() } catch {}
+        }
+    }
+}
+
+function Get-FreeLocalPorts {
+    param(
+        [int]$Count = 3,
+        [int]$MinPort = 49152,
+        [int]$MaxPort = 65535,
+        [int]$MaxAttempts = 80
+    )
+
+    $rng = New-Object System.Random
+    $picked = New-Object "System.Collections.Generic.List[int]"
+    $attempts = 0
+    while ($picked.Count -lt $Count -and $attempts -lt $MaxAttempts) {
+        $attempts++
+        $candidate = $rng.Next($MinPort, $MaxPort + 1)
+        if ($picked.Contains($candidate)) { continue }
+        if (Test-LocalPortFree $candidate) {
+            [void]$picked.Add($candidate)
+        }
+    }
+    if ($picked.Count -lt $Count) {
+        throw "Could not find $Count free local ports in $MinPort-$MaxPort"
+    }
+    return [int[]]$picked.ToArray()
+}
+
+function Read-DashboardPortsFile([string]$Path) {
+    $result = @{
+        primary = 0
+        legacy = 0
+        splash = 0
+    }
+    if (-not (Test-Path -LiteralPath $Path)) { return $result }
+    try {
+        foreach ($line in Get-Content -LiteralPath $Path) {
+            if ($line -match '^\s*primary\s*=\s*(\d+)\s*$') {
+                $result.primary = [int]$Matches[1]
+            } elseif ($line -match '^\s*legacy\s*=\s*(\d+)\s*$') {
+                $result.legacy = [int]$Matches[1]
+            } elseif ($line -match '^\s*splash\s*=\s*(\d+)\s*$') {
+                $result.splash = [int]$Matches[1]
+            }
+        }
+    } catch {}
+    return $result
+}
+
+function Write-DashboardPortsFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][int]$Primary,
+        [Parameter(Mandatory = $true)][int]$Legacy,
+        [Parameter(Mandatory = $true)][int]$Splash
+    )
+    $text = "primary=$Primary`nlegacy=$Legacy`nsplash=$Splash`n"
+    [System.IO.File]::WriteAllText($Path, $text)
+}
+
+function Test-DashboardPing([int]$Port) {
+    if ($Port -le 0) { return $false }
+    $request = $null
+    $response = $null
+    try {
+        $request = [System.Net.HttpWebRequest]::Create("http://127.0.0.1:$Port/__dashboard/ping")
+        $request.Method = "GET"
+        $request.Timeout = 800
+        $request.ReadWriteTimeout = 800
+        $request.Proxy = $null
+        $request.KeepAlive = $false
+        $request.CachePolicy = New-Object System.Net.Cache.RequestCachePolicy ([System.Net.Cache.RequestCacheLevel]::NoCacheNoStore)
+        $response = $request.GetResponse()
+        $code = [int]$response.StatusCode
+        return ($code -eq 204 -or ($code -ge 200 -and $code -lt 300))
+    } catch {
+        return $false
+    } finally {
+        if ($response) { try { $response.Close() } catch {} }
+    }
+}
+
+function Get-DashboardPageUrl([int]$Port, [string]$HtmlVersion) {
+    return ("http://127.0.0.1:{0}/Accounts/Cards/card_database.html?v={1}" -f $Port, $HtmlVersion)
+}
+
+if ($LaunchDashboard) {
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
+    $cardsDir = Join-Path $resolvedRoot "Accounts\Cards"
+    $serverScript = $MyInvocation.MyCommand.Path
+    $serverPidPath = Join-Path $cardsDir ".dashboard_server.pid"
+    $splashPidPath = Join-Path $cardsDir ".dashboard_splash.pid"
+    $portsPath = Join-Path $cardsDir ".dashboard_ports.txt"
+    $cardDbExe = Join-Path $resolvedRoot "Helper\carddb.exe"
+
+    # Reuse a live dashboard only when the full stack is healthy.
+    # carddb primary can ping while legacy is dead; ui-prefs and other APIs then 500.
+    $cached = Read-DashboardPortsFile $portsPath
+    $primaryOk = Test-DashboardPing $cached.primary
+    $legacyOk = Test-DashboardPing $cached.legacy
+    $hasCardDb = Test-Path -LiteralPath $cardDbExe -PathType Leaf
+    if ($hasCardDb) {
+        if ($primaryOk -and $legacyOk) {
+            Start-Process (Get-DashboardPageUrl $cached.primary $HtmlVersion) | Out-Null
+            return
+        }
+    } else {
+        if ($primaryOk) {
+            Start-Process (Get-DashboardPageUrl $cached.primary $HtmlVersion) | Out-Null
+            return
+        }
+        if ($legacyOk) {
+            Start-Process (Get-DashboardPageUrl $cached.legacy $HtmlVersion) | Out-Null
+            return
+        }
+    }
+
+    # Cache miss / dead server: stop only our previous launcher PIDs (no fixed-port kills).
+    Stop-DashboardPidFile $splashPidPath
+    Stop-DashboardPidFile $serverPidPath
+    Get-Process -Name carddb -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    if (Get-Process -Name carddb -ErrorAction SilentlyContinue) {
+        # Some sessions deny Stop-Process; taskkill is best-effort so a new port bind can proceed.
+        Start-Process -FilePath "taskkill.exe" -ArgumentList @("/F", "/IM", "carddb.exe") -WindowStyle Hidden -Wait -ErrorAction SilentlyContinue | Out-Null
+    }
+
+    if ($PrimaryPort -gt 0 -and $LegacyPort -gt 0 -and $SplashPort -gt 0) {
+        # Explicit ports kept for debugging / manual override.
+        if (-not (Test-LocalPortFree $PrimaryPort)) { throw "PrimaryPort $PrimaryPort is not free" }
+        if (-not (Test-LocalPortFree $LegacyPort)) { throw "LegacyPort $LegacyPort is not free" }
+        if (-not (Test-LocalPortFree $SplashPort)) { throw "SplashPort $SplashPort is not free" }
+        $explicitPorts = @($PrimaryPort, $LegacyPort, $SplashPort)
+        if (($explicitPorts | Select-Object -Unique).Count -lt 3) {
+            throw "PrimaryPort, LegacyPort, and SplashPort must be distinct"
+        }
+    } else {
+        $freePorts = @(Get-FreeLocalPorts -Count 3)
+        $PrimaryPort = [int]$freePorts[0]
+        $LegacyPort = [int]$freePorts[1]
+        $SplashPort = [int]$freePorts[2]
+    }
+
+    Write-DashboardPortsFile -Path $portsPath -Primary $PrimaryPort -Legacy $LegacyPort -Splash $SplashPort
+
+    Start-Process -FilePath "powershell.exe" -WorkingDirectory $cardsDir -WindowStyle Hidden -ArgumentList @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $serverScript,
+        "-Splash",
+        "-Root", $resolvedRoot,
+        "-SplashPort", "$SplashPort",
+        "-PrimaryPort", "$PrimaryPort",
+        "-LegacyPort", "$LegacyPort",
+        "-HtmlVersion", "$HtmlVersion"
+    ) | Out-Null
+
+    [void](Wait-LocalPortOpen -Port $SplashPort -TimeoutMs 1500)
+    Start-Process ("http://127.0.0.1:{0}/?t={1}" -f $SplashPort, [Environment]::TickCount) | Out-Null
+
+    Start-Process -FilePath "powershell.exe" -WorkingDirectory $resolvedRoot -WindowStyle Hidden -ArgumentList @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $serverScript,
+        "-Port", "$LegacyPort",
+        "-Root", $resolvedRoot
+    ) | Out-Null
+
+    if (Test-Path -LiteralPath $cardDbExe) {
+        Start-Process -FilePath $cardDbExe -WorkingDirectory $resolvedRoot -WindowStyle Hidden -ArgumentList @(
+            "--root", $resolvedRoot,
+            "serve",
+            "--port", "$PrimaryPort",
+            "--legacy-port", "$LegacyPort"
+        ) | Out-Null
+    }
+    return
+}
+
+if ($Splash) {
+    $splashRoot = if ($PSBoundParameters.ContainsKey("Root")) {
+        [System.IO.Path]::GetFullPath($Root)
+    } else {
+        [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
+    }
+    $splashPidPath = Join-Path $splashRoot "Accounts\Cards\.dashboard_splash.pid"
+    try {
+        [System.IO.File]::WriteAllText($splashPidPath, [string]$PID)
+    } catch {}
+
+    $targetPath = "/Accounts/Cards/card_database.html?v=$HtmlVersion"
+    $targetJson = ($targetPath | ConvertTo-Json)
+    # Keep splash HTML ASCII-only so Windows PowerShell file encoding cannot mojibake it.
+    $html = '<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Loading Card Database</title><style>'
+    $html += 'body{margin:0;min-height:100vh;display:grid;place-items:center;font:600 15px/1.45 Segoe UI,sans-serif;color:#edf2ff;background:radial-gradient(1200px 600px at 20% -10%,rgba(142,180,255,.18),transparent),radial-gradient(900px 500px at 90% 10%,rgba(176,240,208,.12),transparent),#0b1020}'
+    $html += '.panel{width:min(420px,92vw);padding:28px 26px;border:1px solid #2c385d;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02)),#121a2f;box-shadow:0 14px 40px rgba(0,0,0,.28)}'
+    $html += 'h1{margin:0 0 8px;font-size:1.15rem}p{margin:0;color:#aeb9d4;font-weight:600}'
+    $html += '.bar{margin-top:18px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}'
+    $html += '.fill{height:100%;width:30%;border-radius:inherit;background:linear-gradient(90deg,#8eb4ff,#b0f0d0);animation:slide 1.2s ease-in-out infinite}'
+    $html += '@keyframes slide{0%{transform:translateX(-60%)}100%{transform:translateX(280%)}}</style></head><body>'
+    $html += '<div class="panel"><h1>Loading Card Database</h1><p id="m">Starting dashboard server...</p>'
+    $html += '<div class="bar" aria-hidden="true"><div class="fill"></div></div></div><script>'
+    $html += 'const primary=' + $PrimaryPort + ';const legacy=' + $LegacyPort + ';const targetPath=' + $targetJson + ';'
+    $html += 'const preferUntil=Date.now()+20000;const deadline=Date.now()+45000;const m=document.getElementById("m");'
+    $html += 'async function probe(port){const bases=["http://127.0.0.1:"+port,"http://localhost:"+port];for(const base of bases){try{const ping=await fetch(base+"/__dashboard/ping",{cache:"no-store"});if(ping.status===204||ping.ok)return base+targetPath;}catch(_){}try{const page=await fetch(base+targetPath,{cache:"no-store"});if(page.ok)return page.url||(base+targetPath);}catch(_){}try{const root=await fetch(base+"/",{cache:"no-store"});if(root.ok)return base+targetPath;}catch(_){}}return null;}'
+    $html += '(async()=>{let n=0;while(Date.now()<deadline){n+=1;m.textContent="Starting dashboard server... ("+n+")";let url=await probe(primary);if(!url&&Date.now()>=preferUntil)url=await probe(legacy);if(url){m.textContent="Server ready - opening dashboard...";location.replace(url);return;}await new Promise(r=>setTimeout(r,400));}m.textContent="Server did not start in time. Retry Open Card Database.";})();'
+    $html += '</script></body></html>'
+
+    $listener = New-Object System.Net.HttpListener
+    $listener.Prefixes.Add("http://127.0.0.1:$SplashPort/")
+    $listener.Start()
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $bytes = $utf8.GetBytes($html)
+    $deadline = (Get-Date).AddSeconds([Math]::Max(15, $SplashTimeoutSec))
+    try {
+        while ((Get-Date) -lt $deadline -and $listener.IsListening) {
+            $task = $listener.GetContextAsync()
+            while (-not $task.AsyncWaitHandle.WaitOne(500)) {
+                if ((Get-Date) -ge $deadline) { break }
+            }
+            if (-not $task.IsCompleted) { break }
+            $ctx = $task.Result
+            $res = $ctx.Response
+            $res.StatusCode = 200
+            $res.ContentType = "text/html; charset=utf-8"
+            $res.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            $res.Headers["Pragma"] = "no-cache"
+            $res.ContentLength64 = $bytes.Length
+            $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            $res.OutputStream.Close()
+        }
+    } finally {
+        try { $listener.Stop() } catch {}
+        try { $listener.Close() } catch {}
+    }
+    return
+}
 $script:AccountJsonSerializer = $null
 
 $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
@@ -1177,6 +1464,147 @@ function Invoke-SaveWishlist {
     }
 }
 
+function Get-DashboardUiPrefsPath {
+    return Join-Path $resolvedRoot "Accounts\Cards\.dashboard_ui_prefs.json"
+}
+
+function Normalize-DashboardUiPrefs {
+    param($Parsed)
+
+    $language = "en_US"
+    if ($null -ne $Parsed -and $null -ne $Parsed.language -and -not [string]::IsNullOrWhiteSpace([string]$Parsed.language)) {
+        $language = [string]$Parsed.language
+    }
+
+    $theme = "dark"
+    if ($null -ne $Parsed -and ($Parsed.theme -eq "light" -or $Parsed.theme -eq "dark")) {
+        $theme = [string]$Parsed.theme
+    }
+
+    $cardSize = 120
+    if ($null -ne $Parsed -and $null -ne $Parsed.cardSize) {
+        $n = 0
+        if ([int]::TryParse([string]$Parsed.cardSize, [ref]$n) -and @(96, 120, 150, 190) -contains $n) {
+            $cardSize = $n
+        }
+    }
+
+    $pageSize = 25
+    if ($null -ne $Parsed -and $null -ne $Parsed.pageSize) {
+        $n = 0
+        if ([int]::TryParse([string]$Parsed.pageSize, [ref]$n) -and @(10, 25, 50, 100) -contains $n) {
+            $pageSize = $n
+        }
+    }
+
+    $useLocal = $false
+    if ($null -ne $Parsed -and $null -ne $Parsed.useLocalCardImages) {
+        $useLocal = [bool]$Parsed.useLocalCardImages
+    }
+
+    return [pscustomobject]@{
+        language = $language
+        theme = $theme
+        cardSize = $cardSize
+        pageSize = $pageSize
+        useLocalCardImages = $useLocal
+    }
+}
+
+function Read-DashboardUiPrefsObject {
+    $path = Get-DashboardUiPrefsPath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return Normalize-DashboardUiPrefs $null
+    }
+    try {
+        $raw = [System.IO.File]::ReadAllText($path)
+        $parsed = $raw | ConvertFrom-Json
+        return Normalize-DashboardUiPrefs $parsed
+    } catch {
+        return Normalize-DashboardUiPrefs $null
+    }
+}
+
+function Invoke-GetDashboardUiPrefs {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $prefs = Read-DashboardUiPrefsObject
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+        ok = $true
+        language = [string]$prefs.language
+        theme = [string]$prefs.theme
+        cardSize = [int]$prefs.cardSize
+        pageSize = [int]$prefs.pageSize
+        useLocalCardImages = [bool]$prefs.useLocalCardImages
+    }
+}
+
+function Invoke-SaveDashboardUiPrefs {
+    param([Parameter(Mandatory = $true)]$Context)
+
+    $bodyText = Read-RequestBody -Context $Context
+    if ([string]::IsNullOrWhiteSpace($bodyText)) {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Empty request body." }
+        return
+    }
+    try {
+        $payload = $bodyText | ConvertFrom-Json
+    } catch {
+        Write-JsonResponse -Context $Context -StatusCode 400 -Payload @{ ok = $false; error = "Invalid JSON body." }
+        return
+    }
+
+    $current = Read-DashboardUiPrefsObject
+    $merged = [pscustomobject]@{
+        language = $current.language
+        theme = $current.theme
+        cardSize = $current.cardSize
+        pageSize = $current.pageSize
+        useLocalCardImages = $current.useLocalCardImages
+    }
+    if ($null -ne $payload.PSObject.Properties["language"]) { $merged.language = $payload.language }
+    if ($null -ne $payload.PSObject.Properties["theme"]) { $merged.theme = $payload.theme }
+    if ($null -ne $payload.PSObject.Properties["cardSize"]) { $merged.cardSize = $payload.cardSize }
+    if ($null -ne $payload.PSObject.Properties["pageSize"]) { $merged.pageSize = $payload.pageSize }
+    if ($null -ne $payload.PSObject.Properties["useLocalCardImages"]) {
+        $merged.useLocalCardImages = $payload.useLocalCardImages
+    }
+
+    $normalized = Normalize-DashboardUiPrefs $merged
+    $payloadOut = [ordered]@{
+        language = [string]$normalized.language
+        theme = [string]$normalized.theme
+        cardSize = [int]$normalized.cardSize
+        pageSize = [int]$normalized.pageSize
+        useLocalCardImages = [bool]$normalized.useLocalCardImages
+    }
+    $json = $payloadOut | ConvertTo-Json -Depth 3
+    $path = Get-DashboardUiPrefsPath
+    $tmp = "$path.tmp"
+    try {
+        Write-Utf8File -Path $tmp -Text $json
+        Move-Item -LiteralPath $tmp -Destination $path -Force
+    } catch {
+        if (Test-Path -LiteralPath $tmp -PathType Leaf) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        }
+        Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{
+            ok = $false
+            error = "Failed to write .dashboard_ui_prefs.json: $($_.Exception.Message)"
+        }
+        return
+    }
+
+    Write-JsonResponse -Context $Context -StatusCode 200 -Payload @{
+        ok = $true
+        language = [string]$normalized.language
+        theme = [string]$normalized.theme
+        cardSize = [int]$normalized.cardSize
+        pageSize = [int]$normalized.pageSize
+        useLocalCardImages = [bool]$normalized.useLocalCardImages
+        path = $path
+    }
+}
 function Test-DeviceAccountId {
     param([AllowNull()][string]$Value)
     return -not [string]::IsNullOrWhiteSpace($Value) -and ($Value -match '^[a-fA-F0-9]{8,64}$')
@@ -3491,6 +3919,32 @@ try {
             }
             try {
                 Invoke-SaveWishlist -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/ui-prefs" -and $request.HttpMethod -eq "GET") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-GetDashboardUiPrefs -Context $context
+            } catch {
+                Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
+            }
+            continue
+        }
+
+        if ($request.Url.AbsolutePath -eq "/__dashboard/ui-prefs" -and $request.HttpMethod -eq "POST") {
+            if (-not (Is-LocalRequest -Context $context)) {
+                Write-JsonResponse -Context $context -StatusCode 403 -Payload @{ ok = $false; error = "Local requests only" }
+                continue
+            }
+            try {
+                Invoke-SaveDashboardUiPrefs -Context $context
             } catch {
                 Write-JsonResponse -Context $context -StatusCode 500 -Payload @{ ok = $false; error = "Unexpected server error: $($_.Exception.Message)" }
             }

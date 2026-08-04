@@ -626,51 +626,94 @@
 
             .toolbar {
                 padding: 11px 14px;
-                display: grid;
-                grid-template-columns: max-content minmax(0, 1fr);
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
                 gap: 10px;
-                align-items: end;
                 margin-bottom: var(--page-panel-stack-y);
             }
 
             .toolbar-controls {
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                height: 100%;
+                display: block;
                 min-width: 0;
+                width: 100%;
             }
 
             .toolbar-status {
                 min-width: 0;
-            }
-
-            @media (max-width: 900px) {
-                .toolbar {
-                    grid-template-columns: 1fr;
-                }
+                width: 100%;
+                margin-top: 0;
             }
 
             .toolbar-control-grid {
                 display: grid;
-                grid-template-columns: max-content minmax(170px, 220px) minmax(
-                        220px,
-                        320px
-                    );
+                grid-template-columns:
+                    minmax(0, 1fr)
+                    minmax(150px, 200px)
+                    minmax(180px, 260px)
+                    minmax(150px, 200px);
                 align-items: end;
-                gap: 10px;
-                width: auto;
+                column-gap: 12px;
+                row-gap: 10px;
+                width: 100%;
                 max-width: 100%;
             }
 
             .toolbar-language-cell,
-            .toolbar-size-cell {
+            .toolbar-size-cell,
+            .toolbar-local-images-cell {
                 min-width: 0;
             }
 
-            @media (max-width: 640px) {
+            .toolbar-local-images-cell[hidden] {
+                display: none !important;
+            }
+
+            .local-images-switch {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                width: 100%;
+                min-height: 42px;
+                padding: 3px;
+                gap: 3px;
+                border-radius: 12px;
+                background: var(--field-bg);
+                border: 1px solid var(--border);
+            }
+
+            .local-images-switch:disabled {
+                opacity: 0.55;
+                cursor: not-allowed;
+            }
+
+            .local-images-switch-opt {
+                display: grid;
+                place-items: center;
+                border-radius: 9px;
+                font-size: 0.84rem;
+                font-weight: 700;
+                color: var(--muted);
+                transition:
+                    background 0.15s ease,
+                    color 0.15s ease,
+                    box-shadow 0.15s ease;
+            }
+
+            .local-images-switch[aria-pressed="false"] .local-images-switch-opt.is-off,
+            .local-images-switch[aria-pressed="true"] .local-images-switch-opt.is-on {
+                background: var(--panel-2);
+                color: var(--text);
+                box-shadow: 0 0 0 1px rgba(142, 180, 255, 0.35);
+            }
+
+            .local-images-switch[aria-pressed="true"] {
+                border-color: rgba(142, 180, 255, 0.55);
+            }
+
+            @media (max-width: 900px) {
                 .toolbar-control-grid {
                     grid-template-columns: 1fr;
+                    align-items: stretch;
                 }
             }
 
@@ -809,20 +852,22 @@
 
             .metadata-actions-cell {
                 display: flex;
-                align-items: center;
+                align-items: end;
+                min-width: 0;
             }
 
             .metadata-actions {
                 display: flex;
-                flex-wrap: nowrap;
+                flex-wrap: wrap;
+                align-items: stretch;
                 gap: 8px;
                 margin-top: 0;
-                width: auto;
+                width: 100%;
             }
 
             .metadata-actions button {
-                flex: 0 1 auto;
-                min-width: 180px;
+                flex: 1 1 0;
+                min-width: 140px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -830,13 +875,13 @@
                 font-size: 0.84rem;
             }
 
-            @media (max-width: 640px) {
+            @media (max-width: 900px) {
                 .metadata-actions {
                     width: 100%;
                 }
 
                 .metadata-actions button {
-                    flex: 1 1 0;
+                    flex: 1 1 calc(50% - 8px);
                     min-width: 0;
                 }
             }
@@ -7293,20 +7338,19 @@
                                 </button>
                                 <button
                                     class="ghost metadata-load-btn"
-                                    id="clearCacheBtn"
+                                    id="forceUpdateDataBtn"
                                     type="button"
+                                    title="Clear card caches, then refetch definitions and reload dashboard data."
                                 >
-                                    Clear cached data
+                                    Force update data
                                 </button>
                                 <button
-                                    type="button"
-                                    id="useLocalCardImagesBtn"
                                     class="ghost metadata-load-btn"
-                                    hidden
-                                    aria-pressed="false"
-                                    title="Download missing images to Helper\CardImageCache and load them from disk (GitHub fallback)."
+                                    id="clearCacheBtn"
+                                    type="button"
+                                    title="Clear locally cached card definitions only. Does not reload."
                                 >
-                                    Local card images
+                                    Clear cached data
                                 </button>
                             </div>
                         </div>
@@ -7326,6 +7370,35 @@
                                 <option value="150">Large</option>
                                 <option value="190">Extra large</option>
                             </select>
+                        </div>
+                        <div
+                            class="toolbar-local-images-cell"
+                            id="useLocalCardImagesCell"
+                            hidden
+                        >
+                            <label
+                                class="field-label"
+                                for="useLocalCardImagesBtn"
+                                >Local card images</label
+                            >
+                            <button
+                                type="button"
+                                id="useLocalCardImagesBtn"
+                                class="local-images-switch"
+                                aria-pressed="false"
+                                title="Off: load card images from GitHub. On: use Helper\CardImageCache when available (GitHub fallback) and download missing images. Requires dashboard started from start_card_dashboard.vbs or PTCGPB.ahk."
+                            >
+                                <span
+                                    class="local-images-switch-opt is-off"
+                                    aria-hidden="true"
+                                    >Off</span
+                                >
+                                <span
+                                    class="local-images-switch-opt is-on"
+                                    aria-hidden="true"
+                                    >On</span
+                                >
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -7925,6 +7998,7 @@
             const LS_SHARED_META = "ptcgp-card-db-shared-meta-v1";
             const LS_WISHLIST = "ptcgp-card-db-wishlist-v1";
             const LS_PAGE_SIZE = "ptcgp-card-db-page-size-v1";
+            const LS_CARD_SIZE = "ptcgp-card-db-card-size-v1";
             const DASHBOARD_PING_PATH = "/__dashboard/ping";
             const DASHBOARD_SHUTDOWN_PATH = "/__dashboard/shutdown";
             const DASHBOARD_WISHLIST_PATH = "/__dashboard/wishlist";
@@ -7941,6 +8015,7 @@
                 "/__dashboard/card-images/prefetch";
             const LS_USE_LOCAL_CARD_IMAGES =
                 "ptcgp-card-db-use-local-card-images-v1";
+            const DASHBOARD_UI_PREFS_PATH = "/__dashboard/ui-prefs";
             const LOCAL_CARD_IMAGE_PREFIX = "/Helper/CardImageCache/";
             const ONE_HOUR = 60 * 60 * 1000;
             const AUTOLOAD_RETRIES = 4;
@@ -7948,7 +8023,9 @@
             const DASHBOARD_SERVER_READY_RETRIES = 40;
             const DASHBOARD_SERVER_READY_RETRY_MS = 250;
             const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+            const CARD_SIZE_OPTIONS = [96, 120, 150, 190];
             const INITIAL_LIMIT = 25;
+            const INITIAL_CARD_SIZE = 120;
             const ACCOUNT_OVERVIEW_CHUNK_MS = 10;
             const ACCOUNT_OVERVIEW_WARMUP_TIMEOUT_MS = 1800;
             const ACCOUNT_OVERVIEW_WARMUP_ROW_LIMIT = 50000;
@@ -8001,6 +8078,67 @@
                 return PAGE_SIZE_OPTIONS.includes(saved)
                     ? saved
                     : INITIAL_LIMIT;
+            }
+
+            function readSavedCardSize() {
+                const saved = Number(localStorage.getItem(LS_CARD_SIZE));
+                return CARD_SIZE_OPTIONS.includes(saved)
+                    ? saved
+                    : INITIAL_CARD_SIZE;
+            }
+
+            function readSavedTheme() {
+                try {
+                    const saved = localStorage.getItem(LS_THEME);
+                    if (saved === "light" || saved === "dark") return saved;
+                } catch {}
+                return null;
+            }
+
+            function applyCardSize(sizePx, options = {}) {
+                const {
+                    persistLocal = true,
+                    persistServer = false,
+                    syncSelect = true,
+                } = options;
+                const next = CARD_SIZE_OPTIONS.includes(Number(sizePx))
+                    ? Number(sizePx)
+                    : INITIAL_CARD_SIZE;
+                if (syncSelect && el.cardSize) el.cardSize.value = String(next);
+                document.documentElement.style.setProperty(
+                    "--card-w",
+                    `${next}px`,
+                );
+                if (persistLocal) {
+                    try {
+                        localStorage.setItem(LS_CARD_SIZE, String(next));
+                    } catch {}
+                }
+                if (persistServer) {
+                    void saveDashboardUiPrefs({ cardSize: next });
+                }
+                return next;
+            }
+
+            function collectLocalUiPrefsSnapshot() {
+                const theme =
+                    state.theme === "light" || state.theme === "dark"
+                        ? state.theme
+                        : readSavedTheme() || "dark";
+                const cardSize = el.cardSize
+                    ? Number(el.cardSize.value) || readSavedCardSize()
+                    : readSavedCardSize();
+                return {
+                    language: getSupportedLanguage(state.language),
+                    theme,
+                    cardSize: CARD_SIZE_OPTIONS.includes(cardSize)
+                        ? cardSize
+                        : INITIAL_CARD_SIZE,
+                    pageSize: PAGE_SIZE_OPTIONS.includes(state.pageSize)
+                        ? state.pageSize
+                        : INITIAL_LIMIT,
+                    useLocalCardImages: !!state.useLocalCardImages,
+                };
             }
 
             function filterAccountOverviewVisibleEntries(entries) {
@@ -8363,7 +8501,11 @@
                 cardSize: document.getElementById("cardSize"),
                 status: document.getElementById("status"),
                 loadRemoteBtn: document.getElementById("loadRemoteBtn"),
+                forceUpdateDataBtn: document.getElementById("forceUpdateDataBtn"),
                 clearCacheBtn: document.getElementById("clearCacheBtn"),
+                useLocalCardImagesCell: document.getElementById(
+                    "useLocalCardImagesCell",
+                ),
                 useLocalCardImagesBtn: document.getElementById(
                     "useLocalCardImagesBtn",
                 ),
@@ -8449,6 +8591,11 @@
 
             initLanguageSelect();
             el.pageSizeSelect.value = String(state.pageSize);
+            applyCardSize(readSavedCardSize(), {
+                persistLocal: false,
+                persistServer: false,
+                syncSelect: true,
+            });
             el.markedSort.value = state.markedSort;
             el.markedSortDir.textContent = state.markedSortAsc ? "↑" : "↓";
 
@@ -8850,7 +8997,7 @@
                 )
                     return;
                 showNotice(
-                    "This webpage is only usable when you start it from start_card_dashboard.bat or PTCGPB.ahk.",
+                    "This webpage is only usable when you start it from start_card_dashboard.vbs or PTCGPB.ahk.",
                 );
             }
 
@@ -10658,12 +10805,12 @@
                         .then((r) => {
                             if (!r.ok)
                                 console.warn(
-                                    `Wishlist sync to bot failed: HTTP ${r.status}. Restart the dashboard via start_card_dashboard.bat so the bot can read wishlist.json.`,
+                                    `Wishlist sync to bot failed: HTTP ${r.status}. Restart the dashboard via start_card_dashboard.vbs so the bot can read wishlist.json.`,
                                 );
                         })
                         .catch((err) => {
                             console.warn(
-                                `Wishlist sync to bot failed (server unreachable). Restart the dashboard via start_card_dashboard.bat. (${err && err.message ? err.message : err})`,
+                                `Wishlist sync to bot failed (server unreachable). Restart the dashboard via start_card_dashboard.vbs. (${err && err.message ? err.message : err})`,
                             );
                         });
                 } catch (_) {}
@@ -12609,7 +12756,34 @@
             }
 
             function readUseLocalCardImages() {
+                // Fallback only (file:// or before server prefs load). Source of truth is
+                // Accounts/Cards/.dashboard_ui_prefs.json via /__dashboard/ui-prefs.
                 return localStorage.getItem(LS_USE_LOCAL_CARD_IMAGES) === "1";
+            }
+
+            async function fetchDashboardUiPrefs() {
+                if (!canControlLocalDashboardServer()) return null;
+                const res = await fetch(DASHBOARD_UI_PREFS_PATH, {
+                    method: "GET",
+                    cache: "no-store",
+                });
+                if (!res.ok) return null;
+                return res.json().catch(() => null);
+            }
+
+            async function saveDashboardUiPrefs(partial) {
+                if (!canControlLocalDashboardServer()) return false;
+                try {
+                    const res = await fetch(DASHBOARD_UI_PREFS_PATH, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(partial || {}),
+                        cache: "no-store",
+                    });
+                    return res.ok;
+                } catch {
+                    return false;
+                }
             }
 
             function sanitizeIllustrationFileName(illustrationId) {
@@ -12681,21 +12855,33 @@
             function syncUseLocalCardImagesBtn() {
                 const btn = el.useLocalCardImagesBtn;
                 if (!btn) return;
-                btn.classList.toggle("primary", state.useLocalCardImages);
-                btn.classList.toggle("ghost", !state.useLocalCardImages);
+                const on = !!state.useLocalCardImages;
+                btn.setAttribute("aria-pressed", on ? "true" : "false");
                 btn.setAttribute(
-                    "aria-pressed",
-                    state.useLocalCardImages ? "true" : "false",
+                    "aria-label",
+                    on
+                        ? "Local card images: On. Click to use GitHub images."
+                        : "Local card images: Off. Click to use local cache and download missing images.",
                 );
             }
 
             function applyUseLocalCardImagesPreference(enabled, options = {}) {
-                const { silent = false, syncBtn = true } = options;
+                const {
+                    silent = false,
+                    syncBtn = true,
+                    persistServer = true,
+                } = options;
                 state.useLocalCardImages = !!enabled;
+                // Mirror to localStorage for file:// / offline fallback only.
                 localStorage.setItem(
                     LS_USE_LOCAL_CARD_IMAGES,
                     state.useLocalCardImages ? "1" : "0",
                 );
+                if (persistServer) {
+                    void saveDashboardUiPrefs({
+                        useLocalCardImages: state.useLocalCardImages,
+                    });
+                }
                 if (syncBtn) syncUseLocalCardImagesBtn();
                 invalidateCardImageInfoCache();
                 invalidateViewDomCache();
@@ -12834,6 +13020,12 @@
                 if (el.useLocalCardImagesBtn) {
                     el.useLocalCardImagesBtn.disabled = running;
                 }
+                if (el.useLocalCardImagesCell) {
+                    el.useLocalCardImagesCell.toggleAttribute(
+                        "aria-busy",
+                        running,
+                    );
+                }
                 if (running) {
                     state.cardImageDownloadWasRunning = true;
                     const loader = el.cardImageDownloadLoader;
@@ -12903,7 +13095,7 @@
                 }
                 if (!canControlLocalDashboardServer()) {
                     showToast(
-                        "Local card images require the dashboard started from start_card_dashboard.bat or PTCGPB.ahk.",
+                        "Local card images require the dashboard started from start_card_dashboard.vbs or PTCGPB.ahk.",
                         "warn",
                     );
                     return;
@@ -12940,7 +13132,7 @@
                     if (!res.ok && res.status !== 202) {
                         if (res.status === 405) {
                             throw new Error(
-                                "Card image prefetch is not available on this server (HTTP 405). Restart via start_card_dashboard.bat or PTCGPB.ahk and ensure Accounts/Cards/start_card_dashboard_server.ps1 from this branch is running.",
+                                "Card image prefetch is not available on this server (HTTP 405). Restart via start_card_dashboard.vbs or PTCGPB.ahk and ensure Accounts/Cards/start_card_dashboard_server.ps1 from this branch is running.",
                             );
                         }
                         throw new Error(
@@ -12965,12 +13157,117 @@
                 }
             }
 
+            async function hydrateUiPrefsFromServer() {
+                if (!canControlLocalDashboardServer()) return null;
+                const localSnap = collectLocalUiPrefsSnapshot();
+                const prefs = await fetchDashboardUiPrefs().catch(() => null);
+                if (!prefs || prefs.ok === false) {
+                    // Endpoint down/proxy broken: keep local UI state and do NOT overwrite
+                    // Accounts/Cards/.dashboard_ui_prefs.json with browser defaults.
+                    return null;
+                }
+
+                const merged = {
+                    language: prefs.language
+                        ? getSupportedLanguage(prefs.language)
+                        : localSnap.language,
+                    theme:
+                        prefs.theme === "light" || prefs.theme === "dark"
+                            ? prefs.theme
+                            : localSnap.theme,
+                    cardSize: CARD_SIZE_OPTIONS.includes(Number(prefs.cardSize))
+                        ? Number(prefs.cardSize)
+                        : localSnap.cardSize,
+                    pageSize: PAGE_SIZE_OPTIONS.includes(Number(prefs.pageSize))
+                        ? Number(prefs.pageSize)
+                        : localSnap.pageSize,
+                    useLocalCardImages:
+                        typeof prefs.useLocalCardImages === "boolean"
+                            ? prefs.useLocalCardImages
+                            : localSnap.useLocalCardImages,
+                };
+
+                const incomplete =
+                    !prefs.language ||
+                    !(prefs.theme === "light" || prefs.theme === "dark") ||
+                    !CARD_SIZE_OPTIONS.includes(Number(prefs.cardSize)) ||
+                    !PAGE_SIZE_OPTIONS.includes(Number(prefs.pageSize)) ||
+                    typeof prefs.useLocalCardImages !== "boolean";
+                if (incomplete) await saveDashboardUiPrefs(merged);
+
+                // Theme
+                if (merged.theme !== state.theme) {
+                    applyTheme(merged.theme, false, { animate: false });
+                }
+                try {
+                    localStorage.setItem(LS_THEME, merged.theme);
+                } catch {}
+
+                // Card size
+                applyCardSize(merged.cardSize, {
+                    persistLocal: true,
+                    persistServer: false,
+                    syncSelect: true,
+                });
+
+                // Page size
+                if (merged.pageSize !== state.pageSize) {
+                    state.pageSize = merged.pageSize;
+                    state.displayLimit = merged.pageSize;
+                    if (el.pageSizeSelect)
+                        el.pageSizeSelect.value = String(merged.pageSize);
+                }
+                try {
+                    localStorage.setItem(LS_PAGE_SIZE, String(merged.pageSize));
+                } catch {}
+
+                // Language (update select + in-memory; localisation refresh below)
+                const languageChanged = merged.language !== state.language;
+                if (languageChanged) {
+                    state.language = merged.language;
+                    if (el.cardLanguage) el.cardLanguage.value = merged.language;
+                }
+                try {
+                    localStorage.setItem(LS_SELECTED_LANGUAGE, merged.language);
+                } catch {}
+
+                // Local card images
+                applyUseLocalCardImagesPreference(merged.useLocalCardImages, {
+                    silent: true,
+                    syncBtn: true,
+                    persistServer: false,
+                });
+
+                if (languageChanged) {
+                    state.localisation = readCachedJson(
+                        getLocalisationCacheKey(merged.language),
+                    );
+                    invalidateCardImageInfoCache();
+                    invalidateViewDomCache();
+                    // Soft refresh definitions for the selected language when cache is cold.
+                    if (!state.localisation) {
+                        try {
+                            await loadResources(false);
+                        } catch {}
+                    } else if (state.rows.length) {
+                        refreshDerivedDataAfterMetadataChange();
+                    }
+                }
+
+                return merged;
+            }
+
             async function initCardImageCacheControls() {
                 if (!canControlLocalDashboardServer()) return;
+                if (el.useLocalCardImagesCell) {
+                    el.useLocalCardImagesCell.hidden = false;
+                }
                 if (el.useLocalCardImagesBtn) {
                     el.useLocalCardImagesBtn.hidden = false;
                 }
-                syncUseLocalCardImagesBtn();
+
+                await hydrateUiPrefsFromServer();
+
                 const data = await fetchCardImagePrefetchStatus().catch(
                     () => null,
                 );
@@ -13136,6 +13433,7 @@
                         try {
                             localStorage.setItem(LS_THEME, resolved);
                         } catch {}
+                        void saveDashboardUiPrefs({ theme: resolved });
                     }
                     requestAnimationFrame(() =>
                         syncSectionSwitcherStackHeight(),
@@ -13160,12 +13458,7 @@
             }
 
             function initTheme() {
-                let savedTheme = null;
-                try {
-                    savedTheme = localStorage.getItem(LS_THEME);
-                } catch {
-                    savedTheme = null;
-                }
+                let savedTheme = readSavedTheme();
                 const initial =
                     savedTheme === "light" || savedTheme === "dark"
                         ? savedTheme
@@ -16155,12 +16448,12 @@
                         location.protocol === "https:";
                     if (!overHttp) {
                         setStatus(
-                            `Automatic account loading needs http(s). Current origin: ${location.protocol}//${location.host || "(none)"}. Start the dashboard from start_card_dashboard.bat or PTCGPB.ahk.`,
+                            `Automatic account loading needs http(s). Current origin: ${location.protocol}//${location.host || "(none)"}. Start the dashboard from start_card_dashboard.vbs or PTCGPB.ahk.`,
                             "warn",
                         );
                     } else {
                         setStatus(
-                            `Automatic account loading failed (${err && err.message ? err.message : "unknown error"}). Restart the dashboard from start_card_dashboard.bat or PTCGPB.ahk.`,
+                            `Automatic account loading failed (${err && err.message ? err.message : "unknown error"}). Restart the dashboard from start_card_dashboard.vbs or PTCGPB.ahk.`,
                             "warn",
                         );
                     }
@@ -18139,7 +18432,7 @@
                 } catch (err) {
                     pending();
                     showToast(
-                        `Failed to ${actionLabel}: ${err && err.message ? err.message : err}\nMake sure the dashboard server is running (start_card_dashboard.bat).`,
+                        `Failed to ${actionLabel}: ${err && err.message ? err.message : err}\nMake sure the dashboard server is running (start_card_dashboard.vbs).`,
                         "error",
                         9000,
                     );
@@ -21705,11 +21998,11 @@
                     document.getElementById("catalogCardSize");
                 if (cardSizeSelect)
                     cardSizeSelect.addEventListener("change", () => {
-                        el.cardSize.value = cardSizeSelect.value;
-                        document.documentElement.style.setProperty(
-                            "--card-w",
-                            `${cardSizeSelect.value}px`,
-                        );
+                        applyCardSize(cardSizeSelect.value, {
+                            persistLocal: true,
+                            persistServer: true,
+                            syncSelect: true,
+                        });
                     });
 
                 const wishlistOnly = document.getElementById(
@@ -24757,29 +25050,8 @@
             const debouncedCollectionRender = debounce(() => {
                 if (state.view === "mycollection") refreshCollectionMainOnly();
             }, 450);
-            el.loadRemoteBtn.addEventListener("click", async () => {
-                if (el.loadRemoteBtn.disabled) return;
-                const originalText = el.loadRemoteBtn.textContent;
-                el.loadRemoteBtn.disabled = true;
-                el.loadRemoteBtn.setAttribute("aria-busy", "true");
-                el.loadRemoteBtn.textContent = "Reloading...";
-                try {
-                    showDashboardBootLoader("Reloading dashboard data...");
-                    await loadResources(true);
-                    await autoLoadDefaultFiles();
-                } catch (err) {
-                    setStatus(
-                        `Dashboard reload failed (${err && err.message ? err.message : "unknown error"}).`,
-                        "warn",
-                    );
-                    hideDashboardBootLoader(1100);
-                } finally {
-                    el.loadRemoteBtn.disabled = false;
-                    el.loadRemoteBtn.removeAttribute("aria-busy");
-                    el.loadRemoteBtn.textContent = originalText;
-                }
-            });
-            el.clearCacheBtn.addEventListener("click", () => {
+
+            function clearCardDataCaches() {
                 localStorage.removeItem(LS_MASTER);
                 localStorage.removeItem(LS_LOCALISATION);
                 for (const [language] of LOCALISATION_LANGUAGES)
@@ -24796,6 +25068,58 @@
                 _cardTypeCache.clear();
                 _rarityFilterKeyCache.clear();
                 _buildRowDerivedCache.clear();
+            }
+
+            async function reloadDashboardData({
+                bootMessage = "Reloading dashboard data...",
+                busyButton = el.loadRemoteBtn,
+            } = {}) {
+                if (busyButton?.disabled) return;
+                const buttons = [
+                    el.loadRemoteBtn,
+                    el.forceUpdateDataBtn,
+                    el.clearCacheBtn,
+                ].filter(Boolean);
+                const originalText = busyButton ? busyButton.textContent : "";
+                for (const btn of buttons) btn.disabled = true;
+                if (busyButton) {
+                    busyButton.setAttribute("aria-busy", "true");
+                    busyButton.textContent =
+                        busyButton === el.forceUpdateDataBtn
+                            ? "Updating..."
+                            : "Reloading...";
+                }
+                try {
+                    showDashboardBootLoader(bootMessage);
+                    await loadResources(true);
+                    await autoLoadDefaultFiles();
+                } catch (err) {
+                    setStatus(
+                        `Dashboard reload failed (${err && err.message ? err.message : "unknown error"}).`,
+                        "warn",
+                    );
+                    hideDashboardBootLoader(1100);
+                } finally {
+                    for (const btn of buttons) btn.disabled = false;
+                    if (busyButton) {
+                        busyButton.removeAttribute("aria-busy");
+                        busyButton.textContent = originalText;
+                    }
+                }
+            }
+
+            el.loadRemoteBtn.addEventListener("click", () => {
+                void reloadDashboardData();
+            });
+            el.forceUpdateDataBtn?.addEventListener("click", () => {
+                clearCardDataCaches();
+                void reloadDashboardData({
+                    bootMessage: "Force updating card data...",
+                    busyButton: el.forceUpdateDataBtn,
+                });
+            });
+            el.clearCacheBtn.addEventListener("click", () => {
+                clearCardDataCaches();
                 setStatus("Cleared cached card data.");
             });
             el.useLocalCardImagesBtn?.addEventListener("click", () => {
@@ -24894,10 +25218,11 @@
                 updateBackToTopVisibility();
             }
             el.cardSize.addEventListener("change", () =>
-                document.documentElement.style.setProperty(
-                    "--card-w",
-                    `${el.cardSize.value}px`,
-                ),
+                applyCardSize(el.cardSize.value, {
+                    persistLocal: true,
+                    persistServer: true,
+                    syncSelect: false,
+                }),
             );
             el.cardLanguage?.addEventListener("change", async () => {
                 const nextLanguage = getSupportedLanguage(
@@ -24908,6 +25233,7 @@
                 const previousLocalisation = state.localisation;
                 state.language = nextLanguage;
                 localStorage.setItem(LS_SELECTED_LANGUAGE, nextLanguage);
+                void saveDashboardUiPrefs({ language: nextLanguage });
                 state.localisation = null;
                 state.cardInfoCache.clear();
                 state.packLabelCache.clear();
@@ -24938,6 +25264,7 @@
                         LS_SELECTED_LANGUAGE,
                         previousLanguage,
                     );
+                    void saveDashboardUiPrefs({ language: previousLanguage });
                     state.cardInfoCache.clear();
                     state.packLabelCache.clear();
                     _packIconCache.clear();
@@ -25011,6 +25338,7 @@
                     ? nextSize
                     : INITIAL_LIMIT;
                 localStorage.setItem(LS_PAGE_SIZE, String(state.pageSize));
+                void saveDashboardUiPrefs({ pageSize: state.pageSize });
                 state.displayLimit = state.pageSize;
                 invalidateViewDomCache();
                 renderCurrent();
