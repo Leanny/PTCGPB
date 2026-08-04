@@ -564,33 +564,60 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             if (accIdx < 1)
                 accIdx := RLB_RegisterCurrentAccount()
             session.set("rlbCurrentAccIdx", accIdx)
-            acc := RLB_ReadAccount(accIdx)
-            RLB_RefreshWindowIfExpired(acc)
-            RLB_WriteAccount(accIdx, acc)
-            startIdx := acc["nextIndex"]
-            opsLeft := 10 - (acc["opsInWindow"] + 0)
-            if (opsLeft < 1)
-                opsLeft := 10
-            if (opsLeft > 10)
-                opsLeft := 10
-            session.set("friendsAdded", AddFriends(false, false, startIdx, opsLeft))
-            nextIdx := session.get("rlbNextIdx") + 0
-            if (nextIdx < 1)
-                nextIdx := startIdx
-            rateLimited := session.get("rlbRateLimited") ? 1 : 0
-            RLB_AfterTranche(accIdx, nextIdx, rateLimited)
-            ; Cockpit runs are credited only after RemoveFriends of the last account in the batch
-            session.set("rlbSkipEndMetrics", 1)
 
-            acc := RLB_ReadAccount(accIdx)
-            if (acc["phase"] = "readyForPacks") {
-                session.set("rlbDoPacks", 1)
-                RLB_WaitForFriendAccepts()
-            } else {
-                ; Park and rotate — next iteration closes app + injects next account (no full game restart)
+            ; maxCache=1: stay on account and wait cooldowns. Otherwise park/rotate after each tranche.
+            rlbParkAndContinue := false
+            Loop {
+                acc := RLB_ReadAccount(accIdx)
+                RLB_RefreshWindowIfExpired(acc)
+                RLB_WriteAccount(accIdx, acc)
+                if (acc["phase"] = "readyForPacks") {
+                    session.set("rlbDoPacks", 1)
+                    break
+                }
+
+                startIdx := acc["nextIndex"]
+                opsLeft := 10 - (acc["opsInWindow"] + 0)
+                if (opsLeft < 1)
+                    opsLeft := 10
+                if (opsLeft > 10)
+                    opsLeft := 10
+
+                session.set("friendsAdded", AddFriends(false, false, startIdx, opsLeft))
+                nextIdx := session.get("rlbNextIdx") + 0
+                if (nextIdx < 1)
+                    nextIdx := startIdx
+                rateLimited := session.get("rlbRateLimited") ? 1 : 0
+                RLB_AfterTranche(accIdx, nextIdx, rateLimited)
+                session.set("rlbSkipEndMetrics", 1)
+
+                acc := RLB_ReadAccount(accIdx)
+                if (acc["phase"] = "readyForPacks") {
+                    session.set("rlbDoPacks", 1)
+                    RLB_WaitForFriendAccepts()
+                    break
+                }
+
+                maxCache := RLB_GetMaxCache()
+                IniRead, snapMax, % RLB_IniPath(), RateLimitBypasser, MaxCache,
+                if (snapMax != "" && snapMax != "ERROR")
+                    maxCache := snapMax + 0
+
+                if (maxCache = 1) {
+                    remMs := RLB_WindowRemainingMs(acc)
+                    if (remMs < 1000)
+                        remMs := 1000
+                    LogInfo("RLB cache=1: waiting cooldown on same account | ms=" . remMs, "GroupReroll.txt")
+                    RLB_WaitCooldown(remMs)
+                    continue
+                }
+
                 RLB_ParkCurrentAccount(accIdx)
-                continue
+                rlbParkAndContinue := true
+                break
             }
+            if (rlbParkAndContinue)
+                continue
         } else {
             session.set("friendsAdded", AddFriends())
         }
