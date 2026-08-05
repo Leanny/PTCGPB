@@ -10,6 +10,7 @@
         , "ui_runMain": "runMain"
         , "ui_Mains": "Mains"
         , "ui_deleteMethod": "deleteMethod"
+        , "ui_forceInjectAccounts": "forceInjectAccounts"
         , "ui_packMethod": "packMethod"
         , "ui_injectWonderpickMinPacks": "injectWonderpickMinPacks"
         , "ui_openExtraPack": "openExtraPack"
@@ -26,6 +27,7 @@
         , "shownLicense":0
         , "defaultBotLanguage":1
         , "deleteMethod":"Create Bots (13P)"
+        , "forceInjectAccounts": 0
         , "Instances": 1
         , "Columns": 5
         , "instanceStartDelay": 10

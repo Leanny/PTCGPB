@@ -57,6 +57,8 @@ enum Command {
         #[arg(long, default_value_t = false)]
         spend_hourglass: bool,
         #[arg(long, default_value_t = false)]
+        force_inject: bool,
+        #[arg(long, default_value_t = false)]
         force_clear_used: bool,
     },
     BalanceXmls {
@@ -80,6 +82,8 @@ enum Command {
         s4t_enabled: bool,
         #[arg(long, default_value_t = false)]
         spend_hourglass: bool,
+        #[arg(long, default_value_t = false)]
+        force_inject: bool,
     },
     ExtractMetadata {
         #[arg(long)]
@@ -243,6 +247,7 @@ fn run(cli: Cli) -> Result<()> {
             ocr_shinedust,
             s4t_enabled,
             spend_hourglass,
+            force_inject,
             force_clear_used,
         } => schedule_accounts(
             &cli.root,
@@ -257,6 +262,7 @@ fn run(cli: Cli) -> Result<()> {
                 ocr_shinedust,
                 s4t_enabled,
                 spend_hourglass,
+                force_inject,
                 force_clear_used,
             },
         ),
@@ -271,6 +277,7 @@ fn run(cli: Cli) -> Result<()> {
             ocr_shinedust,
             s4t_enabled,
             spend_hourglass,
+            force_inject,
         } => balance_xmls(
             &cli.root,
             instances,
@@ -285,6 +292,7 @@ fn run(cli: Cli) -> Result<()> {
                 ocr_shinedust,
                 s4t_enabled,
                 spend_hourglass,
+                force_inject,
                 force_clear_used: false,
             },
         ),
@@ -1941,7 +1949,8 @@ fn new_account(instance: &str, file_name: &str, file_path: &Path) -> Value {
             "R": flag_value('R'),
             "W": flag_value('W'),
             "H": flag_value('H'),
-            "SH": new_flag(0, "", "")
+            "SH": new_flag(0, "", ""),
+            "FI": new_flag(0, "", "")
         }
     })
 }
@@ -2309,6 +2318,7 @@ struct ScheduleOptions {
     ocr_shinedust: bool,
     s4t_enabled: bool,
     spend_hourglass: bool,
+    force_inject: bool,
     force_clear_used: bool,
 }
 
@@ -2475,6 +2485,10 @@ fn inject_pack_eligible(account: &Value, options: &ScheduleOptions) -> bool {
 }
 
 fn eligible(account: &Value, options: &ScheduleOptions) -> bool {
+    if options.force_inject {
+        return !flag_value(account, "FI");
+    }
+
     match options.delete_method.as_str() {
         "Create Bots (13P)" => true,
         "Inject Rewards" => inject_rewards_eligible(account, options),
@@ -2777,7 +2791,9 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
         let device_account = extract_device_account_from_xml(&path);
-        if used_account_matches(&used_state.used, &file_name, &device_account) {
+        if !options.force_inject
+            && used_account_matches(&used_state.used, &file_name, &device_account)
+        {
             continue;
         }
 
@@ -2790,12 +2806,14 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
 
         let pack_count =
             field_i64(account, "packCount").unwrap_or_else(|| extract_pack_count(&file_name));
-        if !pack_count_allowed(
-            &options.delete_method,
-            metadata_account,
-            pack_count,
-            options.inject_wonderpick_min_packs,
-        ) {
+        if !options.force_inject
+            && !pack_count_allowed(
+                &options.delete_method,
+                metadata_account,
+                pack_count,
+                options.inject_wonderpick_min_packs,
+            )
+        {
             continue;
         }
 
@@ -2876,7 +2894,9 @@ fn count_eligible_for_all_instances(
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_default();
             let device_account = extract_device_account_from_xml(&path);
-            if used_account_matches(&used_state.used, &file_name, &device_account) {
+            if !options.force_inject
+                && used_account_matches(&used_state.used, &file_name, &device_account)
+            {
                 continue;
             }
 
@@ -2889,12 +2909,14 @@ fn count_eligible_for_all_instances(
 
             let pack_count =
                 field_i64(account, "packCount").unwrap_or_else(|| extract_pack_count(&file_name));
-            if pack_count_allowed(
-                &options.delete_method,
-                metadata_account,
-                pack_count,
-                options.inject_wonderpick_min_packs,
-            ) {
+            if options.force_inject
+                || pack_count_allowed(
+                    &options.delete_method,
+                    metadata_account,
+                    pack_count,
+                    options.inject_wonderpick_min_packs,
+                )
+            {
                 total += 1;
             }
         }
@@ -4067,6 +4089,7 @@ mod tests {
                 ocr_shinedust: false,
                 s4t_enabled: false,
                 spend_hourglass: false,
+                force_inject: false,
                 force_clear_used: false,
             }
         ));
@@ -4077,6 +4100,44 @@ mod tests {
             "00000035_a47fba5b1186e05e.xml",
             device_account
         ));
+    }
+
+    #[test]
+    fn force_inject_overrides_normal_gates_once_per_account() {
+        let recent_pull = Local::now().format("%Y%m%d%H%M%S").to_string();
+        let mut account = json!({
+            "packCount": 1,
+            "lastPackPulled": recent_pull,
+            "flags": {}
+        });
+        let mut options = ScheduleOptions {
+            instance: "1".to_owned(),
+            delete_method: "Inject Wonderpick 96P+".to_owned(),
+            sort_method: "ModifiedAsc".to_owned(),
+            inject_wonderpick_min_packs: 96,
+            wonderpick_for_event_missions: false,
+            claim_special_missions: false,
+            receive_gift: false,
+            ocr_shinedust: false,
+            s4t_enabled: false,
+            spend_hourglass: false,
+            force_inject: false,
+            force_clear_used: false,
+        };
+
+        assert!(!eligible(&account, &options));
+        assert!(!pack_count_allowed(
+            &options.delete_method,
+            Some(&account),
+            1,
+            options.inject_wonderpick_min_packs
+        ));
+
+        options.force_inject = true;
+        assert!(eligible(&account, &options));
+
+        account["flags"]["FI"] = new_flag(1, "20260805000000", "");
+        assert!(!eligible(&account, &options));
     }
 
     #[test]

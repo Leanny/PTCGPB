@@ -522,6 +522,12 @@ NextStep:
     Gui, Add, Text, x535 y93 w180 h20 Center BackgroundTrans cWhite, Modder: Lean && xedranort
     Gui, Add, Text, x535 y113 w180 h20 Center BackgroundTrans cWhite, % modVersion
 
+    forceInjectVisible := InStr(botMethod, "Inject") ? "" : " Hidden"
+    Gui, Font, s9 cWhite
+    Gui, Add, Checkbox, % (botConfig.get("forceInjectAccounts") ? "Checked" : "") " vui_forceInjectAccounts x520 y142 w210 " . sectionColor . forceInjectVisible, Force inject accounts
+    Gui, Font, s8 cWhite
+    Gui, Add, Button, x520 y166 w210 h20 gClearForceInjectFlags BackgroundTrans, Clear force inject flags
+
     ; =================== UI - Icon ===================
     Gui, Font, s10 cWhite
     Gui, Add, Picture, gOpenDiscord x560 y194 w32 h32, %A_ScriptDir%\GUI\Images\discord-icon.png
@@ -585,6 +591,7 @@ deleteSettings:
     UpdateBotSettingsLayout(curDeleteMethod)
 
     if (curDeleteMethod = "Create Bots (13P)") {
+        GuiControl, Hide, ui_forceInjectAccounts
         GuiControl, Hide, ui_FriendID
         GuiControl, Hide, ui_spendHourGlass
         GuiControl, Hide, ui_hourglassTenPackOpening
@@ -601,6 +608,7 @@ deleteSettings:
         GuiControl, Hide, ui_WaitTime
         ; FriendID kept stored but only used when deleteMethod = "Inject Wonderpick 96P+"
     } else if (curDeleteMethod = "Inject Wonderpick 96P+") {
+        GuiControl, Show, ui_forceInjectAccounts
         GuiControl, Show, ui_FriendID
         GuiControl, Show, ui_spendHourGlass
         GuiControl, Hide, ui_hourglassTenPackOpening
@@ -621,6 +629,7 @@ deleteSettings:
         visible := g_runMainPref ? "Show" : "Hide"
         GuiControl, %visible%, ui_Mains
     } else if (curDeleteMethod = "Inject 13P+") {
+        GuiControl, Show, ui_forceInjectAccounts
         GuiControl, Hide, ui_FriendID
         GuiControl, Show, ui_spendHourGlass
         GuiControl, Show, ui_hourglassTenPackOpening
@@ -637,6 +646,7 @@ deleteSettings:
         GuiControl, Hide, ui_WaitTime
         ; FriendID kept stored but only used when deleteMethod = "Inject Wonderpick 96P+"
     } else if (curDeleteMethod = "Inject Rewards") {
+        GuiControl, Show, ui_forceInjectAccounts
         GuiControl, Hide, ui_FriendID
         GuiControl, Hide, ui_spendHourGlass
         GuiControl, Hide, ui_hourglassTenPackOpening
@@ -1746,6 +1756,17 @@ ClearReceiveGiftHistory:
     }
 return
 
+ClearForceInjectFlags:
+    MsgBox, 4, Clear Force Inject Flags, Clear the FI flag from all account metadata? Accounts can then be force-injected once again when Force inject accounts is enabled.
+    IfMsgBox, Yes
+    {
+        changed := AccountMetadata_ClearFlagEverywhere("FI")
+        changed := changed = "" ? 0 : changed + 0
+
+        MsgBox, 64, Clear Force Inject Flags Complete, % "Done`nAccounts changed: " . changed
+    }
+return
+
 ; =================== Logic - Start Bot Button Action ===================
 Save:
     HelpTT_Dismiss()
@@ -1798,6 +1819,8 @@ Save:
     if (botConfig.get("ocrShinedust") && botConfig.get("s4tEnabled"))
         additionalSettings .= "• Track Shinedust`n"
     if (InStr(botConfig.get("deleteMethod"), "Inject")) {
+        if (botConfig.get("forceInjectAccounts"))
+            additionalSettings .= "• Force inject accounts (once per account)`n"
         additionalSettings .= dict["Confirm_SortBy"] . " "
         if (botConfig.get("injectSortMethod") = "ModifiedAsc")
             additionalSettings .= "Oldest First`n"
@@ -1955,6 +1978,8 @@ BalanceXMLs:
                 command .= " --s4t-enabled"
             if (botConfig.get("spendHourGlass"))
                 command .= " --spend-hourglass"
+            if (botConfig.get("forceInjectAccounts") && InStr(botConfig.get("deleteMethod"), "Inject"))
+                command .= " --force-inject"
             balanceOk := BalanceXMLs_RunWithProgress(command)
             resultPath := A_ScriptDir . "\Accounts\Saved\balance_result.txt"
             counter := 0
@@ -2438,6 +2463,7 @@ HelpTT_Init() {
 
     ; --- Main window: Bot Settings
     HelpTT_Add("ui_deleteMethod", "deleteMethod", "Bot mode:`n• Create Bots (13P): creates brand-new accounts, opens their packs and saves them as XML.`n• Inject 13P+: loads saved accounts, opens their available packs, then marks them as used.`n• Inject Wonderpick 96P+: loads accounts with at least 'Min Packs' packs, friends your Main(s) and opens packs for God Pack testing; unfriends at the end.`n• Inject Rewards: loads saved accounts only to claim rewards (event missions, gifts) without opening packs; accounts stay available for the other modes.")
+    HelpTT_Add("ui_forceInjectAccounts", "forceInjectAccounts", "Overrides all normal injection conditions for each account once.`nAfter an account is injected, its FI metadata flag prevents another forced injection until you clear the force inject flags.")
     HelpTT_Add("ui_injectWonderpickMinPacks", "injectWonderpickMinPacks", "Minimum number of packs a saved account must have to be injected in Wonderpick mode (70-999, default 96).")
     HelpTT_Add("ui_packMethod", "packMethod", "When enabled, the bot opens packs one at a time, removing and re-adding friends between each pack.")
     HelpTT_Add("ui_openExtraPack", "openExtraPack", "When enabled, the bot opens one extra pack after the two free ones.")

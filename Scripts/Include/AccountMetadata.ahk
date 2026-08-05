@@ -576,7 +576,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["flags"] := {}
     account["specialEvents"] := {}
 
-    flags := ["B", "X", "T", "R", "W", "H", "SH"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
     Loop, % flags.MaxIndex()
         account["flags"][flags[A_Index]] := AccountMetadata_NewFlag(0)
 
@@ -883,7 +883,7 @@ AccountMetadata_ParseAccount(accountJson) {
     flagsBrace := flagsPos ? InStr(accountJson, "{", false, flagsPos) : 0
     flagsBody := AccountMetadata_ExtractObjectBody(accountJson, flagsBrace)
     if (flagsBody != "") {
-        flags := ["B", "X", "T", "R", "W", "H", "SH"]
+        flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
         Loop, % flags.MaxIndex() {
             flag := flags[A_Index]
             flagPos := InStr(flagsBody, """" . flag . """")
@@ -947,7 +947,7 @@ AccountMetadata_SerializeStore(store) {
 }
 
 AccountMetadata_SerializeAccount(account, indent := "") {
-    flags := ["B", "X", "T", "R", "W", "H", "SH"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
     json := "{`r`n"
     firstField := true
 
@@ -1157,7 +1157,7 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
 
     if (!IsObject(baseAccount["flags"]))
         baseAccount["flags"] := {}
-    flags := ["B", "X", "T", "R", "W", "H", "SH"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
     Loop, % flags.MaxIndex() {
         flag := flags[A_Index]
         patchFlag := patchAccount["flags"][flag]
@@ -1636,6 +1636,39 @@ AccountMetadata_SetFlag(instance, fileName, flag, value, validUntil := "") {
     AccountMetadata_WriteStoreUnlocked(store)
     AccountMetadata_ReleaseLock(hMutex)
     return true
+}
+
+; Atomically reserve an account for one forced injection. The shared metadata
+; mutex prevents duplicate XMLs in concurrent instances from both claiming it.
+AccountMetadata_TryClaimForceInject(instance, fileName, filePath) {
+    deviceAccount := AccountMetadata_GetDeviceAccountFromFile(filePath)
+    if (deviceAccount = "")
+        return false
+
+    hMutex := AccountMetadata_AcquireLock()
+    if (!hMutex)
+        return false
+
+    account := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
+    if (!IsObject(account["flags"]))
+        account["flags"] := {}
+    if (!account["flags"].HasKey("FI"))
+        account["flags"]["FI"] := AccountMetadata_NewFlag(0)
+
+    if (account["flags"]["FI"]["value"]) {
+        AccountMetadata_ReleaseLock(hMutex)
+        return false
+    }
+
+    account["deviceAccount"] := deviceAccount
+    account["instance"] := instance
+    account["fileName"] := fileName
+    account["flags"]["FI"]["value"] := 1
+    account["flags"]["FI"]["setAt"] := AccountMetadata_Now()
+    account["flags"]["FI"]["validUntil"] := ""
+    saved := AccountMetadata_WriteAccountUnlocked(deviceAccount, account)
+    AccountMetadata_ReleaseLock(hMutex)
+    return saved
 }
 
 AccountMetadata_SetShinedust(deviceAccount, shinedustValue, instance := "", fileName := "") {

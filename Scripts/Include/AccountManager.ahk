@@ -104,6 +104,13 @@ loadAccount() {
                         continue
                     }
 
+                    if (botConfig.get("forceInjectAccounts") && !AccountMetadata_TryClaimForceInject(session.get("scriptName"), currentFile, testFile)) {
+                        skippedIndexes[A_Index] := true
+                        skippedCount++
+                        LogDebug("Skipped account already claimed for force injection: " . currentFile)
+                        continue
+                    }
+
                     loadFile := testFile
                     session.set("accountFileName", currentFile)
                     foundValidAccount := true
@@ -885,6 +892,9 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (!IsObject(accountMeta))
         accountMeta := AccountMetadata_Get(instance, fileName, filePath)
 
+    if (botConfig.get("forceInjectAccounts"))
+        return !AccountEligibility_FlagIsSet(accountMeta, "FI")
+
     if (method = "Inject Rewards")
         return AccountEligibility_InjectRewardsEligible(accountMeta)
 
@@ -1038,6 +1048,8 @@ CreateAccountList(instance) {
         command .= " --s4t-enabled"
     if (botConfig.get("spendHourGlass"))
         command .= " --spend-hourglass"
+    if (botConfig.get("forceInjectAccounts") && InStr(botConfig.get("deleteMethod"), "Inject"))
+        command .= " --force-inject"
     if (forceRegeneration)
         command .= " --force-clear-used"
 
