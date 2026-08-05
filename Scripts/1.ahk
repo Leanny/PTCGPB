@@ -317,7 +317,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 } else {
     ; in injection mode, we dont need to reload
 
+MainLoop:
     Loop {
+MainLoopStart:
         clearMissionCache()
         session.set("isReloadAfterAddFriends", false)
         Randmax := session.get("packList").Length()
@@ -414,11 +416,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 if (rlbAction = "exit") {
                     RLB_ClearWave()
                     session.set("rlbStartupRecovery", 0)
-                    continue
+                    Goto, MainLoopStart
                 }
                 if (rlbAction = "wait") {
                     RLB_WaitCooldown(session.get("rlbWaitMs"))
-                    continue
+                    Goto, MainLoopStart
                 }
                 if (rlbAction = "resume") {
                     accIdx := session.get("rlbResumeIdx") + 0
@@ -427,7 +429,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                         session.set("loadedAccount", loadAccountByFileName(acc["fileName"]))
                     if (!session.get("loadedAccount")) {
                         LogWarn("RLB failed to resume account idx=" . accIdx, "GroupReroll.txt")
-                        continue
+                        Goto, MainLoopStart
                     }
                     session.set("rlbActiveThisRun", 1)
                     session.set("rlbCurrentAccIdx", accIdx)
@@ -455,7 +457,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 }
                 if (rlbAction = "wait") {
                     RLB_WaitCooldown(session.get("rlbWaitMs"))
-                    continue
+                        Goto, MainLoopStart
                 }
                 if (rlbAction = "resume") {
                     accIdx := session.get("rlbResumeIdx") + 0
@@ -464,7 +466,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                         session.set("loadedAccount", loadAccountByFileName(acc["fileName"]))
                     if (!session.get("loadedAccount")) {
                         LogWarn("RLB failed to resume account idx=" . accIdx, "GroupReroll.txt")
-                        continue
+                            Goto, MainLoopStart
                     }
                     session.set("rlbActiveThisRun", 1)
                     session.set("rlbCurrentAccIdx", accIdx)
@@ -504,13 +506,13 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     if (session.get("stopToggle")){
                         if (RLB_IsActive()) {
                             RLB_SetStopDrain(1)
-                            continue
+                            Goto, MainLoopStart
                         }
                         CleanupBeforeExit()
                         ExitApp
                     }
                     Sleep, 60000  ; 1 minute
-                    continue  ; Go back to start of loop to check again
+                    Goto, MainLoopStart  ; Go back to start of loop to check again
                 } else {
                     CleanupBeforeExit()
                     ExitApp
@@ -577,7 +579,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     MarkAccountAsUsed()
                     session.set("loadedAccount", false)
                     restartGameInstance("New Run", false)
-                    continue
+                    Goto, MainLoopStart
                 }
             }
         }
@@ -653,7 +655,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                         remMs := 1000
                     LogInfo("RLB cache=1: waiting cooldown on same account | ms=" . remMs, "GroupReroll.txt")
                     RLB_WaitCooldown(remMs)
-                    continue
+                    Goto, MainLoopStart
                 }
 
                 RLB_ParkCurrentAccount(accIdx)
@@ -661,7 +663,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 break
             }
             if (rlbParkAndContinue)
-                continue
+                Goto, MainLoopStart
         } else {
             session.set("friendsAdded", AddFriends())
         }
@@ -692,7 +694,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         if (session.get("rlbActiveThisRun") && !session.get("rlbDoPacks")) {
             RLB_ParkCurrentAccount(session.get("rlbCurrentAccIdx"))
-            continue
+            Goto, MainLoopStart
         }
 
         SelectPack("First")
@@ -970,7 +972,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     MarkAccountAsUsed()
                 }
                 session.set("loadedAccount", false)
-                continue
+                Goto, MainLoopStart
             }
         }
 
