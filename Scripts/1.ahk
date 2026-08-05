@@ -140,6 +140,11 @@ session.set("rlbActiveThisRun", 0)
 session.set("rlbCurrentAccIdx", 0)
 session.set("rlbDoPacks", 1)
 session.set("rlbSkipEndMetrics", 0)
+session.set("rlbStartupRecovery", 0)
+if (session.get("injectMethod") && RLB_HasPendingWave() && !(botConfig.get("groupRerollEnabled") && botConfig.get("deleteMethod") = "Inject Wonderpick 96P+")) {
+    session.set("rlbStartupRecovery", 1)
+    LogInfo("RLB stale wave detected at startup; draining cache before continuing.", "GroupReroll.txt")
+}
 
 IniRead, DeadCheck, % session.get("scriptIniFile"), UserSettings, DeadCheck, 0
 IniRead, friendCleanupPending, % session.get("scriptIniFile"), UserSettings, friendCleanupPending, 0
@@ -399,46 +404,82 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("rlbPendingRegister", 0)
         session.set("rlbPacksOnly", 0)
 
-        ; Rate Limit Bypasser: decide resume/fresh/wait before loading
-        if (session.get("injectMethod") && botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" && botConfig.get("groupRerollEnabled")) {
-            if (RLB_IsEligible() || RLB_IsActive()) {
-                if (RLB_EnsureWave()) {
-                    session.set("packMethod", 0)
-                    RLB_PickNextAction()
-                    rlbAction := session.get("rlbAction")
-                    if (rlbAction = "exit") {
-                        RLB_ClearWave()
-                        CleanupBeforeExit()
-                        ExitApp
-                    }
-                    if (rlbAction = "wait") {
-                        RLB_WaitCooldown(session.get("rlbWaitMs"))
+        ; Rate Limit Bypasser: drain stale cached accounts first, then normal RLB if active/eligible.
+        if (session.get("rlbStartupRecovery")) {
+            if (RLB_HasPendingWave()) {
+                session.set("packMethod", 0)
+                RLB_LoadFrozenIdsIntoSession()
+                RLB_PickNextAction(false)
+                rlbAction := session.get("rlbAction")
+                if (rlbAction = "exit") {
+                    RLB_ClearWave()
+                    session.set("rlbStartupRecovery", 0)
+                    continue
+                }
+                if (rlbAction = "wait") {
+                    RLB_WaitCooldown(session.get("rlbWaitMs"))
+                    continue
+                }
+                if (rlbAction = "resume") {
+                    accIdx := session.get("rlbResumeIdx") + 0
+                    acc := RLB_ReadAccount(accIdx)
+                    if (!session.get("loadedAccount"))
+                        session.set("loadedAccount", loadAccountByFileName(acc["fileName"]))
+                    if (!session.get("loadedAccount")) {
+                        LogWarn("RLB failed to resume account idx=" . accIdx, "GroupReroll.txt")
                         continue
                     }
-                    if (rlbAction = "resume") {
-                        accIdx := session.get("rlbResumeIdx") + 0
-                        acc := RLB_ReadAccount(accIdx)
-                        if (!session.get("loadedAccount"))
-                            session.set("loadedAccount", loadAccountByFileName(acc["fileName"]))
-                        if (!session.get("loadedAccount")) {
-                            LogWarn("RLB failed to resume account idx=" . accIdx, "GroupReroll.txt")
-                            continue
-                        }
-                        session.set("rlbActiveThisRun", 1)
-                        session.set("rlbCurrentAccIdx", accIdx)
-                        if (acc["phase"] = "readyForPacks") {
-                            session.set("rlbDoPacks", 1)
-                            session.set("rlbPacksOnly", 1)
-                            session.set("rlbSkipEndMetrics", 1)
-                            session.set("friended", acc["friended"] ? true : false)
-                        } else {
-                            session.set("rlbDoPacks", 0)
-                        }
-                    } else if (rlbAction = "fresh") {
-                        session.set("rlbActiveThisRun", 1)
+                    session.set("rlbActiveThisRun", 1)
+                    session.set("rlbCurrentAccIdx", accIdx)
+                    if (acc["phase"] = "readyForPacks") {
+                        session.set("rlbDoPacks", 1)
+                        session.set("rlbPacksOnly", 1)
+                        session.set("rlbSkipEndMetrics", 1)
+                        session.set("friended", acc["friended"] ? true : false)
+                    } else {
                         session.set("rlbDoPacks", 0)
-                        session.set("rlbPendingRegister", 1)
                     }
+                }
+            } else {
+                session.set("rlbStartupRecovery", 0)
+            }
+        } else if (session.get("injectMethod") && botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" && botConfig.get("groupRerollEnabled")) {
+            if (RLB_EnsureWave()) {
+                session.set("packMethod", 0)
+                RLB_PickNextAction()
+                rlbAction := session.get("rlbAction")
+                if (rlbAction = "exit") {
+                    RLB_ClearWave()
+                    CleanupBeforeExit()
+                    ExitApp
+                }
+                if (rlbAction = "wait") {
+                    RLB_WaitCooldown(session.get("rlbWaitMs"))
+                    continue
+                }
+                if (rlbAction = "resume") {
+                    accIdx := session.get("rlbResumeIdx") + 0
+                    acc := RLB_ReadAccount(accIdx)
+                    if (!session.get("loadedAccount"))
+                        session.set("loadedAccount", loadAccountByFileName(acc["fileName"]))
+                    if (!session.get("loadedAccount")) {
+                        LogWarn("RLB failed to resume account idx=" . accIdx, "GroupReroll.txt")
+                        continue
+                    }
+                    session.set("rlbActiveThisRun", 1)
+                    session.set("rlbCurrentAccIdx", accIdx)
+                    if (acc["phase"] = "readyForPacks") {
+                        session.set("rlbDoPacks", 1)
+                        session.set("rlbPacksOnly", 1)
+                        session.set("rlbSkipEndMetrics", 1)
+                        session.set("friended", acc["friended"] ? true : false)
+                    } else {
+                        session.set("rlbDoPacks", 0)
+                    }
+                } else if (rlbAction = "fresh") {
+                    session.set("rlbActiveThisRun", 1)
+                    session.set("rlbDoPacks", 0)
+                    session.set("rlbPendingRegister", 1)
                 }
             }
         }
@@ -490,6 +531,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         waitForAppBootScreen()
+        ; RLB Cockpit: run starts at first inject of the cached series; keep that start pinned.
+        if (session.get("rlbActiveThisRun") && IsFunc("RLB_CaptureOrRestoreBatchStartEpoch"))
+            RLB_CaptureOrRestoreBatchStartEpoch()
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
         if(session.get("setSpeed") = 3)
             FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
@@ -881,19 +925,21 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         ; BallCity 2025.02.21 - Track monitor / cockpit
-        ; Rate Limit Bypasser credits cockpit runs when a full account-batch finishes RemoveFriends
-        if (!session.get("rlbSkipEndMetrics")) {
+        ; RLB: Current spans inject(A)→last RemoveFriends; +N runs credited only then
+        ; (RLB_FlushCockpitIfBatchComplete). Never end a run on intermediate accounts.
+        if (session.get("rlbActiveThisRun")) {
+            writeLastActivityEpoch(session.get("scriptName"), 0)
+        } else if (!session.get("rlbSkipEndMetrics")) {
             now := A_NowUTC
             IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
             EnvSub, now, 1970, seconds
             IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
+            IniWrite, 1, % session.get("scriptIniFile"), Metrics, LastRunAccountCount
 
             session.set("rerolls", session.get("rerolls") + 1)
             session.set("rerolls_local", session.get("rerolls_local") + 1)
             IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
         } else {
-            now := A_NowUTC
-            EnvSub, now, 1970, seconds
             ; Keep Monitor heartbeating after packs without counting another cockpit run
             writeLastActivityEpoch(session.get("scriptName"), 0)
         }
@@ -4117,6 +4163,11 @@ FindHourglassOpenConfirmationClosed(tenPackOpening, failSafeTime) {
 }
 
 DismissMainCloseAlertWindow(context := "") {
+    ; Friend search cancel uses the same CloseAlertWindow art; never treat Social as quit dialog.
+    if (IsFunc("IsSocialTabActiveOnHub") && IsSocialTabActiveOnHub(0))
+        return false
+    if (FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, 0, , true))
+        return false
     if(!FindOrLoseImage("Common_CloseAlertWindowInMain", 0, , , true))
         return false
 
@@ -5524,6 +5575,26 @@ GoToMain() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop, {
+        ; ESC on Social closes the Pocket app to Android home. Leave Social via Home tap only.
+        if ((IsFunc("IsSocialTabActiveOnHub") && IsSocialTabActiveOnHub(0))
+            || FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, 0, , true)
+            || FindOrLoseImage("Friend_BottomDarkHomeIcon", 0, 0, , true)
+            || FindOrLoseImage("Friend_FriendIDInputReady", 0, 0, , true)) {
+            adbClick_wbb(40, 516) ; Home tab / dark home icon area
+            Delay(0.5)
+            adbClick_wbb(175, 445)
+            DelayH(500)
+            if (FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true)
+                || FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, 0, , true)
+                || FindOrLoseImage("Pack_PackPointButton", 0, 0, , true))
+                break
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Moving to Main`n(from Social, no ESC) (" . failSafeTime . "/45)")
+            if (failSafeTime >= 45)
+                break
+            continue
+        }
+
         ; 1.7.0: tutorials during GoToMain always force an app restart onto Welcome.
         ; ESC on Welcome opens quit confirmation — Cancel (if needed) + Tap to Start.
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
@@ -5540,9 +5611,11 @@ GoToMain() {
             continue
         }
 
-        ; Quit dialog covering Welcome (needle may not see Welcome behind it).
+        ; Quit dialog covering Welcome only (same art as friend-search cancel — require Welcome).
         if (FindOrLoseImage("Common_CloseAlertWindowInMain", 0, 0, , true)
-            && !FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, 0, , true)) {
+            && !FindOrLoseImage("Common_ActivatedHomeInMainMenu", 0, 0, , true)
+            && (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
+                || FindOrLoseImage("Boot_Welcome", 0, 0, , true))) {
             adbClick_wbb(75, 365) ; Cancel
             Delay(1)
             adbClick_wbb(140, 450) ; Tap to Start

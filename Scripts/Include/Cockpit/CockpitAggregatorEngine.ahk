@@ -128,15 +128,25 @@ Agg_TickBody() {
             && info.lastEndEpoch >= info.lastStartEpoch) {
             runDuration := info.lastEndEpoch - info.lastStartEpoch
             if (runDuration > 0 && runDuration < 6 * 3600) {
-                Metrics_RingPush(prev.ring, runDuration)
-                Metrics_RingPush(g_aggState.globalRing, runDuration)
-                Metrics_RingPush(g_aggState.modeRings[mode], runDuration)
-                g_aggState.totalRunsCompleted += 1
+                ; RLB may close N accounts in one clock window (LastRunAccountCount=N).
+                ; ETA = injectables × avg ⇒ store N samples of duration/N.
+                weight := info.lastRunAccountCount + 0
+                if (weight < 1)
+                    weight := 1
+                effDuration := Round(runDuration / weight)
+                if (effDuration < 1)
+                    effDuration := 1
+                Loop, % weight {
+                    Metrics_RingPush(prev.ring, effDuration)
+                    Metrics_RingPush(g_aggState.globalRing, effDuration)
+                    Metrics_RingPush(g_aggState.modeRings[mode], effDuration)
+                }
+                g_aggState.totalRunsCompleted += weight
                 prev.totalRunSecCompleted += runDuration
                 latestBin := Metrics_LatestBinIndex()
-                Metrics_TrendIncrement(g_aggState.trendInjPerHour, latestBin, 1)
-                Metrics_TrendIncrement(g_aggState.trendAvgRunSum, latestBin, runDuration)
-                Metrics_TrendIncrement(g_aggState.trendAvgRunCount, latestBin, 1)
+                Metrics_TrendIncrement(g_aggState.trendInjPerHour, latestBin, weight)
+                Metrics_TrendIncrement(g_aggState.trendAvgRunSum, latestBin, effDuration * weight)
+                Metrics_TrendIncrement(g_aggState.trendAvgRunCount, latestBin, weight)
             }
         }
         prev.lastSeenEnd := info.lastEndEpoch
@@ -331,7 +341,7 @@ Agg_TickBody() {
 Agg_ReadInstanceIni(N) {
     path := getScriptBaseFolder() . "\Scripts\" . N . ".ini"
     info := { "lastStartEpoch": 0, "lastEndEpoch": 0, "rerolls": 0
-        , "currentAccount": "" }
+        , "currentAccount": "", "lastRunAccountCount": 1 }
 
     if (!FileExist(path))
         return info
@@ -341,6 +351,10 @@ Agg_ReadInstanceIni(N) {
     info.lastEndEpoch := CockpitState_SecGet(m, "LastEndEpoch", 0) + 0
     info.rerolls := CockpitState_SecGet(m, "rerolls", 0) + 0
     info.currentAccount := CockpitState_SecGet(m, "currentAccount")
+    ; RLB: one Cockpit run can cover N cached accounts; default 1 for classic runs.
+    info.lastRunAccountCount := CockpitState_SecGet(m, "LastRunAccountCount", 1) + 0
+    if (info.lastRunAccountCount < 1)
+        info.lastRunAccountCount := 1
 
     return info
 }

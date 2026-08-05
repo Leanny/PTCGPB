@@ -41,8 +41,33 @@ RLB_GetMaxCache() {
 }
 
 RLB_IsActive() {
+    global botConfig
     IniRead, active, % RLB_IniPath(), RateLimitBypasser, Active, 0
-    return (active = 1)
+    if (active != 1)
+        return false
+    if (!botConfig.get("groupRerollEnabled"))
+        return false
+    if (botConfig.get("deleteMethod") != "Inject Wonderpick 96P+")
+        return false
+    return true
+}
+
+RLB_HasPendingWave() {
+    IniRead, count, % RLB_IniPath(), RateLimitBypasser, AccountCount, 0
+    count := count + 0
+    if (count < 1)
+        return false
+
+    IniRead, active, % RLB_IniPath(), RateLimitBypasser, Active, 0
+    if (active = 1)
+        return true
+
+    Loop, % count {
+        acc := RLB_ReadAccount(A_Index)
+        if (acc["phase"] = "adding" || acc["phase"] = "readyForPacks")
+            return true
+    }
+    return false
 }
 
 RLB_ClearWave() {
@@ -260,15 +285,12 @@ RLB_SetStopDrain(val := 1) {
 ; Returns action object via session keys:
 ; rlbAction = resume|fresh|wait|exit|none
 ; rlbResumeIdx, rlbWaitMs
-RLB_PickNextAction() {
+RLB_PickNextAction(allowFresh := true) {
     global session, RLB_MAX_OPS
 
     session.set("rlbAction", "none")
     session.set("rlbResumeIdx", 0)
     session.set("rlbWaitMs", 0)
-
-    if (!RLB_IsActive())
-        return
 
     n := RLB_IdsCount()
     count := RLB_AccountCount()
@@ -290,10 +312,12 @@ RLB_PickNextAction() {
 
     ; Prefer cached account ready for another add tranche
     nearestWait := 0
+    hasWork := false
     Loop, % count {
         acc := RLB_ReadAccount(A_Index)
         if (acc["phase"] != "adding")
             continue
+        hasWork := true
         if (acc["nextIndex"] > n)
             continue
         RLB_RefreshWindowIfExpired(acc)
@@ -311,7 +335,7 @@ RLB_PickNextAction() {
     addingCount := RLB_CountAdding()
     underCap := (maxCache <= 0 || addingCount < maxCache)
 
-    if (!stopDrain && underCap) {
+    if (!stopDrain && underCap && allowFresh) {
         session.set("rlbAction", "fresh")
         return
     }
@@ -323,17 +347,9 @@ RLB_PickNextAction() {
     }
 
     ; Nothing left in cache
-    if (stopDrain || count = 0) {
+    if (!hasWork) {
         ; Still have incomplete?
-        hasWork := false
-        Loop, % count {
-            acc := RLB_ReadAccount(A_Index)
-            if (acc["phase"] = "adding" || acc["phase"] = "readyForPacks") {
-                hasWork := true
-                break
-            }
-        }
-        if (!hasWork) {
+        if (!allowFresh || stopDrain || count = 0) {
             session.set("rlbAction", "exit")
             return
         }
@@ -407,11 +423,39 @@ RLB_AssignBatchIdForNewAccount() {
             return openBatch
         }
     }
+    ; New Cockpit run starts with the next first inject of this series.
     openBatch := openBatch + 1
     if (openBatch < 1)
         openBatch := 1
     IniWrite, %openBatch%, %ini%, RateLimitBypasser, OpenBatchId
+    IniWrite, 0, %ini%, RateLimitBypasser, BatchStartEpoch
     return openBatch
+}
+
+; One Cockpit run = inject of first cached account → last RemoveFriends of that series.
+; Capture LastStartEpoch on first inject; pin it for later resumes/injects in the same batch.
+RLB_CaptureOrRestoreBatchStartEpoch() {
+    global session
+
+    ini := RLB_IniPath()
+    IniRead, batchStart, %ini%, RateLimitBypasser, BatchStartEpoch, 0
+    batchStart := batchStart + 0
+    IniRead, lastStart, %ini%, Metrics, LastStartEpoch, 0
+    lastStart := lastStart + 0
+
+    if (batchStart < 1) {
+        if (lastStart < 1)
+            lastStart := writeLastStartEpoch(session.get("scriptName"))
+        IniWrite, %lastStart%, %ini%, RateLimitBypasser, BatchStartEpoch
+        LogInfo("RLB cockpit run started | batchStartEpoch=" . lastStart, "GroupReroll.txt")
+        return lastStart
+    }
+
+    if (lastStart != batchStart) {
+        IniWrite, %batchStart%, %ini%, Metrics, LastStartEpoch
+        LogInfo("RLB restored cockpit LastStartEpoch | epoch=" . batchStart, "GroupReroll.txt")
+    }
+    return batchStart
 }
 
 RLB_OnSendAttempt(accIdx) {
@@ -459,8 +503,8 @@ RLB_MarkAccountDone(accIdx) {
     RLB_FlushCockpitIfBatchComplete(acc["batchId"])
 }
 
-; Cockpit: count N runs only when the last account of a batch finishes RemoveFriends
-; (not after each add-tranche of 10).
+; Cockpit: when the last account of a batch finishes RemoveFriends, credit N runs
+; (one per account). Clock spans inject(A) → that last unfriend (BatchStartEpoch).
 RLB_FlushCockpitIfBatchComplete(batchId) {
     global session
 
@@ -482,7 +526,7 @@ RLB_FlushCockpitIfBatchComplete(batchId) {
     if (pending < 1)
         return
 
-    RLB_CreditCockpitRuns(pending)
+    RLB_CreditCockpitRun(pending)
 
     Loop, % count {
         acc := RLB_ReadAccount(A_Index)
@@ -491,30 +535,38 @@ RLB_FlushCockpitIfBatchComplete(batchId) {
             RLB_WriteAccount(A_Index, acc)
         }
     }
-    LogInfo("RLB cockpit credited | batch=" . batchId . " | runs=" . pending, "GroupReroll.txt")
+    LogInfo("RLB cockpit credited | batch=" . batchId . " | accounts=" . pending . " | runs=" . pending, "GroupReroll.txt")
 }
 
-; Emit N distinct start/end epoch pairs so Cockpit aggregator counts N runs.
-RLB_CreditCockpitRuns(n) {
+; Clock: BatchStartEpoch (inject A) → now (last RemoveFriends of series).
+; Count: +N runs (one per cached account). ETA ring uses duration/N each.
+RLB_CreditCockpitRun(accountCount := 1) {
     global session
 
-    n := n + 0
-    if (n < 1)
-        return
+    accountCount := accountCount + 0
+    if (accountCount < 1)
+        accountCount := 1
 
-    base := RLB_NowEpoch()
     ini := session.get("scriptIniFile")
-    Loop, % n {
-        startEp := base + (A_Index - 1) * 2
-        endEp := startEp + 1
-        IniWrite, %startEp%, %ini%, Metrics, LastStartEpoch
-        IniWrite, %endEp%, %ini%, Metrics, LastEndEpoch
+    IniRead, startEp, %ini%, RateLimitBypasser, BatchStartEpoch, 0
+    startEp := startEp + 0
+    if (startEp < 1) {
+        IniRead, startEp, %ini%, Metrics, LastStartEpoch, 0
+        startEp := startEp + 0
     }
+    endEp := RLB_NowEpoch()
+    if (startEp < 1)
+        startEp := endEp
+
+    IniWrite, %startEp%, %ini%, Metrics, LastStartEpoch
+    IniWrite, %endEp%, %ini%, Metrics, LastEndEpoch
+    IniWrite, %accountCount%, %ini%, Metrics, LastRunAccountCount
     now := A_NowUTC
     IniWrite, %now%, %ini%, Metrics, LastEndTimeUTC
-    session.set("rerolls", session.get("rerolls") + n)
-    session.set("rerolls_local", session.get("rerolls_local") + n)
+    session.set("rerolls", session.get("rerolls") + accountCount)
+    session.set("rerolls_local", session.get("rerolls_local") + accountCount)
     IniWrite, % session.get("rerolls"), %ini%, Metrics, rerolls
+    IniWrite, 0, %ini%, RateLimitBypasser, BatchStartEpoch
     clearLastActivityEpoch(session.get("scriptName"))
 }
 
