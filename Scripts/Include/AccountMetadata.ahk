@@ -570,6 +570,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["language"] := ""
     account["packCount"] := 0
     account["createdAt"] := "0"
+    account["lastRenamedAt"] := "0"
     account["lastPackPulled"] := 0
     account["lastLoggedIn"] := "0"
     account["shinedust"] := AccountMetadata_NewShinedust()
@@ -864,6 +865,7 @@ AccountMetadata_ParseAccount(accountJson) {
     account["language"] := AccountMetadata_ParseString(accountJson, "language")
     account["packCount"] := AccountMetadata_ParseNumber(accountJson, "packCount", account["packCount"])
     account["createdAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "createdAt", AccountMetadata_ParseNumber(accountJson, "createdAt", account["createdAt"])))
+    account["lastRenamedAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "lastRenamedAt", AccountMetadata_ParseNumber(accountJson, "lastRenamedAt", account["lastRenamedAt"])))
     account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastPackPulled", AccountMetadata_ParseNumber(accountJson, "lastPackPulled", 0))
     if (account["lastPackPulled"] = "" || account["lastPackPulled"] = "0")
         account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastModified", account["lastPackPulled"])
@@ -968,6 +970,10 @@ AccountMetadata_SerializeAccount(account, indent := "") {
     createdAt := AccountMetadata_NormalizeCreatedAt(account["createdAt"])
     if (createdAt != "" && createdAt != "0")
         AccountMetadata_AppendJsonString(json, firstField, "createdAt", createdAt, "      ")
+
+    lastRenamedAt := AccountMetadata_NormalizeCreatedAt(account["lastRenamedAt"])
+    if (lastRenamedAt != "" && lastRenamedAt != "0")
+        AccountMetadata_AppendJsonString(json, firstField, "lastRenamedAt", lastRenamedAt, "      ")
 
     if (account["lastPackPulled"] != "" && account["lastPackPulled"] != "0")
         AccountMetadata_AppendJsonString(json, firstField, "lastPackPulled", account["lastPackPulled"], "      ")
@@ -1146,6 +1152,8 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
         baseAccount["packCount"] := patchAccount["packCount"] + 0
     if (patchAccount["createdAt"] != "" && patchAccount["createdAt"] != "0")
         baseAccount["createdAt"] := patchAccount["createdAt"]
+    if (patchAccount["lastRenamedAt"] != "" && patchAccount["lastRenamedAt"] != "0")
+        baseAccount["lastRenamedAt"] := patchAccount["lastRenamedAt"]
     if (patchAccount["lastPackPulled"] != "" && patchAccount["lastPackPulled"] != "0")
         baseAccount["lastPackPulled"] := patchAccount["lastPackPulled"]
     if (patchAccount["lastLoggedIn"] != "" && patchAccount["lastLoggedIn"] != "0")

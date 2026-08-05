@@ -151,6 +151,9 @@ needlesDict.Add(new Needle("Common_SpeedMod3x_15", "Three-15", new Coordinate(18
 ; Profile(for OCR - FindPackStat)
 needlesDict.Add(new Needle("Profile_UserNameArrowInSettingMenu", "UserProfile", new Coordinate(239, 124, 248, 138)))
 needlesDict.Add(new Needle("Profile_EditNameButtonIcon", "Profile", new Coordinate(209, 272, 225, 287)))
+needlesDict.Add(new Needle("Profile_UsernamePencil", "UsernamePencil", new Coordinate(209, 271, 224, 286)))
+needlesDict.Add(new Needle("Profile_PreRename", "PreRename", new Coordinate(140, 346, 153, 386)))
+needlesDict.Add(new Needle("Profile_AlreadyRenamed", "AlreadyRenamed", new Coordinate(34, 292, 236, 314)))
 needlesDict.Add(new Needle("Profile_TrophyStandIconInProfile", "trophy", new Coordinate(13, 420, 40, 500)))
 needlesDict.Add(new Needle("Profile_ShinedustIconInTrophyDetails", "trophyPage", new Coordinate(122, 370, 161, 385)))
 

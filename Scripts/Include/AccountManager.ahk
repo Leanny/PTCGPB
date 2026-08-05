@@ -702,6 +702,37 @@ AccountEligibility_HoursSince(timestamp) {
     return hoursDiff
 }
 
+; Whole days since timestamp (local). Unknown/empty → very large (treated as old enough).
+AccountEligibility_DaysSince(timestamp) {
+    return AccountEligibility_HoursSince(timestamp) // 24
+}
+
+; In-game rename cooldown is ~30 days; require 31 full days before retrying.
+AccountEligibility_RenameMinAgeDays() {
+    return 31
+}
+
+AccountEligibility_RenameAccountEligible(accountMeta) {
+    if (!IsObject(accountMeta))
+        return true
+
+    minDays := AccountEligibility_RenameMinAgeDays()
+
+    createdAt := AccountMetadata_NormalizeCreatedAt(accountMeta["createdAt"])
+    if (createdAt != "" && createdAt != "0") {
+        if (AccountEligibility_DaysSince(createdAt) < minDays)
+            return false
+    }
+
+    lastRenamedAt := AccountMetadata_NormalizeCreatedAt(accountMeta["lastRenamedAt"])
+    if (lastRenamedAt != "" && lastRenamedAt != "0") {
+        if (AccountEligibility_DaysSince(lastRenamedAt) < minDays)
+            return false
+    }
+
+    return true
+}
+
 AccountEligibility_ToUTC(timestamp) {
     if (timestamp = "" || timestamp = "0")
         return "0"
@@ -898,6 +929,9 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (method = "Inject Rewards")
         return AccountEligibility_InjectRewardsEligible(accountMeta)
 
+    if (method = "Rename Account")
+        return AccountEligibility_RenameAccountEligible(accountMeta)
+
     packCount := accountMeta["packCount"] + 0
     if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
         return false
@@ -967,8 +1001,9 @@ CreateAccountList(instance) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig
 
-    ; Clean up stale used accounts first
-    CleanupUsedAccounts()
+    ; Clean up stale used accounts first (skipped for Rename — used accounts stay eligible)
+    if (botConfig.get("deleteMethod") != "Rename Account")
+        CleanupUsedAccounts()
 
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . instance
     outputTxt := saveDir . "\list.txt"
@@ -978,6 +1013,11 @@ CreateAccountList(instance) {
     ; Check if we need to regenerate the lists
     needRegeneration := false
     forceRegeneration := false
+
+    ; Rename Account must rescan all XMLs (including used) whenever the queue is built.
+    ; Do not set forceRegeneration — that passes --force-clear-used and wipes used_accounts.txt.
+    if (botConfig.get("deleteMethod") = "Rename Account")
+        needRegeneration := true
 
     ; First check: Do list files exist and are they not empty?
     if (!FileExist(outputTxt) || !FileExist(outputTxt_current)) {
@@ -1050,7 +1090,7 @@ CreateAccountList(instance) {
         command .= " --spend-hourglass"
     if (botConfig.get("forceInjectAccounts") && InStr(botConfig.get("deleteMethod"), "Inject"))
         command .= " --force-inject"
-    if (forceRegeneration)
+    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account")
         command .= " --force-clear-used"
 
     hScheduleLock := CreateAccountListSchedule_AcquireLock()
