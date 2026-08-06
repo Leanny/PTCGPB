@@ -2214,7 +2214,7 @@ CardDetection_FlushPendingGodPack() {
         RemoveFriends()
     IniWrite, 0, % session.get("scriptIniFile"), UserSettings, DeadCheck
 
-    if (finalizeAccount)
+    if (finalizeAccount && validity != "Invalid")
         FinalizeInjectedGodPackAccount()
 
     reason := (validity = "Invalid") ? "Invalid God Pack Found." : "God Pack found. Continuing..."
