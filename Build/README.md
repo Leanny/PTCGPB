@@ -33,6 +33,10 @@ The ZIP also contains `.ptcgpb-managed-files.txt`. PTCGPB uses that list to repl
 
 If `Build/release-notes/<tag>.md` exists, its Markdown becomes the GitHub Release description. Otherwise, GitHub-generated release notes are used.
 
+## Test in GitHub Actions without publishing
+
+After the workflow exists on the default branch, open **Actions → Build release bundle → Run workflow**. Enter a version that exactly matches `localVersion`. The manual run builds both helpers, packages and verifies the bundle, and uploads the `dist` directory as a seven-day workflow artifact. It does not create a GitHub Release.
+
 ## Test packaging locally
 
 Run PowerShell with an execution-policy override if local policy blocks scripts:
