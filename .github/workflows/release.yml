@@ -1,0 +1,69 @@
+name: Build release bundle
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package ${{ github.ref_name }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build carddb helper
+        shell: pwsh
+        run: |
+          Push-Location Helper/carddb_src
+          cargo build --release --target x86_64-pc-windows-msvc
+          Pop-Location
+          Copy-Item -LiteralPath Helper/carddb_src/target/x86_64-pc-windows-msvc/release/carddb.exe -Destination Helper/carddb.exe -Force
+
+      - name: Build cardimage helper
+        shell: pwsh
+        run: |
+          Push-Location Helper/cardimage_src
+          cargo build --release --target x86_64-pc-windows-msvc
+          Pop-Location
+          Copy-Item -LiteralPath Helper/cardimage_src/target/x86_64-pc-windows-msvc/release/cardimage.exe -Destination Helper/cardimage.exe -Force
+
+      - name: Build release bundle and checksums
+        shell: pwsh
+        run: ./Build/Package-Release.ps1 -Version '${{ github.ref_name }}' -OutputDirectory ./dist
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $arguments = @(
+            'release', 'create', $tag,
+            "dist/PTCGPB-$tag.zip",
+            "dist/PTCGPB-$tag.zip.sha256",
+            'dist/update-manifest.json',
+            '--title', $tag,
+            '--verify-tag'
+          )
+          $notesFile = "Build/release-notes/$tag.md"
+          if (Test-Path -LiteralPath $notesFile -PathType Leaf) {
+            $arguments += @('--notes-file', $notesFile)
+          }
+          else {
+            $arguments += '--generate-notes'
+          }
+          if ($tag -match '^v\d+\.\d+\.\d+-') {
+            $arguments += '--prerelease'
+          }
+          & gh @arguments

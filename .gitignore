@@ -59,3 +59,18 @@ Helper/saveimport*
 debug_settings.log
 Accounts2
 Accounts3
+
+# CI/CD release outputs
+/dist/
+
+# CI-built helper executables
+/Helper/carddb.exe
+/Helper/cardimage.exe
+
+# Required pipeline input despite the global *.txt rule
+!/Build/package-include.txt
+
+# Installed updater metadata and backups
+/.ptcgpb-managed-files.txt
+/update-manifest.json
+/Backups/

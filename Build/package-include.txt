@@ -1,0 +1,20 @@
+# Release bundle allowlist. Paths are relative to the repository root.
+# A trailing /** includes every file below that directory.
+PTCGPB.ahk
+LICENSE
+README.md
+usernames_default.txt
+Accounts/*.ahk
+Accounts/Cards/card_database.html
+Accounts/Cards/start_card_dashboard.vbs
+Accounts/Cards/start_card_dashboard_server.ps1
+Data/**
+GUI/**
+Helper/carddb.exe
+Helper/cardimage.exe
+Scripts/1.ahk
+Scripts/Main.ahk
+Scripts/Include/**
+Scripts/Mask/**
+Scripts/Needles/**
+SpecialEvents/SpecialEventExtractor.ahk

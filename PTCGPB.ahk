@@ -43,14 +43,11 @@ version = Arturos PTCGP Bot
 
 OnError("ErrorHandler")
 
-githubUser := "kevnITG"
+repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v9.6.4"
-    ,modVersion := "v0.15.1"
+    ,localVersion := "v0.16.0-beta.5"
     ,scriptFolder := A_ScriptDir
-    ,zipPath := A_Temp . "\update.zip"
-    ,extractPath := A_Temp . "\update"
-    ,modRepoUser := "Leanny"
+    ,g_UpdateReleases := []
 
 global GUI_WIDTH := 750
 global GUI_HEIGHT := 418
@@ -316,7 +313,8 @@ NextStep:
     }
 
     KillADBProcesses()
-    CheckForUpdate()
+    if (botConfig.get("automaticUpdateChecks"))
+        CheckForUpdate(false)
     PTCGPB_CheckHelperPrograms()
 
     scriptName := StrReplace(A_ScriptName, ".ahk")
@@ -524,10 +522,8 @@ NextStep:
     Gui, Font, s10 cWhite Bold
     Gui, Add, Text, x535 y43 w180 h20 Center BackgroundTrans cWhite, % localVersion
     Gui, Font, s8 cWhite Bold
-    Gui, Add, Text, x528 y63 w195 h18 Center BackgroundTrans cWhite, (Mod: Improve Card Detection)
-    Gui, Font, s10 cWhite Bold
-    Gui, Add, Text, x535 y93 w180 h20 Center BackgroundTrans cWhite, Modder: Lean && xedranort
-    Gui, Add, Text, x535 y113 w180 h20 Center BackgroundTrans cWhite, % modVersion
+    Gui, Add, Text, x528 y68 w195 h18 Center BackgroundTrans cWhite, Release source: %repoUser%/%repoName%
+    Gui, Add, Text, x528 y91 w195 h18 Center BackgroundTrans cWhite, Modders: Lean && xedranort
 
     forceInjectVisible := InStr(botMethod, "Inject") ? "" : " Hidden"
     Gui, Font, s9 cWhite
@@ -1680,6 +1676,10 @@ ShowToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlMgrY% w170 h20 gRunXMLManagerTool BackgroundTrans, XML Account Manager
     yPos2 += 30
 
+    versionMgrY := yPos2 - 5
+    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%versionMgrY% w170 h20 gShowVersionManager BackgroundTrans, Version Manager
+    yPos2 += 30
+
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
 
     finalY := (yPos2 > eventMissionBoxBottom ? yPos2 : eventMissionBoxBottom)
@@ -2459,7 +2459,50 @@ ExitApp
 return
 
 CheckForUpdates:
-    CheckForUpdate()
+    CheckForUpdate(true)
+return
+
+ShowVersionManager:
+    ShowVersionManager()
+return
+
+UpdateManagerRefresh:
+    Gui, UpdateManager:Submit, NoHide
+    botConfig.set("updateChannel", ui_UpdateChannel, "ToolsAndSystem")
+    botConfig.set("automaticUpdateChecks", ui_AutomaticUpdateChecks, "ToolsAndSystem")
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+    PopulateVersionManager(ui_UpdateChannel)
+return
+
+UpdateManagerInstall:
+    Gui, UpdateManager:Default
+    selectedRow := LV_GetNext(0, "Focused")
+    if (!selectedRow)
+        selectedRow := LV_GetNext()
+    if (!selectedRow) {
+        MsgBox, 48, Version Manager, Select a release first.
+        return
+    }
+    selectedRelease := g_UpdateReleases[selectedRow]
+    InstallSelectedRelease(selectedRelease)
+return
+
+UpdateReleaseList:
+    if (A_GuiEvent = "DoubleClick") {
+        Gosub, UpdateManagerInstall
+        return
+    }
+    Gui, UpdateManager:Default
+    notesRow := A_EventInfo
+    if (!notesRow)
+        notesRow := LV_GetNext()
+    if (notesRow && IsObject(g_UpdateReleases[notesRow]))
+        GuiControl, UpdateManager:, ui_UpdateReleaseNotes, % g_UpdateReleases[notesRow].notes
+return
+
+UpdateManagerGuiClose:
+UpdateManagerGuiEscape:
+    Gui, UpdateManager:Destroy
 return
 
 ; =================== Logic - Hover help tooltips ===================
@@ -2789,7 +2832,7 @@ ConfirmDiagnosticLogLevelForRun() {
 
 StartBot() {
     prof := Prof_Scope(A_ThisFunc)
-    global botConfig, dict, localVersion, githubUser, modVersion, modRepoUser, rerollTime, PackGuiBuild, botMetadata, typeMsg
+    global botConfig, dict, localVersion, repoUser, rerollTime, PackGuiBuild, botMetadata, typeMsg
         , g_botStarted
 
     HelpTT_Dismiss()
@@ -3058,7 +3101,7 @@ StartBot() {
 }
 
 SendAllInstancesOfflineStatus() {
-    global localVersion, githubUser, modVersion, modRepoUser, typeMsg, selectMsg, rerollTime
+    global localVersion, repoUser, typeMsg, selectMsg, rerollTime
 
     offlineInstances := ""
     if (botConfig.get("runMain")) {
@@ -3138,115 +3181,371 @@ getTotalOpenPacks() {
     return totalOpenPacks
 }
 
-CheckForUpdate() {
-    global githubUser, repoName, localVersion, modVersion, modRepoUser
+CheckForUpdate(showStatus := false) {
+    global botConfig, localVersion
 
-    if (FetchLatestRelease(githubUser, repoName, latestVersion, latestReleaseBody, zipDownloadURL)) {
-        if (VersionCompare(latestVersion, localVersion) > 0) {
-            DownloadAndInstallUpdate("Version", latestVersion, latestReleaseBody, zipDownloadURL)
-            return
-        }
-    } else {
-        return
-    }
-
-    if (FetchLatestRelease(modRepoUser, repoName, latestVersion, latestReleaseBody, zipDownloadURL)) {
-        if (VersionCompare(latestVersion, modVersion) > 0) {
-            DownloadAndInstallUpdate("Mod Version", latestVersion, latestReleaseBody, zipDownloadURL)
-            return
-        }
-    }
-}
-
-VersionStatusText() {
-    global githubUser, localVersion, modRepoUser, modVersion
-    return "Version: " . RegExReplace(githubUser, "-.*$") . "-" . localVersion . "\nMod Version: " . RegExReplace(modRepoUser, "-.*$") . "-" . modVersion
-}
-
-FetchLatestRelease(repoUser, repoName, ByRef latestVersion, ByRef latestReleaseBody, ByRef zipDownloadURL) {
-    url := "https://api.github.com/repos/" repoUser "/" repoName "/releases/latest"
-
-    response := HttpGet(url)
-    if !response
-    {
-        MsgBox, 0x40000, Check for Update, Failed to fetch latest version info
+    channel := NormalizeUpdateChannel(botConfig.get("updateChannel"))
+    releases := FetchReleaseCatalog(channel, showStatus)
+    if (!IsObject(releases) || releases.MaxIndex() = "")
         return false
-    }
 
-    latestReleaseBody := FixFormat(ExtractJSONValue(response, "body"))
-    latestVersion := ExtractJSONValue(response, "tag_name")
-    zipDownloadURL := ExtractJSONValue(response, "zipball_url")
-
-    if (zipDownloadURL = "" || !InStr(zipDownloadURL, "http"))
-    {
-        MsgBox, 0x40000, Check for Update, Failed to get download URL
+    latestRelease := FindNewestRelease(releases)
+    if (!IsObject(latestRelease))
         return false
+
+    if (VersionCompare(latestRelease.version, localVersion) <= 0) {
+        if (showStatus)
+            MsgBox, 64, Check for Update, % "You are up to date (" . localVersion . ", " . channel . " channel)."
+        return true
     }
 
-    if (latestVersion = "")
-    {
-        MsgBox, 0x40000, Check for Update, Failed to get version info
-        return false
-    }
+    if (!showStatus && (botConfig.get("lastNotifiedVersion") = latestRelease.version
+        || botConfig.get("skippedUpdateVersion") = latestRelease.version))
+        return true
 
+    botConfig.set("lastNotifiedVersion", latestRelease.version, "ToolsAndSystem")
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+
+    message := "Version " . latestRelease.version . " is available on the " . channel . " channel."
+    if (latestRelease.notes != "")
+        message .= "`n`n" . latestRelease.notes
+    message .= "`n`nDo you want to install it now?"
+    MsgBox, 0x40004, % "Update Available - " . latestRelease.version, %message%
+    IfMsgBox, Yes
+        InstallSelectedRelease(latestRelease)
     return true
 }
 
-DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadURL) {
-    global zipPath, scriptFolder
+VersionStatusText() {
+    global repoUser, localVersion
+    return "Version: " . repoUser . "-" . localVersion
+}
 
-    updateAvailable := updateLabel . " Update Available: "
-    MsgBox, 262148, %updateAvailable% %latestVersion%, %releaseNotes%`n`nDo you want to download the latest version?
+NormalizeUpdateChannel(channel) {
+    StringLower, channel, channel
+    return (channel = "beta" ? "beta" : "stable")
+}
 
-    IfMsgBox, Yes
+FetchReleaseCatalog(channel := "stable", showErrors := true) {
+    global repoUser, repoName
+    url := "https://api.github.com/repos/" . repoUser . "/" . repoName . "/releases?per_page=100"
+
+    try {
+        http := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+        http.Open("GET", url, false)
+        http.SetRequestHeader("Accept", "application/vnd.github+json")
+        http.SetRequestHeader("User-Agent", "PTCGPB-Updater")
+        http.Send()
+        status := http.Status
+        response := http.ResponseText
+    } catch exception {
+        status := 0
+        response := ""
+    }
+
+    if (status != 200 || response = "") {
+        if (showErrors)
+            MsgBox, 48, Version Manager, % "Could not retrieve releases from " . repoUser . "/" . repoName . ".`nHTTP status: " . status
+        return ""
+    }
+
+    releases := []
+    objects := SplitTopLevelJSONObjects(response)
+    for _, releaseJSON in objects {
+        if (ExtractJSONValue(releaseJSON, "draft") = "true")
+            continue
+
+        isPrerelease := (ExtractJSONValue(releaseJSON, "prerelease") = "true")
+        if (channel = "stable" && isPrerelease)
+            continue
+
+        version := ExtractJSONValue(releaseJSON, "tag_name")
+        zipballURL := ExtractJSONValue(releaseJSON, "zipball_url")
+        bundleName := "PTCGPB-" . version . ".zip"
+        hasBundle := GitHubReleaseHasAsset(releaseJSON, bundleName)
+        if (hasBundle) {
+            assetBaseURL := "https://github.com/" . repoUser . "/" . repoName . "/releases/download/" . version . "/"
+            downloadURL := assetBaseURL . bundleName
+            checksumURL := assetBaseURL . bundleName . ".sha256"
+        } else {
+            downloadURL := zipballURL
+            checksumURL := ""
+        }
+        if (version = "" || downloadURL = "")
+            continue
+
+        published := ExtractJSONValue(releaseJSON, "published_at")
+        releases.Push({version: version
+            , channel: (isPrerelease ? "beta" : "stable")
+            , published: SubStr(published, 1, 10)
+            , notes: FixFormat(ExtractJSONValue(releaseJSON, "body"))
+            , downloadURL: downloadURL
+            , checksumURL: checksumURL
+            , packageType: (hasBundle ? "verified bundle" : "legacy source")})
+    }
+    return releases
+}
+
+GitHubReleaseHasAsset(releaseJSON, assetName) {
+    pattern := """name""\s*:\s*""\Q" . assetName . "\E"""
+    return RegExMatch(releaseJSON, pattern)
+}
+
+SplitTopLevelJSONObjects(json) {
+    objects := []
+    depth := 0
+    startPos := 0
+    inString := false
+    escaped := false
+
+    Loop, Parse, json
     {
-        MsgBox, 262208, Downloading..., Downloading update...
-
-        URLDownloadToFile, %zipDownloadURL%, %zipPath%
-        if ErrorLevel
-        {
-            MsgBox, 0x40000, Check for Update, Download failed
-            return
+        char := A_LoopField
+        if (inString) {
+            if (escaped) {
+                escaped := false
+            } else if (char = "\") {
+                escaped := true
+            } else if (char = """") {
+                inString := false
+            }
+            continue
         }
-        else {
-            MsgBox, 0x40000, Check for Update, Download complete
-
-            tempExtractPath := A_Temp "\PTCGPB_Temp"
-            FileCreateDir, %tempExtractPath%
-
-            RunWait, powershell -Command "Expand-Archive -Path '%zipPath%' -DestinationPath '%tempExtractPath%' -Force",, Hide
-
-            if !FileExist(tempExtractPath)
-            {
-                MsgBox, 0x40000, Check for Update, Extraction failed
-                return
-            }
-
-            Loop, Files, %tempExtractPath%\*, D
-            {
-                extractedFolder := A_LoopFileFullPath
-                break
-            }
-
-            if (extractedFolder)
-            {
-                MoveFilesRecursively(extractedFolder, scriptFolder)
-
-                FileRemoveDir, %tempExtractPath%, 1
-                MsgBox, 0x40000, Check for Update, Update installed successfully
-                Reload
-            } else {
-                MsgBox, 0x40000, Check for Update, Update files not found
-                return
-            }
+        if (char = """") {
+            inString := true
+        } else if (char = "{") {
+            if (depth = 0)
+                startPos := A_Index
+            depth++
+        } else if (char = "}") {
+            depth--
+            if (depth = 0 && startPos)
+                objects.Push(SubStr(json, startPos, A_Index - startPos + 1))
         }
-    } else {
-        MsgBox, 0x40000, Check for Update, Update cancelled
+    }
+    return objects
+}
+
+FindNewestRelease(releases) {
+    newest := ""
+    for _, release in releases {
+        if (!IsObject(newest) || VersionCompare(release.version, newest.version) > 0)
+            newest := release
+    }
+    return newest
+}
+
+ShowVersionManager() {
+    global botConfig, localVersion
+        , ui_UpdateChannel, ui_AutomaticUpdateChecks
+        , ui_UpdateReleaseList, ui_UpdateReleaseNotes
+    channel := NormalizeUpdateChannel(botConfig.get("updateChannel"))
+    channelChoice := (channel = "beta" ? 2 : 1)
+
+    Gui, UpdateManager:Destroy
+    Gui, UpdateManager:New, +ToolWindow -MaximizeBox -MinimizeBox, PTCGPB Version Manager
+    Gui, UpdateManager:Color, 1E1E1E, 333333
+    Gui, UpdateManager:Font, s10 cWhite, Segoe UI
+    Gui, UpdateManager:Add, Text, x15 y15 w260, Installed version: %localVersion%
+    Gui, UpdateManager:Add, Text, x15 y45, Release channel:
+    Gui, UpdateManager:Add, DropDownList, x125 y42 w100 Choose%channelChoice% vui_UpdateChannel, stable|beta
+    checkOptions := (botConfig.get("automaticUpdateChecks") ? "Checked " : "") . "vui_AutomaticUpdateChecks x245 y45 cWhite"
+    Gui, UpdateManager:Add, Checkbox, %checkOptions%, Automatic notifications
+    Gui, UpdateManager:Add, Button, x425 y40 w110 h25 gUpdateManagerRefresh, Save && Refresh
+    Gui, UpdateManager:Add, ListView, x15 y80 w520 h250 vui_UpdateReleaseList gUpdateReleaseList AltSubmit -Multi, Version|Channel|Package|Published
+    Gui, UpdateManager:Add, Text, x15 y340 w100, Release notes:
+    Gui, UpdateManager:Add, Edit, x15 y360 w520 h90 vui_UpdateReleaseNotes ReadOnly -Wrap
+    Gui, UpdateManager:Add, Button, x200 y465 w150 h30 gUpdateManagerInstall, Install selected
+    Gui, UpdateManager:Show, w550 h510
+    PopulateVersionManager(channel)
+}
+
+PopulateVersionManager(channel) {
+    global g_UpdateReleases
+    Gui, UpdateManager:Default
+    LV_Delete()
+    g_UpdateReleases := FetchReleaseCatalog(NormalizeUpdateChannel(channel), true)
+    if (!IsObject(g_UpdateReleases)) {
+        g_UpdateReleases := []
         return
+    }
+    for _, release in g_UpdateReleases
+        LV_Add("", release.version, release.channel, release.packageType, release.published)
+    LV_ModifyCol(1, 140)
+    LV_ModifyCol(2, 70)
+    LV_ModifyCol(3, 150)
+    LV_ModifyCol(4, 120)
+    if (g_UpdateReleases.MaxIndex()) {
+        LV_Modify(1, "Select Focus Vis")
+        GuiControl, UpdateManager:, ui_UpdateReleaseNotes, % g_UpdateReleases[1].notes
+    } else {
+        GuiControl, UpdateManager:, ui_UpdateReleaseNotes,
     }
 }
 
+InstallSelectedRelease(release) {
+    global localVersion
+    comparison := VersionCompare(release.version, localVersion)
+    if (comparison < 0) {
+        warning := "You selected " . release.version . ", which is older than the installed version " . localVersion . "."
+        warning .= "`n`nA backup of overwritten files will be created, but older versions may not understand newer settings or account metadata. Continue?"
+        MsgBox, 0x40034, Confirm Downgrade, %warning%
+        IfMsgBox, No
+            return false
+    } else if (comparison = 0) {
+        MsgBox, 0x40024, Reinstall Version, % "Version " . release.version . " is already installed. Reinstall it?"
+        IfMsgBox, No
+            return false
+    }
+    return DownloadAndInstallUpdate("Version", release.version, release.notes, release.downloadURL, false, release.checksumURL)
+}
+
+DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadURL, askConfirmation := true, checksumURL := "") {
+    global scriptFolder, localVersion
+
+    if (askConfirmation) {
+        updateAvailable := updateLabel . " Update Available: "
+        MsgBox, 262148, %updateAvailable% %latestVersion%, %releaseNotes%`n`nDo you want to download this version?
+        IfMsgBox, No
+            return false
+    }
+
+    processID := DllCall("GetCurrentProcessId")
+    tempRoot := A_Temp . "\PTCGPB_Update_" . processID . "_" . A_TickCount
+    zipPath := tempRoot . "\update.zip"
+    tempExtractPath := tempRoot . "\extract"
+    FileCreateDir, %tempExtractPath%
+    if (!FileExist(tempExtractPath)) {
+        MsgBox, 48, Version Manager, Could not create the update staging folder.
+        return false
+    }
+
+    MsgBox, 262208, Downloading..., % "Downloading " . latestVersion . "..."
+    URLDownloadToFile, %zipDownloadURL%, %zipPath%
+    if (ErrorLevel) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, Download failed.
+        return false
+    }
+
+    if (checksumURL != "" && !VerifyUpdateChecksum(zipPath, checksumURL, expectedHash, actualHash)) {
+        FileRemoveDir, %tempRoot%, 1
+        message := "The downloaded bundle failed SHA-256 verification and was not installed."
+        if (expectedHash != "" || actualHash != "")
+            message .= "`n`nExpected: " . expectedHash . "`nActual:   " . actualHash
+        MsgBox, 0x40010, Version Manager, %message%
+        return false
+    }
+
+    powerShellPath := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+    command := """" . powerShellPath . """ -NoProfile -NonInteractive -Command ""Expand-Archive -LiteralPath '" . StrReplace(zipPath, "'", "''") . "' -DestinationPath '" . StrReplace(tempExtractPath, "'", "''") . "' -Force"""
+    RunWait, %command%,, Hide UseErrorLevel
+    if (ErrorLevel) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, Extraction failed.
+        return false
+    }
+
+    extractedFolder := ""
+    Loop, Files, %tempExtractPath%\*, D
+    {
+        if (FileExist(A_LoopFileFullPath . "\PTCGPB.ahk")) {
+            extractedFolder := A_LoopFileFullPath
+            break
+        }
+    }
+    if (extractedFolder = "") {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, The downloaded release does not contain PTCGPB.ahk.
+        return false
+    }
+
+    newManagedListPath := extractedFolder . "\.ptcgpb-managed-files.txt"
+    oldManagedListPath := scriptFolder . "\.ptcgpb-managed-files.txt"
+    isManagedBundle := FileExist(newManagedListPath)
+    if (isManagedBundle && !ValidateManagedReleaseBundle(extractedFolder, latestVersion)) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, The release bundle manifest is invalid or does not match the selected version.
+        return false
+    }
+    newManagedFiles := (isManagedBundle ? ReadManagedFileList(newManagedListPath) : {})
+    oldManagedFiles := (FileExist(oldManagedListPath) ? ReadManagedFileList(oldManagedListPath) : {})
+    if (isManagedBundle && !ValidateManagedFileSet(extractedFolder, newManagedListPath)) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, The release bundle contains an invalid or missing managed file.
+        return false
+    }
+
+    FormatTime, backupStamp,, yyyyMMdd-HHmmss
+    backupFolder := scriptFolder . "\Backups\before-" . localVersion . "-" . backupStamp
+    if (!BackupFilesBeingReplaced(extractedFolder, scriptFolder, backupFolder)
+        || !BackupObsoleteManagedFiles(oldManagedFiles, newManagedFiles, scriptFolder, backupFolder)) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, Could not create the pre-update backup. No files were installed.
+        return false
+    }
+
+    if (isManagedBundle && !RemoveObsoleteManagedFiles(oldManagedFiles, newManagedFiles, scriptFolder)) {
+        RollbackManagedUpdate(newManagedFiles, oldManagedFiles, scriptFolder, backupFolder)
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, % "Could not remove an obsolete application file. No new files were installed.`n`nBackup: " . backupFolder
+        return false
+    }
+
+    installSucceeded := (isManagedBundle
+        ? InstallManagedReleaseFiles(extractedFolder, scriptFolder, newManagedFiles)
+        : MoveFilesRecursively(extractedFolder, scriptFolder))
+    if (!installSucceeded) {
+        if (isManagedBundle)
+            RollbackManagedUpdate(newManagedFiles, oldManagedFiles, scriptFolder, backupFolder)
+        MsgBox, 0x40010, Version Manager, % "Some update files could not be installed.`n`nBackup: " . backupFolder
+        return false
+    }
+
+    FileRemoveDir, %tempRoot%, 1
+    MsgBox, 0x40040, Version Manager, % "Version " . latestVersion . " installed successfully.`n`nBackup: " . backupFolder
+    Reload
+    return true
+}
+
+VerifyUpdateChecksum(filePath, checksumURL, ByRef expectedHash, ByRef actualHash) {
+    expectedHash := ""
+    actualHash := ""
+    try {
+        http := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+        http.Open("GET", checksumURL, false)
+        http.SetRequestHeader("User-Agent", "PTCGPB-Updater")
+        http.Send()
+        if (http.Status != 200)
+            return false
+        checksumText := http.ResponseText
+    } catch exception {
+        return false
+    }
+
+    if (!RegExMatch(checksumText, "i)\b[0-9a-f]{64}\b", match))
+        return false
+    expectedHash := match
+
+    hashOutputPath := filePath . ".actual.sha256"
+    powerShellPath := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+    escapedFilePath := StrReplace(filePath, "'", "''")
+    escapedOutputPath := StrReplace(hashOutputPath, "'", "''")
+    command := """" . powerShellPath . """ -NoProfile -NonInteractive -Command ""(Get-FileHash -LiteralPath '" . escapedFilePath . "' -Algorithm SHA256).Hash | Set-Content -LiteralPath '" . escapedOutputPath . "' -Encoding ASCII"""
+    RunWait, %command%,, Hide UseErrorLevel
+    if (ErrorLevel || !FileExist(hashOutputPath))
+        return false
+
+    FileRead, actualHash, %hashOutputPath%
+    FileDelete, %hashOutputPath%
+    actualHash := Trim(actualHash)
+    StringLower, expectedHash, expectedHash
+    StringLower, actualHash, actualHash
+    return (expectedHash = actualHash)
+}
+
 MoveFilesRecursively(srcFolder, destFolder) {
+    succeeded := true
     Loop, Files, % srcFolder . "\*", R
     {
         relativePath := SubStr(A_LoopFileFullPath, StrLen(srcFolder) + 2)
@@ -3264,8 +3563,185 @@ MoveFilesRecursively(srcFolder, destFolder) {
             }
             FileCreateDir, % SubStr(destPath, 1, InStr(destPath, "\", 0, 0) - 1)
             FileMove, % A_LoopFileFullPath, % destPath, 1
+            if (ErrorLevel)
+                succeeded := false
         }
     }
+    return succeeded
+}
+
+BackupFilesBeingReplaced(srcFolder, destFolder, backupFolder) {
+    copiedAny := false
+    Loop, Files, % srcFolder . "\*", R
+    {
+        if (A_LoopIsDir)
+            continue
+        relativePath := SubStr(A_LoopFileFullPath, StrLen(srcFolder) + 2)
+        existingPath := destFolder . "\" . relativePath
+        if (!FileExist(existingPath))
+            continue
+        backupPath := backupFolder . "\" . relativePath
+        FileCreateDir, % SubStr(backupPath, 1, InStr(backupPath, "\", 0, 0) - 1)
+        FileCopy, %existingPath%, %backupPath%, 1
+        if (ErrorLevel)
+            return false
+        copiedAny := true
+    }
+    if (!copiedAny)
+        FileCreateDir, %backupFolder%
+    return FileExist(backupFolder)
+}
+
+ValidateManagedReleaseBundle(bundleFolder, expectedVersion) {
+    manifestPath := bundleFolder . "\update-manifest.json"
+    managedListPath := bundleFolder . "\.ptcgpb-managed-files.txt"
+    if (!FileExist(manifestPath) || !FileExist(managedListPath))
+        return false
+    FileRead, manifestJSON, %manifestPath%
+    if (ErrorLevel)
+        return false
+    return (ExtractJSONValue(manifestJSON, "product") = "PTCGPB"
+        && ExtractJSONValue(manifestJSON, "version") = expectedVersion
+        && ExtractJSONValue(manifestJSON, "managedFileList") = ".ptcgpb-managed-files.txt")
+}
+
+ReadManagedFileList(listPath) {
+    managedFiles := {}
+    FileRead, listText, %listPath%
+    if (ErrorLevel)
+        return managedFiles
+    Loop, Parse, listText, `n, `r
+    {
+        relativePath := StrReplace(Trim(A_LoopField), "\", "/")
+        if (relativePath != "" && IsSafeManagedRelativePath(relativePath))
+            managedFiles[relativePath] := true
+    }
+    return managedFiles
+}
+
+ValidateManagedFileSet(bundleFolder, listPath) {
+    FileRead, listText, %listPath%
+    if (ErrorLevel)
+        return false
+    fileCount := 0
+    Loop, Parse, listText, `n, `r
+    {
+        relativePath := StrReplace(Trim(A_LoopField), "\", "/")
+        if (relativePath = "")
+            continue
+        if (!IsSafeManagedRelativePath(relativePath))
+            return false
+        packagedPath := bundleFolder . "\" . StrReplace(relativePath, "/", "\")
+        if (!FileExist(packagedPath))
+            return false
+        fileCount++
+    }
+    return (fileCount > 0)
+}
+
+InstallManagedReleaseFiles(srcFolder, destFolder, managedFiles) {
+    if (!IsObject(managedFiles))
+        return false
+    succeeded := true
+    for relativePath, _ in managedFiles {
+        if (!IsSafeManagedRelativePath(relativePath)) {
+            succeeded := false
+            continue
+        }
+        normalizedPath := StrReplace(relativePath, "/", "\")
+        srcPath := srcFolder . "\" . normalizedPath
+        destPath := destFolder . "\" . normalizedPath
+        FileCreateDir, % SubStr(destPath, 1, InStr(destPath, "\", 0, 0) - 1)
+        FileCopy, %srcPath%, %destPath%, 1
+        if (ErrorLevel)
+            succeeded := false
+    }
+    return succeeded
+}
+
+IsSafeManagedRelativePath(relativePath) {
+    normalized := StrReplace(Trim(relativePath), "/", "\")
+    if (normalized = "" || SubStr(normalized, 1, 1) = "\" || InStr(normalized, ":")
+        || RegExMatch(normalized, "(^|\\)\.\.(\\|$)"))
+        return false
+
+    StringLower, lowered, normalized
+    if (lowered = "settings.ini" || lowered = "ids.txt" || lowered = "discord.txt"
+        || lowered = "vip_ids.txt" || lowered = "manual_vip_ids.txt" || lowered = "showcase_ids.txt")
+        return false
+
+    protectedPrefixes := ["backups\", "logs\", "screenshots\", "accounts\saved\"
+        , "accounts\godpacks\", "accounts\trades\", "accounts\specificcards\"
+        , "accounts\cards\accounts\", "accounts\cards\collections\"
+        , "specialevents\events\", "specialevents\pastevents\"]
+    for _, prefix in protectedPrefixes {
+        if (SubStr(lowered, 1, StrLen(prefix)) = prefix)
+            return false
+    }
+    return true
+}
+
+BackupObsoleteManagedFiles(oldFiles, newFiles, installFolder, backupFolder) {
+    if (!IsObject(oldFiles) || !IsObject(newFiles))
+        return true
+    for relativePath, _ in oldFiles {
+        if (newFiles.HasKey(relativePath) || !IsSafeManagedRelativePath(relativePath))
+            continue
+        existingPath := installFolder . "\" . StrReplace(relativePath, "/", "\")
+        if (!FileExist(existingPath))
+            continue
+        backupPath := backupFolder . "\" . StrReplace(relativePath, "/", "\")
+        FileCreateDir, % SubStr(backupPath, 1, InStr(backupPath, "\", 0, 0) - 1)
+        FileCopy, %existingPath%, %backupPath%, 1
+        if (ErrorLevel)
+            return false
+    }
+    return true
+}
+
+RemoveObsoleteManagedFiles(oldFiles, newFiles, installFolder) {
+    if (!IsObject(oldFiles) || !IsObject(newFiles))
+        return true
+    for relativePath, _ in oldFiles {
+        if (newFiles.HasKey(relativePath) || !IsSafeManagedRelativePath(relativePath))
+            continue
+        obsoletePath := installFolder . "\" . StrReplace(relativePath, "/", "\")
+        if (!FileExist(obsoletePath))
+            continue
+        FileDelete, %obsoletePath%
+        if (ErrorLevel)
+            return false
+    }
+    return true
+}
+
+RollbackManagedUpdate(newFiles, oldFiles, installFolder, backupFolder) {
+    succeeded := true
+    if (IsObject(newFiles) && IsObject(oldFiles)) {
+        for relativePath, _ in newFiles {
+            if (oldFiles.HasKey(relativePath) || !IsSafeManagedRelativePath(relativePath))
+                continue
+            newPath := installFolder . "\" . StrReplace(relativePath, "/", "\")
+            if (!FileExist(newPath))
+                continue
+            FileDelete, %newPath%
+            if (ErrorLevel)
+                succeeded := false
+        }
+    }
+
+    Loop, Files, % backupFolder . "\*", R
+    {
+        if (A_LoopIsDir)
+            continue
+        relativePath := SubStr(A_LoopFileFullPath, StrLen(backupFolder) + 2)
+        restorePath := installFolder . "\" . relativePath
+        FileCreateDir, % SubStr(restorePath, 1, InStr(restorePath, "\", 0, 0) - 1)
+        FileCopy, % A_LoopFileFullPath, %restorePath%, 1
+        if (ErrorLevel)
+            succeeded := false
+    }
+    return succeeded
 }
 
 FixFormat(text) {
