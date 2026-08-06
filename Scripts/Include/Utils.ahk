@@ -1251,11 +1251,20 @@ KillAllScripts() {
 }
 
 VersionCompare(v1, v2) {
-    cleanV1 := RegExReplace(v1, "[^\d.]")
-    cleanV2 := RegExReplace(v2, "[^\d.]")
+    v1 := RegExReplace(Trim(v1), "i)^v")
+    v2 := RegExReplace(Trim(v2), "i)^v")
+    v1 := StrSplit(v1, "+")[1]
+    v2 := StrSplit(v2, "+")[1]
 
-    v1Parts := StrSplit(cleanV1, ".")
-    v2Parts := StrSplit(cleanV2, ".")
+    dash1 := InStr(v1, "-")
+    dash2 := InStr(v2, "-")
+    pre1 := (dash1 ? SubStr(v1, dash1 + 1) : "")
+    pre2 := (dash2 ? SubStr(v2, dash2 + 1) : "")
+    core1 := (dash1 ? SubStr(v1, 1, dash1 - 1) : v1)
+    core2 := (dash2 ? SubStr(v2, 1, dash2 - 1) : v2)
+
+    v1Parts := StrSplit(core1, ".")
+    v2Parts := StrSplit(core2, ".")
 
     Loop, % Max(v1Parts.MaxIndex(), v2Parts.MaxIndex()) {
         p1 := v1Parts[A_Index]
@@ -1268,13 +1277,35 @@ VersionCompare(v1, v2) {
             return -1
     }
 
-    isV1Alpha := InStr(v1, "alpha") || InStr(v1, "beta")
-    isV2Alpha := InStr(v2, "alpha") || InStr(v2, "beta")
-
-    if (isV1Alpha && !isV2Alpha)
-        return -1
-    if (!isV1Alpha && isV2Alpha)
+    if (pre1 = "" && pre2 != "")
         return 1
+    if (pre1 != "" && pre2 = "")
+        return -1
+    if (pre1 = pre2)
+        return 0
+
+    pre1Parts := StrSplit(pre1, ".")
+    pre2Parts := StrSplit(pre2, ".")
+    Loop, % Max(pre1Parts.MaxIndex(), pre2Parts.MaxIndex()) {
+        id1 := pre1Parts[A_Index]
+        id2 := pre2Parts[A_Index]
+        if (id1 = "")
+            return -1
+        if (id2 = "")
+            return 1
+        numeric1 := RegExMatch(id1, "^\d+$")
+        numeric2 := RegExMatch(id2, "^\d+$")
+        if (numeric1 && numeric2) {
+            if ((id1 + 0) > (id2 + 0))
+                return 1
+            if ((id1 + 0) < (id2 + 0))
+                return -1
+        } else if (numeric1 != numeric2) {
+            return (numeric1 ? -1 : 1)
+        } else if (id1 != id2) {
+            return (id1 > id2 ? 1 : -1)
+        }
+    }
 
     return 0
 }
