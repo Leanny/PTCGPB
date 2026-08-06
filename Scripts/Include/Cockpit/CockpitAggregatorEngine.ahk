@@ -113,7 +113,9 @@ Agg_TickBody() {
             ? { "ring": [], "lastSeenEnd": 0, "stuckCount": 0, "lastStatus": ""
                 , "accountFileName": "", "lastEvent": "", "lastEventEpoch": 0
                 , "lastLogSize": -1, "stuckActive": false, "stuckSinceEpoch": 0
-                , "livePacks": -1, "totalRunSecCompleted": 0, "gpFoundCount": 0 }
+                , "stuckScriptPid": 0, "stuckStartEpoch": 0, "scriptPid": 0
+                , "lastStartEpoch": 0, "livePacks": -1
+                , "totalRunSecCompleted": 0, "gpFoundCount": 0 }
             : g_aggState.instances[N]
         if (!prev.HasKey("totalRunSecCompleted"))
             prev.totalRunSecCompleted := 0
@@ -144,20 +146,17 @@ Agg_TickBody() {
         signals := Agg_PollInstanceLogSignals(N, prev, nowEpoch)
         if (signals.stuckHits > 0) {
             prev.stuckCount += signals.stuckHits
-            if (!prev.stuckActive)
+            if (!prev.stuckActive) {
                 prev.stuckSinceEpoch := nowEpoch
+                prev.stuckScriptPid := prev.HasKey("scriptPid") ? (prev.scriptPid + 0) : 0
+                prev.stuckStartEpoch := prev.HasKey("lastStartEpoch") ? (prev.lastStartEpoch + 0) : 0
+            }
             prev.stuckActive := true
             Agg_EmitEvent("warn", "inst", N, "stuck"
                 , "Instance " . N . " marked stuck (" . signals.lastStuckReason . ")")
             Loop, % signals.stuckHits
                 Metrics_TrendIncrement(g_aggState.trendStuckRate, Metrics_LatestBinIndex(), 1)
         }
-        if ((signals.restarted || signals.recovered) && prev.stuckActive) {
-            prev.stuckActive := false
-            prev.stuckSinceEpoch := 0
-            Agg_EmitEvent("info", "inst", N, "restart", "Instance " . N . " resumed")
-        }
-
         accountFromIni := Trim(info.currentAccount)
         if (accountFromIni != "") {
             if (accountFromIni != prev.accountFileName) {
@@ -190,14 +189,17 @@ Agg_TickBody() {
             if (livePacksMeta >= 0)
                 prev.livePacks := livePacksMeta
         }
-        isAlive := Agg_IsInstanceScriptAlive(N)
-        if (prev.stuckActive && !signals.stuckHits && isAlive && prev.stuckSinceEpoch > 0) {
-            runStartedAfterStuck := (info.lastStartEpoch > prev.stuckSinceEpoch
+        currentPid := Agg_GetInstanceScriptPid(N)
+        isAlive := currentPid ? true : false
+        if (prev.stuckActive && !signals.stuckHits && isAlive) {
+            replacementPid := (prev.stuckScriptPid > 0 && currentPid != prev.stuckScriptPid)
+            replacementRun := (info.lastStartEpoch > prev.stuckStartEpoch
                 && info.lastStartEpoch > info.lastEndEpoch)
-            runEndedAfterStuck := (info.lastEndEpoch > prev.stuckSinceEpoch)
-            if (runStartedAfterStuck || runEndedAfterStuck) {
+            if (replacementPid && replacementRun) {
                 prev.stuckActive := false
                 prev.stuckSinceEpoch := 0
+                prev.stuckScriptPid := 0
+                prev.stuckStartEpoch := 0
                 Agg_EmitEvent("info", "inst", N, "restart", "Instance " . N . " resumed")
             }
         }
@@ -246,6 +248,7 @@ Agg_TickBody() {
         }
 
         prev.lastSeenEpoch := nowEpoch
+        prev.scriptPid := currentPid
         prev.lastStartEpoch := info.lastStartEpoch
         prev.lastEndEpoch := info.lastEndEpoch
         prev.rerolls := info.rerolls
@@ -861,6 +864,10 @@ Agg_SaveRuntimeState() {
         CockpitState_AddKey(b, "LastLogSize", inst.lastLogSize + 0)
         CockpitState_AddKey(b, "StuckActive", inst.stuckActive ? 1 : 0)
         CockpitState_AddKey(b, "StuckSinceEpoch", inst.stuckSinceEpoch + 0)
+        CockpitState_AddKey(b, "StuckScriptPid", inst.HasKey("stuckScriptPid") ? (inst.stuckScriptPid + 0) : 0)
+        CockpitState_AddKey(b, "StuckStartEpoch", inst.HasKey("stuckStartEpoch") ? (inst.stuckStartEpoch + 0) : 0)
+        CockpitState_AddKey(b, "ScriptPid", inst.HasKey("scriptPid") ? (inst.scriptPid + 0) : 0)
+        CockpitState_AddKey(b, "LastStartEpoch", inst.HasKey("lastStartEpoch") ? (inst.lastStartEpoch + 0) : 0)
         CockpitState_AddKey(b, "LivePacks", inst.livePacks + 0)
         CockpitState_AddKey(b, "TotalRunSecCompleted", inst.totalRunSecCompleted + 0)
         CockpitState_AddKey(b, "GpFoundCount", inst.gpFoundCount + 0)
@@ -945,6 +952,10 @@ Agg_LoadRuntimeState(sessionId) {
             , "lastLogSize": CockpitState_SecGet(s, "LastLogSize", -1) + 0
             , "stuckActive": (CockpitState_SecGet(s, "StuckActive", 0) + 0) ? true : false
             , "stuckSinceEpoch": CockpitState_SecGet(s, "StuckSinceEpoch", 0) + 0
+            , "stuckScriptPid": CockpitState_SecGet(s, "StuckScriptPid", 0) + 0
+            , "stuckStartEpoch": CockpitState_SecGet(s, "StuckStartEpoch", 0) + 0
+            , "scriptPid": CockpitState_SecGet(s, "ScriptPid", 0) + 0
+            , "lastStartEpoch": CockpitState_SecGet(s, "LastStartEpoch", 0) + 0
             , "livePacks": CockpitState_SecGet(s, "LivePacks", -1) + 0
             , "totalRunSecCompleted": CockpitState_SecGet(s, "TotalRunSecCompleted", 0) + 0
             , "gpFoundCount": CockpitState_SecGet(s, "GpFoundCount", 0) + 0 }

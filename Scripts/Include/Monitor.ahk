@@ -35,16 +35,10 @@ if !FileExist(mumuFolder){
     ExitApp
 }
 
-; Reset LastEndEpoch for all instances at startup so stale timestamps from
-; a previous session don't immediately trigger the stuck detection.
-nowEpoch := A_NowUTC
-EnvSub, nowEpoch, 1970, seconds
-Loop %Instances% {
-    instanceNum := Format("{:u}", A_Index)
-    iniPath := GetScriptIniPathByName(instanceNum)
-    IniWrite, %nowEpoch%, %iniPath%, Metrics, LastEndEpoch
-    IniWrite, 0, %iniPath%, Metrics, LastActivityEpoch
-}
+; Give existing instances a fresh grace period without rewriting LastEndEpoch.
+; LastEndEpoch is completion history consumed by Cockpit, not Monitor state.
+monitorStartEpoch := A_NowUTC
+EnvSub, monitorStartEpoch, 1970, seconds
 
 Loop {
     ; Loop through each instance, check if it's started, and start it if it's not
@@ -70,26 +64,24 @@ Loop {
         IniRead, LastActivityEpoch, %iniPath%, Metrics, LastActivityEpoch, 0
         ; Set threshold: 30 minutes for Create Bots, 11 minutes for others
         threshold := (deleteMethod == "Create Bots (13P)") ? (30 * 60) : (11 * 60)
-        ; Use LastEndEpoch if available, otherwise fall back to LastStartEpoch for first-run detection
-        if (LastEndEpoch > 0) {
-            secondsSinceLastProgress := nowEpoch - LastEndEpoch
+        ; The newest start, completion, friend-flow activity, or Monitor startup
+        ; is the last known progress. This lets a recovery start a fresh timeout.
+        progressEpoch := monitorStartEpoch
+        progressSource := "MonitorStartEpoch"
+        if (LastEndEpoch > progressEpoch) {
+            progressEpoch := LastEndEpoch
             progressSource := "LastEndEpoch"
-            isStuck := (secondsSinceLastProgress > threshold)
-        } else if (LastStartEpoch > 0) {
-            secondsSinceLastProgress := nowEpoch - LastStartEpoch
+        }
+        if (LastStartEpoch > progressEpoch) {
+            progressEpoch := LastStartEpoch
             progressSource := "LastStartEpoch"
-            isStuck := (secondsSinceLastProgress > threshold)
-        } else {
-            secondsSinceLastProgress := 0
-            progressSource := ""
-            isStuck := false
         }
-        ; Friend add/remove can outlive LastEndEpoch during 96P+ cleanup
-        if (LastActivityEpoch > 0 && LastActivityEpoch > LastEndEpoch) {
-            secondsSinceLastProgress := nowEpoch - LastActivityEpoch
+        if (LastActivityEpoch > progressEpoch) {
+            progressEpoch := LastActivityEpoch
             progressSource := "LastActivityEpoch"
-            isStuck := (secondsSinceLastProgress > threshold)
         }
+        secondsSinceLastProgress := nowEpoch - progressEpoch
+        isStuck := (secondsSinceLastProgress > threshold)
         if(isStuck)
         {
             if (progressSource = "LastActivityEpoch")
@@ -99,6 +91,8 @@ Loop {
             LogInfo(msg, "Monitor.txt")
 
             scriptName := instanceNum . ".ahk"
+            LogInfo("STUCK DETECTED - Reason: Monitor timeout; " . progressSource
+                . " recorded " . secondsSinceLastProgress . " seconds ago", "Log_" . instanceNum . ".txt")
             coverHwnd := CaptureMuMuCoverWindow(instanceNum)
             StoreMuMuCoverWindow(instanceNum, coverHwnd)
 
@@ -109,8 +103,9 @@ Loop {
             cntAHK := checkAHK(scriptName)
             pID := checkInstance(instanceNum)
             if not pID && not cntAHK {
-                ; Change the last end date to now so that we don't keep trying to restart this beast
-                IniWrite, %nowEpoch%, %iniPath%, Metrics, LastEndEpoch
+                ; A replacement process is a new run attempt. Preserve the real
+                ; completion timestamp and start a fresh run/timeout clock.
+                writeLastStartEpoch(instanceNum)
                 IniWrite, 0, %iniPath%, Metrics, LastActivityEpoch
 
                 launchInstance(instanceNum)

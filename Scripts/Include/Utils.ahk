@@ -712,9 +712,20 @@ writeLastStartEpoch(scriptName) {
     iniPath := GetScriptIniPathByName(scriptName)
     nowUtc := A_NowUTC
     IniWrite, %nowUtc%, %iniPath%, Metrics, LastStartTimeUTC
-    EnvSub, nowUtc, 1970, seconds
-    IniWrite, %nowUtc%, %iniPath%, Metrics, LastStartEpoch
-    return nowUtc
+    nowEpoch := nowUtc
+    EnvSub, nowEpoch, 1970, seconds
+
+    ; Keep the run clock strictly monotonic. A restart can occur in the same
+    ; second as the previous start/end stamp, while Cockpit intentionally uses
+    ; LastStartEpoch > LastEndEpoch to identify an active run.
+    IniRead, lastStart, %iniPath%, Metrics, LastStartEpoch, 0
+    IniRead, lastEnd, %iniPath%, Metrics, LastEndEpoch, 0
+    latestEpoch := (lastStart + 0) > (lastEnd + 0) ? (lastStart + 0) : (lastEnd + 0)
+    if (nowEpoch <= latestEpoch)
+        nowEpoch := latestEpoch + 1
+
+    IniWrite, %nowEpoch%, %iniPath%, Metrics, LastStartEpoch
+    return nowEpoch
 }
 
 ; Stamp LastStartEpoch before the boot gate when a new run cycle begins (LastEnd >= LastStart).

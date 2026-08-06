@@ -1445,6 +1445,9 @@ restartGameInstance(reason, RL := true) {
         Sleep, 100
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
         startPTCGPApp()
+        ; A stuck recovery is a new run attempt even though the previous run did
+        ; not complete. Refresh the run clock before handing off to Reload.
+        writeLastStartEpoch(session.get("scriptName"))
         SendMetadataToPTCGPB(session.get("packsThisRun"))
         LogInfo("Restarted MuMu instance. Reason: " reason)
 
