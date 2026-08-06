@@ -65,6 +65,7 @@
         , "stopPreferenceMain": ""
         , "s4tKeepSyntheticScreenshots": 0
         , "s4tUseSyntheticScreenshots": 1
+        , "s4tInvalids": 0
         , "ocrLanguage": "en"
         , "waitAfterBulkLaunch": 40000
         , "WishlistCheck": 0

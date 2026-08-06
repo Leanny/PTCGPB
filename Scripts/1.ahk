@@ -2404,6 +2404,12 @@ CheckPack(stopEarly := false) {
         logMessage := "Instance: " . session.get("scriptName") " | Invalid"
         LogDebug(logMessage, "debug_cards.txt")
         ; Skip invalid packs if invalidcheck is active
+        if (botConfig.get("s4tEnabled") && botConfig.get("s4tInvalids") && !normalBorders) {
+            invalidFoundCards := {"3Diamond": 0, "4Diamond": 0, "1Star": found1Star, "Trainer": foundTrainer, "FullArt": foundFullArt
+                , "Rainbow": foundRainbow, "Immersive": foundImmersive, "Crown": foundCrown
+                , "Shiny1Star": foundShiny1Star, "Shiny2Star": foundShiny2Star, "Wishlist": 0}
+            FoundTradeableNew(invalidFoundCards, pack, cards, rarity, multiPullResult)
+        }
         return
     }
 

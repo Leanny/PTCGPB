@@ -1399,6 +1399,8 @@ UpdateS4TButtonText() {
         enabledOptions.Push("Shiny2★")
     if (botConfig.get("s4tWishlist"))
         enabledOptions.Push("Wishlist")
+    if (botConfig.get("s4tInvalids"))
+        enabledOptions.Push("Invalid Godpacks")
 
     statusText := dict["Txt_S4TEnabled"]
     if (enabledOptions.Length() > 0) {
@@ -1450,6 +1452,8 @@ ShowS4TSettings:
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tCrown") ? "Checked" : "") " vui_s4tCrown_Popup x15 y" . yPos . " " . sectionColor, ♚ Crown Rare
     yPos += 18
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tWishlist") ? "Checked" : "") " vui_s4tWishlist_Popup x15 y" . yPos . " " . sectionColor, Wishlist
+    yPos += 18
+    Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tInvalids") ? "Checked" : "") " vui_s4tInvalids_Popup x15 y" . yPos . " " . sectionColor, Include Invalid God Packs
     yPos += 25
 
     ; Wonderpick section
@@ -1508,6 +1512,7 @@ saveS4T:
     botConfig.set("s4tShiny1Star", ui_s4tShiny1Star_Popup, "SaveForTrade")
     botConfig.set("s4tShiny2Star", ui_s4tShiny2Star_Popup, "SaveForTrade")
     botConfig.set("s4tWishlist", ui_s4tWishlist_Popup, "SaveForTrade")
+    botConfig.set("s4tInvalids", ui_s4tInvalids_Popup, "SaveForTrade")
     botConfig.set("s4tWP", ui_s4tWP_Popup, "SaveForTrade")
     botConfig.set("s4tWPMinCards", ui_s4tWPMinCards_Popup, "SaveForTrade")
     botConfig.set("s4tKeepSyntheticScreenshots", ui_s4tKeepSyntheticScreenshots_Popup, "SaveForTrade")
@@ -1911,6 +1916,8 @@ Save:
             s4tSettings .= "• Crown Rare`n"
         if (botConfig.get("s4tWishlist"))
             s4tSettings .= "• Wishlist`n"
+        if (botConfig.get("s4tInvalids"))
+            s4tSettings .= "• Include Invalid God Packs`n"
         if (botConfig.get("s4tWP"))
             s4tSettings .= "• " . dict["Confirm_WonderPick"] . " (" . botConfig.get("s4tWPMinCards") . " " . dict["Confirm_MinCards"] . ")`n"
 
@@ -2537,6 +2544,7 @@ HelpTT_Init() {
 
     ; --- Popup: Save for Trade
     HelpTT_Add("ui_s4tEnabled_Popup", "s4tEnabled", "When enabled, saves the account and notifies on Discord when it pulls tradeable cards of the rarities selected below.")
+    HelpTT_Add("ui_s4tInvalids_Popup", "s4tInvalids", "When enabled, Save for Trade also notifies for invalid god packs.")
     HelpTT_Add("ui_s4tWP_Popup", "s4tWP", "When enabled, only reports packs worth wonderpicking from your Main;`npacks with fewer than 'Min. Cards' tradeable cards are skipped.")
     HelpTT_Add("ui_s4tWPMinCards_Popup", "s4tWPMinCards", "Minimum tradeable cards a pack must contain to be reported when 'Wonder Pick' is enabled (1 or 2).")
     HelpTT_Add("ui_s4tKeepSyntheticScreenshots_Popup", "s4tKeepSyntheticScreenshots", "When enabled, keeps synthetic pack screenshots in the Screenshots folder after sending them to Discord`n(otherwise they are deleted right after sending).")
