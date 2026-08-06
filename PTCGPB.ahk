@@ -3670,6 +3670,9 @@ IsSafeManagedRelativePath(relativePath) {
         || lowered = "vip_ids.txt" || lowered = "manual_vip_ids.txt" || lowered = "showcase_ids.txt")
         return false
 
+    if (lowered = "accounts\saved\1\readme.md" || lowered = "specialevents\events\.gitkeep")
+        return true
+
     protectedPrefixes := ["backups\", "logs\", "screenshots\", "accounts\saved\"
         , "accounts\godpacks\", "accounts\trades\", "accounts\specificcards\"
         , "accounts\cards\accounts\", "accounts\cards\collections\"

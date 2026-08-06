@@ -20,15 +20,28 @@ jobs:
     runs-on: windows-latest
     env:
       RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
 
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v6
 
       - name: Install Rust stable
+        id: toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+
+      - name: Restore Cargo cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ env.CARGO_TARGET_DIR }}
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('Helper/carddb_src/Cargo.toml', 'Helper/carddb_src/Cargo.lock', 'Helper/cardimage_src/Cargo.toml', 'Helper/cardimage_src/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.toolchain.outputs.cachekey }}-
 
       - name: Build carddb helper
         shell: pwsh
@@ -36,7 +49,7 @@ jobs:
           Push-Location Helper/carddb_src
           cargo build --release --target x86_64-pc-windows-msvc
           Pop-Location
-          Copy-Item -LiteralPath Helper/carddb_src/target/x86_64-pc-windows-msvc/release/carddb.exe -Destination Helper/carddb.exe -Force
+          Copy-Item -LiteralPath "$env:CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/carddb.exe" -Destination Helper/carddb.exe -Force
 
       - name: Build cardimage helper
         shell: pwsh
@@ -44,7 +57,7 @@ jobs:
           Push-Location Helper/cardimage_src
           cargo build --release --target x86_64-pc-windows-msvc
           Pop-Location
-          Copy-Item -LiteralPath Helper/cardimage_src/target/x86_64-pc-windows-msvc/release/cardimage.exe -Destination Helper/cardimage.exe -Force
+          Copy-Item -LiteralPath "$env:CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/cardimage.exe" -Destination Helper/cardimage.exe -Force
 
       - name: Build release bundle and checksums
         shell: pwsh

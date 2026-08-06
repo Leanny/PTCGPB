@@ -8,6 +8,7 @@ Accounts/*.ahk
 Accounts/Cards/card_database.html
 Accounts/Cards/start_card_dashboard.vbs
 Accounts/Cards/start_card_dashboard_server.ps1
+Accounts/Saved/1/readme.md
 Data/**
 GUI/**
 Helper/carddb.exe
@@ -18,3 +19,4 @@ Scripts/Include/**
 Scripts/Mask/**
 Scripts/Needles/**
 SpecialEvents/SpecialEventExtractor.ahk
+SpecialEvents/Events/**

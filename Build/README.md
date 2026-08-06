@@ -31,6 +31,8 @@ The workflow rebuilds the Rust helpers and publishes these assets:
 
 The ZIP also contains `.ptcgpb-managed-files.txt`. PTCGPB uses that list to replace and remove application-owned files without deleting settings, accounts, logs, screenshots, or event data.
 
+Both Rust helpers use one shared Cargo target directory. Cargo registry data, Git dependencies, and compiled target artifacts are cached across workflow runs using a key derived from the runner, Rust toolchain, and both helpers' Cargo manifests/lockfiles. The first cold build still compiles all required crates; identical dependencies are reused by the second helper and subsequent runs.
+
 If `Build/release-notes/<tag>.md` exists, its Markdown becomes the GitHub Release description. Otherwise, GitHub-generated release notes are used.
 
 ## Test in GitHub Actions without publishing
