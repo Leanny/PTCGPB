@@ -88,6 +88,12 @@ parseDictionaryData("jp")
 parseDictionaryData("cn")
 
 botConfig.loadSettingsToConfig("ALL")
+if (RegExMatch(localVersion, "i)^v?\d+\.\d+\.\d+-") && botConfig.get("updateChannel") != "beta") {
+    ; Prerelease builds always follow the beta feed. Stable builds keep the
+    ; user's saved channel so beta subscribers remain subscribed after promotion.
+    botConfig.set("updateChannel", "beta", "ToolsAndSystem")
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+}
 global g_runMainPref := (botConfig.get("runMain") ? 1 : 0)
 global g_mainsPref := botConfig.get("Mains")
 if (g_mainsPref = "" || (g_mainsPref + 0) <= 0)
