@@ -5,6 +5,7 @@
     claimSteps := 1
     claimDays := ""
     giftDays := ""
+    isEliteDeck := 0
     redBoxCoords := ""
     blueBoxCoords := ""
     redBoxImageData := ""
@@ -16,13 +17,14 @@
     redBoxBitmap := -1
     blueBoxBitmap := -1
 
-    __New(eventName, expiryDate, expiryTime, redBoxCoords, blueBoxCoords, redBoxImageData, blueBoxImageData, claimSteps := 1, claimDays := "", giftDays := ""){
+    __New(eventName, expiryDate, expiryTime, redBoxCoords, blueBoxCoords, redBoxImageData, blueBoxImageData, claimSteps := 1, claimDays := "", giftDays := "", isEliteDeck := 0){
         this.eventName := eventName
         this.expiryDate := expiryDate
         this.expiryTime := expiryTime
         this.claimSteps := (claimSteps + 0) > 0 ? (claimSteps + 0) : 1
         this.claimDays := IsObject(claimDays) ? claimDays : []
         this.giftDays := IsObject(giftDays) ? giftDays : []
+        this.isEliteDeck := (isEliteDeck + 0) ? 1 : 0
         this.redBoxCoords := redBoxCoords
         this.blueBoxCoords := blueBoxCoords
         this.redBoxImageData := redBoxImageData
@@ -224,6 +226,7 @@ LoadSevtFileCore(FilePath, addToSession){
     vClaimSteps := SpecialEvent_ReadClaimSteps(FilePath)
     vClaimDays := SpecialEvent_ReadDayList(FilePath, "ClaimDays")
     vGiftDays := SpecialEvent_ReadDayList(FilePath, "GiftDays")
+    vIsEliteDeck := SpecialEvent_ReadEliteDeck(FilePath)
 
     IniRead, rCoords, %FilePath%, RedBox, Coords
     IniRead, bCoords, %FilePath%, BlueBox, Coords
@@ -239,7 +242,7 @@ LoadSevtFileCore(FilePath, addToSession){
 
     tempSpecialEventObj := new SpecialEvent(vName, vDate, vTime, new Coordinate(Trim(rArr[1]), Trim(rArr[2]), Trim(rArr[3]), Trim(rArr[4]))
                                                 , new Coordinate(Trim(bArr[1]), Trim(bArr[2]), Trim(bArr[3]), Trim(bArr[4]))
-                                                , rImage, bImage, vClaimSteps, vClaimDays, vGiftDays)
+                                                , rImage, bImage, vClaimSteps, vClaimDays, vGiftDays, vIsEliteDeck)
     tempSpecialEventObj.isValidate()
 
     if (!tempSpecialEventObj.getValidate()) {

@@ -260,7 +260,7 @@ SpecialEvent_IsSameGameDay(timestampA, timestampB := "", expiryTime := "055959")
 }
 
 ; Lightweight list for eligibility (no bitmaps).
-; Returns {eventName, claimSteps, claimDays, giftDays, expiryDate, expiryTime}.
+; Returns {eventName, claimSteps, claimDays, giftDays, isEliteDeck, expiryDate, expiryTime}.
 ; claimDays/giftDays are arrays of ints; empty claimDays = claim every step.
 SpecialEvent_ListActiveEventInfos() {
     infos := []
@@ -276,9 +276,10 @@ SpecialEvent_ListActiveEventInfos() {
         vClaimSteps := SpecialEvent_ReadClaimSteps(FilePath)
         vClaimDays := SpecialEvent_ReadDayList(FilePath, "ClaimDays")
         vGiftDays := SpecialEvent_ReadDayList(FilePath, "GiftDays")
+        vIsEliteDeck := SpecialEvent_ReadEliteDeck(FilePath)
         if (SpecialEvent_IsExpiredByDateTime(vDate, vTime))
             continue
-        infos.Push({"eventName": vName, "claimSteps": vClaimSteps, "claimDays": vClaimDays, "giftDays": vGiftDays, "expiryDate": vDate, "expiryTime": vTime})
+        infos.Push({"eventName": vName, "claimSteps": vClaimSteps, "claimDays": vClaimDays, "giftDays": vGiftDays, "isEliteDeck": vIsEliteDeck, "expiryDate": vDate, "expiryTime": vTime})
     }
     return infos
 }
@@ -312,6 +313,14 @@ SpecialEvent_ReadDayList(filePath, keyName) {
         days.Push(n)
     }
     return days
+}
+
+; Returns 1 if the .sevt marks this event as an Elite Deck (restart+Helper after claim), otherwise 0.
+SpecialEvent_ReadEliteDeck(filePath) {
+    IniRead, raw, %filePath%, TargetInfo, EliteDeck, 0
+    if (raw = "ERROR" || raw = "" || raw = "0")
+        return 0
+    return (raw + 0) ? 1 : 0
 }
 
 ; Empty list = "all steps" when forClaim=true; empty = "none" when forClaim=false (gift).
@@ -396,10 +405,11 @@ AccountMetadata_BumpSpecialEventClaim(instance, fileName, eventName, filePath :=
 }
 
 ; Advance each active event by +1 on a new game day. Returns:
-; { advancedAny, needClaimUi, forceGift, claimUiEvents }
+; { advancedAny, needClaimUi, forceGift, eliteDeckClaim, claimUiEvents }
 ; claimUiEvents maps eventName → newStep for events that should open claim UI.
+; eliteDeckClaim is true when any advanced event is an Elite Deck event.
 AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
-    result := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "claimUiEvents": {}}
+    result := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "eliteDeckClaim": false, "claimUiEvents": {}}
     if (instance = "" || fileName = "")
         return result
 
@@ -434,6 +444,9 @@ AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
         account["specialEvents"][eventName] := progress
         changed := true
         result["advancedAny"] := true
+
+        if (info["isEliteDeck"])
+            result["eliteDeckClaim"] := true
 
         ; Empty ClaimDays = claim every step.
         if (SpecialEvent_DayListContains(info["claimDays"], newStep, true)) {
