@@ -33,7 +33,7 @@ If fso.FileExists(htmlPath) Then
     htmlVer = CStr(fso.GetFile(htmlPath).Size)
 End If
 
-args = "-NoProfile -File """ & ps1 & """" _
+args = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File """ & ps1 & """" _
     & " -LaunchDashboard" _
     & " -Root """ & root & """" _
     & " -HtmlVersion """ & htmlVer & """"
