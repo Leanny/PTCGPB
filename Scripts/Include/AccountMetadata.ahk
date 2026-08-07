@@ -1977,7 +1977,7 @@ AccountMetadata_ClearFlagEverywhere(flag) {
         FileDelete, %errorPath%
         FileDelete, %progressPath%
 
-        title := flag = "X" ? "Reset Claim Status" : (flag = "R" ? "Reset Receive Gift Status" : "Reset Account Status")
+        title := flag = "X" ? "Reset Claim Status" : (flag = "R" ? "Reset Receive Gift Status" : (flag = "H" ? "Clear History Flag" : "Reset Account Status"))
         command := """" . helperPath . """ --root """ . root . """ clear-flag --flag """ . flag . """"
         Progress, M B1 FS10 ZH0 FM10 WM700 W480, Starting reset..., %title%, %title%
         Run, %command%,, Hide, helperPid

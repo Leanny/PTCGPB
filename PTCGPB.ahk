@@ -1558,7 +1558,7 @@ ShowToolsAndSystemSettings:
     yPos += 31
 
     sectionColor := "cWhite"
-    eventMissionBoxH := 140
+    eventMissionBoxH := 164
     eventMissionBoxBottom := yPos + eventMissionBoxH
     Gui, ToolsAndSystemSelect:Add, GroupBox, x%col1X% y%yPos% w%col1W% h%eventMissionBoxH% %sectionColor%, Special Event Missions
     yPos += 20
@@ -1567,6 +1567,8 @@ ShowToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearSpecialMissionHistory BackgroundTrans, Reset Claim Status
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
+    yPos += 24
+    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearHistoryFlag BackgroundTrans, Clear History Flag
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialMissions") ? "Checked" : "") " vui_claimSpecialMissions_Popup x25 y" . yPos . " cWhite", Claim Rewards
     yPos += 22
@@ -1775,6 +1777,17 @@ ClearReceiveGiftHistory:
         changed := changed = "" ? 0 : changed + 0
 
         MsgBox, 64, Clear Receive Gift History Complete, % "Done`nAccounts changed: " . changed
+    }
+return
+
+ClearHistoryFlag:
+    MsgBox, 4, Clear History Flag, Clear the H flag from all account JSON files? This allows PTCGPB to import history again. Existing history entries with the same date and time will be skipped.
+    IfMsgBox, Yes
+    {
+        changed := AccountMetadata_ClearFlagEverywhere("H")
+        changed := changed = "" ? 0 : changed + 0
+
+        MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
     }
 return
 
@@ -2632,6 +2645,7 @@ HelpTT_Init() {
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
+    HelpTT_Add("Clear History Flag", "clearHistoryFlag", "Clears the H flag from every account JSON file so pack history can be imported again.`nEntries already stored with the same date and time are skipped during import.")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
     HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 

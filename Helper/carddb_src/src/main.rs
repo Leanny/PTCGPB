@@ -3532,13 +3532,14 @@ fn normalize_pull_timestamp(timestamp: &str) -> Option<String> {
     parse_pull_timestamp(timestamp).map(format_pull_timestamp)
 }
 
-fn oldest_pull_timestamp(doc: &Value) -> Option<DateTime<Utc>> {
+fn pull_timestamp_keys(doc: &Value) -> HashSet<String> {
     doc.get("pulls")
-        .and_then(Value::as_array)?
-        .iter()
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
         .filter_map(|pull| pull.get("timestamp").and_then(Value::as_str))
-        .filter_map(parse_pull_timestamp)
-        .min()
+        .filter_map(normalize_pull_timestamp)
+        .collect()
 }
 
 fn cardmap_path(root: &Path) -> PathBuf {
@@ -3836,24 +3837,22 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
     if !doc["pulls"].is_array() {
         doc["pulls"] = json!([]);
     }
-    let oldest_existing = oldest_pull_timestamp(&doc);
-    let history_cutoff = oldest_existing.map(|timestamp| timestamp - Duration::hours(24));
+    let mut existing_timestamps = pull_timestamp_keys(&doc);
     if input.exists() {
         let text = fs::read_to_string(input)
             .with_context(|| format!("Could not read history file {:?}", input))?;
         let cardmap = load_cardmap_for_cards(root, &card_ids_from_history(&text))?;
         for line in text.lines() {
             if let Some((timestamp, pulls)) = history_pulls_from_line(line, &cardmap) {
-                if history_cutoff
-                    .map(|cutoff| timestamp > cutoff)
-                    .unwrap_or(false)
-                {
+                let timestamp_key = format_pull_timestamp(timestamp);
+                if existing_timestamps.contains(&timestamp_key) {
                     continue;
                 }
                 doc["pulls"]
                     .as_array_mut()
                     .expect("pulls array")
                     .extend(pulls);
+                existing_timestamps.insert(timestamp_key);
             }
         }
     }
@@ -4053,6 +4052,24 @@ mod tests {
             normalize_pull_timestamp("20260511200000").as_deref(),
             Some("2026-05-11 20:00:00")
         );
+    }
+
+    #[test]
+    fn pull_timestamp_keys_normalize_and_deduplicate_existing_dates() {
+        let doc = json!({
+            "pulls": [
+                { "timestamp": "2026-05-11 20:00:00" },
+                { "timestamp": "20260511200000" },
+                { "timestamp": "2026-05-12 09:15:30" },
+                { "timestamp": "invalid" }
+            ]
+        });
+
+        let keys = pull_timestamp_keys(&doc);
+
+        assert_eq!(keys.len(), 2);
+        assert!(keys.contains("2026-05-11 20:00:00"));
+        assert!(keys.contains("2026-05-12 09:15:30"));
     }
 
     #[test]
