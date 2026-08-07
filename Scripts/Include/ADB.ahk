@@ -239,6 +239,9 @@ initializeAdbShell() {
                     throw Exception("ADB port is invalid: " . session.get("adbPort"))
                 }
 
+                ; check graphics settings
+                isAutoRender(session.get("scriptName"))
+
                 ; disable root and restart as root shell
                 MuMuDisableRoot(session.get("scriptName"))
                 ADB_LogTrace("initializeAdbShell adb shell port=" . session.get("adbPort"))

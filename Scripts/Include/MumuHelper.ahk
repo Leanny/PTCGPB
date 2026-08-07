@@ -61,6 +61,12 @@ MuMuBias() {
 }
 
 MuMuGetInstanceIndex(name) {
+    static instanceIndexes := {}
+    static instanceIndexesLoaded := false
+
+    if (instanceIndexesLoaded)
+        return instanceIndexes.HasKey(name) ? instanceIndexes[name] : ""
+
     output := MuMuManagerCommand("info -v all", true)
     if (output = "")
         return ""
@@ -69,28 +75,34 @@ MuMuGetInstanceIndex(name) {
     while (foundPos := RegExMatch(output, "s)""([^""]+)""\s*:\s*\{(.*?)\}", match, pos)) {
         objectKey := match1
         objectBody := match2
-        if (MuMuJsonStringValue(objectBody, "name") = name)
-            return objectKey
+        instanceName := MuMuJsonStringValue(objectBody, "name")
+        if (instanceName != "" && !instanceIndexes.HasKey(instanceName))
+            instanceIndexes[instanceName] := objectKey
         pos := foundPos + StrLen(match)
     }
 
-    return ""
+    instanceIndexesLoaded := true
+    return instanceIndexes.HasKey(name) ? instanceIndexes[name] : ""
 }
 
 MuMuStart(instance) {
-    return MuMuManagerCommand("control launch -v " . MuMuQuoteArg(instance))
+    name := getMuMuInstanceIndex(instance)
+    return MuMuManagerCommand("control launch -v " . MuMuQuoteArg(name))
 }
 
 MuMuShutdownInstance(instance) {
-    return MuMuManagerCommand("control shutdown -v " . MuMuQuoteArg(instance))
+    name := getMuMuInstanceIndex(instance)
+    return MuMuManagerCommand("control shutdown -v " . MuMuQuoteArg(name))
 }
 
 MuMuRestart(instance) {
-    return MuMuManagerCommand("control restart -v " . MuMuQuoteArg(instance))
+    name := getMuMuInstanceIndex(instance)
+    return MuMuManagerCommand("control restart -v " . MuMuQuoteArg(name))
 }
 
 MuMuSetSetting(instance, key, value) {
-    return MuMuManagerCommand("setting -v " . MuMuQuoteArg(instance) . " -k " . MuMuQuoteArg(key) . " -val " . MuMuQuoteArg(value))
+    name := getMuMuInstanceIndex(instance)
+    return MuMuManagerCommand("setting -v " . MuMuQuoteArg(name) . " -k " . MuMuQuoteArg(key) . " -val " . MuMuQuoteArg(value))
 }
 
 MuMuEnableRoot(instance) {
@@ -98,9 +110,35 @@ MuMuEnableRoot(instance) {
     Sleep, 100
 }
 
+MuMuFixRenderStrategy(instance) {
+    MuMuSetSetting(instance, "renderer_strategy", "auto")
+    Sleep, 100
+}
+
 MuMuDisableRoot(instance) {
     MuMuSetSetting(instance, "root_permission", "false")
     Sleep, 100
+}
+
+isAutoRender(instance) {
+    name := getMuMuInstanceIndex(instance)
+    if (name = "")
+        return false
+
+    output := MuMuCliCommand("setting -v " . MuMuQuoteArg(name) . " -k renderer_strategy", true)
+    rendererStrategy := MuMuJsonStringValue(output, "renderer_strategy")
+    if (rendererStrategy = "")
+        return false
+    if (rendererStrategy = "auto")
+        return true
+
+    MsgBox, 36, Graphics Setting, Current graphic settings might mess with image detection. Do you want to correct this setting?
+    IfMsgBox, No
+        return false
+
+    MuMuFixRenderStrategy(instance)
+    MsgBox, 64, Graphics Setting, The graphics setting was corrected. This instance needs to be restarted for the change to take effect.
+    return true
 }
 
 isMuMuV5() {
@@ -140,6 +178,26 @@ MuMuManagerCommand(args, captureOutput := false) {
     }
 
     command := """" . managerPath . """ " . args
+    if (captureOutput && IsFunc("CmdRet"))
+        return CmdRet(command)
+
+    RunWait, %command%,, Hide
+    return !ErrorLevel
+}
+
+MuMuCliCommand(args, captureOutput := false) {
+    mumuFolder := getMuMuFolder()
+    if (mumuFolder = "")
+        return ""
+
+    cliPath := mumuFolder . "\nx_main\mumu-cli.exe"
+    if (!FileExist(cliPath)) {
+        cliPath := mumuFolder . "\shell\mumu-cli.exe"
+        if (!FileExist(cliPath))
+            return ""
+    }
+
+    command := """" . cliPath . """ " . args
     if (captureOutput && IsFunc("CmdRet"))
         return CmdRet(command)
 

@@ -878,13 +878,16 @@ AccountEligibility_InjectRewardsEligible(accountMeta) {
     global botConfig
 
     doWonderpick := botConfig.get("wonderpickForEventMissions")
+    doDailyMission := botConfig.get("claimDailyMission")
     doSpecialMissions := botConfig.get("claimSpecialMissions")
     doGift := botConfig.get("receiveGift")
     doShinedust := botConfig.get("ocrShinedust")
 
-    if (!doWonderpick && !doSpecialMissions && !doGift && !doShinedust)
+    if (!doWonderpick && !doDailyMission && !doSpecialMissions && !doGift && !doShinedust)
         return !AccountEligibility_WasAfterDailyReset(accountMeta["lastLoggedIn"])
 
+    if (doDailyMission && !AccountEligibility_WasAfterDailyReset(accountMeta["lastLoggedIn"]))
+        return true
     if (doWonderpick && AccountEligibility_FlagIsExpired(accountMeta, "W", 24))
         return true
     if (doSpecialMissions && AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
@@ -1078,6 +1081,8 @@ CreateAccountList(instance) {
     command .= " --inject-wonderpick-min-packs """ . botConfig.get("injectWonderpickMinPacks") . """"
     if (botConfig.get("wonderpickForEventMissions"))
         command .= " --wonderpick-for-event-missions"
+    if (botConfig.get("claimDailyMission"))
+        command .= " --claim-daily-mission"
     if (botConfig.get("claimSpecialMissions"))
         command .= " --claim-special-missions"
     if (botConfig.get("receiveGift"))

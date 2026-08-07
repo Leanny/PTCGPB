@@ -701,8 +701,15 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             DoWonderPickOnly()
         }
 
+        specialMissionsFromMain := true
+        if (botConfig.get("deleteMethod") = "Inject Rewards" && botConfig.get("claimDailyMission")) {
+            GoToMain()
+            dailyRewardsClaimed := GetAllRewards(false, true)
+            specialMissionsFromMain := !dailyRewardsClaimed
+        }
+
         ; Special missions
-        ClaimSpecialMissionRewards(true, accountMeta)
+        ClaimSpecialMissionRewards(specialMissionsFromMain, accountMeta)
 
         forceGift := session.get("forceReceiveGiftThisRun")
         if(!session.get("missionDoneList")["receivedGiftDone"] && botConfig.get("receiveGift") && session.get("injectMethod") && (forceGift || !IsObject(accountMeta) || !AccountEligibility_FlagIsSet(accountMeta, "R"))) {
@@ -5543,8 +5550,9 @@ GetAllRewards(tomain := true, dailies := false) {
     failSafeTime := 0
     Loop {
         Delay(1)
-        if FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime)
+        if FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime) {
             break
+        }
         else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
             Delay(2)
             ClickMissionSubTab(42, 465) ; Daily / WB-shifted tabs

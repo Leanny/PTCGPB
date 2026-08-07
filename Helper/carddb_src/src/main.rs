@@ -47,6 +47,8 @@ enum Command {
         #[arg(long, default_value_t = false)]
         wonderpick_for_event_missions: bool,
         #[arg(long, default_value_t = false)]
+        claim_daily_mission: bool,
+        #[arg(long, default_value_t = false)]
         claim_special_missions: bool,
         #[arg(long, default_value_t = false)]
         receive_gift: bool,
@@ -72,6 +74,8 @@ enum Command {
         inject_wonderpick_min_packs: i64,
         #[arg(long, default_value_t = false)]
         wonderpick_for_event_missions: bool,
+        #[arg(long, default_value_t = false)]
+        claim_daily_mission: bool,
         #[arg(long, default_value_t = false)]
         claim_special_missions: bool,
         #[arg(long, default_value_t = false)]
@@ -242,6 +246,7 @@ fn run(cli: Cli) -> Result<()> {
             sort_method,
             inject_wonderpick_min_packs,
             wonderpick_for_event_missions,
+            claim_daily_mission,
             claim_special_missions,
             receive_gift,
             ocr_shinedust,
@@ -257,6 +262,7 @@ fn run(cli: Cli) -> Result<()> {
                 sort_method,
                 inject_wonderpick_min_packs,
                 wonderpick_for_event_missions,
+                claim_daily_mission,
                 claim_special_missions,
                 receive_gift,
                 ocr_shinedust,
@@ -272,6 +278,7 @@ fn run(cli: Cli) -> Result<()> {
             sort_method,
             inject_wonderpick_min_packs,
             wonderpick_for_event_missions,
+            claim_daily_mission,
             claim_special_missions,
             receive_gift,
             ocr_shinedust,
@@ -287,6 +294,7 @@ fn run(cli: Cli) -> Result<()> {
                 sort_method,
                 inject_wonderpick_min_packs,
                 wonderpick_for_event_missions,
+                claim_daily_mission,
                 claim_special_missions,
                 receive_gift,
                 ocr_shinedust,
@@ -2313,6 +2321,7 @@ struct ScheduleOptions {
     sort_method: String,
     inject_wonderpick_min_packs: i64,
     wonderpick_for_event_missions: bool,
+    claim_daily_mission: bool,
     claim_special_missions: bool,
     receive_gift: bool,
     ocr_shinedust: bool,
@@ -2471,6 +2480,7 @@ fn inject_rewards_eligible(account: &Value, options: &ScheduleOptions) -> bool {
     let do_shinedust = options.ocr_shinedust && options.s4t_enabled;
 
     if !options.wonderpick_for_event_missions
+        && !options.claim_daily_mission
         && !options.claim_special_missions
         && !options.receive_gift
         && !do_shinedust
@@ -2479,6 +2489,8 @@ fn inject_rewards_eligible(account: &Value, options: &ScheduleOptions) -> bool {
     }
 
     (options.wonderpick_for_event_missions && flag_is_expired(account, "W", 24))
+        || (options.claim_daily_mission
+            && !was_after_daily_reset(field_str(account, "lastLoggedIn")))
         || (options.claim_special_missions && !flag_value(account, "X"))
         || (options.receive_gift && !flag_value(account, "R"))
         || (do_shinedust && hours_since(shinedust_updated_at(account)) >= 24)
@@ -4109,6 +4121,7 @@ mod tests {
                 sort_method: "ModifiedAsc".to_owned(),
                 inject_wonderpick_min_packs: 96,
                 wonderpick_for_event_missions: false,
+                claim_daily_mission: false,
                 claim_special_missions: false,
                 receive_gift: false,
                 ocr_shinedust: false,
@@ -4141,6 +4154,7 @@ mod tests {
             sort_method: "ModifiedAsc".to_owned(),
             inject_wonderpick_min_packs: 96,
             wonderpick_for_event_missions: false,
+            claim_daily_mission: false,
             claim_special_missions: false,
             receive_gift: false,
             ocr_shinedust: false,
@@ -4162,6 +4176,37 @@ mod tests {
         assert!(eligible(&account, &options));
 
         account["flags"]["FI"] = new_flag(1, "20260805000000", "");
+        assert!(!eligible(&account, &options));
+    }
+
+    #[test]
+    fn inject_rewards_daily_claim_uses_daily_reset_gate_alongside_other_actions() {
+        let old_login = (Local::now() - Duration::days(2))
+            .format("%Y%m%d%H%M%S")
+            .to_string();
+        let recent_login = Local::now().format("%Y%m%d%H%M%S").to_string();
+        let mut account = json!({
+            "lastLoggedIn": old_login,
+            "flags": { "X": new_flag(1, &recent_login, "") }
+        });
+        let options = ScheduleOptions {
+            instance: "1".to_owned(),
+            delete_method: "Inject Rewards".to_owned(),
+            sort_method: "ModifiedAsc".to_owned(),
+            inject_wonderpick_min_packs: 96,
+            wonderpick_for_event_missions: false,
+            claim_daily_mission: true,
+            claim_special_missions: true,
+            receive_gift: false,
+            ocr_shinedust: false,
+            s4t_enabled: false,
+            spend_hourglass: false,
+            force_inject: false,
+            force_clear_used: false,
+        };
+
+        assert!(eligible(&account, &options));
+        account["lastLoggedIn"] = json!(recent_login);
         assert!(!eligible(&account, &options));
     }
 

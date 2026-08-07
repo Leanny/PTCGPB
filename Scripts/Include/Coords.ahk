@@ -207,6 +207,7 @@ needlesDict.Add(new Needle("Mission_GoToDexButtonIcon", "DexMissions", new Coord
 needlesDict.Add(new Needle("Mission_DailyMissionImage", "DailyMissions", new Coordinate(204, 190, 223, 197)))
 needlesDict.Add(new Needle("Mission_CompleteGotAllClaims", "GotAllMissions", new Coordinate(257, 417, 271, 428)))
 needlesDict.Add(new Needle("MissionDeck", "MissionDeck", new Coordinate(158, 104, 170, 117)))
+needlesDict.Add(new Needle("Mission_WelcomebackScreen", "WelcomebackScreen", new Coordinate(39, 127, 62, 147)))
 
 ;==============================================================================================================================
 

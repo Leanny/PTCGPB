@@ -1929,6 +1929,7 @@ Save:
             return
     }
     if (botConfig.get("deleteMethod") = "Inject Rewards") {
+        irDailyChecked := botConfig.get("claimDailyMission") ? "Checked" : ""
         irClaimChecked := botConfig.get("claimSpecialMissions") ? "Checked" : ""
         irGiftChecked := botConfig.get("receiveGift") ? "Checked" : ""
         irWPChecked := botConfig.get("wonderpickForEventMissions") ? "Checked" : ""
@@ -1941,13 +1942,14 @@ Save:
         Gui, InjectReqDlg:Add, Text, x12 y12 w285, Confirm the actions for 'Inject Rewards'. You can leave every option unchecked to only log in and out.
         Gui, InjectReqDlg:Add, Checkbox, x12 y60 vui_irSaveFC %irSaveFCChecked%, Save Name + Friend Code
         Gui, InjectReqDlg:Add, Checkbox, x12 y82 vui_irWP %irWPChecked%, Wonderpick
-        Gui, InjectReqDlg:Add, Checkbox, x12 y104 vui_irClaim %irClaimChecked%, Claim Special Missions
-        Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irGift %irGiftChecked%, Receive Gift
-        Gui, InjectReqDlg:Add, Checkbox, x12 y148 vui_irShinedust %irShinedustChecked%, Track Shinedust
-        Gui, InjectReqDlg:Add, Button, x12 y182 w80 h26 gInjectReqDlgOK Default, OK
-        Gui, InjectReqDlg:Add, Button, x102 y182 w80 h26 gInjectReqDlgCancel, Cancel
+        Gui, InjectReqDlg:Add, Checkbox, x12 y104 vui_irDaily %irDailyChecked%, Claim Daily 4 Hourglasses
+        Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irClaim %irClaimChecked%, Claim Special Missions
+        Gui, InjectReqDlg:Add, Checkbox, x12 y148 vui_irGift %irGiftChecked%, Receive Gift
+        Gui, InjectReqDlg:Add, Checkbox, x12 y170 vui_irShinedust %irShinedustChecked%, Track Shinedust
+        Gui, InjectReqDlg:Add, Button, x12 y204 w80 h26 gInjectReqDlgOK Default, OK
+        Gui, InjectReqDlg:Add, Button, x102 y204 w80 h26 gInjectReqDlgCancel, Cancel
         PTCGPB_PopupRightOfCtl("ui_StartBotButton", 310, 12, dlgX, dlgY)
-        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h224
+        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h246
         irDlgHwnd := WinExist()
         WinWaitClose, ahk_id %irDlgHwnd%
         if (g_irDialogResult = "cancel")
@@ -1957,7 +1959,7 @@ Save:
     if (PromptClaimSpecialMissionsSevtMismatch())
         botConfig.saveConfigToSettings("ALL")
 
-    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo")) {
+    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimDailyMission") && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo")) {
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
     }
 
@@ -1990,6 +1992,8 @@ BalanceXMLs:
             command .= " --inject-wonderpick-min-packs """ . botConfig.get("injectWonderpickMinPacks") . """"
             if (botConfig.get("wonderpickForEventMissions"))
                 command .= " --wonderpick-for-event-missions"
+            if (botConfig.get("claimDailyMission"))
+                command .= " --claim-daily-mission"
             if (botConfig.get("claimSpecialMissions"))
                 command .= " --claim-special-missions"
             if (botConfig.get("receiveGift"))
@@ -2432,6 +2436,7 @@ Return
 
 InjectReqDlgOK:
     Gui, InjectReqDlg:Submit, NoHide
+    botConfig.set("claimDailyMission", ui_irDaily, "ToolsAndSystem")
     botConfig.set("claimSpecialMissions", ui_irClaim, "ToolsAndSystem")
     botConfig.set("receiveGift", ui_irGift, "ToolsAndSystem")
     botConfig.set("wonderpickForEventMissions", ui_irWP, "ToolsAndSystem")

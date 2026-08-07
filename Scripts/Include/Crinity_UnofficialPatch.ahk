@@ -105,7 +105,7 @@ IsWelcomeBackMissionsScreen() {
 ; Welcome Back layout shifts the missions sub-tab strip — use (213,463) instead of normal tab clicks.
 HasWelcomeBackMissionsLayout() {
     return FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, 0, , true)
-        && FindOrLoseImage("Mission_WelcomeBackMissions", 0, 0, , true)
+        && (FindOrLoseImage("Mission_WelcomeBackMissions", 0, 0, , true) || FindOrLoseImage("Mission_WelcomebackScreen", 0, 0, , true))
 }
 
 ClickMissionSubTab(defaultX := 42, defaultY := 465) {

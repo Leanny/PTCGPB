@@ -51,6 +51,7 @@
         , "TestTime": 3600
         , "gpTestWaitTime": 150
         , "showcaseEnabled": 0
+        , "claimDailyMission": 0
         , "slowMotion": 0
         , "claimSpecialMissions": 0
         , "SelectedMonitorIndex": 1
