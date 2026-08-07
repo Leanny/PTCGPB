@@ -5458,7 +5458,8 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     Delay(1)
     adbClick_wbb(51, 297)
     Delay(1)
-    startPreProcess(botConfig.get("deleteMethod"))
+    ; Elite Deck restart must always land at Home, regardless of bot mode.
+    startPreProcess("Inject Rewards")
 
     ; After the restart, give the game time to sync the cards into
     ; MissionUserPrefs before capturing the post-restart snapshot.
