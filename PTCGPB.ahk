@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v0.16.0-beta.5"
+    ,localVersion := "v0.16.0-beta.6"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -3437,7 +3437,8 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
         FileRemoveDir, %tempRoot%, 1
         message := "The downloaded bundle failed SHA-256 verification and was not installed."
         if (expectedHash != "" || actualHash != "")
-            message .= "`n`nExpected: " . expectedHash . "`nActual:   " . actualHash
+            message .= "`n`nExpected (" . StrLen(expectedHash) . "): " . expectedHash
+                . "`nActual   (" . StrLen(actualHash) . "): " . actualHash
         MsgBox, 0x40010, Version Manager, %message%
         return false
     }
@@ -3530,7 +3531,7 @@ VerifyUpdateChecksum(filePath, checksumURL, ByRef expectedHash, ByRef actualHash
 
     if (!RegExMatch(checksumText, "i)\b[0-9a-f]{64}\b", match))
         return false
-    expectedHash := match
+    expectedHash := NormalizeSHA256Hash(match)
 
     hashOutputPath := filePath . ".actual.sha256"
     powerShellPath := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -3543,10 +3544,16 @@ VerifyUpdateChecksum(filePath, checksumURL, ByRef expectedHash, ByRef actualHash
 
     FileRead, actualHash, %hashOutputPath%
     FileDelete, %hashOutputPath%
-    actualHash := Trim(actualHash)
-    StringLower, expectedHash, expectedHash
-    StringLower, actualHash, actualHash
-    return (expectedHash = actualHash)
+    actualHash := NormalizeSHA256Hash(actualHash)
+    return (StrLen(expectedHash) = 64 && StrLen(actualHash) = 64 && expectedHash == actualHash)
+}
+
+NormalizeSHA256Hash(hashText) {
+    ; Remove BOMs, line endings, zero-width characters, and any other formatting
+    ; that can be introduced by HTTP or PowerShell text encodings.
+    normalizedHash := RegExReplace(hashText, "i)[^0-9a-f]", "")
+    StringLower, normalizedHash, normalizedHash
+    return normalizedHash
 }
 
 MoveFilesRecursively(srcFolder, destFolder) {
