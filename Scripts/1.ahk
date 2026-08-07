@@ -2059,6 +2059,30 @@ ParsePackResultOutput(output) {
     return { cards: cards, pack: pack, rarity: rarity, shinedust: shinedust, raw: raw_msg, pulls: pulls }
 }
 
+; Wait for the Helper to produce a parseable result.rc containing the cards,
+; then read and parse it. Does not terminate the watcher (caller must do that
+; once the result has been consumed).
+ReadEliteDeckResult(timeoutSec := 45) {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    session.set("failSafe", A_TickCount)
+    Loop {
+        output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
+        result := ParsePackResultOutput(output)
+        if (result)
+            return result
+
+        Sleep, 500
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Elite Deck result...`n(" . failSafeTime . "/" . timeoutSec . " seconds)")
+        if (failSafeTime >= timeoutSec)
+            break
+    }
+    return false
+}
+
 UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
     global session
 
@@ -5364,7 +5388,7 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "")
         accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
 
-    advance := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "claimUiEvents": {}}
+    advance := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "eliteDeckClaim": false, "claimUiEvents": {}}
     if (accountMetaPath != "")
         advance := AccountMetadata_AdvanceSpecialEventSteps(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
 
@@ -5374,9 +5398,19 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
         session.set("specialMissionClaimUiEvents", advance["claimUiEvents"])
 
     if (advance["needClaimUi"]) {
+        eliteDeckClaim := advance["eliteDeckClaim"]
         if (frommain)
             GoToMain()
+        ; Elite Deck events: start the Helper so the deck cards get registered after the claim.
+        if (eliteDeckClaim && isTerminatePTCGPHelperApp())
+            InitPackOpening(true)
         GetEventRewards(frommain) ; claim UI only for events advanced onto ClaimDays
+        if (eliteDeckClaim) {
+            ; Read the Helper result written during the claim. If it contains the
+            ; deck cards we can store them directly and then restart.
+            eliteDeckResult := ReadEliteDeckResult(45)
+            FinishEliteDeckClaim(eliteDeckResult)
+        }
     }
 
     ; Avoid re-entering Special Missions again this session even if nothing was found.
@@ -5390,6 +5424,67 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
     }
 
     return true
+}
+
+; After claiming an Elite Deck event or opening Gift packs: register the cards
+; with the Helper (no Discord notification), then restart the game so their
+; in-game registration is instant, and go back to Main so the run resumes.
+; helperResult may already contain the parsed Helper result; if not, we try to
+; recover it with a pre/post restart diff.
+FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedPrefix := "elitedeck") {
+    global session
+
+    CreateStatusMessage("Registering " . contextName . " cards...",,,, false)
+
+    ; Restart the game first: the cards are only reliably written to
+    ; MissionUserPrefs after the app boots back up and syncs with the server.
+    ; The pre-claim snapshot was already saved by InitPackOpening(true).
+    TerminateHelper()
+    CreateStatusMessage("Restarting game to speed up " . contextName . " registration...",,,, false)
+    closePTCGPApp()
+    Sleep, 100
+    clearMissionCache()
+    startPTCGPApp()
+
+    ; Treat the restart as a boot gate: reuse the same sequence used when
+    ; loading an injected account (SpeedMod menu), then run the normal
+    ; startPreProcess so the game reaches the expected main screen.
+    waitForAppBootScreen()
+    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
+    if(session.get("setSpeed") = 3)
+        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
+    else
+        FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+    Delay(1)
+    adbClick_wbb(51, 297)
+    Delay(1)
+    ; Elite Deck restart must always land at Home, regardless of bot mode.
+    startPreProcess("Inject Rewards")
+
+    ; After the restart, give the game time to sync the cards into
+    ; MissionUserPrefs before capturing the post-restart snapshot.
+    Sleep, 3000
+
+    ; Use the Helper result captured during the claim if it is already parseable.
+    ; Otherwise fall back to a pre/post restart diff of MissionUserPrefs.
+    result := helperResult
+    if (!result) {
+        SavePackOpeningMissionUserPrefsSnapshot("post")
+        result := RecoverPack()
+    }
+    if (result) {
+        LogToCardDatabase(result)
+        AddShinedustToDatabase(result.shinedust)
+        LogInfo("Instance: " . session.get("scriptName") . " | " . contextName . " cards stored to card database")
+    } else {
+        ; Save diagnostics (no Discord spam) so we can inspect why the diff failed.
+        failedDir := getScriptBaseFolder() . "\Logs\failed"
+        uniquePrefix := A_Now . "_" . session.get("scriptName") . "_" . failedPrefix
+        PullPackOpeningMissionUserPrefsSnapshot("pre", failedDir, uniquePrefix)
+        PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
+        PullPackOpeningResultLog(failedDir, uniquePrefix)
+        LogWarn("Instance: " . session.get("scriptName") . " | " . contextName . " card recognition failed; diagnostics saved to Logs\failed with prefix " . uniquePrefix)
+    }
 }
 
 ; For Special Missions 2025
@@ -5526,7 +5621,16 @@ ClaimVisibleEventRewards(eventResult) {
                 adbClick_wbb(138, 451)
                 Delay(1)
 
-                if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                ; Elite Deck events: do not wait for the usual claim-complete needle.
+                ; The Helper is already watching MissionUserPrefs; as soon as it writes
+                ; result.rc the claim has been processed and we can proceed to the
+                ; restart + card registration in FinishEliteDeckClaim.
+                if (specialEventObj.isEliteDeck) {
+                    if (HelperHasCardResult()) {
+                        eventResult[specialEventName] := true
+                        return true
+                    }
+                } else if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     eventResult[specialEventName] := true
                     return true
                 }
