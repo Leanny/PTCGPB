@@ -3515,6 +3515,10 @@ fn parse_pull_timestamp(timestamp: &str) -> Option<DateTime<Utc>> {
         }
     }
 
+    if let Ok(timestamp) = DateTime::parse_from_rfc3339(timestamp) {
+        return Some(timestamp.with_timezone(&Utc));
+    }
+
     NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S")
         .ok()
         .and_then(|dt| Local.from_local_datetime(&dt).single())
@@ -3532,13 +3536,20 @@ fn normalize_pull_timestamp(timestamp: &str) -> Option<String> {
     parse_pull_timestamp(timestamp).map(format_pull_timestamp)
 }
 
-fn pull_timestamp_keys(doc: &Value) -> HashSet<String> {
+fn history_day_key(timestamp: DateTime<Utc>) -> String {
+    (timestamp - Duration::hours(6))
+        .format("%Y-%m-%d")
+        .to_string()
+}
+
+fn pull_history_day_keys(doc: &Value) -> HashSet<String> {
     doc.get("pulls")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
         .filter_map(|pull| pull.get("timestamp").and_then(Value::as_str))
-        .filter_map(normalize_pull_timestamp)
+        .filter_map(parse_pull_timestamp)
+        .map(history_day_key)
         .collect()
 }
 
@@ -3837,22 +3848,22 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
     if !doc["pulls"].is_array() {
         doc["pulls"] = json!([]);
     }
-    let mut existing_timestamps = pull_timestamp_keys(&doc);
+    let mut existing_history_days = pull_history_day_keys(&doc);
     if input.exists() {
         let text = fs::read_to_string(input)
             .with_context(|| format!("Could not read history file {:?}", input))?;
         let cardmap = load_cardmap_for_cards(root, &card_ids_from_history(&text))?;
         for line in text.lines() {
             if let Some((timestamp, pulls)) = history_pulls_from_line(line, &cardmap) {
-                let timestamp_key = format_pull_timestamp(timestamp);
-                if existing_timestamps.contains(&timestamp_key) {
+                let history_day = history_day_key(timestamp);
+                if existing_history_days.contains(&history_day) {
                     continue;
                 }
                 doc["pulls"]
                     .as_array_mut()
                     .expect("pulls array")
                     .extend(pulls);
-                existing_timestamps.insert(timestamp_key);
+                existing_history_days.insert(history_day);
             }
         }
     }
@@ -4055,21 +4066,37 @@ mod tests {
     }
 
     #[test]
-    fn pull_timestamp_keys_normalize_and_deduplicate_existing_dates() {
+    fn history_day_uses_six_am_utc_boundary() {
+        let before_boundary = Utc
+            .with_ymd_and_hms(2026, 5, 11, 5, 59, 59)
+            .single()
+            .unwrap();
+        let at_boundary = Utc
+            .with_ymd_and_hms(2026, 5, 11, 6, 0, 0)
+            .single()
+            .unwrap();
+
+        assert_eq!(history_day_key(before_boundary), "2026-05-10");
+        assert_eq!(history_day_key(at_boundary), "2026-05-11");
+    }
+
+    #[test]
+    fn pull_history_days_normalize_timezone_offsets_before_deduplicating() {
         let doc = json!({
             "pulls": [
-                { "timestamp": "2026-05-11 20:00:00" },
-                { "timestamp": "20260511200000" },
-                { "timestamp": "2026-05-12 09:15:30" },
+                { "timestamp": "2026-05-11T08:00:00+02:00" },
+                { "timestamp": "2026-05-11T01:00:00-05:00" },
+                { "timestamp": "2026-05-12T05:59:59Z" },
+                { "timestamp": "2026-05-12T06:00:00Z" },
                 { "timestamp": "invalid" }
             ]
         });
 
-        let keys = pull_timestamp_keys(&doc);
+        let keys = pull_history_day_keys(&doc);
 
         assert_eq!(keys.len(), 2);
-        assert!(keys.contains("2026-05-11 20:00:00"));
-        assert!(keys.contains("2026-05-12 09:15:30"));
+        assert!(keys.contains("2026-05-11"));
+        assert!(keys.contains("2026-05-12"));
     }
 
     #[test]
