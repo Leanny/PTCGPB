@@ -5404,7 +5404,7 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
         ; Elite Deck events: start the Helper so the deck cards get registered after the claim.
         if (eliteDeckClaim && isTerminatePTCGPHelperApp())
             InitPackOpening(true)
-        GetEventRewards(frommain) ; claim UI only for events advanced onto ClaimDays
+        GetEventRewards(frommain, eliteDeckClaim) ; claim UI only for events advanced onto ClaimDays
         if (eliteDeckClaim) {
             ; Read the Helper result written during the claim. If it contains the
             ; deck cards we can store them directly and then restart.
@@ -5488,7 +5488,7 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
 }
 
 ; For Special Missions 2025
-GetEventRewards(frommain := true){
+GetEventRewards(frommain := true, eliteDeckClaim := false){
     global session
 
     isAllEventExpired := true
@@ -5544,6 +5544,43 @@ GetEventRewards(frommain := true){
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
             continue
+        }
+
+        ; Elite Deck events: if we are actually on the Elite Deck page and a claim
+        ; is still pending, don't scroll away immediately. The red/blue box may need
+        ; an extra moment to be detected, so keep trying the standard claim buttons.
+        if (eliteDeckClaim && !isAllEventGotReward(eventResult)) {
+            eliteDeckVisible := false
+            for specialEventName, specialEventObj in session.get("specialEventList") {
+                if (specialEventObj.isEliteDeck && !specialEventObj.isExpiredSpecialEvent()) {
+                    if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2) {
+                        eliteDeckVisible := true
+                        break
+                    }
+                }
+            }
+
+            if (eliteDeckVisible) {
+                session.set("failSafe", A_TickCount)
+                parkTime := 0
+                parked := false
+                Loop {
+                    if (ClaimVisibleEventRewards(eventResult)) {
+                        parked := true
+                        break
+                    }
+                    Delay(1)
+                    parkTime := (A_TickCount - session.get("failSafe")) // 1000
+                    CreateStatusMessage("Parking on Elite Deck claim page...`n(" . parkTime . "/45 seconds)")
+                    if (parkTime > 45)
+                        break
+                }
+                if (parked) {
+                    session.set("failSafe", A_TickCount)
+                    failSafeTime := 0
+                    continue
+                }
+            }
         }
 
         ; Stop at Premium tab only. List is always visible on Missions pages - do not use as exit.
