@@ -5402,10 +5402,23 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
         if (frommain)
             GoToMain()
         ; Elite Deck events: start the Helper so the deck cards get registered after the claim.
-        if (eliteDeckClaim && isTerminatePTCGPHelperApp())
-            InitPackOpening(true)
-        GetEventRewards(frommain, eliteDeckClaim) ; claim UI only for events advanced onto ClaimDays
+        ; Always clear any stale result.rc/result.log first so we don't mistake an
+        ; old file for this account's Elite Deck claim.
         if (eliteDeckClaim) {
+            adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+            RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.rc", , Hide
+            RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.log", , Hide
+            if (isTerminatePTCGPHelperApp())
+                InitPackOpening(true)
+        }
+        ; claim UI only for events advanced onto ClaimDays.
+        ; It returns true only if every event (including any Elite Deck) was
+        ; actually claimed; false means we hit Premium Lock or timed out.
+        claimSuccess := GetEventRewards(frommain, eliteDeckClaim)
+
+        ; Only attempt to read the Elite Deck result and restart if GetEventRewards
+        ; successfully claimed the Elite Deck and the Helper produced a result.
+        if (eliteDeckClaim && claimSuccess && HelperHasCardResult()) {
             ; Read the Helper result written during the claim. If it contains the
             ; deck cards we can store them directly and then restart.
             eliteDeckResult := ReadEliteDeckResult(45)
@@ -5502,7 +5515,7 @@ GetEventRewards(frommain := true, eliteDeckClaim := false){
 
     if(isAllEventExpired){
         GoToMain()
-        return
+        return false
     }
 
     if (frommain){
@@ -5520,7 +5533,7 @@ GetEventRewards(frommain := true, eliteDeckClaim := false){
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             if (FindOrLoseImage("MissionDeck", 0, failSafeTime)) {
                 HandleMissionDeckFailsafe()
-                return
+                return false
             }
             CreateStatusMessage("Moving to Missions...(" . failSafeTime . "/60 seconds)")
         }
@@ -5598,6 +5611,11 @@ GetEventRewards(frommain := true, eliteDeckClaim := false){
         if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
             break
     }
+
+    ; Return whether every event was successfully claimed. If we exited early
+    ; (Premium Lock, timeout, no Elite Deck page found), this will be false and
+    ; the caller can skip the Elite Deck result/restart step.
+    return isAllEventGotReward(eventResult)
 }
 
 MoveToDailyMissionPageForRewards() {
@@ -5674,8 +5692,12 @@ ClaimVisibleEventRewards(eventResult) {
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
                 CreateStatusMessage("Get reward event: " . specialEventName . "`n(" . failSafeTime . "/45 seconds)")
                 if (failSafeTime > 45) {
-                    eventResult[specialEventName] := true
-                    return true
+                    ; For Elite Deck, do not mark the event as claimed until the
+                    ; Helper actually reports a card result. Returning false lets
+                    ; GetEventRewards keep retrying or scrolling instead of giving up.
+                    if (!specialEventObj.isEliteDeck)
+                        eventResult[specialEventName] := true
+                    return specialEventObj.isEliteDeck ? false : true
                 }
             }
         }

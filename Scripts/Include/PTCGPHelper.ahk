@@ -21,7 +21,8 @@ HelperHasCardResult() {
     global session
 
     adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
-    RunWait, % adbCommand . " shell test -f /data/ptcgp/result.rc", , Hide
+    ; Use test -s so we only consider the result valid when the file has actual content.
+    RunWait, % adbCommand . " shell test -s /data/ptcgp/result.rc", , Hide
     return (ErrorLevel = 0)
 }
 
