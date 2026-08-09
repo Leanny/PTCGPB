@@ -404,7 +404,7 @@ AccountMetadata_BumpSpecialEventClaim(instance, fileName, eventName, filePath :=
     return AccountMetadata_SaveAccount(instance, fileName, account)
 }
 
-; Advance each active event by +1 on a new game day. Returns:
+; Plan each active event's next step on a new game day without persisting it. Returns:
 ; { advancedAny, needClaimUi, forceGift, eliteDeckClaim, claimUiEvents }
 ; claimUiEvents maps eventName → newStep for events that should open claim UI.
 ; eliteDeckClaim is true when any advanced event is an Elite Deck event.
@@ -428,7 +428,6 @@ AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
     eventCount := activeEvents.MaxIndex()
     if (eventCount = "")
         eventCount := 0
-    changed := false
     Loop, % eventCount {
         info := activeEvents[A_Index]
         eventName := info["eventName"]
@@ -439,10 +438,6 @@ AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
             continue
 
         newStep := progress["claimCount"] + 1
-        progress["claimCount"] := newStep
-        progress["lastClaimAt"] := AccountMetadata_Now()
-        account["specialEvents"][eventName] := progress
-        changed := true
         result["advancedAny"] := true
 
         if (info["isEliteDeck"])
@@ -458,8 +453,6 @@ AccountMetadata_AdvanceSpecialEventSteps(instance, fileName, filePath := "") {
             result["forceGift"] := true
     }
 
-    if (changed)
-        AccountMetadata_SaveAccount(instance, fileName, account)
     return result
 }
 

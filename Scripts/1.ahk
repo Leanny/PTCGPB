@@ -5427,6 +5427,7 @@ ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
             ; deck cards we can store them directly and then restart.
             eliteDeckResult := ReadEliteDeckResult(45)
             FinishEliteDeckClaim(eliteDeckResult)
+            return ClaimSpecialMissionRewards(true, accountMeta) ; rerun the function to get all other rewards that might be pending
         }
     }
 
@@ -5502,6 +5503,7 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
         PullPackOpeningResultLog(failedDir, uniquePrefix)
         LogWarn("Instance: " . session.get("scriptName") . " | " . contextName . " card recognition failed; diagnostics saved to Logs\failed with prefix " . uniquePrefix)
     }
+    GoToMain()
 }
 
 ; For Special Missions 2025
@@ -5557,12 +5559,6 @@ GetEventRewards(frommain := true, eliteDeckClaim := false){
             break
 
         Delay(2)
-        if (ClaimVisibleEventRewards(eventResult)) {
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-            continue
-        }
-
         ; Elite Deck events: if we are actually on the Elite Deck page and a claim
         ; is still pending, don't scroll away immediately. The red/blue box may need
         ; an extra moment to be detected, so keep trying the standard claim buttons.
@@ -5576,28 +5572,22 @@ GetEventRewards(frommain := true, eliteDeckClaim := false){
                     }
                 }
             }
+        }
 
-            if (eliteDeckVisible) {
-                session.set("failSafe", A_TickCount)
-                parkTime := 0
-                parked := false
-                Loop {
-                    if (ClaimVisibleEventRewards(eventResult)) {
-                        parked := true
-                        break
-                    }
-                    Delay(1)
-                    parkTime := (A_TickCount - session.get("failSafe")) // 1000
-                    CreateStatusMessage("Parking on Elite Deck claim page...`n(" . parkTime . "/45 seconds)")
-                    if (parkTime > 45)
-                        break
-                }
-                if (parked) {
-                    session.set("failSafe", A_TickCount)
-                    failSafeTime := 0
-                    continue
-                }
+        claimedEventName := ClaimVisibleEventRewards(eventResult)
+        if (claimedEventName) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+
+            ; Persist progress only after this specific event has actually been claimed.
+            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
+                accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
+                AccountMetadata_BumpSpecialEventClaim(session.get("scriptName"), session.get("accountFileName"), claimedEventName, accountMetaPath)
             }
+            if (eliteDeckVisible && HelperHasCardResult()) {
+                return true ; we are finished for now as we want to restart the game
+            }
+            continue
         }
 
         ; Stop at Premium tab only. List is always visible on Missions pages - do not use as exit.
@@ -5687,11 +5677,11 @@ ClaimVisibleEventRewards(eventResult) {
                 if (specialEventObj.isEliteDeck) {
                     if (HelperHasCardResult()) {
                         eventResult[specialEventName] := true
-                        return true
+                        return specialEventName
                     }
                 } else if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     eventResult[specialEventName] := true
-                    return true
+                    return specialEventName
                 }
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
                 CreateStatusMessage("Get reward event: " . specialEventName . "`n(" . failSafeTime . "/45 seconds)")
@@ -5701,7 +5691,7 @@ ClaimVisibleEventRewards(eventResult) {
                     ; GetEventRewards keep retrying or scrolling instead of giving up.
                     if (!specialEventObj.isEliteDeck)
                         eventResult[specialEventName] := true
-                    return specialEventObj.isEliteDeck ? false : true
+                    return false
                 }
             }
         }
