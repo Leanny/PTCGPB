@@ -10,6 +10,7 @@ Accounts/Cards/start_card_dashboard.vbs
 Accounts/Cards/start_card_dashboard_server.ps1
 Accounts/Saved/1/readme.md
 Data/**
+docs/**
 GUI/**
 Helper/carddb.exe
 Helper/cardimage.exe

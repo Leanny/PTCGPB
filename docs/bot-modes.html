@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Compare PTCGPB bot modes and their options."
+        />
+        <title>Bot Modes · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Core workflow</p>
+                <h1>Bot modes</h1>
+                <p class="lead">
+                    The selected mode determines where accounts come from, what
+                    the bot does with them and which settings are visible.
+                </p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mode</th>
+                                <th>Account source</th>
+                                <th>Main purpose</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Create Bots (13P)</td>
+                                <td>New accounts</td>
+                                <td>Create and open the initial packs</td>
+                                <td>Accounts are saved as XML for later use</td>
+                            </tr>
+                            <tr>
+                                <td>Inject 13P+</td>
+                                <td>Saved accounts</td>
+                                <td>
+                                    Open available and optional hourglass packs
+                                </td>
+                                <td>Processed accounts are marked as used</td>
+                            </tr>
+                            <tr>
+                                <td>Inject Wonderpick 96P+</td>
+                                <td>Eligible saved accounts</td>
+                                <td>
+                                    Friend Main(s), open packs and test valuable
+                                    pulls
+                                </td>
+                                <td>Friends are removed at the end</td>
+                            </tr>
+                            <tr>
+                                <td>Inject Rewards</td>
+                                <td>Saved accounts</td>
+                                <td>
+                                    Claim selected rewards without opening packs
+                                </td>
+                                <td>
+                                    Accounts remain available for other modes
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Rename Account</td>
+                                <td>Eligible saved accounts</td>
+                                <td>Change in-game account names</td>
+                                <td>
+                                    Accounts remain available for other modes
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Create Bots (13P)</h2>
+                <div class="card accent-green">
+                    <p>
+                        Creates brand-new game accounts, opens their initial
+                        packs and saves each account as an XML file.
+                    </p>
+                    <p>
+                        <span class="tag">New accounts</span
+                        ><span class="tag">No saved account required</span
+                        ><span class="tag">Account Name visible</span>
+                    </p>
+                </div>
+                <h3>Relevant settings</h3>
+                <ul>
+                    <li>
+                        <strong>Account Name:</strong> prefix assigned to newly
+                        created accounts.
+                    </li>
+                    <li>
+                        <strong>Pack Selection:</strong> expansions the bot is
+                        allowed to open.
+                    </li>
+                    <li>
+                        <strong>Save for Trade:</strong> can save and report
+                        pulls matching your selected tradeable rarities.
+                    </li>
+                </ul>
+                <div class="callout">
+                    <strong>Use this first.</strong> Create Bots builds the pool
+                    of saved XML accounts that the Inject modes consume later.
+                </div>
+
+                <h2>Inject 13P+</h2>
+                <div class="card accent-gold">
+                    <p>
+                        Loads saved accounts, opens their available packs and
+                        then marks the accounts as used.
+                    </p>
+                    <p>
+                        <span class="tag">Saved XML accounts</span
+                        ><span class="tag">Optional hourglasses</span
+                        ><span class="tag">Sorting available</span>
+                    </p>
+                </div>
+                <h3>Relevant settings</h3>
+                <ul>
+                    <li>
+                        <strong>Open Extra Pack:</strong> opens one pack after
+                        the two free packs.
+                    </li>
+                    <li>
+                        <strong>Spend Hourglasses:</strong> uses the account's
+                        hourglasses for additional packs.
+                    </li>
+                    <li>
+                        <strong>10-pack opening:</strong> uses the ten-pack
+                        option when spending hourglasses.
+                    </li>
+                    <li>
+                        <strong>Pack count:</strong> maximum packs to open using
+                        hourglasses. Enter <code>0</code> to use as many
+                        hourglasses as the account allows.
+                    </li>
+                    <li>
+                        <strong>Sort By:</strong> chooses which saved accounts
+                        enter the queue first.
+                    </li>
+                </ul>
+                <p>
+                    <strong>S4T:</strong> Enable Save for Trade if these pack
+                    openings should report selected tradeable pulls.
+                </p>
+
+                <h2>Inject Wonderpick 96P+</h2>
+                <div class="card accent-orange">
+                    <p>
+                        Loads accounts that meet the minimum pack count, friends
+                        your Main accounts, opens packs for God Pack testing and
+                        unfriends at the end.
+                    </p>
+                    <p>
+                        <span class="tag">Main account</span
+                        ><span class="tag">Friend requests</span
+                        ><span class="tag">God Pack testing</span>
+                    </p>
+                </div>
+                <h3>Relevant settings</h3>
+                <ul>
+                    <li>
+                        <strong>Friend ID:</strong> the Main account's 16-digit
+                        Friend ID.
+                    </li>
+                    <li>
+                        <strong>Run Main(s):</strong> runs the MuMu instances
+                        named <code>Main</code>, <code>Main2</code>, and so on.
+                    </li>
+                    <li>
+                        <strong>Min Packs:</strong> eligibility threshold from
+                        70 to 999; default 96.
+                    </li>
+                    <li>
+                        <strong>One pack at a time:</strong> removes and re-adds
+                        friends between each pack.
+                    </li>
+                    <li>
+                        <strong>Wait Time:</strong> pause after friend requests
+                        so the Main has time to accept them.
+                    </li>
+                    <li>
+                        <strong>Inject 96p Card Detection:</strong> defines
+                        which Wonderpick pulls count as worth keeping or
+                        reporting.
+                    </li>
+                    <li>
+                        <strong>Save for Trade:</strong> independently saves and
+                        reports pulls matching the selected tradeable rarities.
+                    </li>
+                </ul>
+
+                <h2>Inject Rewards</h2>
+                <div class="card accent-blue">
+                    <p>
+                        Loads saved accounts to perform selected maintenance and
+                        reward actions without opening packs. Accounts remain
+                        available for other modes.
+                    </p>
+                    <p>
+                        <span class="tag">No pack opening</span
+                        ><span class="tag">Accounts remain available</span>
+                    </p>
+                </div>
+                <p>
+                    When starting this mode, a confirmation window lets you
+                    choose:
+                </p>
+                <ul>
+                    <li>Save Name + Friend Code</li>
+                    <li>Wonderpick</li>
+                    <li>Claim Daily 4 Hourglasses</li>
+                    <li>Claim Special Missions</li>
+                    <li>Receive Gift</li>
+                    <li>Track Shinedust</li>
+                </ul>
+                <p>
+                    You may leave every option unchecked to only log in and out.
+                </p>
+                <p>
+                    Special-event eligibility is tracked separately for each
+                    active <code>.sevt</code> definition and each account. New
+                    events and later daily claim steps can therefore enter the
+                    queue without resetting global Claim Status. For an event
+                    marked as <strong>Elite Deck</strong>, PTCGPB restarts the
+                    game after a successful claim and stores the awarded deck
+                    cards in the Card Database.
+                </p>
+
+                <h2>Rename Account</h2>
+                <div class="card accent-purple">
+                    <p>
+                        Loads saved accounts and changes their in-game names
+                        without opening packs. Accounts remain available for
+                        pack-opening and reward modes.
+                    </p>
+                    <p>
+                        <span class="tag">Saved XML accounts</span
+                        ><span class="tag">31-day eligibility</span
+                        ><span class="tag">Accounts remain available</span>
+                    </p>
+                </div>
+                <h3>Relevant settings and behavior</h3>
+                <ul>
+                    <li>
+                        <strong>Account Name:</strong> when set, the new name is
+                        the prefix plus a random number and is limited to 14
+                        characters. When empty, PTCGPB chooses a name from
+                        <code>usernames.txt</code>, or from
+                        <code>usernames_default.txt</code> when the custom file
+                        does not exist.
+                    </li>
+                    <li>
+                        <strong>Sort By:</strong> controls the order in which
+                        eligible saved accounts are processed.
+                    </li>
+                    <li>
+                        PTCGPB requires 31 full days from any recorded creation
+                        time and last rename. An in-game cooldown response also
+                        causes the account to be skipped.
+                    </li>
+                    <li>
+                        The mode scans all saved XMLs, including accounts that
+                        were already marked as used by a pack-opening mode.
+                    </li>
+                </ul>
+
+                <h2>Force inject accounts</h2>
+                <p>
+                    This main-window option is available in the three Inject
+                    modes. It bypasses their normal eligibility rules once per
+                    account, including cooldowns, pack thresholds and used
+                    status. PTCGPB records an <code>FI</code> metadata flag as
+                    soon as an account is claimed so concurrent instances do not
+                    force-inject the same account.
+                </p>
+                <p>
+                    Use <strong>Clear force inject flags</strong> to make all
+                    accounts eligible for one more forced pass. This reset
+                    changes account metadata, so back up account data first.
+                </p>
+
+                <h2>Sort order for saved-account modes</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Oldest First</td>
+                                <td>
+                                    Accounts whose last pack pull is oldest
+                                    enter the queue first.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Newest First</td>
+                                <td>
+                                    Accounts whose last pack pull is newest
+                                    enter first.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Fewest Packs First</td>
+                                <td>
+                                    Accounts with the lowest stored pack count
+                                    enter first.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Most Packs First</td>
+                                <td>
+                                    Accounts with the highest stored pack count
+                                    enter first.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Oldest Last Login</td>
+                                <td>
+                                    Accounts not logged into for the longest
+                                    time enter first.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="getting-started.html">← Getting started</a
+                    ><a href="main-window.html">Main window →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>

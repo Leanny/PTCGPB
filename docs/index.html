@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="End-user documentation for Arturo's Pokémon TCG Pocket Bot."
+        />
+        <title>PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <section class="hero">
+                    <h1>Run PTCGPB with confidence.</h1>
+                    <p class="lead">
+                        Learn how to prepare MuMuPlayer, choose the right bot
+                        mode, configure Inject 96p Card Detection and safely
+                        manage locally stored accounts.
+                    </p>
+                    <div class="hero-actions">
+                        <a class="button primary" href="getting-started.html"
+                            >Start here</a
+                        >
+                        <a class="button" href="bot-modes.html"
+                            >Compare bot modes</a
+                        >
+                    </div>
+                    <p class="meta">
+                        Documents PTCGPB <span data-docs-version></span> ·
+                        Updated 9 August 2026
+                    </p>
+                </section>
+
+                <div class="callout warning">
+                    <strong>Back up saved accounts.</strong>
+                    Keep separate copies of both <code>Accounts\Saved</code> and
+                    <code>Accounts\Cards\accounts</code> before balancing,
+                    renaming, removing duplicates or making large configuration
+                    changes.
+                </div>
+
+                <h2>Choose what you want to do</h2>
+                <div class="grid three">
+                    <a
+                        class="card card-link accent-green"
+                        href="getting-started.html"
+                    >
+                        <h3>Set up the bot</h3>
+                        <p class="muted">
+                            Prepare MuMu instances and complete a safe first run
+                            with one instance.
+                        </p>
+                    </a>
+                    <a class="card card-link accent-gold" href="bot-modes.html">
+                        <h3>Choose a mode</h3>
+                        <p class="muted">
+                            Create accounts, inject saved accounts, test Wonder
+                            Pick packs, claim rewards or rename accounts.
+                        </p>
+                    </a>
+                    <a
+                        class="card card-link accent-orange"
+                        href="packs-and-card-detection.html"
+                    >
+                        <h3>Choose valuable pulls</h3>
+                        <p class="muted">
+                            Select expansions and decide which cards cause an
+                            account to be saved.
+                        </p>
+                    </a>
+                    <a
+                        class="card card-link accent-blue"
+                        href="accounts-and-trading.html"
+                    >
+                        <h3>Manage accounts</h3>
+                        <p class="muted">
+                            Understand XML accounts, Save for Trade, balancing
+                            and the Card Database.
+                        </p>
+                    </a>
+                    <a
+                        class="card card-link accent-cyan"
+                        href="group-and-discord.html"
+                    >
+                        <h3>Configure notifications</h3>
+                        <p class="muted">
+                            Set up solo, group, Save for Trade and heartbeat
+                            Discord destinations.
+                        </p>
+                    </a>
+                    <a
+                        class="card card-link accent-purple"
+                        href="troubleshooting.html"
+                    >
+                        <h3>Fix a problem</h3>
+                        <p class="muted">
+                            Work through startup, window detection, OCR, timing
+                            and account issues.
+                        </p>
+                    </a>
+                    <a class="card card-link" href="faq.html">
+                        <h3>Read common answers</h3>
+                        <p class="muted">
+                            Check version compatibility, account eligibility,
+                            MuMu failures and the safest recovery order.
+                        </p>
+                    </a>
+                </div>
+
+                <h2>How the pieces fit together</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>Account data stays on your PC</h3>
+                        <p>
+                            PTCGPB stores game accounts locally rather than
+                            inside MuMu. MuMuPlayer provides the Android 12
+                            instances in which the bot temporarily runs those
+                            accounts. A Main instance is only useful for Inject
+                            Wonderpick 96P+.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>PTCGPB saves your choices</h3>
+                        <p>
+                            The main window controls the mode, number of
+                            instances, selected packs, detection rules and
+                            notifications.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Accounts move through a workflow</h3>
+                        <p>
+                            Create Bots produces local account XML files in
+                            <code>Accounts\Saved</code>. Saved-account modes
+                            load those accounts into MuMu later to open packs,
+                            test Wonder Pick availability, collect rewards or
+                            rename eligible accounts.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Monitor and Cockpit provide oversight</h3>
+                        <p>
+                            Monitor watches for stuck instances. Cockpit shows
+                            live status and metrics for running instances.
+                        </p>
+                    </li>
+                </ol>
+
+                <h2>Useful terminology</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Term</th>
+                                <th>Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Instance</td>
+                                <td>
+                                    A numbered MuMu Player copy named
+                                    <code>1</code>, <code>2</code>,
+                                    <code>3</code>, and so on.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Main</td>
+                                <td>
+                                    Your primary game account in a MuMu instance
+                                    named <code>Main</code>. Additional mains
+                                    are named <code>Main2</code>,
+                                    <code>Main3</code>, and so on.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Inject</td>
+                                <td>
+                                    Load a previously saved account XML into
+                                    MuMu so the bot can use that account again.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>God Pack / GP</td>
+                                <td>
+                                    A high-value pack recognized by the
+                                    configured card-detection rules.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Save for Trade / S4T</td>
+                                <td>
+                                    Save and report accounts that pulled
+                                    selected tradeable card rarities.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Heartbeat</td>
+                                <td>
+                                    A periodic Discord status report containing
+                                    instance and pack-opening information.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <span></span
+                    ><a href="getting-started.html">Getting started →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>

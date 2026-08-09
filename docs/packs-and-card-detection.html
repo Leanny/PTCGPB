@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Configure booster packs, Inject 96p Card Detection and Save for Trade in PTCGPB."
+        />
+        <title>
+            Packs, Inject 96p Card Detection &amp; S4T · PTCGPB User Guide
+        </title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Pull configuration</p>
+                <h1>Packs, Inject 96p Card Detection and S4T</h1>
+                <p class="lead">
+                    Choose which expansions the bot opens and which high-value
+                    Wonderpick results it saves or reports, and which tradeable
+                    pulls Save for Trade keeps across pack-opening modes.
+                </p>
+
+                <h2>Pack Selection</h2>
+                <p>
+                    Select the booster expansions the bot may open. Packs are
+                    grouped by series, with newly added packs potentially
+                    appearing under <strong>Uncategorized</strong> until the
+                    list is updated.
+                </p>
+                <ol class="steps">
+                    <li>
+                        <h3>Open Pack Selection</h3>
+                        <p>
+                            Select the button in the gold Pack Selection section
+                            of the main window.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Select one or more packs</h3>
+                        <p>
+                            Use the checkboxes beside the expansions you want
+                            the bot to open.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Select Apply</h3>
+                        <p>
+                            The main-window button updates to summarize the
+                            selection. Cancel closes the dialog without applying
+                            changes.
+                        </p>
+                    </li>
+                </ol>
+                <div class="callout warning">
+                    <strong>Review after game updates.</strong> When expansions
+                    are added or removed, reopen Pack Selection and confirm that
+                    the intended packs remain selected.
+                </div>
+
+                <h2>Inject 96p Card Detection</h2>
+                <p>
+                    These options apply specifically to
+                    <strong>Inject Wonderpick 96P+</strong> and decide which
+                    Wonderpick results count as worth saving and notifying. They
+                    are not the trade-detection settings. Detection rules can
+                    overlap; enabling several rules broadens what the bot keeps.
+                </p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Min GP 2★</td>
+                                <td>
+                                    Minimum number of two-star cards a detected
+                                    God Pack must contain to be considered
+                                    valid.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Single Full Art 2★</td>
+                                <td>
+                                    Saves and reports a pack containing a
+                                    two-star Full Art card.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Single Trainer 2★</td>
+                                <td>
+                                    Saves and reports a pack containing a
+                                    two-star Trainer card.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Single Rainbow 2★</td>
+                                <td>
+                                    Saves and reports a pack containing a
+                                    two-star Rainbow card.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Double 2★</td>
+                                <td>
+                                    Saves and reports a pack containing two
+                                    two-star cards, sometimes called a pseudo
+                                    God Pack.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Wishlist 2★</td>
+                                <td>
+                                    Saves and reports a wishlisted two-star
+                                    Trainer, Full Art or Rainbow card from the
+                                    Card Database wishlist.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Ignore Invalid Packs</td>
+                                <td>
+                                    Suppresses Discord messages for God Packs
+                                    detected as invalid. They are still logged
+                                    and backed up.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Choosing sensible rules</h2>
+                <div class="grid">
+                    <div class="card accent-orange">
+                        <h3>Focused testing</h3>
+                        <p>
+                            Enable only the rarities you actually want to Wonder
+                            Pick. This produces fewer notifications and a
+                            smaller review queue.
+                        </p>
+                    </div>
+                    <div class="card accent-blue">
+                        <h3>Broad collection building</h3>
+                        <p>
+                            Enable multiple single-card rules and Wishlist
+                            detection. Expect more saved accounts and Discord
+                            posts.
+                        </p>
+                    </div>
+                </div>
+
+                <h2>Wishlist detection</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>Open Card Database</h3>
+                        <p>
+                            Use the button below Save for Trade on the main
+                            window.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Maintain your wishlist</h3>
+                        <p>Mark the desired cards in the database dashboard.</p>
+                    </li>
+                    <li>
+                        <h3>Enable Wishlist 2★</h3>
+                        <p>
+                            Open Inject 96p Card Detection and enable the
+                            wishlist rule. Only supported two-star card
+                            categories trigger this rule.
+                        </p>
+                    </li>
+                </ol>
+
+                <h2>Save for Trade (S4T)</h2>
+                <p>
+                    Save for Trade checks opened packs for the tradeable
+                    rarities you select. When a pack matches, PTCGPB saves the
+                    account locally and sends the result to your configured S4T
+                    Discord webhook. S4T is available in
+                    <strong>Create Bots (13P)</strong>,
+                    <strong>Inject 13P+</strong> and
+                    <strong>Inject Wonderpick 96P+</strong>. It does not process
+                    pulls in Inject Rewards because that mode does not open
+                    packs.
+                </p>
+                <div class="callout">
+                    <strong
+                        >S4T is separate from Inject 96p Card Detection.</strong
+                    >
+                    Inject 96p Card Detection identifies pulls for the
+                    Wonderpick workflow. S4T identifies cards you want to keep
+                    for trading. In Inject Wonderpick 96P+, you may enable both
+                    systems at the same time.
+                </div>
+
+                <h3>S4T options</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Enable S4T</td>
+                                <td>Turns Save for Trade processing on.</td>
+                            </tr>
+                            <tr>
+                                <td>Rarity checkboxes</td>
+                                <td>
+                                    Select any combination of three-diamond,
+                                    four-diamond, one-star, shiny, two-star
+                                    Trainer, Rainbow, Full Art, two-star Shiny,
+                                    Immersive, Crown Rare and Wishlist pulls.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Wonder Pick</td>
+                                <td>
+                                    In Inject Wonderpick 96P+, only reports
+                                    packs worth Wonder Picking from your Main.
+                                    Packs below Min. Cards are skipped.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Min. Cards</td>
+                                <td>
+                                    Minimum number of matching tradeable cards
+                                    required when Wonder Pick is enabled. Valid
+                                    values are <code>1</code> and
+                                    <code>2</code>.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Save Screenshots</td>
+                                <td>
+                                    Keeps generated pack screenshots in the
+                                    Screenshots folder after sending them to
+                                    Discord.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Use Synthetic Screenshots</td>
+                                <td>
+                                    Builds the pack image from card artwork
+                                    where possible instead of capturing the
+                                    emulator screen.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Track Shinedust</td>
+                                <td>
+                                    Reads the account's shinedust with OCR and
+                                    stores it in the local account metadata.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Set up S4T</h3>
+                <ol class="steps">
+                    <li>
+                        <h3>Choose a pack-opening mode</h3>
+                        <p>
+                            Select Create Bots (13P), Inject 13P+ or Inject
+                            Wonderpick 96P+, then confirm the intended packs in
+                            Pack Selection.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Open Save for Trade</h3>
+                        <p>
+                            Select the Save for Trade button on the main window
+                            and enable <strong>S4T</strong>.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Select the pulls to keep</h3>
+                        <p>
+                            Enable each rarity you want to save and report. If
+                            using Wishlist, first maintain the wishlist in the
+                            Card Database.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Configure Wonder Pick filtering</h3>
+                        <p>
+                            In Inject Wonderpick 96P+, optionally enable Wonder
+                            Pick and choose whether a reported pack needs one or
+                            two matching tradeable cards.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Choose screenshot and shinedust options</h3>
+                        <p>
+                            Synthetic screenshots are normally faster and more
+                            reliable. Enable Save Screenshots only when you want
+                            to retain copies after Discord delivery. Enable
+                            Track Shinedust when that metadata is needed.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Apply the S4T settings</h3>
+                        <p>
+                            Select Apply and verify that the Save for Trade
+                            button shows S4T as enabled with the expected
+                            rarities.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Configure the S4T Discord destination</h3>
+                        <p>
+                            Open Discord Settings and enter the S4T Discord user
+                            ID and S4T webhook URL. Enable Send Account XML only
+                            for a private, trusted channel because the XML
+                            contains account data.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Review the start confirmation</h3>
+                        <p>
+                            When starting the bot, confirm that S4T is enabled
+                            and that the displayed rarity list matches your
+                            intended setup.
+                        </p>
+                    </li>
+                </ol>
+
+                <div class="callout warning">
+                    <strong>Back up local account data.</strong> Keep copies of
+                    both <code>Accounts\Saved</code> and
+                    <code>Accounts\Cards\accounts</code>. Never post a Discord
+                    webhook URL or account XML publicly.
+                </div>
+
+                <h2>Detection troubleshooting</h2>
+                <details>
+                    <summary>Too many packs are being reported</summary>
+                    <div>
+                        Disable broad single-card rules you do not need, raise
+                        Min GP 2★ where appropriate, or enable Ignore Invalid
+                        Packs to suppress invalid detections.
+                    </div>
+                </details>
+                <details>
+                    <summary>Wishlist pulls do not trigger</summary>
+                    <div>
+                        Verify that the exact card is wishlisted in the local
+                        Card Database and that it is a supported two-star
+                        Trainer, Full Art or Rainbow card.
+                    </div>
+                </details>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="main-window.html">← Main window</a
+                    ><a href="accounts-and-trading.html"
+                        >Accounts &amp; trading →</a
+                    >
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>
