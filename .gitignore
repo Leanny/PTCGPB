@@ -1,4 +1,4 @@
-!Accounts/*.ahk
+﻿!Accounts/*.ahk
 json/*
 Logs/*
 Screenshots/*
@@ -74,3 +74,7 @@ Accounts3
 /.ptcgpb-managed-files.txt
 /update-manifest.json
 /Backups/
+Accounts/Saved/*.xml
+Accounts/Saved/*/
+Accounts/Cards/accounts/*.json
+Accounts/Cards/accounts/_repair_backup/
