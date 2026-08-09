@@ -1787,7 +1787,7 @@ ClearReceiveGiftHistory:
 return
 
 ClearHistoryFlag:
-    MsgBox, 4, Clear History Flag, Clear the H flag from all account JSON files? This allows PTCGPB to import history again. Existing history entries with the same date and time will be skipped.
+    MsgBox, 4, Clear History Flag, Clear the H flag from all account JSON files? This allows PTCGPB to import history again. Existing entries from the same history day will be skipped; history days start at 06:00 UTC.
     IfMsgBox, Yes
     {
         changed := AccountMetadata_ClearFlagEverywhere("H")
@@ -2651,7 +2651,7 @@ HelpTT_Init() {
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
-    HelpTT_Add("Clear History Flag", "clearHistoryFlag", "Clears the H flag from every account JSON file so pack history can be imported again.`nEntries already stored with the same date and time are skipped during import.")
+    HelpTT_Add("Clear History Flag", "clearHistoryFlag", "Clears the H flag from every account JSON file so pack history can be imported again.`nTimestamps are compared in UTC, with each history day starting at 06:00 UTC.")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
     HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 

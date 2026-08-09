@@ -55,6 +55,7 @@ EnsurePTCGPBHelperInstalled() {
     localPath := A_Temp . "\ptcgpb-helper-android." . safeScriptName
     minHelperSize := 2500000
     adbWriteRaw("mkdir -p /data/ptcgp")
+    RepairPtcgpbRarityCache()
     remoteSize := Trim(StrReplace(adbWriteRaw("if [ -x " . remotePath . " ]; then wc -c < " . remotePath . "; else echo 0; fi", true), "`r"), "`n`t ")
     remoteSize := RegExReplace(remoteSize, "[^\d]")
     if (remoteSize >= minHelperSize) {
@@ -95,6 +96,32 @@ EnsurePTCGPBHelperInstalled() {
     }
 
     LogInfo("ptcgpb helper installed via Windows download and adb push")
+    return true
+}
+
+RepairPtcgpbRarityCache() {
+    cachePath := "/data/ptcgp/.card/cardrarity.json"
+    minCacheSize := 1000
+    cacheSize := Trim(adbWriteRaw("if [ -f " . cachePath . " ]; then wc -c < " . cachePath . "; else echo missing; fi", true), "`r`n`t ")
+
+    if (cacheSize = "missing") {
+        LogTrace("ptcgpb rarity cache does not exist; helper will build it", "ADB.txt")
+        return false
+    }
+
+    if (!RegExMatch(cacheSize, "^\d+$")) {
+        LogWarn("Could not determine ptcgpb rarity cache size: " . cacheSize, "ADB.txt")
+        return false
+    }
+
+    cacheSize += 0
+    if (cacheSize >= minCacheSize) {
+        LogTrace("ptcgpb rarity cache is valid size=" . cacheSize, "ADB.txt")
+        return false
+    }
+
+    LogWarn("Removing incomplete ptcgpb rarity cache size=" . cacheSize)
+    adbWriteRaw("rm -f " . cachePath)
     return true
 }
 
@@ -159,4 +186,3 @@ IsPtcgpbVersionLessThan(major, minor, patch, minMajor, minMinor, minPatch) {
         return minor < minMinor
     return patch < minPatch
 }
-

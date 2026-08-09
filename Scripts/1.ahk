@@ -3665,7 +3665,7 @@ DoRenameAccount() {
         Delay(0.5)
     }
 
-    ; 4) Wait for UsernamePencil stable >= 1s.
+    ; 4) Wait for UsernamePencil stable >= 3s (trophies/overlay can flash it).
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     pencilSeenAt := 0
@@ -3673,7 +3673,7 @@ DoRenameAccount() {
         if (FindOrLoseImage("Profile_UsernamePencil", 0, 0, 5, true)) {
             if (pencilSeenAt = 0)
                 pencilSeenAt := A_TickCount
-            else if (A_TickCount - pencilSeenAt >= 1000)
+            else if (A_TickCount - pencilSeenAt >= 3000)
                 break
         } else {
             pencilSeenAt := 0
@@ -3727,9 +3727,13 @@ DoRenameAccount() {
     CreateStatusMessage("Rename Account`nTyping: " . username,,,, false)
     adbClick_wbb(133, 260) ; focus editable text field
     Delay(0.5)
-    ; Clear existing name (Shift+Home+Backspace); do not use friend EraseInput.
-    Loop, 4 {
-        adbInputEvent("59 122 67")
+    ; Move cursor to the end, then select all and delete (same Shift+Home+Backspace
+    ; sequence as EraseInput in FriendManager). This works regardless of the
+    ; cursor position when the field is focused.
+    adbInputEvent("123") ; KEYCODE_MOVE_END
+    Delay(0.1)
+    Loop, 3 {
+        adbInputEvent("59 122 67") ; Shift+Home+Backspace
         Delay(0.25)
     }
     adbInput(username)
