@@ -2348,6 +2348,13 @@ struct AccountLookup {
     by_device: HashMap<String, Value>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ActiveSpecialEvent {
+    name: String,
+    claim_steps: i64,
+    expiry_time: String,
+}
+
 fn parse_local(timestamp: &str) -> Option<DateTime<Local>> {
     if timestamp.is_empty() || timestamp == "0" {
         return None;
@@ -2476,7 +2483,168 @@ fn shinedust_updated_at(account: &Value) -> &str {
         .unwrap_or("0")
 }
 
-fn inject_rewards_eligible(account: &Value, options: &ScheduleOptions) -> bool {
+fn special_event_game_day_key(timestamp: &str, expiry_time: &str) -> Option<String> {
+    let local = if timestamp.is_empty() || timestamp == "0" {
+        Local::now()
+    } else {
+        parse_local(timestamp)?
+    };
+    let utc = local.with_timezone(&Utc);
+    let utc_date = utc.format("%Y%m%d").to_string();
+    let utc_time = utc.format("%H%M%S").to_string();
+    let cutoff = if expiry_time.len() == 6 {
+        expiry_time
+    } else {
+        "055959"
+    };
+
+    if utc_time.as_str() >= cutoff {
+        Some(
+            (utc.date_naive() + Duration::days(1))
+                .format("%Y%m%d")
+                .to_string(),
+        )
+    } else {
+        Some(utc_date)
+    }
+}
+
+fn special_event_is_same_game_day(last_claim_at: &str, expiry_time: &str) -> bool {
+    if last_claim_at.is_empty() || last_claim_at == "0" {
+        return false;
+    }
+    special_event_game_day_key(last_claim_at, expiry_time)
+        == special_event_game_day_key("", expiry_time)
+}
+
+fn special_event_progress<'a>(account: &'a Value, event_name: &str) -> Option<&'a Value> {
+    account.get("specialEvents")?.get(event_name)
+}
+
+fn special_event_claim_count(account: &Value, event_name: &str) -> i64 {
+    special_event_progress(account, event_name)
+        .and_then(|progress| progress.get("claimCount"))
+        .and_then(|value| value.as_i64().or_else(|| value.as_str()?.parse().ok()))
+        .unwrap_or(0)
+}
+
+fn special_event_last_claim_at<'a>(account: &'a Value, event_name: &str) -> &'a str {
+    special_event_progress(account, event_name)
+        .and_then(|progress| progress.get("lastClaimAt"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+}
+
+fn has_special_event_progress(account: &Value) -> bool {
+    account
+        .get("specialEvents")
+        .and_then(Value::as_object)
+        .is_some_and(|events| !events.is_empty())
+}
+
+fn needs_special_mission_claim(account: &Value, active_events: &[ActiveSpecialEvent]) -> bool {
+    if active_events.is_empty() {
+        return false;
+    }
+
+    // Match the AHK migration guard: a legacy permanent X without per-event
+    // progress remains complete until its history is explicitly cleared.
+    if flag_value(account, "X")
+        && !has_special_event_progress(account)
+        && flag_valid_until(account, "X").is_empty()
+    {
+        return false;
+    }
+
+    let needs_claim = active_events.iter().any(|event| {
+        special_event_claim_count(account, &event.name) < event.claim_steps
+            && !special_event_is_same_game_day(
+                special_event_last_claim_at(account, &event.name),
+                &event.expiry_time,
+            )
+    });
+
+    needs_claim && flag_is_expired(account, "X", 24)
+}
+
+fn parse_special_event_file(path: &Path) -> Option<ActiveSpecialEvent> {
+    let content = fs::read_to_string(path).ok()?;
+    let mut in_target_info = false;
+    let mut event_name = String::new();
+    let mut expiry_date = String::new();
+    let mut expiry_time = String::new();
+    let mut claim_steps = None;
+    let mut max_claims = None;
+
+    for raw_line in content.lines() {
+        let line = raw_line.trim().trim_start_matches('\u{feff}');
+        if line.starts_with('[') && line.ends_with(']') {
+            in_target_info = line[1..line.len() - 1].eq_ignore_ascii_case("TargetInfo");
+            continue;
+        }
+        if !in_target_info || line.is_empty() || line.starts_with(';') {
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim();
+        let value = value.trim();
+        if key.eq_ignore_ascii_case("EventName") {
+            event_name = value.to_owned();
+        } else if key.eq_ignore_ascii_case("ExpiryDate") {
+            expiry_date = value.to_owned();
+        } else if key.eq_ignore_ascii_case("ExpiryTime") {
+            expiry_time = value.to_owned();
+        } else if key.eq_ignore_ascii_case("ClaimSteps") {
+            claim_steps = value.parse::<i64>().ok();
+        } else if key.eq_ignore_ascii_case("MaxClaims") {
+            max_claims = value.parse::<i64>().ok();
+        }
+    }
+
+    if event_name.is_empty() || expiry_date.len() != 8 || expiry_time.len() != 6 {
+        return None;
+    }
+    let expiry =
+        NaiveDateTime::parse_from_str(&format!("{expiry_date}{expiry_time}"), "%Y%m%d%H%M%S")
+            .ok()?;
+    if Utc::now().naive_utc() > expiry - Duration::minutes(5) {
+        return None;
+    }
+
+    Some(ActiveSpecialEvent {
+        name: event_name,
+        claim_steps: claim_steps
+            .or(max_claims)
+            .filter(|steps| *steps >= 1)
+            .unwrap_or(1),
+        expiry_time,
+    })
+}
+
+fn active_special_events(root: &Path) -> Vec<ActiveSpecialEvent> {
+    let events_dir = root.join("SpecialEvents").join("Events");
+    let Ok(entries) = fs::read_dir(events_dir) else {
+        return Vec::new();
+    };
+
+    entries
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| {
+            path.extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("sevt"))
+        })
+        .filter_map(|path| parse_special_event_file(&path))
+        .collect()
+}
+
+fn inject_rewards_eligible(
+    account: &Value,
+    options: &ScheduleOptions,
+    active_events: &[ActiveSpecialEvent],
+) -> bool {
     let do_shinedust = options.ocr_shinedust && options.s4t_enabled;
 
     if !options.wonderpick_for_event_missions
@@ -2491,7 +2659,7 @@ fn inject_rewards_eligible(account: &Value, options: &ScheduleOptions) -> bool {
     (options.wonderpick_for_event_missions && flag_is_expired(account, "W", 24))
         || (options.claim_daily_mission
             && !was_after_daily_reset(field_str(account, "lastLoggedIn")))
-        || (options.claim_special_missions && !flag_value(account, "X"))
+        || (options.claim_special_missions && needs_special_mission_claim(account, active_events))
         || (options.receive_gift && !flag_value(account, "R"))
         || (do_shinedust && hours_since(shinedust_updated_at(account)) >= 24)
 }
@@ -2517,7 +2685,11 @@ fn inject_pack_eligible(account: &Value, options: &ScheduleOptions) -> bool {
     hours_since(last_pack) >= 24
 }
 
-fn eligible(account: &Value, options: &ScheduleOptions) -> bool {
+fn eligible(
+    account: &Value,
+    options: &ScheduleOptions,
+    active_events: &[ActiveSpecialEvent],
+) -> bool {
     if options.force_inject {
         return !flag_value(account, "FI");
     }
@@ -2525,7 +2697,7 @@ fn eligible(account: &Value, options: &ScheduleOptions) -> bool {
     match options.delete_method.as_str() {
         "Create Bots (13P)" => true,
         "Rename Account" => rename_account_eligible(account),
-        "Inject Rewards" => inject_rewards_eligible(account, options),
+        "Inject Rewards" => inject_rewards_eligible(account, options, active_events),
         "Inject 13P+" | "Inject Wonderpick 96P+" => inject_pack_eligible(account, options),
         _ => true,
     }
@@ -2799,6 +2971,7 @@ fn load_store_for_instance_schedule(root: &Path, instance: &str) -> Result<Value
 
 fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
     let store = load_store_for_instance_schedule(root, &options.instance)?;
+    let active_events = active_special_events(root);
     let save_dir = saved_dir(root).join(&options.instance);
     fs::create_dir_all(&save_dir)?;
 
@@ -2836,7 +3009,7 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
         let fallback = new_account(&options.instance, &file_name, &path);
         let metadata_account = metadata_for_xml(&lookup, &file_name, &device_account);
         let account = metadata_account.unwrap_or(&fallback);
-        if !eligible(account, &options) {
+        if !eligible(account, &options, &active_events) {
             continue;
         }
 
@@ -2902,6 +3075,7 @@ fn count_eligible_for_all_instances(
     options: &ScheduleOptions,
 ) -> Result<usize> {
     let mut total = 0usize;
+    let active_events = active_special_events(root);
 
     for instance in 1..=instances {
         let instance_name = instance.to_string();
@@ -2940,7 +3114,7 @@ fn count_eligible_for_all_instances(
             let fallback = new_account(&instance_name, &file_name, &path);
             let metadata_account = metadata_for_xml(&lookup, &file_name, &device_account);
             let account = metadata_account.unwrap_or(&fallback);
-            if !eligible(account, options) {
+            if !eligible(account, options, &active_events) {
                 continue;
             }
 
@@ -4173,7 +4347,8 @@ mod tests {
                 spend_hourglass: false,
                 force_inject: false,
                 force_clear_used: false,
-            }
+            },
+            &[],
         ));
 
         let used = HashSet::from(["a47fba5b1186e05e.xml".to_owned()]);
@@ -4208,7 +4383,7 @@ mod tests {
             force_clear_used: false,
         };
 
-        assert!(!eligible(&account, &options));
+        assert!(!eligible(&account, &options, &[]));
         assert!(!pack_count_allowed(
             &options.delete_method,
             Some(&account),
@@ -4217,10 +4392,10 @@ mod tests {
         ));
 
         options.force_inject = true;
-        assert!(eligible(&account, &options));
+        assert!(eligible(&account, &options, &[]));
 
         account["flags"]["FI"] = new_flag(1, "20260805000000", "");
-        assert!(!eligible(&account, &options));
+        assert!(!eligible(&account, &options, &[]));
     }
 
     #[test]
@@ -4249,9 +4424,95 @@ mod tests {
             force_clear_used: false,
         };
 
-        assert!(eligible(&account, &options));
+        assert!(eligible(&account, &options, &[]));
         account["lastLoggedIn"] = json!(recent_login);
-        assert!(!eligible(&account, &options));
+        assert!(!eligible(&account, &options, &[]));
+    }
+
+    #[test]
+    fn inject_rewards_detects_new_special_event_despite_permanent_x() {
+        let old_claim = (Local::now() - Duration::days(2))
+            .format("%Y%m%d%H%M%S")
+            .to_string();
+        let account = json!({
+            "flags": { "X": new_flag(1, &old_claim, "") },
+            "specialEvents": {
+                "completed-event": { "claimCount": 1, "lastClaimAt": old_claim }
+            }
+        });
+        let options = ScheduleOptions {
+            instance: "1".to_owned(),
+            delete_method: "Inject Rewards".to_owned(),
+            sort_method: "ModifiedAsc".to_owned(),
+            inject_wonderpick_min_packs: 96,
+            wonderpick_for_event_missions: false,
+            claim_daily_mission: false,
+            claim_special_missions: true,
+            receive_gift: false,
+            ocr_shinedust: false,
+            s4t_enabled: false,
+            spend_hourglass: false,
+            force_inject: false,
+            force_clear_used: false,
+        };
+        let events = vec![
+            ActiveSpecialEvent {
+                name: "completed-event".to_owned(),
+                claim_steps: 1,
+                expiry_time: "055959".to_owned(),
+            },
+            ActiveSpecialEvent {
+                name: "new-event".to_owned(),
+                claim_steps: 1,
+                expiry_time: "055959".to_owned(),
+            },
+        ];
+
+        assert!(eligible(&account, &options, &events));
+    }
+
+    #[test]
+    fn inject_rewards_respects_special_event_steps_and_game_day() {
+        let now = Local::now().format("%Y%m%d%H%M%S").to_string();
+        let old_claim = (Local::now() - Duration::days(2))
+            .format("%Y%m%d%H%M%S")
+            .to_string();
+        let options = ScheduleOptions {
+            instance: "1".to_owned(),
+            delete_method: "Inject Rewards".to_owned(),
+            sort_method: "ModifiedAsc".to_owned(),
+            inject_wonderpick_min_packs: 96,
+            wonderpick_for_event_missions: false,
+            claim_daily_mission: false,
+            claim_special_missions: true,
+            receive_gift: false,
+            ocr_shinedust: false,
+            s4t_enabled: false,
+            spend_hourglass: false,
+            force_inject: false,
+            force_clear_used: false,
+        };
+        let events = vec![ActiveSpecialEvent {
+            name: "multi-day".to_owned(),
+            claim_steps: 2,
+            expiry_time: "055959".to_owned(),
+        }];
+        let claimed_today = json!({
+            "flags": { "X": new_flag(1, &now, "") },
+            "specialEvents": { "multi-day": { "claimCount": 1, "lastClaimAt": now } }
+        });
+        let ready_next_day = json!({
+            "flags": { "X": new_flag(1, &old_claim, "") },
+            "specialEvents": { "multi-day": { "claimCount": 1, "lastClaimAt": old_claim } }
+        });
+        let completed = json!({
+            "flags": { "X": new_flag(1, &old_claim, "") },
+            "specialEvents": { "multi-day": { "claimCount": 2, "lastClaimAt": old_claim } }
+        });
+
+        assert!(!eligible(&claimed_today, &options, &events));
+        assert!(eligible(&ready_next_day, &options, &events));
+        assert!(!eligible(&completed, &options, &events));
     }
 
     #[test]
