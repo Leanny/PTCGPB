@@ -3016,7 +3016,7 @@ StartBot() {
         totalSeconds := Round((A_TickCount - rerollTime) / 1000)
         mminutes := Floor(totalSeconds / 60)
 
-        packStatus := "Time: " . mminutes . "m Packs: " . total
+        packStatus := "Time: " . mminutes . "m | Packs: " . total
         packStatus .= " | Avg: " . Round(total / mminutes, 2) . " packs/min"
 
         if(botConfig.get("heartBeat")) {

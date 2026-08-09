@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines, -1
 SetTitleMatchMode, 3
-CoordMode, Mouse, Client
+CoordMode, Mouse, Screen
 
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_ALL.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Profiler.ahk
@@ -42,13 +42,15 @@ Gui, Add, Text, x10 y+15 w170, Expires in (days):
 Gui, Add, Edit, vInputExpiresInDays w100 x+10 yp-5
 Gui, Add, Text, x10 y+15 w170, Expiry Time(UTC,hh:mm:ss):
 Gui, Add, Edit, vInputExpTime w100 x+10 yp-5, 05:59:59
-Gui, Add, Text, x10 y+15 w170, Claim Steps (Days):
+Gui, Add, Text, vLblClaimSteps +0x100 x10 y+15 w170, Claim Steps:
 Gui, Add, Edit, vInputClaimSteps w100 x+10 yp-5, 1
-Gui, Add, Text, x10 y+15 w170, Claim Days (opt, e.g. 3,5):
+Gui, Add, Checkbox, vInputEliteDeck x10 y+15 w270, Elite Deck event
+
+Gui, Add, Text, x10 y+20 w270 cBlue, Optional fields:
+Gui, Add, Text, vLblClaimDays +0x100 x10 y+10 w170, Claim Days:
 Gui, Add, Edit, vInputClaimDays w100 x+10 yp-5,
-Gui, Add, Text, x10 y+15 w170, Gift Days (opt, e.g. 2,4):
+Gui, Add, Text, vLblGiftDays +0x100 x10 y+10 w170, Gift Days:
 Gui, Add, Edit, vInputGiftDays w100 x+10 yp-5,
-Gui, Add, Checkbox, vInputEliteDeck x10 y+15 w270, Elite Deck event (restart game after claim)
 
 Gui, Add, Button, gBtnSave x50 y+20 w100, Save
 Gui, Add, Button, gBtnClose x+10 yp w100, Close
@@ -57,9 +59,17 @@ OnMessage(0x201, "WM_LBUTTONDOWN")
 OnMessage(0x202, "WM_LBUTTONUP")
 OnMessage(0x204, "WM_RBUTTONDOWN")
 OnMessage(0x205, "WM_RBUTTONUP")
-OnMessage(0x200, "WM_MOUSEMOVE")
+OnMessage(0x200, "HelpTT_OnMouseMove")
+OnMessage(0x201, "HelpTT_OnLButtonDown")
 
 Gui, Show,, Special Event Extractor Tool
+
+global g_HelpTT := {}
+global g_HelpTT_Last := ""
+global g_HelpTT_Visible := 0
+g_HelpTT["LblClaimSteps"] := "Total number of days this event can be claimed.`nThe bot claims once per game day, up to this number.`nWhen the bot has claimed this many times, the event is marked as complete.`nExample: 7 means the bot will claim once per day for 7 days."
+g_HelpTT["LblClaimDays"] := "Which specific day numbers should trigger the in-game claim screen.`nBy default (empty), the bot claims on every step.`nUse comma-separated numbers to claim only on specific days.`nExample: 3,5 means the bot opens the claim screen only on day 3 and day 5.`nOther days are still counted but skipped in-game."
+g_HelpTT["LblGiftDays"] := "Which specific day numbers should force the bot to open received gifts.`nBy default (empty), the bot never opens gifts for this event.`nUse comma-separated numbers to force gift opening on specific days.`nExample: 2,4 means the bot opens gifts on day 2 and day 4."
 
 LoadInstanceList()
 GoSub, BtnRefresh
@@ -71,8 +81,6 @@ BtnRefresh:
 
     if (pBgBitmap)
         Gdip_DisposeImage(pBgBitmap)
-    if (pScaledBgBitmap)
-        Gdip_DisposeImage(pScaledBgBitmap)
 
     GuiControlGet, curInstance,, instanceList
 
@@ -83,7 +91,7 @@ BtnRefresh:
 
     WinMove, %winTitleWithClass%, , , , %scaleParam%, %rowHeight%
 
-    pBgBitmap := from_window(curInstance)
+    pBgBitmap := from_window(winTitleWithClass)
 
     RedBox.exists := 0
     BlueBox.exists := 0
@@ -258,7 +266,6 @@ TryResolveMuMuFolder(baseFolder){
 LoadInstanceList(){
     instanceListStr := ""
     mumuBaseFolder := ""
-    GuiControlGet, mumuBaseFolder,, MyText
 
     mumuFolder := ResolveMuMuFolder()
     if (mumuFolder = "") {
@@ -349,6 +356,103 @@ WM_MOUSEMOVE(wParam, lParam, msg, hwnd) {
             UpdateDisplay()
         }
     }
+}
+
+HelpTT_OnMouseMove(wParam, lParam, msg, hwnd) {
+    global g_HelpTT, g_HelpTT_Last, g_HelpTT_Visible
+    ctrl := A_GuiControl
+    if (ctrl = g_HelpTT_Last)
+        return
+    g_HelpTT_Last := ctrl
+    if (g_HelpTT_Visible)
+        HelpTT_HideWindow()
+    SetTimer, HelpTT_Hide, Off
+    if (ctrl != "" && g_HelpTT.HasKey(ctrl))
+        SetTimer, HelpTT_Show, -500
+    else
+        SetTimer, HelpTT_Show, Off
+}
+
+HelpTT_OnLButtonDown(wParam, lParam, msg, hwnd) {
+    HelpTT_DismissForClick()
+}
+
+HelpTT_Dismiss() {
+    global g_HelpTT_Last
+    SetTimer, HelpTT_Show, Off
+    SetTimer, HelpTT_Hide, Off
+    HelpTT_HideWindow()
+    g_HelpTT_Last := ""
+}
+
+HelpTT_DismissForClick() {
+    global g_HelpTT_Last
+    clickedCtrl := A_GuiControl
+    HelpTT_Dismiss()
+    g_HelpTT_Last := clickedCtrl
+}
+
+HelpTT_Show:
+    if (g_HelpTT_Last != "" && g_HelpTT.HasKey(g_HelpTT_Last)) {
+        HelpTT_ShowWindow(g_HelpTT[g_HelpTT_Last])
+        SetTimer, HelpTT_Hide, -15000
+    }
+return
+
+HelpTT_Hide:
+    HelpTT_HideWindow()
+return
+
+HelpTT_ShowWindow(text) {
+    global g_HelpTT_Visible
+
+    hHelpTTWin := 0
+    widthOpt := ""
+    Loop, 2 {
+        Gui, HelpTTWin:Destroy
+        Gui, HelpTTWin:New, +AlwaysOnTop -Caption +ToolWindow +Border +HwndhHelpTTWin +E0x08000020
+        Gui, HelpTTWin:Margin, 12, 9
+        Gui, HelpTTWin:Color, 23272E
+        Gui, HelpTTWin:Font, s9 cD8DEE9, Segoe UI
+        Gui, HelpTTWin:Add, Text, BackgroundTrans %widthOpt%, %text%
+        Gui, HelpTTWin:Show, Hide
+        WinGetPos,,, ttW, ttH, ahk_id %hHelpTTWin%
+        if (ttW <= 540 || widthOpt != "")
+            break
+        widthOpt := "w520"
+    }
+
+    MouseGetPos, mx, my
+    SysGet, monCount, MonitorCount
+    waLeft := 0, waTop := 0, waRight := A_ScreenWidth, waBottom := A_ScreenHeight
+    Loop, %monCount% {
+        SysGet, wa, MonitorWorkArea, %A_Index%
+        if (mx >= waLeft && mx <= waRight && my >= waTop && my <= waBottom)
+            break
+    }
+    x := mx + 14
+    y := my + 20
+    if (x + ttW > waRight)
+        x := waRight - ttW - 6
+    if (y + ttH > waBottom)
+        y := my - ttH - 12
+    if (x < waLeft)
+        x := waLeft + 6
+    if (y < waTop)
+        y := waTop + 6
+
+    cornerPref := 3
+    DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", hHelpTTWin, "UInt", 33, "Int*", cornerPref, "UInt", 4)
+
+    Gui, HelpTTWin:Show, x%x% y%y% NA
+    WinSet, Transparent, 245, ahk_id %hHelpTTWin%
+    g_HelpTT_Visible := 1
+}
+
+HelpTT_HideWindow() {
+    global g_HelpTT_Visible
+    Gui, HelpTTWin:Destroy
+    g_HelpTT_Visible := 0
 }
 
 GetMousePosInCtrl(hwnd, ByRef x, ByRef y) {
