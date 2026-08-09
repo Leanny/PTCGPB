@@ -99,10 +99,7 @@ needlesDict.Add(new Needle("WonderPick_SelectCards", "Card", new Coordinate(166,
 ;==============================================================================================================================
 
 ; Shinedust
-needlesDict.Add(new Needle("Shinedust_CopySupportIDButtonInSettings", "inHamburgerMenu", new Coordinate(252, 73, 263, 87)))
-needlesDict.Add(new Needle("Shinedust_ShinedustInInventorys", "shinedustItems", new Coordinate(26, 183, 43, 199)))
-needlesDict.Add(new Needle("Shinedust_CloseButtonInDetailWindow", "wrongItem", new Coordinate(133, 364, 148, 380)))
-needlesDict.Add(new Needle("Shinedust_CloseButtonInDetailWindow2", "wrongItem", new Coordinate(133, 357, 148, 373)))
+needlesDict.Add(new Needle("ShinedustTrade", "ShinedustTrade", new Coordinate(47, 134, 59, 150)))
 
 ;==============================================================================================================================
 
