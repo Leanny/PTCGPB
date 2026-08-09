@@ -16,6 +16,16 @@ StartPtcgpbWatchCards(full := false) {
     return true
 }
 
+; True once the watch-cards Helper has written a card result (result.rc).
+HelperHasCardResult() {
+    global session
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    ; Use test -s so we only consider the result valid when the file has actual content.
+    RunWait, % adbCommand . " shell test -s /data/ptcgp/result.rc", , Hide
+    return (ErrorLevel = 0)
+}
+
 GetPtcgpbPackCount() {
     global session
 
