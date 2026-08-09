@@ -40,6 +40,23 @@ CoordMode, Pixel, Screen
 
 InitializeHiddenConsole()
 
+; Stub: GoToMain is defined in the instance scripts but not needed in Main.ahk.
+; CountShinedust (OCR.ahk) references it but is never called from here.
+GoToMain() {
+    global session
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if (FindOrLoseImage("Common_MainScreen", 0, failSafeTime))
+            return
+        adbInputEvent("111")
+        Delay(1)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime > 30)
+            return
+    }
+}
+
 pToken := Gdip_Startup()
 
 global session := new Session()
@@ -332,14 +349,27 @@ DismissExpiredFriendRequestInApprove() {
 
 #Include HistoryImport.ahk
 
-FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0) {
+FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0, coordImageName := "", coordEL := "", coordSafeTime := "") {
     prof := Prof_Scope(A_ThisFunc)
     profNeedle := Prof_Scope(A_ThisFunc . ":" . needleName)
     global session, needlesDict
     static lastStatusTime := 0
 
-    needleObj := needlesDict.Get(needleName)
-    imageName := needleObj.imageName
+    coordinateMode := (coordImageName != "")
+    if (coordinateMode) {
+        X1 := needleName
+        Y1 := EL
+        X2 := safeTime
+        Y2 := searchVariation
+        imageName := coordImageName
+        searchVariation := (notShowFinding = "" || notShowFinding = 0) ? 20 : notShowFinding
+        EL := (coordEL = "") ? 1 : coordEL
+        safeTime := (coordSafeTime = "") ? 0 : coordSafeTime
+        notShowFinding := 0
+    } else {
+        needleObj := needlesDict.Get(needleName)
+        imageName := needleObj.imageName
+    }
 
     imagePath := A_ScriptDir . "\Needles\"
     confirmed := false
@@ -352,10 +382,12 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
     Path = %imagePath%%imageName%.png
     pNeedle := GetNeedle(Path)
-    X1 := needleObj.coords.startX
-    Y1 := needleObj.coords.startY
-    X2 := needleObj.coords.endX
-    Y2 := needleObj.coords.endY
+    if (!coordinateMode) {
+        X1 := needleObj.coords.startX
+        Y1 := needleObj.coords.startY
+        X2 := needleObj.coords.endX
+        Y2 := needleObj.coords.endY
+    }
 
     ;bboxAndPause(X1, Y1, X2, Y2)
 
