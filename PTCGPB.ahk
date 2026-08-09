@@ -2389,7 +2389,11 @@ DiscordLink:
 Return
 
 OpenToolTip:
-    Run, https://mixman208.github.io/PTCGPB/
+    docsPath := A_ScriptDir . "\docs\index.html"
+    if (FileExist(docsPath))
+        Run, %docsPath%
+    else
+        Run, https://mixman208.github.io/PTCGPB/
 return
 
 OpenDiscord:
@@ -2581,7 +2585,7 @@ HelpTT_Init() {
 
     ; --- Main window: icons (Picture controls are keyed by their image path)
     HelpTT_Add(A_ScriptDir . "\GUI\Images\discord-icon.png", "discordIcon", "Opens the PTCGPB Discord server.")
-    HelpTT_Add(A_ScriptDir . "\GUI\Images\help-icon.png", "helpIcon", "Opens the online guide in your browser.")
+    HelpTT_Add(A_ScriptDir . "\GUI\Images\help-icon.png", "helpIcon", "Opens the bundled user guide in your browser.")
     HelpTT_Add("ui_ToolsPicture", "toolsIcon", "Opens Tools && System settings:`nmonitor and MuMu options, OCR language, log level and extra tools.")
 
     ; --- Popup: InjectWP Card Detection
@@ -2638,7 +2642,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_wonderpickForEventMissions_Popup", "wonderpickForEventMissions", "When enabled, performs wonderpicks when an event mission requires them.")
     HelpTT_Add("ui_SelectedMonitorIndex_Popup", "SelectedMonitorIndex", "Monitor on which instance windows are arranged.")
     HelpTT_Add("ui_RowGap_Popup", "RowGap", "Vertical gap in pixels between rows of instance windows.")
-    HelpTT_Add("ui_folderPath_Popup", "folderPath", "Folder that contains the 'MuMuPlayer-12' folder, not the MuMuPlayer-12 folder itself.`nDefault: C:\Program Files\Netease")
+    HelpTT_Add("ui_folderPath_Popup", "folderPath", "MuMuPlayer installation folder. It is normally detected automatically from the current MuMuPlayer configuration.`nCommon location: C:\Program Files\Netease")
     HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
     HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")
     HelpTT_Add("ui_instanceLaunchDelay_Popup", "instanceLaunchDelay", "Seconds to wait between launching one MuMu instance and the next.")

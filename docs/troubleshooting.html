@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Troubleshoot common PTCGPB user problems."
+        />
+        <title>Troubleshooting · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Problem solving</p>
+                <h1>Troubleshooting</h1>
+                <p class="lead">
+                    Start with the symptom below. Change one setting at a time
+                    and test with one instance whenever possible.
+                </p>
+
+                <div class="callout warning">
+                    <strong>Check compatibility first.</strong> PTCGPB, the
+                    SpeedMod or other APK mod, the Ready2Go image, MuMuPlayer
+                    and Pokémon TCG Pocket change independently. Confirm that
+                    the versions you use are intended to work together before
+                    copying old patches or changing advanced settings.
+                </div>
+
+                <h2>Startup and windows</h2>
+                <details open>
+                    <summary>
+                        PTCGPB closes or asks for administrator permission
+                    </summary>
+                    <div>
+                        PTCGPB requires administrator permission. Launch it
+                        again and approve the Windows prompt. If the prompt
+                        never appears, right-click the script and choose the
+                        administrator launch option.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        Windows asks which program should open PTCGPB.ahk
+                    </summary>
+                    <div>
+                        Install
+                        <a href="https://www.autohotkey.com/download/1.1/"
+                            >AutoHotkey v1.1</a
+                        >. PTCGPB uses AutoHotkey v1 syntax and cannot be run
+                        with AutoHotkey v2 alone.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        PTCGPB behaves incorrectly from its current folder
+                    </summary>
+                    <div>
+                        Check the complete folder path. It must not contain
+                        spaces. Move the entire bot folder to a path such as
+                        <code>C:\PTCGPB</code> and launch it again.
+                    </div>
+                </details>
+                <details>
+                    <summary>Launch All MuMu does nothing</summary>
+                    <div>
+                        Confirm that the latest
+                        <a href="https://www.mumuplayer.com/download/"
+                            >MuMuPlayer</a
+                        >
+                        is installed. Open Tools &amp; System and verify the
+                        automatically detected MuMu Folder Path. Make sure you
+                        named your instances correctly.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        The bot repeatedly restarts on a white screen
+                    </summary>
+                    <div>
+                        Start Pokémon TCG Pocket manually without the bot. If
+                        the game works but PTCGPB continues waiting and
+                        restarting, update MuMuPlayer and test a fresh Ready2Go
+                        instance. If that still fails, back up account data and
+                        perform a clean MuMuPlayer reinstall.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        MuMu reports “Operation terminated” or requests another
+                        rendering mode
+                    </summary>
+                    <div>
+                        Try the requested rendering mode, but update MuMuPlayer
+                        if the error returns. This can appear after a GPU driver
+                        change even when the previous mode had been working.
+                    </div>
+                </details>
+                <details>
+                    <summary>PTCGPB reports an “Invalid Port” error</summary>
+                    <div>
+                        Make sure the instance is running, try
+                        <strong>Launch All MuMu</strong>, verify the configured
+                        MuMu folder and confirm that numbered instances have no
+                        naming gaps. If Launch All MuMu also fails, investigate
+                        path or instance detection before the port itself.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        PTCGPB reports a missing or blocked helper program
+                    </summary>
+                    <div>
+                        Keep <code>Helper\carddb.exe</code> and
+                        <code>Helper\cardimage.exe</code> with the rest of the
+                        release. PTCGPB tests and attempts to unblock both at
+                        startup. If either file is missing, extract a complete
+                        release again. If Windows still prevents it from
+                        starting, check antivirus quarantine before asking for
+                        help in Discord.
+                    </div>
+                </details>
+                <details>
+                    <summary>An instance is not recognized or arranged</summary>
+                    <div>
+                        In MuMu Multi-Instance Manager, rename numbered
+                        instances exactly <code>1</code>, <code>2</code>,
+                        <code>3</code>, and so on. Do not leave numbering gaps.
+                        Name Main instances <code>Main</code>,
+                        <code>Main2</code>, etc. Confirm the Instances and Mains
+                        counts match.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        The computer slows down or freezes during startup
+                    </summary>
+                    <div>
+                        Reduce Instances and test with one. Increase Instance
+                        Start Delay for bot scripts and Launch MuMu Delay for
+                        emulator windows. Add instances gradually after a
+                        complete successful run.
+                    </div>
+                </details>
+
+                <h2>Clicks, swipes and navigation</h2>
+                <details>
+                    <summary>The bot clicks the wrong location</summary>
+                    <div>
+                        Use 100% or 125% Windows display scaling while testing,
+                        select <strong>Arrange</strong>, and make sure every
+                        MuMu window has the same size and layout. Verify that
+                        <strong>No Speedmod Menu Clicks</strong> matches whether
+                        your APK provides the speedModMenu.
+                    </div>
+                </details>
+                <details>
+                    <summary>The bot is stuck on “Tap to Start”</summary>
+                    <div>
+                        Verify emulator resolution and DPI, run
+                        <strong>Arrange</strong>, check the SpeedMod setting and
+                        undo recent emulator display, FPS or layout changes. If
+                        the Ready2Go instance was modified manually, import a
+                        clean copy and test one instance.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        The bot clicks before a screen finishes loading
+                    </summary>
+                    <div>
+                        Increase Delay above the default 250 ms. Small
+                        increments are easier to evaluate. Network and PC load
+                        can require a larger delay.
+                    </div>
+                </details>
+                <details>
+                    <summary>Swipes are missed or stop short</summary>
+                    <div>
+                        Adjust Swipe Speed in small steps. Confirm whether you
+                        use the speedModMenu and follow the matching
+                        recommendation shown in the in-app tooltip.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        The bot clicks speed buttons that are not present
+                    </summary>
+                    <div>
+                        Enable No Speedmod Menu Clicks under Tools &amp; System
+                        when using the base game without the speedModMenu. Leave
+                        it disabled when using the speedModMenu.
+                    </div>
+                </details>
+
+                <h2>OCR and card recognition</h2>
+                <details>
+                    <summary>Text or card recognition is unreliable</summary>
+                    <div>
+                        Set Client to the language used inside the game. Set OCR
+                        to the corresponding Windows OCR language; using the
+                        same Windows display language gives the best result.
+                        Reduce the run to one instance while testing.
+                    </div>
+                </details>
+
+                <h2>Friends, Main and groups</h2>
+                <details>
+                    <summary>Friend requests do not reach Main</summary>
+                    <div>
+                        Check that Friend ID contains exactly 16 digits without
+                        spaces or dashes. Verify the Main MuMu instance is named
+                        <code>Main</code>. Increase Wait Time if acceptance
+                        cannot complete before numbered instances continue.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        Automatic GP tests remove friends too early
+                    </summary>
+                    <div>
+                        Increase GP Test Wait above the default 150 seconds.
+                        Confirm numbered instances can remove their friends
+                        before Main begins removing non-VIP friends.
+                    </div>
+                </details>
+                <details>
+                    <summary>Shared Friend IDs are not downloaded</summary>
+                    <div>
+                        Verify the ids.txt API URL with the group administrator
+                        and check that it returns a plain Friend ID list. Do the
+                        same for vip_ids.txt. Do not replace group URLs with
+                        ordinary Discord page links.
+                    </div>
+                </details>
+
+                <h2>Accounts and files</h2>
+                <details>
+                    <summary>An Inject mode finds no eligible accounts</summary>
+                    <div>
+                        Confirm saved XML files exist and are distributed to the
+                        numbered instance folders. Eligibility also depends on
+                        timestamps, pack counts, flags, used status and bot
+                        mode. Normal pack injection requires at least 24 hours
+                        after the last recorded pack pull; Wonderpick also
+                        applies Min Packs. Open <strong>Injection Queue</strong>
+                        in Cockpit to inspect ready and cooling accounts before
+                        changing Sort By or using Force inject.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        Inject Rewards finds no accounts for a new event
+                    </summary>
+                    <div>
+                        Confirm Claim Rewards is enabled and that the intended
+                        active <code>.sevt</code> file exists under
+                        <code>SpecialEvents\Events</code>. Current versions
+                        track claim counts per event, so a routine global Claim
+                        Status reset is not required. Reset only when you
+                        intentionally need to clear stale or incorrect event
+                        progress.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        Inject 13P+ or Inject Rewards repeatedly restarts or
+                        fails
+                    </summary>
+                    <div>
+                        Check PTCGPB and mod/APK compatibility first. If the
+                        failure occurs around a SpeedMod step, test a fresh,
+                        complete bot folder instead of continuing to repair a
+                        mixed installation. Copy back only the required account
+                        data and test one instance.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        An old account stops on a “Welcome Back” screen
+                    </summary>
+                    <div>
+                        Accounts inactive for roughly two weeks may receive
+                        extra Welcome Back screens and missions. Use a current,
+                        compatible PTCGPB version that supports the popup,
+                        missions and related reward screens; a single extra
+                        click is not always sufficient.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        Force inject skips accounts on a later run
+                    </summary>
+                    <div>
+                        Force injection is intentionally limited to one pass per
+                        account. Select
+                        <strong>Clear force inject flags</strong> on the main
+                        window to allow another forced pass.
+                    </div>
+                </details>
+                <details>
+                    <summary>Accounts are unevenly distributed</summary>
+                    <div>
+                        Stop the bot, set the correct Instances count and use
+                        Balance XMLs.
+                    </div>
+                </details>
+                <details>
+                    <summary>You suspect duplicate XML accounts</summary>
+                    <div>
+                        Back up both account-data folders first, then open Tools
+                        &amp; System and run XML Duplicate Remover. It keeps the
+                        copy with more packs or the older copy.
+                    </div>
+                </details>
+
+                <h2>Discord</h2>
+                <details>
+                    <summary>No messages arrive</summary>
+                    <div>
+                        Check that the feature itself is enabled, its specific
+                        webhook field is populated and the webhook still exists
+                        in Discord. Solo, Group, Save for Trade and heartbeat
+                        each use separate destinations.
+                    </div>
+                </details>
+                <details>
+                    <summary>A webhook was posted publicly</summary>
+                    <div>
+                        Delete that webhook in Discord immediately, create a new
+                        one and replace the value in PTCGPB. Removing a
+                        screenshot or message is not enough because the old URL
+                        may already have been copied.
+                    </div>
+                </details>
+
+                <h2>Updates</h2>
+                <details>
+                    <summary>The bot stopped working after an update</summary>
+                    <div>
+                        Confirm the exact PTCGPB, mod/APK, Ready2Go and
+                        MuMuPlayer versions. Mixed files from different releases
+                        commonly cause failures. If older scripts, ADB files,
+                        patches or mod files were copied into this installation,
+                        test a completely fresh bot folder and restore only the
+                        account data you need.
+                    </div>
+                </details>
+                <details>
+                    <summary>No releases appear in Version Manager</summary>
+                    <div>
+                        Confirm the PC can reach GitHub, choose the intended
+                        stable or beta channel, and select
+                        <strong>Save &amp; Refresh</strong>. Stable hides
+                        prereleases; prerelease builds automatically use beta.
+                    </div>
+                </details>
+                <details>
+                    <summary>An update cannot be installed</summary>
+                    <div>
+                        Do not replace files manually while PTCGPB is running. A
+                        failed checksum, invalid release manifest or failed
+                        pre-update backup stops installation. Keep the displayed
+                        error and backup path when asking for support.
+                    </div>
+                </details>
+
+                <h2>Collect useful information for support</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>Reproduce with one instance</h3>
+                        <p>
+                            Record the selected bot mode and the last visible
+                            screen before the problem.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Temporarily increase logging</h3>
+                        <p>
+                            Switch Log Level from <code>info</code> to
+                            <code>debug</code>. Use <code>trace</code> only when
+                            necessary.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Remove secrets</h3>
+                        <p>
+                            Redact Friend IDs, webhook URLs, Discord IDs and
+                            account XML contents from screenshots and logs.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Restore normal logging</h3>
+                        <p>
+                            Return to <code>info</code> after collecting the
+                            relevant information.
+                        </p>
+                    </li>
+                </ol>
+
+                <h2>What to include when asking for help</h2>
+                <ul>
+                    <li>
+                        Exact PTCGPB, mod/APK, Ready2Go, MuMuPlayer and Android
+                        versions.
+                    </li>
+                    <li>
+                        Bot mode, instance count and Windows display scaling.
+                    </li>
+                    <li>
+                        A screenshot or short video showing the settings, last
+                        successful screen and displayed instance status.
+                    </li>
+                    <li>
+                        Whether the game works manually, whether one or every
+                        instance is affected, and what changed before the issue.
+                    </li>
+                    <li>
+                        Debug logs from a one-instance reproduction. Remove
+                        webhook URLs, Friend IDs, Discord IDs and account XML
+                        contents before sharing.
+                    </li>
+                </ul>
+
+                <div class="callout">
+                    <strong>Safe troubleshooting order:</strong> Verify
+                    compatibility → restart → check layout and emulator settings
+                    → test one instance → try a fresh bot folder → try a fresh
+                    Ready2Go instance → reinstall MuMuPlayer. Back up account
+                    data before replacing anything.
+                </div>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="tools-and-system.html">← Tools &amp; system</a
+                    ><a href="faq.html">Frequently asked questions →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>
