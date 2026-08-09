@@ -470,6 +470,16 @@ GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreensho
     logMessage .= "\n[" . starCount . "/5][" . session.get("packsInPool") . "P][" . packDisplayName . "] "
     logMessage .= invalid . " God Pack found in instance: " . session.get("scriptName") . "\nFile name: " . accountFile . "\nBacking up to the Accounts\\GodPacks folder and continuing..."
 
+    if (validity = "Valid") {
+        addedFriendIDs := session.get("addedFriendIDs")
+        if (IsObject(addedFriendIDs) && addedFriendIDs.MaxIndex()) {
+            friendIDList := ""
+            for idx, id in addedFriendIDs
+                friendIDList .= (idx > 1 ? ", " : "") . id
+            logMessage .= "\nAdded friend IDs: " . friendIDList
+        }
+    }
+
     LogInfo(StrReplace(logMessage, "\n", " "), "GPlog.txt")
 
     if (validity = "Valid") {

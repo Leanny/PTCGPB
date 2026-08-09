@@ -199,11 +199,11 @@ AddFriends(renew := false, getFC := false) {
         friendIDs := ReadFile("ids")
         if (!friendIDs)
             friendIDs := []
-        if (botConfig.get("groupRerollEnabled")) {
-            ; Group reroll: pick 9 random IDs from ids.txt plus the FriendID.
+        if (botConfig.get("groupRerollEnabled") && botConfig.get("groupRerollRandom10")) {
+            ; Group reroll with random 10: pick 9 random IDs from ids.txt plus the FriendID.
             friendIDs := SelectGroupRerollFriendIDs(friendIDs, botConfig.get("FriendID"))
         } else if(!HasVal(friendIDs, botConfig.get("FriendID")) && botConfig.get("FriendID") != "") {
-            ; Solo ids file: keep using the full list, appending the FriendID if missing.
+            ; Full list: append the FriendID if missing.
             friendIDs.Push(botConfig.get("FriendID"))
         }
         session.set("friendIDs", friendIDs)
@@ -281,6 +281,10 @@ AddFriends(renew := false, getFC := false) {
         session.set("friendIDs", [])
         session.get("friendIDs").Push(botConfig.get("FriendID"))  ; Use an array to hold the single friend ID
     }
+    if (!renew)
+        session.set("addedFriendIDs", [])
+    else if (!IsObject(session.get("addedFriendIDs")))
+        session.set("addedFriendIDs", [])
     FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 75, 440)
     FindFriendIDInputAndClick("", "initial")
 
@@ -318,11 +322,13 @@ AddFriends(renew := false, getFC := false) {
             if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 80)) {
                 adbClick_wbb(243, 258)
                 MarkFriendCleanupPending("Friend request submitted")
+                AddFriends_RecordAddedFriendID(value)
                 Delay(1)
                 gosub, WaitAfterFriendRequestSend
                 break
             }
             else if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
+                AddFriends_RecordAddedFriendID(value)
                 MarkFriendCleanupPending("Friend request pending")
                 break
             }
@@ -337,6 +343,7 @@ AddFriends(renew := false, getFC := false) {
                 Loop{
                     Delay(0.25)
                     if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
+                        AddFriends_RecordAddedFriendID(value)
                         MarkFriendCleanupPending("Friend accepted from details")
                         break
                     }
@@ -365,6 +372,7 @@ AddFriends(renew := false, getFC := false) {
                 break
             }
             else if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
+                AddFriends_RecordAddedFriendID(value)
                 MarkFriendCleanupPending("Friend accepted from details")
                 CloseFriendDetailsIfOpen()
                 break
@@ -379,6 +387,7 @@ AddFriends(renew := false, getFC := false) {
                 break
             }
             else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
+                AddFriends_RecordAddedFriendID(value)
                 MarkFriendCleanupPending("Friend accepted")
                 if(renew){
                     interceptProc := true
@@ -397,6 +406,7 @@ AddFriends(renew := false, getFC := false) {
                     Delay(1) ; otherwise it will sometimes click before UI finishes loading
                     adbClick_wbb(243, 258)
                     MarkFriendCleanupPending("Friend request renewed")
+                    AddFriends_RecordAddedFriendID(value)
                     gosub, WaitAfterFriendRequestSend
                 }
                 break
@@ -515,6 +525,23 @@ AddFriends(renew := false, getFC := false) {
             writeLastActivityEpoch(session.get("scriptName"), 4000)
         }
     }
+
+    if (IsObject(session.get("addedFriendIDs"))) {
+        requestCount := session.get("addedFriendIDs").MaxIndex()
+        if (requestCount) {
+            instanceIdx := RegExReplace(session.get("scriptName"), "\D")
+            if (instanceIdx != "") {
+                heartBeatIni := A_ScriptDir . "\..\HeartBeat.ini"
+                IniRead, prevCount, %heartBeatIni%, FriendRequests, Instance%instanceIdx%, 0
+                newCount := prevCount + requestCount
+                IniWrite, %newCount%, %heartBeatIni%, FriendRequests, Instance%instanceIdx%
+                LogToFile("Heartbeat friend requests written | instance=" . session.get("scriptName") . " added=" . requestCount . " prev=" . prevCount . " new=" . newCount . " key=Instance" . instanceIdx, "FriendRequests.txt")
+            } else {
+                LogToFile("Heartbeat friend requests skipped | instance=" . session.get("scriptName") . " count=" . requestCount, "FriendRequests.txt")
+            }
+        }
+    }
+
     clearLastActivityEpoch(session.get("scriptName"))
     return n ;return added friends so we can dynamically update the .txt in the middle of a run without leaving friends at the end
 
@@ -1429,6 +1456,15 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
         LogWarn("Failed to save account friend info for " . accountFileName)
     }
     return saved
+}
+
+AddFriends_RecordAddedFriendID(friendCode) {
+    global session
+
+    if (!IsObject(session.get("addedFriendIDs")))
+        session.set("addedFriendIDs", [])
+
+    session.get("addedFriendIDs").Push(friendCode)
 }
 
 AccountFriendInfo_GetDeviceAccount() {

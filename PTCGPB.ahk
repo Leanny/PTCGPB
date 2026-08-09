@@ -1266,6 +1266,9 @@ ShowGroupRerollSettings:
     Gui, GroupRerollSelect:Add, Checkbox, % (botConfig.get("groupRerollEnabled") ? "Checked" : "") " vui_groupRerollEnabled_Popup x15 y" . yPos . " cWhite", Enable Group Reroll
     yPos += 35
 
+    Gui, GroupRerollSelect:Add, Checkbox, % (botConfig.get("groupRerollRandom10") ? "Checked" : "") " vui_groupRerollRandom10_Popup x15 y" . yPos . " cWhite", Random 10 Friend IDs
+    yPos += 35
+
     Gui, GroupRerollSelect:Add, Text, x15 y%yPos% cWhite, ids.txt API URL:
     yPos += 20
     Gui, GroupRerollSelect:Add, Edit, vui_mainIdsURL_Popup w220 x15 y%yPos% h20 -E0x200 Background2A2A2A cWhite, % botConfig.get("mainIdsURL")
@@ -1343,6 +1346,7 @@ return
 
 saveGroupReroll:
     botConfig.set("groupRerollEnabled", ui_groupRerollEnabled_Popup, "GroupReroll")
+    botConfig.set("groupRerollRandom10", ui_groupRerollRandom10_Popup, "GroupReroll")
     botConfig.set("mainIdsURL", ui_mainIdsURL_Popup, "GroupReroll")
     botConfig.set("vipIdsURL", ui_vipIdsURL_Popup, "GroupReroll")
     botConfig.set("autoUseGPTest", ui_autoUseGPTest_Popup, "GroupReroll")
@@ -2812,6 +2816,7 @@ HelpTT_Init() {
 
     ; --- Popup: Group Reroll
     HelpTT_Add("ui_groupRerollEnabled_Popup", "groupRerollEnabled", "When enabled, rerolls as part of a group: instances download the group's shared friend ID list (ids.txt)`nand your Main runs GP tests for the group's God Packs.")
+    HelpTT_Add("ui_groupRerollRandom10_Popup", "groupRerollRandom10", "When enabled, each instance sends friend requests to only 10 randomly picked IDs from ids.txt (9 random + your FriendID).`nUseful to mitigate DeNA's friend request rate limit.`nNote: not every user in ids.txt will receive a request on every cycle. IDs are randomly sampled each run.")
     HelpTT_Add("ui_mainIdsURL_Popup", "mainIdsURL", "URL from which instances download ids.txt (the group's shared friend ID list).")
     HelpTT_Add("ui_vipIdsURL_Popup", "vipIdsURL", "URL from which the Main downloads vip_ids.txt.`nVIPs are accounts that found God Packs: the Main favorites them and never unfriends them during GP tests.")
     HelpTT_Add("ui_autoUseGPTest_Popup", "autoUseGPTest", "When enabled, automatically starts a GP test on the Main at a regular interval.")
@@ -3232,6 +3237,10 @@ StartBot() {
         }
     }
 
+    Loop % botConfig.get("Instances") {
+        IniWrite, 0, HeartBeat.ini, FriendRequests, Instance%A_Index%
+    }
+
     Loop {
         Sleep, 30000
 
@@ -3301,6 +3310,16 @@ StartBot() {
                 discMessage .= "\n" . onlineAHK . "\n" . offlineAHK . "\n" . packStatus . "\n" . VersionStatusText()
                 discMessage .= typeMsg
                 discMessage .= selectMsg
+
+                if (botConfig.get("groupRerollEnabled")) {
+                    friendRequestTotal := 0
+                    Loop % botConfig.get("Instances") {
+                        IniRead, frValue, HeartBeat.ini, FriendRequests, Instance%A_Index%, 0
+                        friendRequestTotal += frValue
+                    }
+                    if (friendRequestTotal > 0)
+                        discMessage .= "\nFriend requests sent: " . friendRequestTotal
+                }
 
                 heartBeatWebhookURL := GetActiveHeartbeatWebhookURL()
                 if((botConfig.get("groupRerollEnabled") || (!botConfig.get("groupRerollEnabled") && botConfig.get("heartBeatOwnerWebHookURL") = "")) && heartBeatWebhookURL)
