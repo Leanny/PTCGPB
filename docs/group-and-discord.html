@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Configure group reroll, Discord notifications and heartbeat in PTCGPB."
+        />
+        <title>Group &amp; Discord · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Connected workflows</p>
+                <h1>Group and Discord</h1>
+                <p class="lead">
+                    Send results to the correct channels, monitor instances
+                    remotely, and participate in a shared reroll group.
+                </p>
+
+                <div class="callout danger">
+                    <strong>Keep webhook URLs secret.</strong> Anyone with a
+                    Discord webhook URL can post through it. Use private
+                    channels for account XML attachments and replace a webhook
+                    immediately if it is exposed.
+                </div>
+
+                <h2>Discord destinations</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>Used for</th>
+                                <th>Fields</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Solo Reroll InjectWP</td>
+                                <td>Your own reroll and Wonderpick results.</td>
+                                <td>
+                                    Discord ID, Webhook URL, Send Account XML
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Group Reroll InjectWP</td>
+                                <td>
+                                    God Pack results shared with a reroll group.
+                                </td>
+                                <td>
+                                    Group Discord ID, group Webhook URL, Send
+                                    Account XML
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Save for Trade</td>
+                                <td>
+                                    Tradeable card results selected in S4T
+                                    settings.
+                                </td>
+                                <td>
+                                    S4T Discord ID, S4T Webhook URL, Send
+                                    Account XML
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Heartbeat</td>
+                                <td>
+                                    Periodic instance and pack-opening status.
+                                </td>
+                                <td>Name, three webhook destinations, delay</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>
+                    A Discord ID is used to mention the intended user. A webhook
+                    URL decides which channel receives the message.
+                </p>
+
+                <h2>Heartbeat</h2>
+                <p>
+                    Enable Heartbeat to post a status report every configured
+                    number of minutes. Reports show which instances are online
+                    or offline, total packs opened and packs per minute.
+                </p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Name</td>
+                                <td>
+                                    Heading shown at the top of heartbeat posts.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Solo HB Webhook</td>
+                                <td>Normal heartbeat for your own bot.</td>
+                            </tr>
+                            <tr>
+                                <td>Solo Detailed HB Webhook</td>
+                                <td>
+                                    Detailed per-instance counts, update times
+                                    and owner alerts such as recognition
+                                    failures and restarts.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Group HB Webhook</td>
+                                <td>
+                                    Heartbeat destination shared by the reroll
+                                    group.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>HB Delay</td>
+                                <td>
+                                    Minutes between reports. Default:
+                                    <code>30</code>.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Group Reroll</h2>
+                <p>
+                    Group Reroll downloads shared Friend ID lists and allows the
+                    Main instance to run God Pack tests for the group.
+                </p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Enable Group Reroll</td>
+                                <td>Enables the shared reroll workflow.</td>
+                                <td>Off</td>
+                            </tr>
+                            <tr>
+                                <td>ids.txt API URL</td>
+                                <td>
+                                    Address from which numbered instances
+                                    download the group's shared Friend ID list.
+                                </td>
+                                <td>Provided by the group</td>
+                            </tr>
+                            <tr>
+                                <td>vip_ids.txt API URL</td>
+                                <td>
+                                    Address from which Main downloads VIP
+                                    accounts that found God Packs. Main
+                                    favorites them and does not remove them
+                                    during tests.
+                                </td>
+                                <td>Provided by the group</td>
+                            </tr>
+                            <tr>
+                                <td>Auto GPTest</td>
+                                <td>
+                                    Starts a Main-account GP test at a regular
+                                    interval.
+                                </td>
+                                <td>Off</td>
+                            </tr>
+                            <tr>
+                                <td>Test Time</td>
+                                <td>Seconds between automatic GP tests.</td>
+                                <td><code>3600</code> (1 hour)</td>
+                            </tr>
+                            <tr>
+                                <td>GP Test mode</td>
+                                <td>
+                                    <strong>Standard</strong> runs a normal
+                                    test.
+                                    <strong>Unopened Pack</strong> requires an
+                                    account that still has an unopened booster
+                                    pack.
+                                </td>
+                                <td>Standard</td>
+                            </tr>
+                            <tr>
+                                <td>GP Test Wait</td>
+                                <td>
+                                    Seconds Main waits for instances to remove
+                                    friends before Main removes non-VIP friends.
+                                </td>
+                                <td><code>150</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Group setup checklist</h3>
+                <ol class="steps">
+                    <li>
+                        <h3>Get the shared URLs</h3>
+                        <p>
+                            Obtain the exact <code>ids.txt</code> and
+                            <code>vip_ids.txt</code> endpoints from your group
+                            administrator.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Configure group Discord</h3>
+                        <p>
+                            Add the group user ID and webhook. Ask whether
+                            attaching account XML files is permitted.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Configure Main</h3>
+                        <p>
+                            Name its instance <code>Main</code>, enable Run
+                            Main(s), and test friend removal manually before
+                            enabling automatic GP tests.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Enable automation last</h3>
+                        <p>
+                            Start with Standard mode. Enable Auto GPTest only
+                            after a manual test completes successfully.
+                        </p>
+                    </li>
+                </ol>
+
+                <h2>Solo IDs file</h2>
+                <p>
+                    <strong>Use ids.txt in Solo Reroll</strong>, found in Tools
+                    &amp; System, makes solo instances use
+                    <code>ids.txt</code> in the bot folder instead of only the
+                    Friend ID field. Put one 16-digit Friend ID on each line.
+                </p>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="accounts-and-trading.html"
+                        >← Accounts &amp; trading</a
+                    ><a href="tools-and-system.html">Tools &amp; system →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>
