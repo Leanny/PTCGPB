@@ -1,9 +1,7 @@
 (function () {
     "use strict";
 
-    // Update the documentation version here. The shared header and every
-    // [data-docs-version] placeholder use this single value.
-    const documentationVersion = "v0.16.0-beta.7";
+    const documentationVersion = "v10.0.0";
 
     const pages = [
         ["index.html", "Overview"],
