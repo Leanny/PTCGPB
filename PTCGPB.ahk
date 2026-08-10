@@ -2079,7 +2079,7 @@ CheckForUpdate() {
     }
     latestReleaseBody := FixFormat(ExtractJSONValue(response, "body"))
     latestVersion := ExtractJSONValue(response, "tag_name")
-    zipDownloadURL := "https://api.github.com/repos/Leanny/PTCGPB/releases/assets/508891941" ; we have assets now for the release
+    zipDownloadURL := "https://github.com/Leanny/PTCGPB/releases/download/v10.0.0/PTCGPB-v10.0.0.zip" ; we have assets now for the release
     if (zipDownloadURL = "" || !InStr(zipDownloadURL, "http"))
     {
         MsgBox, 0x40000, Check for Update, Failed to get download URL
