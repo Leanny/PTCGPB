@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v0.16.0-beta.9"
+    ,localVersion := "v10.0.0"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -529,7 +529,7 @@ NextStep:
     Gui, Add, Text, x535 y43 w180 h20 Center BackgroundTrans cWhite, % localVersion
     Gui, Font, s8 cWhite Bold
     Gui, Add, Text, x528 y68 w195 h18 Center BackgroundTrans cWhite, Release source: %repoUser%/%repoName%
-    Gui, Add, Text, x528 y91 w195 h18 Center BackgroundTrans cWhite, Modders: Lean && xedranort
+    Gui, Add, Text, x528 y91 w195 h18 Center BackgroundTrans cWhite, Main Developers: Lean && xedranort
 
     forceInjectVisible := InStr(botMethod, "Inject") ? "" : " Hidden"
     Gui, Font, s9 cWhite
