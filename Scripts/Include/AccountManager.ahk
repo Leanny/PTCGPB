@@ -104,7 +104,10 @@ loadAccount() {
                         continue
                     }
 
-                    if (botConfig.get("forceInjectAccounts") && !AccountMetadata_TryClaimForceInject(session.get("scriptName"), currentFile, testFile)) {
+                    ; Reserve FI only when this account is using its one-time force
+                    ; override. FI=1 accounts may still enter through normal gates.
+                    forceClaimNeeded := botConfig.get("forceInjectAccounts") && !AccountEligibility_FlagIsSet(accountMeta, "FI")
+                    if (forceClaimNeeded && !AccountMetadata_TryClaimForceInject(session.get("scriptName"), currentFile, testFile)) {
                         skippedIndexes[A_Index] := true
                         skippedCount++
                         LogDebug("Skipped account already claimed for force injection: " . currentFile)
@@ -603,18 +606,12 @@ getMetaData() {
             session.get("missionDoneList")["receivedGiftDone"] := 1
         if(accountMeta["flags"]["B"]["value"])
             session.get("missionDoneList")["beginnerMissionsDone"] := 1
-        if(accountMeta["flags"]["X"]["value"]) {
-            ; Daily X cooldown: expired validUntil means special missions are due again.
-            if (accountMeta["flags"]["X"]["validUntil"] != "" && A_Now >= accountMeta["flags"]["X"]["validUntil"])
-                session.get("missionDoneList")["specialMissionsDone"] := 0
-            else if (AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
-                session.get("missionDoneList")["specialMissionsDone"] := 0
-            else
-                session.get("missionDoneList")["specialMissionsDone"] := 1
-        }
         if(accountMeta["flags"]["T"]["value"])
             session.get("missionDoneList")["accountHasPackInTesting"] := 1
     }
+
+    ; Derive completion from every active .sevt entry. X is legacy metadata only.
+    session.get("missionDoneList")["specialMissionsDone"] := AccountEligibility_NeedsSpecialMissionClaim(accountMeta) ? 0 : 1
 
     if (session.get("missionDoneList")["accountHasPackInTesting"]) {
         tFlag := accountMeta["flags"]["T"]
@@ -785,22 +782,6 @@ AccountEligibility_NeedsSpecialMissionClaim(accountMeta) {
     if (eventCount = "" || eventCount < 1)
         return false
 
-    hasSpecialProgress := false
-    if (IsObject(accountMeta["specialEvents"])) {
-        for k, v in accountMeta["specialEvents"] {
-            hasSpecialProgress := true
-            break
-        }
-    }
-
-    ; Legacy permanent X without per-event progress: treat as fully done.
-    if (AccountEligibility_FlagIsSet(accountMeta, "X") && !hasSpecialProgress) {
-        xFlag := AccountEligibility_GetFlag(accountMeta, "X")
-        if (xFlag["validUntil"] = "")
-            return false
-    }
-
-    needsClaim := false
     Loop, % eventCount {
         info := activeEvents[A_Index]
         progress := AccountMetadata_GetSpecialEventProgress(accountMeta, info["eventName"])
@@ -808,18 +789,10 @@ AccountEligibility_NeedsSpecialMissionClaim(accountMeta) {
             continue
         if (SpecialEvent_IsSameGameDay(progress["lastClaimAt"], "", info["expiryTime"]))
             continue
-        needsClaim := true
-        break
+        return true
     }
 
-    if (!needsClaim)
-        return false
-
-    ; Still inside today's cooldown window from X.validUntil.
-    if (AccountEligibility_FlagIsSet(accountMeta, "X") && !AccountEligibility_FlagIsExpired(accountMeta, "X", 24))
-        return false
-
-    return true
+    return false
 }
 
 AccountEligibility_FlagIsExpired(accountMeta, flag, hoursValid) {
@@ -926,8 +899,10 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (!IsObject(accountMeta))
         accountMeta := AccountMetadata_Get(instance, fileName, filePath)
 
-    if (botConfig.get("forceInjectAccounts"))
-        return !AccountEligibility_FlagIsSet(accountMeta, "FI")
+    ; An unused FI slot overrides normal gates once. A consumed FI slot falls
+    ; through so daily and per-event eligibility can still schedule the account.
+    if (botConfig.get("forceInjectAccounts") && !AccountEligibility_FlagIsSet(accountMeta, "FI"))
+        return true
 
     if (method = "Inject Rewards")
         return AccountEligibility_InjectRewardsEligible(accountMeta)

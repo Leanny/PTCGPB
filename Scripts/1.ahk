@@ -5366,7 +5366,8 @@ DoWonderPick() {
 ;-------------------------------------------------------------------------------
 ; ClaimAllMissionRewards - Unified single-pass claim for Daily + Special missions.
 ; Handles the full Special-event lifecycle: AdvanceSpecialEventSteps, Elite Deck
-; claims, per-event metadata (claimCount), and the X flag with validUntil.
+; claims and per-event metadata (claimCount). X remains legacy status metadata
+; and does not decide whether an active event can be claimed.
 ; Returns {daily: bool, special: bool, eliteDeckRestart: bool}.
 ;-------------------------------------------------------------------------------
 ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta := "") {
@@ -5450,7 +5451,7 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     movedRightCount := 0
-    maxMissionPages := 12
+    maxMissionPages := 15
     Loop {
         if ((!claimDaily || dailyClaimed) && specialDone)
             break
@@ -5508,6 +5509,10 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
                                 eliteDeckRestart := true
                                 specialDone := true
                             }
+                            ; already claimed
+                            if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                                specialDone := true
+                            }
                             break
                         }
                         Delay(1)
@@ -5549,14 +5554,14 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
         movedRightCount++
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Scanning mission rewards page " . movedRightCount . "`n(" . failSafeTime . "/60 seconds)")
-        adbClick_wbb(197, 459)
+        adbClick_wbb(235, 460)
+        Delay(0.2)
+        adbClick_wbb(175, 445)
         Delay(3)
 
         if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
             break
     }
-
-    GoToMain()
 
     ; --- Elite Deck restart: finish claim then re-run for remaining rewards ---
     if (eliteDeckRestart && eliteDeckClaim && HelperHasCardResult()) {
@@ -5746,10 +5751,12 @@ ClaimVisibleEventRewards(eventResult) {
                         eventResult[specialEventName] := true
                         return specialEventName
                     }
-                } else if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                }
+                if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     eventResult[specialEventName] := true
                     return specialEventName
                 }
+
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
                 CreateStatusMessage("Get reward event: " . specialEventName . "`n(" . failSafeTime . "/45 seconds)")
                 if (failSafeTime > 45) {

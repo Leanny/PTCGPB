@@ -2535,36 +2535,18 @@ fn special_event_last_claim_at<'a>(account: &'a Value, event_name: &str) -> &'a 
         .unwrap_or("")
 }
 
-fn has_special_event_progress(account: &Value) -> bool {
-    account
-        .get("specialEvents")
-        .and_then(Value::as_object)
-        .is_some_and(|events| !events.is_empty())
-}
-
 fn needs_special_mission_claim(account: &Value, active_events: &[ActiveSpecialEvent]) -> bool {
     if active_events.is_empty() {
         return false;
     }
 
-    // Match the AHK migration guard: a legacy permanent X without per-event
-    // progress remains complete until its history is explicitly cleared.
-    if flag_value(account, "X")
-        && !has_special_event_progress(account)
-        && flag_valid_until(account, "X").is_empty()
-    {
-        return false;
-    }
-
-    let needs_claim = active_events.iter().any(|event| {
+    active_events.iter().any(|event| {
         special_event_claim_count(account, &event.name) < event.claim_steps
             && !special_event_is_same_game_day(
                 special_event_last_claim_at(account, &event.name),
                 &event.expiry_time,
             )
-    });
-
-    needs_claim && flag_is_expired(account, "X", 24)
+    })
 }
 
 fn parse_special_event_file(path: &Path) -> Option<ActiveSpecialEvent> {
@@ -2690,10 +2672,12 @@ fn eligible(
     options: &ScheduleOptions,
     active_events: &[ActiveSpecialEvent],
 ) -> bool {
-    if options.force_inject {
-        return !flag_value(account, "FI");
+    if options.force_inject && !flag_value(account, "FI") {
+        return true;
     }
 
+    // FI only records that the one-time force override was consumed. Once it
+    // is set, fall back to the normal mode gates (including per-event claims).
     match options.delete_method.as_str() {
         "Create Bots (13P)" => true,
         "Rename Account" => rename_account_eligible(account),
@@ -3015,7 +2999,7 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
 
         let pack_count =
             field_i64(account, "packCount").unwrap_or_else(|| extract_pack_count(&file_name));
-        if !options.force_inject
+        if (!options.force_inject || flag_value(account, "FI"))
             && !pack_count_allowed(
                 &options.delete_method,
                 metadata_account,
@@ -3120,7 +3104,7 @@ fn count_eligible_for_all_instances(
 
             let pack_count =
                 field_i64(account, "packCount").unwrap_or_else(|| extract_pack_count(&file_name));
-            if options.force_inject
+            if (options.force_inject && !flag_value(account, "FI"))
                 || pack_count_allowed(
                     &options.delete_method,
                     metadata_account,
@@ -4434,13 +4418,13 @@ mod tests {
         let old_claim = (Local::now() - Duration::days(2))
             .format("%Y%m%d%H%M%S")
             .to_string();
-        let account = json!({
+        let mut account = json!({
             "flags": { "X": new_flag(1, &old_claim, "") },
             "specialEvents": {
                 "completed-event": { "claimCount": 1, "lastClaimAt": old_claim }
             }
         });
-        let options = ScheduleOptions {
+        let mut options = ScheduleOptions {
             instance: "1".to_owned(),
             delete_method: "Inject Rewards".to_owned(),
             sort_method: "ModifiedAsc".to_owned(),
@@ -4468,6 +4452,20 @@ mod tests {
             },
         ];
 
+        assert!(eligible(&account, &options, &events));
+
+        // X is legacy status only. Even accounts without any per-event history
+        // must be eligible for every active .sevt event they have not claimed.
+        account["specialEvents"] = json!({});
+        assert!(eligible(&account, &options, &events));
+
+        account["flags"]["X"] = new_flag(1, &old_claim, "29991231235959");
+        assert!(eligible(&account, &options, &events));
+
+        // A consumed force override must not suppress normal special-event
+        // eligibility while Force inject accounts remains enabled.
+        account["flags"]["FI"] = new_flag(1, &old_claim, "");
+        options.force_inject = true;
         assert!(eligible(&account, &options, &events));
     }
 
