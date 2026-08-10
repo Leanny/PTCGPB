@@ -5554,7 +5554,7 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
         movedRightCount++
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Scanning mission rewards page " . movedRightCount . "`n(" . failSafeTime . "/60 seconds)")
-        adbClick_wbb(235, 460)
+        adbClick_wbb(197, 459)
         Delay(0.2)
         adbClick_wbb(175, 445)
         Delay(3)
