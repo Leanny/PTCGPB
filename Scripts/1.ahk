@@ -1946,7 +1946,7 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
     postSnapshot := PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
     resultLog := PullPackOpeningResultLog(failedDir, uniquePrefix)
 
-    message := reason . "\nVersion: 0.15.1\nPlease submit these files for the bug report as well."
+    message := reason . "\nPlease submit these files for the bug report as well."
     for _, snapshot in [preSnapshot, postSnapshot] {
         localPathForMessage := StrReplace(snapshot.localPath, "\", "/")
         if (snapshot.exists) {
