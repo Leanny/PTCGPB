@@ -1658,8 +1658,14 @@ ShowToolsAndSystemSettings:
         Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("startCockpitWithBot") ? "Checked" : "") " vui_startCockpitWithBot_Popup x" . col2X . " y" . yPos2 . " " . sectionColor, Auto-open Cockpit
         yPos2 += 26
     }
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Auto Save to Git (hourly)
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Backup to Git
+    yPos2 += 26
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToDisk") ? "Checked" : "") " vui_saveToDisk_Popup gsaveToDisk_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Backup to Disk
+    yPos2 += 26
+    Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
+    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%yPos2% w170 h20 gShowBackupSettings BackgroundTrans, Backup settings...
     yPos2 += 30
+    Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
 
     logLevel := botConfig.get("logLevel")
     StringLower, logLevel, logLevel
@@ -1734,6 +1740,7 @@ saveToolsAndSystemSettings:
     if (currentDeleteMethod != "Create Bots (13P)")
         botConfig.set("startCockpitWithBot", ui_startCockpitWithBot_Popup, "ToolsAndSystem")
     botConfig.set("saveToGit", ui_saveToGit_Popup, "ToolsAndSystem")
+    botConfig.set("saveToDisk", ui_saveToDisk_Popup, "ToolsAndSystem")
     botConfig.set("receiveGift", ui_receiveGift_Popup, "ToolsAndSystem")
 
     if(botConfig.get("SelectedMonitorIndex") = "")
@@ -1759,10 +1766,172 @@ saveToGit_Click:
         gitRoot := A_ScriptDir
         if (!IsGitRepo(gitRoot)) {
             GuiControl, ToolsAndSystemSelect:, saveToGit_Popup, 0
-            MsgBox, 48, Git Error, The script directory is not a git repository.`nAuto Save to Git cannot be enabled.`n`nTo fix this, run: git init`nIt is also recommended to connect it to a remote repository.
+            MsgBox, 48, Git Error, The script directory is not a git repository.`nBackup to Git cannot be enabled.`n`nTo fix this, run: git init`nIt is also recommended to connect it to a remote repository.
+        } else if (!BackupCategoriesSelected(botConfig)) {
+            GuiControl, ToolsAndSystemSelect:, saveToGit_Popup, 0
+            MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Git.
         }
     }
 return
+
+saveToDisk_Click:
+    GuiControlGet, saveToDisk_Popup, ToolsAndSystemSelect:, saveToDisk_Popup
+    if (saveToDisk_Popup) {
+        folder := botConfig.get("diskBackupFolder")
+        if (folder = "" || !InStr(FileExist(folder), "D")) {
+            GuiControl, ToolsAndSystemSelect:, saveToDisk_Popup, 0
+            MsgBox, 48, Disk Backup, Choose a valid destination folder in Backup settings before enabling Backup to Disk.
+        } else if (!BackupCategoriesSelected(botConfig)) {
+            GuiControl, ToolsAndSystemSelect:, saveToDisk_Popup, 0
+            MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Disk.
+        }
+    }
+return
+
+ShowBackupSettings:
+    Gui, BackupSettings:Destroy
+    Gui, BackupSettings:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +LastFound, Backup Settings
+    Gui, BackupSettings:Color, 1E1E1E, 333333
+    Gui, BackupSettings:Font, s10 cWhite, Segoe UI
+
+    y := 15
+    Gui, BackupSettings:Add, Text, x20 y%y% cAAAAAA, Interval (minutes, shared by Git and Disk)
+    y += 22
+    Gui, BackupSettings:Add, Edit, vui_backupIntervalMinutes w60 x20 y%y% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("backupIntervalMinutes")
+    y += 35
+
+    Gui, BackupSettings:Add, Text, x20 y%y% cAAAAAA, Disk backup folder
+    y += 22
+    Gui, BackupSettings:Add, Edit, vui_diskBackupFolder w250 x20 y%y% h22 -E0x200 Background2A2A2A cWhite, % botConfig.get("diskBackupFolder")
+    Gui, BackupSettings:Add, Button, x280 y%y% w70 h22 gBrowseDiskBackupFolder BackgroundTrans, Browse
+    y += 35
+
+    Gui, BackupSettings:Add, Text, x20 y%y% cAAAAAA, Include in backup (Git and Disk)
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupAccountsXml", 1) ? "Checked" : "") " vui_backupAccountsXml x20 y" . y . " cWhite", Accounts XML (Saved/*.xml)
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupAccountsJson", 1) ? "Checked" : "") " vui_backupAccountsJson x20 y" . y . " cWhite", Accounts JSON (Cards/accounts/*.json)
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupSettingsIni", 1) ? "Checked" : "") " vui_backupSettingsIni x20 y" . y . " cWhite", Settings.ini
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupShowcaseIds", 1) ? "Checked" : "") " vui_backupShowcaseIds x20 y" . y . " cWhite", showcase_ids.txt
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupManualVipIds", 1) ? "Checked" : "") " vui_backupManualVipIds x20 y" . y . " cWhite", manual_vip_ids.txt
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupFriendsGPTested", 1) ? "Checked" : "") " vui_backupFriendsGPTested x20 y" . y . " cWhite", FriendsGPTested_*.txt
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupSpecialEvents", 1) ? "Checked" : "") " vui_backupSpecialEvents x20 y" . y . " cWhite", SpecialEvents .sevt (Events + PastEvents)
+    y += 35
+
+    Gui, BackupSettings:Add, Button, x20 y%y% w100 h30 gBackupNow, Backup Now
+    Gui, BackupSettings:Add, Button, x140 y%y% w70 h30 gApplyBackupSettings, Apply
+    Gui, BackupSettings:Add, Button, x220 y%y% w70 h30 gCancelBackupSettings, Cancel
+    y += 45
+
+    WinGetPos, toolsX, toolsY, toolsW, toolsH, A
+    if (toolsX = "") {
+        Gui, BackupSettings:Show, w370 h%y%
+    } else {
+        bx := toolsX + 30
+        by := toolsY + 30
+        Gui, BackupSettings:Show, x%bx% y%by% w370 h%y%
+    }
+return
+
+BrowseDiskBackupFolder:
+    FileSelectFolder, selectedFolder, *%A_ScriptDir%, 3, Select disk backup folder
+    if (selectedFolder != "")
+        GuiControl, BackupSettings:, ui_diskBackupFolder, %selectedFolder%
+return
+
+ApplyBackupSettings:
+    Gui, BackupSettings:Submit, NoHide
+    if (!ValidateAndSaveBackupSettings())
+        return
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+    Gui, BackupSettings:Destroy
+return
+
+CancelBackupSettings:
+    Gui, BackupSettings:Destroy
+return
+
+BackupNow:
+    Gui, BackupSettings:Submit, NoHide
+    if (!ValidateAndSaveBackupSettings(true))
+        return
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+
+    paths := BuildBackupPaths(botConfig)
+    srcRoot := A_ScriptDir
+    destFolder := botConfig.get("diskBackupFolder")
+    summary := ""
+    doGit := botConfig.get("saveToGit")
+
+    Progress, M B1 FS10 ZH12 FM10 WM700 W420 CW1E1E1E CTFFFFFF CB4AAE3A, Preparing backup..., Backup Now, Backup Now
+    Progress, 15, Copying files to disk..., Backup Now, Backup Now
+
+    if (!BackupToDisk(srcRoot, destFolder, paths, "BackupNow.txt"))
+        summary .= "Disk backup failed.`n"
+    else
+        summary .= "Disk backup completed to:`n" . destFolder . "`n"
+
+    if (doGit) {
+        Progress, 55, Preparing Git backup..., Backup Now, Backup Now
+        if (!IsGitRepo(srcRoot)) {
+            summary .= "Git backup skipped: folder is not a git repository.`n"
+        } else {
+            Progress, 70, Committing and pushing to Git..., Backup Now, Backup Now
+            if (!CommitAndPushGit(srcRoot, "BackupNow.txt", paths))
+                summary .= "Git backup failed.`n"
+            else
+                summary .= "Git backup completed.`n"
+        }
+    }
+
+    Progress, 100, Backup complete, Backup Now, Backup Now
+    Sleep, 450
+    Progress, Off
+
+    MsgBox, 64, Backup Now, %summary%
+return
+
+; Saves Backup Settings popup values into botConfig.
+; For Backup Now, requireDiskFolder can force a destination folder check.
+ValidateAndSaveBackupSettings(requireDiskFolder := false) {
+    global botConfig
+    global ui_backupIntervalMinutes, ui_diskBackupFolder
+    global ui_backupAccountsXml, ui_backupAccountsJson, ui_backupSettingsIni
+    global ui_backupShowcaseIds, ui_backupManualVipIds, ui_backupFriendsGPTested, ui_backupSpecialEvents
+
+    mins := ui_backupIntervalMinutes + 0
+    if (mins < 5) {
+        MsgBox, 48, Backup Settings, Interval must be at least 5 minutes.
+        return false
+    }
+
+    botConfig.set("backupIntervalMinutes", mins, "ToolsAndSystem")
+    botConfig.set("diskBackupFolder", ui_diskBackupFolder, "ToolsAndSystem")
+    SetBackupFlag(botConfig, "backupAccountsXml", ui_backupAccountsXml)
+    SetBackupFlag(botConfig, "backupAccountsJson", ui_backupAccountsJson)
+    SetBackupFlag(botConfig, "backupSettingsIni", ui_backupSettingsIni)
+    SetBackupFlag(botConfig, "backupShowcaseIds", ui_backupShowcaseIds)
+    SetBackupFlag(botConfig, "backupManualVipIds", ui_backupManualVipIds)
+    SetBackupFlag(botConfig, "backupFriendsGPTested", ui_backupFriendsGPTested)
+    SetBackupFlag(botConfig, "backupSpecialEvents", ui_backupSpecialEvents)
+
+    if (!BackupCategoriesSelected(botConfig)) {
+        MsgBox, 48, Backup Settings, Select at least one backup category.
+        return false
+    }
+
+    folder := botConfig.get("diskBackupFolder")
+    if ((requireDiskFolder || botConfig.get("saveToDisk")) && (folder = "" || !InStr(FileExist(folder), "D"))) {
+        MsgBox, 48, Backup Settings, Choose a valid disk backup folder.
+        return false
+    }
+    return true
+}
 
 ClearSpecialMissionHistory:
     MsgBox, 4, Clear Special Mission History, Reset Special Mission completion history for the current account metadata files? This will clear the X flag and specialEvents claim counts in Accounts\Cards\accounts so that PTCGPB will try collecting Special Missions again for those accounts.
@@ -2648,7 +2817,10 @@ HelpTT_Init() {
     HelpTT_Add("ui_instanceLaunchDelay_Popup", "instanceLaunchDelay", "Seconds to wait between launching one MuMu instance and the next.")
     HelpTT_Add("ui_autoLaunchMonitor_Popup", "autoLaunchMonitor", "When enabled, opens the Monitor when the bot starts.`nThe Monitor watches all instances and restarts any that get stuck.")
     HelpTT_Add("ui_startCockpitWithBot_Popup", "startCockpitWithBot", "When enabled, opens the Cockpit when the bot starts.`nThe Cockpit is a live dashboard with the status and metrics of all running instances.")
-    HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits Accounts data (XML and JSON) to git automatically every hour.")
+    HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits the selected backup categories to git on the shared backup interval (configured in Backup settings).")
+    HelpTT_Add("ui_saveToDisk_Popup", "saveToDisk", "When enabled, copies the selected backup categories to the disk backup folder on the shared backup interval (configured in Backup settings).")
+    HelpTT_Add("ui_backupIntervalMinutes", "backupIntervalMinutes", "Shared interval in minutes for Backup to Git and Backup to Disk. Minimum 5 minutes.")
+    HelpTT_Add("ui_diskBackupFolder", "diskBackupFolder", "Destination folder for on-disk backups. Relative paths (Accounts, SpecialEvents, etc.) are preserved under this folder.")
     HelpTT_Add("ui_logLevel_Popup", "logLevel", "Verbosity of the log files: error < warn < info < debug < trace.`nUse 'info' normally; 'debug'/'trace' only when investigating problems.")
 
     ; --- Popup: Tools & System buttons (no v-variable, keyed by their text)
