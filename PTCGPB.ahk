@@ -2069,7 +2069,7 @@ getTotalOpenPacks() {
 
 CheckForUpdate() {
     global githubUser, repoName, localVersion, zipPath, extractPath, scriptFolder, currentDictionary
-    url := "https://api.github.com/repos/" githubUser "/" repoName "/releases/latest"
+    url := "https://api.github.com/repos/" githubUser "/" repoName "/releases/368006484" ; v10.0.0 release
 
     response := HttpGet(url)
     if !response
@@ -2079,7 +2079,7 @@ CheckForUpdate() {
     }
     latestReleaseBody := FixFormat(ExtractJSONValue(response, "body"))
     latestVersion := ExtractJSONValue(response, "tag_name")
-    zipDownloadURL := ExtractJSONValue(response, "zipball_url")
+    zipDownloadURL := "https://api.github.com/repos/Leanny/PTCGPB/releases/assets/508891941" ; we have assets now for the release
     if (zipDownloadURL = "" || !InStr(zipDownloadURL, "http"))
     {
         MsgBox, 0x40000, Check for Update, Failed to get download URL
