@@ -3250,10 +3250,42 @@ fn collect_xmls_for_balance(
     Ok(())
 }
 
-fn file_created_or_modified(path: &Path) -> std::time::SystemTime {
-    fs::metadata(path)
-        .and_then(|m| m.created().or_else(|_| m.modified()))
-        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+fn unique_balance_file_names(xmls: Vec<(String, PathBuf)>) -> Vec<(String, String, PathBuf)> {
+    // Reserve every original name up front so a duplicate `1.xml` cannot take
+    // the name of an existing `1_2.xml`. Windows filenames are case-insensitive,
+    // so use lowercase keys even when tests run on another platform.
+    let mut reserved: HashSet<String> = xmls
+        .iter()
+        .map(|(file_name, _)| file_name.to_lowercase())
+        .collect();
+    let mut emitted = HashSet::new();
+
+    xmls.into_iter()
+        .map(|(file_name, path)| {
+            if emitted.insert(file_name.to_lowercase()) {
+                return (file_name.clone(), file_name, path);
+            }
+
+            let file_path = Path::new(&file_name);
+            let stem = file_path
+                .file_stem()
+                .map(|value| value.to_string_lossy())
+                .unwrap_or_default();
+            let extension = file_path.extension().map(|value| value.to_string_lossy());
+            let mut suffix = 2usize;
+            loop {
+                let candidate = match &extension {
+                    Some(extension) => format!("{stem}_{suffix}.{extension}"),
+                    None => format!("{stem}_{suffix}"),
+                };
+                if reserved.insert(candidate.to_lowercase()) {
+                    emitted.insert(candidate.to_lowercase());
+                    break (file_name, candidate, path);
+                }
+                suffix += 1;
+            }
+        })
+        .collect()
 }
 
 fn pack_counts_by_file(store: &Value) -> HashMap<String, i64> {
@@ -3421,30 +3453,14 @@ fn balance_xmls(root: &Path, instances: usize, options: ScheduleOptions) -> Resu
         ensure_metadata(root).context("Failed while ensuring account metadata")?
     };
     let pack_counts = pack_counts_by_file(&store);
-    let mut newest_by_name: HashMap<String, (std::time::SystemTime, PathBuf)> = HashMap::new();
-
-    write_balance_progress(root, 35, "Removing duplicate XML files")?;
-    for (file_name, path) in xmls {
-        let file_time = file_created_or_modified(&path);
-        if let Some((prev_time, prev_path)) = newest_by_name.get(&file_name) {
-            if file_time > *prev_time {
-                let _ = fs::remove_file(prev_path);
-                newest_by_name.insert(file_name, (file_time, path));
-            } else {
-                let _ = fs::remove_file(&path);
-            }
-        } else {
-            newest_by_name.insert(file_name, (file_time, path));
-        }
-    }
-
-    let mut files: Vec<_> = newest_by_name
+    write_balance_progress(root, 35, "Resolving duplicate XML filenames")?;
+    let mut files: Vec<_> = unique_balance_file_names(xmls)
         .into_iter()
-        .map(|(file_name, (_time, path))| {
+        .map(|(original_file_name, file_name, path)| {
             let pack_count = pack_counts
-                .get(&file_name)
+                .get(&original_file_name)
                 .copied()
-                .unwrap_or_else(|| extract_pack_count(&file_name));
+                .unwrap_or_else(|| extract_pack_count(&original_file_name));
             (Reverse(pack_count), file_name, path)
         })
         .collect();
@@ -4210,6 +4226,38 @@ fn append_pull(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn balance_assigns_unique_names_without_overwriting_reserved_suffixes() {
+        let xmls = vec![
+            ("1.xml".to_owned(), PathBuf::from("first")),
+            ("1.xml".to_owned(), PathBuf::from("second")),
+            ("1_2.xml".to_owned(), PathBuf::from("already-suffixed")),
+            ("1.xml".to_owned(), PathBuf::from("third")),
+        ];
+
+        let named = unique_balance_file_names(xmls);
+        let output_names = named
+            .iter()
+            .map(|(_, output_name, _)| output_name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(output_names, vec!["1.xml", "1_3.xml", "1_2.xml", "1_4.xml"]);
+        assert_eq!(named.len(), 4);
+    }
+
+    #[test]
+    fn balance_filename_collisions_are_case_insensitive() {
+        let xmls = vec![
+            ("Account.XML".to_owned(), PathBuf::from("first")),
+            ("account.xml".to_owned(), PathBuf::from("second")),
+        ];
+
+        let named = unique_balance_file_names(xmls);
+
+        assert_eq!(named[0].1, "Account.XML");
+        assert_eq!(named[1].1, "account_2.xml");
+    }
 
     #[test]
     fn normalizes_pull_timestamp_inputs_to_display_format() {
