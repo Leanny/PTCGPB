@@ -1916,6 +1916,7 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
 PullPackOpeningResultLog(failedDir, uniquePrefix) {
     global session
 
+    debugLogFile := "debug_cards.txt"
     if !FileExist(failedDir)
         FileCreateDir, %failedDir%
 
@@ -1923,16 +1924,40 @@ PullPackOpeningResultLog(failedDir, uniquePrefix) {
     sdcardPath := "/sdcard/" . uniquePrefix . "_result.log"
     localPath := failedDir . "\" . uniquePrefix . "_result.log"
 
-    if (FileExist(localPath))
-        FileDelete, %localPath%
+    remoteStatus := Trim(StrReplace(adbWriteRaw("if [ -f " . remotePath . " ]; then echo present:$(wc -c < " . remotePath . "); else echo missing; fi", true), "`r"), "`n`t ")
+    LogWarn("PullPackOpeningResultLog begin | remote=" . remotePath . " | remoteStatus=" . remoteStatus . " | staging=" . sdcardPath . " | local=" . localPath, debugLogFile)
 
-    adbWriteRaw("rm -f " . sdcardPath)
-    adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
+    localDeleteStatus := "not-needed"
+    if (FileExist(localPath)) {
+        FileDelete, %localPath%
+        localDeleteStatus := ErrorLevel ? "failed" : "ok"
+    }
+
+    stagingCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
+    stagingCopyStatus := Trim(StrReplace(adbWriteRaw("if [ ! -f " . remotePath . " ]; then echo remote-missing; elif cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
     RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
-    adbWriteRaw("rm -f " . sdcardPath)
+    pullExitCode := ErrorLevel
+    finalCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
 
     exists := FileExist(localPath) ? true : false
-    return { kind: "result.log", remotePath: remotePath, localPath: localPath, exists: exists }
+    localSize := 0
+    resultLogContent := "(local result.log is missing)"
+    readSucceeded := false
+    if (exists) {
+        FileGetSize, localSize, %localPath%
+        FileRead, resultLogContent, %localPath%
+        readError := ErrorLevel
+        readSucceeded := !readError
+        if (!readSucceeded)
+            resultLogContent := "(failed to read local result.log; ErrorLevel=" . readError . ")"
+        else if (resultLogContent = "")
+            resultLogContent := "(empty)"
+    }
+
+    LogWarn("PullPackOpeningResultLog transfer | localDelete=" . localDeleteStatus . " | initialCleanup=" . stagingCleanupStatus . " | stagingCopy=" . stagingCopyStatus . " | adbPullExitCode=" . pullExitCode . " | finalCleanup=" . finalCleanupStatus . " | localExists=" . (exists ? "yes" : "no") . " | localBytes=" . localSize . " | read=" . (readSucceeded ? "ok" : "unavailable"), debugLogFile)
+    LogWarn("PullPackOpeningResultLog contents begin`n" . resultLogContent . "`nPullPackOpeningResultLog contents end", debugLogFile)
+
+    return { kind: "result.log", remotePath: remotePath, localPath: localPath, exists: exists, remoteStatus: remoteStatus, pullExitCode: pullExitCode, localSize: localSize, readSucceeded: readSucceeded }
 }
 
 ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback mechanism") {
@@ -2166,7 +2191,7 @@ RecoverPack() {
 
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
     adbWriteRaw("rm -f /data/ptcgp/result.log")
-    adbWriteRaw("/data/ptcgp/ptcgpb diff-files --out /data/ptcgp/result.log --duplicate " . pre . " " . post)
+    adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
     return ParsePackResultOutput(output)
 }
