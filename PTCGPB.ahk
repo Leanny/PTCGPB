@@ -3506,6 +3506,12 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
         return false
     }
 
+    if (!StopUpdateHelperPrograms()) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, Could not stop carddb.exe or cardimage.exe. Close the helper programs and try the update again.
+        return false
+    }
+
     FormatTime, backupStamp,, yyyyMMdd-HHmmss
     backupFolder := scriptFolder . "\Backups\before-" . localVersion . "-" . backupStamp
     if (!BackupFilesBeingReplaced(extractedFolder, scriptFolder, backupFolder)
@@ -3535,6 +3541,24 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
     FileRemoveDir, %tempRoot%, 1
     MsgBox, 0x40040, Version Manager, % "Version " . latestVersion . " installed successfully.`n`nBackup: " . backupFolder
     Reload
+    return true
+}
+
+StopUpdateHelperPrograms() {
+    helperNames := ["carddb.exe", "cardimage.exe"]
+    for _, helperName in helperNames {
+        deadline := A_TickCount + 5000
+        Loop {
+            Process, Exist, %helperName%
+            helperPID := ErrorLevel
+            if (!helperPID)
+                break
+            if (A_TickCount >= deadline)
+                return false
+            Process, Close, %helperPID%
+            Sleep, 100
+        }
+    }
     return true
 }
 
