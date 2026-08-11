@@ -105,6 +105,7 @@ enum Command {
         #[arg(long)]
         flag: String,
     },
+    ClearPullHistory,
     ImportHistory {
         #[arg(long)]
         device_account: String,
@@ -312,6 +313,7 @@ fn run(cli: Cli) -> Result<()> {
             output,
         } => extract_metadata(&cli.root, device_account, instance, file_name, key, &output),
         Command::ClearFlag { flag } => clear_flag(&cli.root, &flag),
+        Command::ClearPullHistory => clear_pull_history(&cli.root),
         Command::ImportHistory {
             device_account,
             input,
@@ -3671,6 +3673,81 @@ fn clear_flag(root: &Path, flag: &str) -> Result<()> {
     Ok(())
 }
 
+fn clear_pull_history_document(doc: &mut Value) -> bool {
+    let mut changed = false;
+
+    if let Some(metadata) = doc.get_mut("metadata").and_then(Value::as_object_mut) {
+        if let Some(flags) = metadata.get_mut("flags").and_then(Value::as_object_mut) {
+            if flags.remove("H").is_some() {
+                changed = true;
+            }
+            if flags.is_empty() {
+                metadata.remove("flags");
+            }
+        }
+    }
+
+    let pulls_have_entries = doc
+        .get("pulls")
+        .and_then(Value::as_array)
+        .is_some_and(|pulls| !pulls.is_empty());
+    if pulls_have_entries || !doc.get("pulls").is_some_and(Value::is_array) {
+        doc["pulls"] = json!([]);
+        changed = true;
+    }
+
+    changed
+}
+
+fn clear_pull_history(root: &Path) -> Result<()> {
+    let dir = account_files_dir(root);
+    let mut changed = 0usize;
+
+    write_clear_flag_progress(root, 1, "Preparing reset")?;
+    if dir.exists() {
+        let mut paths = fs::read_dir(&dir)
+            .with_context(|| format!("Could not read {:?}", dir))?
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter(|path| {
+                path.extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+            })
+            .collect::<Vec<_>>();
+        paths.sort();
+
+        let total = paths.len().max(1);
+        write_clear_flag_progress(root, 5, "Scanning account files")?;
+        for (index, path) in paths.into_iter().enumerate() {
+            let fallback = account_key_from_file(&path).unwrap_or_default();
+            let mut doc = load_account_document(&path, &fallback)?;
+            if clear_pull_history_document(&mut doc) {
+                let device_account = doc
+                    .get("deviceAccount")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&fallback)
+                    .to_owned();
+                write_account_document(root, &device_account, &doc)?;
+                changed += 1;
+            }
+
+            if index % 50 == 0 {
+                let percent = 5 + ((index + 1) * 90 / total) as u8;
+                write_clear_flag_progress(root, percent, "Clearing pull history")?;
+            }
+        }
+    }
+
+    fs::create_dir_all(saved_dir(root))?;
+    fs::write(
+        saved_dir(root).join("clear_flag_result.txt"),
+        format!("{changed}\n"),
+    )?;
+    write_clear_flag_progress(root, 100, "Reset complete")?;
+    println!("{changed}");
+    Ok(())
+}
+
 fn parse_pull_timestamp(timestamp: &str) -> Option<DateTime<Utc>> {
     let timestamp = timestamp.trim();
     if timestamp.is_empty() || timestamp == "0" {
@@ -4303,6 +4380,32 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains("2026-05-11"));
         assert!(keys.contains("2026-05-12"));
+    }
+
+    #[test]
+    fn clearing_pull_history_removes_h_and_preserves_trade_data() {
+        let mut doc = json!({
+            "deviceAccount": "account-1",
+            "metadata": {
+                "flags": {
+                    "H": { "value": 1, "setAt": "20260811080000" },
+                    "B": { "value": 1 }
+                }
+            },
+            "pulls": [{ "timestamp": "2026-08-11 08:00:00", "cards": ["card-1"] }],
+            "tradedCards": { "card-2": 3 },
+            "sharedCards": { "card-3": 4 }
+        });
+        let traded_cards = doc["tradedCards"].clone();
+        let shared_cards = doc["sharedCards"].clone();
+
+        assert!(clear_pull_history_document(&mut doc));
+        assert_eq!(doc["pulls"], json!([]));
+        assert!(doc["metadata"]["flags"].get("H").is_none());
+        assert_eq!(doc["metadata"]["flags"]["B"]["value"], 1);
+        assert_eq!(doc["tradedCards"], traded_cards);
+        assert_eq!(doc["sharedCards"], shared_cards);
+        assert!(!clear_pull_history_document(&mut doc));
     }
 
     #[test]

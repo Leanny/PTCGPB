@@ -1574,7 +1574,7 @@ ShowToolsAndSystemSettings:
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
     yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearHistoryFlag BackgroundTrans, Clear History Flag
+    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearPullHistory BackgroundTrans, Clear Pull History
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialMissions") ? "Checked" : "") " vui_claimSpecialMissions_Popup x25 y" . yPos . " cWhite", Claim Rewards
     yPos += 22
@@ -1786,15 +1786,46 @@ ClearReceiveGiftHistory:
     }
 return
 
-ClearHistoryFlag:
-    MsgBox, 4, Clear History Flag, Clear the H flag from all account JSON files? This allows PTCGPB to import history again. Existing entries from the same history day will be skipped; history days start at 06:00 UTC.
-    IfMsgBox, Yes
-    {
-        changed := AccountMetadata_ClearFlagEverywhere("H")
-        changed := changed = "" ? 0 : changed + 0
+ClearPullHistory:
+    HelpTT_DismissForClick()
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:+Disabled
+    Gui, PullHistoryConfirm:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +OwnerToolsAndSystemSelect, Clear Pull History
+    Gui, PullHistoryConfirm:Color, 1E1E1E, 333333
+    Gui, PullHistoryConfirm:Font, s10 cWhite, Segoe UI
+    warningText := "Clearing pull history removes all recorded pulls and resets the H flag. The history will be recovered on a new login.`n`nOnly use this when cards are missing from the card database. Traded cards and shared cards will be kept."
+    Gui, PullHistoryConfirm:Add, Text, x15 y15 w450 h72 BackgroundTrans, %warningText%
+    Gui, PullHistoryConfirm:Font, s9 cWhite, Segoe UI
+    Gui, PullHistoryConfirm:Add, Button, x15 y98 w145 h28 gPullHistoryConfirmClearAll, Clear pull history
+    Gui, PullHistoryConfirm:Add, Button, x170 y98 w185 h28 gPullHistoryConfirmFlagOnly, Only clear history flag
+    Gui, PullHistoryConfirm:Add, Button, x365 y98 w100 h28 gPullHistoryConfirmCancel Default, Cancel
+    Gui, PullHistoryConfirm:Show, w480 h141
+return
 
-        MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
-    }
+PullHistoryConfirmClearAll:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    changed := AccountMetadata_ClearPullHistoryEverywhere()
+    changed := changed = "" ? 0 : changed + 0
+
+    MsgBox, 64, Clear Pull History Complete, % "Done`nAccounts changed: " . changed
+return
+
+PullHistoryConfirmFlagOnly:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    changed := AccountMetadata_ClearFlagEverywhere("H")
+    changed := changed = "" ? 0 : changed + 0
+
+    MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
+return
+
+PullHistoryConfirmCancel:
+PullHistoryConfirmGuiClose:
+PullHistoryConfirmGuiEscape:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    Gui, ToolsAndSystemSelect:Show
 return
 
 ClearForceInjectFlags:
@@ -2655,7 +2686,7 @@ HelpTT_Init() {
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
-    HelpTT_Add("Clear History Flag", "clearHistoryFlag", "Clears the H flag from every account JSON file so pack history can be imported again.`nTimestamps are compared in UTC, with each history day starting at 06:00 UTC.")
+    HelpTT_Add("Clear Pull History", "clearPullHistory", "Opens reset options for pull history.`nYou can clear pulls and reset the history flag, or reset only the history flag while keeping existing pulls.`nOnly remove pulls when cards are missing in the card database; traded cards and shared cards are always kept.")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
     HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 
