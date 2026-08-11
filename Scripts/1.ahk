@@ -2166,7 +2166,7 @@ RecoverPack() {
 
     adbWriteRaw("rm -f /data/ptcgp/result.rc")
     adbWriteRaw("rm -f /data/ptcgp/result.log")
-    adbWriteRaw("/data/ptcgp/ptcgpb diff-files --duplicate " . pre . " " . post)
+    adbWriteRaw("/data/ptcgp/ptcgpb diff-files --out /data/ptcgp/result.log --duplicate " . pre . " " . post)
     output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
     return ParsePackResultOutput(output)
 }
