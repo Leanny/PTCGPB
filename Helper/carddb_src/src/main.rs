@@ -111,6 +111,8 @@ enum Command {
         device_account: String,
         #[arg(long)]
         input: PathBuf,
+        #[arg(long, default_value_t = false)]
+        in_depth: bool,
     },
     ImportRegistry {
         #[arg(long)]
@@ -317,7 +319,8 @@ fn run(cli: Cli) -> Result<()> {
         Command::ImportHistory {
             device_account,
             input,
-        } => import_history(&cli.root, &device_account, &input),
+            in_depth,
+        } => import_history(&cli.root, &device_account, &input, in_depth),
         Command::ImportRegistry {
             device_account,
             input,
@@ -3804,6 +3807,88 @@ fn pull_history_day_keys(doc: &Value) -> HashSet<String> {
         .collect()
 }
 
+type HistoryCardCounts = HashMap<(String, String, String), usize>;
+
+fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
+    let mut counts = HashMap::new();
+    for pull in doc
+        .get("pulls")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(timestamp) = pull
+            .get("timestamp")
+            .and_then(Value::as_str)
+            .and_then(parse_pull_timestamp)
+        else {
+            continue;
+        };
+        let day = history_day_key(timestamp);
+        let pack = pull
+            .get("pack")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        for card in pull
+            .get("cards")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            *counts
+                .entry((day.clone(), pack.to_owned(), card.to_owned()))
+                .or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+fn missing_history_pulls(
+    history_day: &str,
+    pulls: Vec<Value>,
+    remaining_existing_cards: &mut HistoryCardCounts,
+) -> Vec<Value> {
+    pulls
+        .into_iter()
+        .filter_map(|mut pull| {
+            let mut missing_cards = Vec::new();
+            let pack = pull
+                .get("pack")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_owned();
+            for card in pull
+                .get("cards")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let Some(card_id) = card.as_str() else {
+                    continue;
+                };
+                let key = (history_day.to_owned(), pack.clone(), card_id.to_owned());
+                let already_present = remaining_existing_cards.get_mut(&key).is_some_and(|count| {
+                    if *count == 0 {
+                        return false;
+                    }
+                    *count -= 1;
+                    true
+                });
+                if !already_present {
+                    missing_cards.push(card.clone());
+                }
+            }
+
+            if missing_cards.is_empty() {
+                return None;
+            }
+            pull["cards"] = Value::Array(missing_cards);
+            Some(pull)
+        })
+        .collect()
+}
+
 fn cardmap_path(root: &Path) -> PathBuf {
     root.join("Helper").join("cardmap.json")
 }
@@ -4089,7 +4174,7 @@ fn set_doc_flag(doc: &mut Value, flag: &str) {
     doc["metadata"]["flags"][flag] = new_flag(1, &now, "");
 }
 
-fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()> {
+fn import_history(root: &Path, device_account: &str, input: &Path, in_depth: bool) -> Result<()> {
     if device_account.trim().is_empty() {
         return Ok(());
     }
@@ -4100,6 +4185,7 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
         doc["pulls"] = json!([]);
     }
     let mut existing_history_days = pull_history_day_keys(&doc);
+    let mut remaining_existing_cards = in_depth.then(|| pull_history_card_counts(&doc));
     if input.exists() {
         let text = fs::read_to_string(input)
             .with_context(|| format!("Could not read history file {:?}", input))?;
@@ -4107,6 +4193,14 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
         for line in text.lines() {
             if let Some((timestamp, pulls)) = history_pulls_from_line(line, &cardmap) {
                 let history_day = history_day_key(timestamp);
+                if let Some(existing_cards) = remaining_existing_cards.as_mut() {
+                    let missing_pulls = missing_history_pulls(&history_day, pulls, existing_cards);
+                    doc["pulls"]
+                        .as_array_mut()
+                        .expect("pulls array")
+                        .extend(missing_pulls);
+                    continue;
+                }
                 if existing_history_days.contains(&history_day) {
                     continue;
                 }
@@ -4380,6 +4474,35 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains("2026-05-11"));
         assert!(keys.contains("2026-05-12"));
+    }
+
+    #[test]
+    fn in_depth_history_adds_only_missing_card_occurrences() {
+        let mut doc = json!({
+            "pulls": [{
+                "timestamp": "2026-05-11T08:00:00Z",
+                "pack": "A1",
+                "cards": ["PK001", "PK002"]
+            }]
+        });
+        let exported_pulls = vec![json!({
+            "timestamp": "2026-05-11 10:00:00",
+            "pack": "A1",
+            "cards": ["PK001", "PK001", "PK002", "PK003"]
+        })];
+        let history_day = "2026-05-11";
+
+        let mut existing_cards = pull_history_card_counts(&doc);
+        let missing =
+            missing_history_pulls(history_day, exported_pulls.clone(), &mut existing_cards);
+
+        assert_eq!(missing.len(), 1);
+        assert_eq!(missing[0]["cards"], json!(["PK001", "PK003"]));
+
+        doc["pulls"].as_array_mut().unwrap().extend(missing);
+        let mut reconciled_cards = pull_history_card_counts(&doc);
+        let repeated = missing_history_pulls(history_day, exported_pulls, &mut reconciled_cards);
+        assert!(repeated.is_empty());
     }
 
     #[test]

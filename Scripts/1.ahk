@@ -53,6 +53,7 @@ OnExit("CleanupBeforeExit")
 global session := new Session()
 global botConfig := new BotConfig()
 botConfig.loadSettingsToConfig("ALL")
+LogSettingsSnapshotForRun(botConfig.settingsFile)
 
 parsePackData()
 pokemonList := getKeyList(session.get("pokemonPackObj"))
@@ -1785,7 +1786,7 @@ EnsureAccountLanguageMetadata() {
 
 GetHistoryOfAccount() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
+    global session, botConfig
 
     if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
         return false
@@ -1793,6 +1794,7 @@ GetHistoryOfAccount() {
     LogInfo("GetHistoryOfAccount started for " . session.get("accountFileName"))
     accountPath := A_ScriptDir . "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
     accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountPath)
+    inDepthHistoryImport := botConfig.get("inDepthHistoryImport")
 
     deviceAccount := GetCurrentDeviceAccountForMetadata()
     if (deviceAccount = "") {
@@ -1800,7 +1802,7 @@ GetHistoryOfAccount() {
         return false
     }
 
-    if (AccountEligibility_FlagIsSet(accountMeta, "H") && AccountMetadata_AccountHasPulls(deviceAccount)) {
+    if (!inDepthHistoryImport && AccountEligibility_FlagIsSet(accountMeta, "H") && AccountMetadata_AccountHasPulls(deviceAccount)) {
         LogDebug("GetHistoryOfAccount skipped because history is already imported for " . session.get("accountFileName"))
         return true
     }
@@ -1848,8 +1850,11 @@ GetHistoryOfAccount() {
     }
 
     root := getScriptBaseFolder()
-    LogDebug("Importing history file with carddb for device account " . deviceAccount)
-    RunWait, % """" . helperPath . """ --root """ . root . """ import-history --device-account """ . deviceAccount . """ --input """ . localPath . """",, Hide
+    LogDebug("Importing history file with carddb for device account " . deviceAccount . (inDepthHistoryImport ? " (in-depth)" : ""))
+    importArgs := """" . helperPath . """ --root """ . root . """ import-history --device-account """ . deviceAccount . """ --input """ . localPath . """"
+    if (inDepthHistoryImport)
+        importArgs .= " --in-depth"
+    RunWait, %importArgs%,, Hide
     if (ErrorLevel) {
         LogWarn("GetHistoryOfAccount carddb import-history failed for " . session.get("accountFileName") . " ErrorLevel=" . ErrorLevel)
         return false

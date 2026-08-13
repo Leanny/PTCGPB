@@ -1561,6 +1561,8 @@ ShowToolsAndSystemSettings:
         Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveAccountFriendInfo") ? "Checked" : "") " vui_saveAccountFriendInfo_Popup x" . col1X . " y" . yPos . " cWhite", Save Name + Friend Code
         yPos += leftStep
     }
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . col1X . " y" . yPos . " w190 cWhite", In-Depth History import
+    yPos += leftStep
     yPos += 31
 
     sectionColor := "cWhite"
@@ -1711,6 +1713,7 @@ return
 
 saveToolsAndSystemSettings:
     botConfig.set("showcaseEnabled", ui_showcaseEnabled_Popup, "ToolsAndSystem")
+    botConfig.set("inDepthHistoryImport", ui_inDepthHistoryImport_Popup, "ToolsAndSystem")
     botConfig.set("claimDailyMission", ui_claimDailyMission_Popup, "ToolsAndSystem")
     botConfig.set("slowMotion", ui_slowMotion_Popup, "ToolsAndSystem")
     botConfig.set("useSoloIdsFile", ui_UseSoloIdsFile_Popup, "ToolsAndSystem")
@@ -2664,6 +2667,7 @@ HelpTT_Init() {
 
     ; --- Popup: Tools & System
     HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
+    HelpTT_Add("ui_inDepthHistoryImport_Popup", "inDepthHistoryImport", "This will recover all entries and also check days that already have entries. It is a slightly more time consuming operation")
     HelpTT_Add("ui_claimDailyMission_Popup", "claimDailyMission", "When enabled, claims the daily mission reward of 4 hourglasses on each account.")
     HelpTT_Add("ui_receiveGift_Popup", "receiveGift", "When enabled, opens received gifts on each account.")
     HelpTT_Add("ui_slowMotion_Popup", "slowMotion", "When enabled, skips ModMenu speed buttons (1x/2x/3x). Use only if you run the game without speedModMenu.`nLeave off when the game is sped up with the ModMenu.")
@@ -2906,6 +2910,8 @@ StartBot() {
 
     if (!ConfirmDiagnosticLogLevelForRun())
         return
+
+    LogSettingsSnapshotForRun(botConfig.settingsFile)
 
     ResetAccountLists()
 
