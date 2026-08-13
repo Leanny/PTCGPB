@@ -105,11 +105,14 @@ enum Command {
         #[arg(long)]
         flag: String,
     },
+    ClearPullHistory,
     ImportHistory {
         #[arg(long)]
         device_account: String,
         #[arg(long)]
         input: PathBuf,
+        #[arg(long, default_value_t = false)]
+        in_depth: bool,
     },
     ImportRegistry {
         #[arg(long)]
@@ -312,10 +315,12 @@ fn run(cli: Cli) -> Result<()> {
             output,
         } => extract_metadata(&cli.root, device_account, instance, file_name, key, &output),
         Command::ClearFlag { flag } => clear_flag(&cli.root, &flag),
+        Command::ClearPullHistory => clear_pull_history(&cli.root),
         Command::ImportHistory {
             device_account,
             input,
-        } => import_history(&cli.root, &device_account, &input),
+            in_depth,
+        } => import_history(&cli.root, &device_account, &input, in_depth),
         Command::ImportRegistry {
             device_account,
             input,
@@ -3671,6 +3676,81 @@ fn clear_flag(root: &Path, flag: &str) -> Result<()> {
     Ok(())
 }
 
+fn clear_pull_history_document(doc: &mut Value) -> bool {
+    let mut changed = false;
+
+    if let Some(metadata) = doc.get_mut("metadata").and_then(Value::as_object_mut) {
+        if let Some(flags) = metadata.get_mut("flags").and_then(Value::as_object_mut) {
+            if flags.remove("H").is_some() {
+                changed = true;
+            }
+            if flags.is_empty() {
+                metadata.remove("flags");
+            }
+        }
+    }
+
+    let pulls_have_entries = doc
+        .get("pulls")
+        .and_then(Value::as_array)
+        .is_some_and(|pulls| !pulls.is_empty());
+    if pulls_have_entries || !doc.get("pulls").is_some_and(Value::is_array) {
+        doc["pulls"] = json!([]);
+        changed = true;
+    }
+
+    changed
+}
+
+fn clear_pull_history(root: &Path) -> Result<()> {
+    let dir = account_files_dir(root);
+    let mut changed = 0usize;
+
+    write_clear_flag_progress(root, 1, "Preparing reset")?;
+    if dir.exists() {
+        let mut paths = fs::read_dir(&dir)
+            .with_context(|| format!("Could not read {:?}", dir))?
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter(|path| {
+                path.extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+            })
+            .collect::<Vec<_>>();
+        paths.sort();
+
+        let total = paths.len().max(1);
+        write_clear_flag_progress(root, 5, "Scanning account files")?;
+        for (index, path) in paths.into_iter().enumerate() {
+            let fallback = account_key_from_file(&path).unwrap_or_default();
+            let mut doc = load_account_document(&path, &fallback)?;
+            if clear_pull_history_document(&mut doc) {
+                let device_account = doc
+                    .get("deviceAccount")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&fallback)
+                    .to_owned();
+                write_account_document(root, &device_account, &doc)?;
+                changed += 1;
+            }
+
+            if index % 50 == 0 {
+                let percent = 5 + ((index + 1) * 90 / total) as u8;
+                write_clear_flag_progress(root, percent, "Clearing pull history")?;
+            }
+        }
+    }
+
+    fs::create_dir_all(saved_dir(root))?;
+    fs::write(
+        saved_dir(root).join("clear_flag_result.txt"),
+        format!("{changed}\n"),
+    )?;
+    write_clear_flag_progress(root, 100, "Reset complete")?;
+    println!("{changed}");
+    Ok(())
+}
+
 fn parse_pull_timestamp(timestamp: &str) -> Option<DateTime<Utc>> {
     let timestamp = timestamp.trim();
     if timestamp.is_empty() || timestamp == "0" {
@@ -3724,6 +3804,88 @@ fn pull_history_day_keys(doc: &Value) -> HashSet<String> {
         .filter_map(|pull| pull.get("timestamp").and_then(Value::as_str))
         .filter_map(parse_pull_timestamp)
         .map(history_day_key)
+        .collect()
+}
+
+type HistoryCardCounts = HashMap<(String, String, String), usize>;
+
+fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
+    let mut counts = HashMap::new();
+    for pull in doc
+        .get("pulls")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(timestamp) = pull
+            .get("timestamp")
+            .and_then(Value::as_str)
+            .and_then(parse_pull_timestamp)
+        else {
+            continue;
+        };
+        let day = history_day_key(timestamp);
+        let pack = pull
+            .get("pack")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        for card in pull
+            .get("cards")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            *counts
+                .entry((day.clone(), pack.to_owned(), card.to_owned()))
+                .or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+fn missing_history_pulls(
+    history_day: &str,
+    pulls: Vec<Value>,
+    remaining_existing_cards: &mut HistoryCardCounts,
+) -> Vec<Value> {
+    pulls
+        .into_iter()
+        .filter_map(|mut pull| {
+            let mut missing_cards = Vec::new();
+            let pack = pull
+                .get("pack")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_owned();
+            for card in pull
+                .get("cards")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let Some(card_id) = card.as_str() else {
+                    continue;
+                };
+                let key = (history_day.to_owned(), pack.clone(), card_id.to_owned());
+                let already_present = remaining_existing_cards.get_mut(&key).is_some_and(|count| {
+                    if *count == 0 {
+                        return false;
+                    }
+                    *count -= 1;
+                    true
+                });
+                if !already_present {
+                    missing_cards.push(card.clone());
+                }
+            }
+
+            if missing_cards.is_empty() {
+                return None;
+            }
+            pull["cards"] = Value::Array(missing_cards);
+            Some(pull)
+        })
         .collect()
 }
 
@@ -4012,7 +4174,7 @@ fn set_doc_flag(doc: &mut Value, flag: &str) {
     doc["metadata"]["flags"][flag] = new_flag(1, &now, "");
 }
 
-fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()> {
+fn import_history(root: &Path, device_account: &str, input: &Path, in_depth: bool) -> Result<()> {
     if device_account.trim().is_empty() {
         return Ok(());
     }
@@ -4023,6 +4185,7 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
         doc["pulls"] = json!([]);
     }
     let mut existing_history_days = pull_history_day_keys(&doc);
+    let mut remaining_existing_cards = in_depth.then(|| pull_history_card_counts(&doc));
     if input.exists() {
         let text = fs::read_to_string(input)
             .with_context(|| format!("Could not read history file {:?}", input))?;
@@ -4030,6 +4193,14 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
         for line in text.lines() {
             if let Some((timestamp, pulls)) = history_pulls_from_line(line, &cardmap) {
                 let history_day = history_day_key(timestamp);
+                if let Some(existing_cards) = remaining_existing_cards.as_mut() {
+                    let missing_pulls = missing_history_pulls(&history_day, pulls, existing_cards);
+                    doc["pulls"]
+                        .as_array_mut()
+                        .expect("pulls array")
+                        .extend(missing_pulls);
+                    continue;
+                }
                 if existing_history_days.contains(&history_day) {
                     continue;
                 }
@@ -4303,6 +4474,61 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains("2026-05-11"));
         assert!(keys.contains("2026-05-12"));
+    }
+
+    #[test]
+    fn in_depth_history_adds_only_missing_card_occurrences() {
+        let mut doc = json!({
+            "pulls": [{
+                "timestamp": "2026-05-11T08:00:00Z",
+                "pack": "A1",
+                "cards": ["PK001", "PK002"]
+            }]
+        });
+        let exported_pulls = vec![json!({
+            "timestamp": "2026-05-11 10:00:00",
+            "pack": "A1",
+            "cards": ["PK001", "PK001", "PK002", "PK003"]
+        })];
+        let history_day = "2026-05-11";
+
+        let mut existing_cards = pull_history_card_counts(&doc);
+        let missing =
+            missing_history_pulls(history_day, exported_pulls.clone(), &mut existing_cards);
+
+        assert_eq!(missing.len(), 1);
+        assert_eq!(missing[0]["cards"], json!(["PK001", "PK003"]));
+
+        doc["pulls"].as_array_mut().unwrap().extend(missing);
+        let mut reconciled_cards = pull_history_card_counts(&doc);
+        let repeated = missing_history_pulls(history_day, exported_pulls, &mut reconciled_cards);
+        assert!(repeated.is_empty());
+    }
+
+    #[test]
+    fn clearing_pull_history_removes_h_and_preserves_trade_data() {
+        let mut doc = json!({
+            "deviceAccount": "account-1",
+            "metadata": {
+                "flags": {
+                    "H": { "value": 1, "setAt": "20260811080000" },
+                    "B": { "value": 1 }
+                }
+            },
+            "pulls": [{ "timestamp": "2026-08-11 08:00:00", "cards": ["card-1"] }],
+            "tradedCards": { "card-2": 3 },
+            "sharedCards": { "card-3": 4 }
+        });
+        let traded_cards = doc["tradedCards"].clone();
+        let shared_cards = doc["sharedCards"].clone();
+
+        assert!(clear_pull_history_document(&mut doc));
+        assert_eq!(doc["pulls"], json!([]));
+        assert!(doc["metadata"]["flags"].get("H").is_none());
+        assert_eq!(doc["metadata"]["flags"]["B"]["value"], 1);
+        assert_eq!(doc["tradedCards"], traded_cards);
+        assert_eq!(doc["sharedCards"], shared_cards);
+        assert!(!clear_pull_history_document(&mut doc));
     }
 
     #[test]

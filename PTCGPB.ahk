@@ -1561,6 +1561,8 @@ ShowToolsAndSystemSettings:
         Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveAccountFriendInfo") ? "Checked" : "") " vui_saveAccountFriendInfo_Popup x" . col1X . " y" . yPos . " cWhite", Save Name + Friend Code
         yPos += leftStep
     }
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . col1X . " y" . yPos . " w190 cWhite", In-Depth History import
+    yPos += leftStep
     yPos += 31
 
     sectionColor := "cWhite"
@@ -1574,7 +1576,7 @@ ShowToolsAndSystemSettings:
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
     yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearHistoryFlag BackgroundTrans, Clear History Flag
+    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearPullHistory BackgroundTrans, Clear Pull History
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialMissions") ? "Checked" : "") " vui_claimSpecialMissions_Popup x25 y" . yPos . " cWhite", Claim Rewards
     yPos += 22
@@ -1717,6 +1719,7 @@ return
 
 saveToolsAndSystemSettings:
     botConfig.set("showcaseEnabled", ui_showcaseEnabled_Popup, "ToolsAndSystem")
+    botConfig.set("inDepthHistoryImport", ui_inDepthHistoryImport_Popup, "ToolsAndSystem")
     botConfig.set("claimDailyMission", ui_claimDailyMission_Popup, "ToolsAndSystem")
     botConfig.set("slowMotion", ui_slowMotion_Popup, "ToolsAndSystem")
     botConfig.set("useSoloIdsFile", ui_UseSoloIdsFile_Popup, "ToolsAndSystem")
@@ -1955,15 +1958,46 @@ ClearReceiveGiftHistory:
     }
 return
 
-ClearHistoryFlag:
-    MsgBox, 4, Clear History Flag, Clear the H flag from all account JSON files? This allows PTCGPB to import history again. Existing entries from the same history day will be skipped; history days start at 06:00 UTC.
-    IfMsgBox, Yes
-    {
-        changed := AccountMetadata_ClearFlagEverywhere("H")
-        changed := changed = "" ? 0 : changed + 0
+ClearPullHistory:
+    HelpTT_DismissForClick()
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:+Disabled
+    Gui, PullHistoryConfirm:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +OwnerToolsAndSystemSelect, Clear Pull History
+    Gui, PullHistoryConfirm:Color, 1E1E1E, 333333
+    Gui, PullHistoryConfirm:Font, s10 cWhite, Segoe UI
+    warningText := "Clearing pull history removes all recorded pulls and resets the H flag. The history will be recovered on a new login.`n`nOnly use this when cards are missing from the card database. Traded cards and shared cards will be kept."
+    Gui, PullHistoryConfirm:Add, Text, x15 y15 w450 h72 BackgroundTrans, %warningText%
+    Gui, PullHistoryConfirm:Font, s9 cWhite, Segoe UI
+    Gui, PullHistoryConfirm:Add, Button, x15 y98 w145 h28 gPullHistoryConfirmClearAll, Clear pull history
+    Gui, PullHistoryConfirm:Add, Button, x170 y98 w185 h28 gPullHistoryConfirmFlagOnly, Only clear history flag
+    Gui, PullHistoryConfirm:Add, Button, x365 y98 w100 h28 gPullHistoryConfirmCancel Default, Cancel
+    Gui, PullHistoryConfirm:Show, w480 h141
+return
 
-        MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
-    }
+PullHistoryConfirmClearAll:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    changed := AccountMetadata_ClearPullHistoryEverywhere()
+    changed := changed = "" ? 0 : changed + 0
+
+    MsgBox, 64, Clear Pull History Complete, % "Done`nAccounts changed: " . changed
+return
+
+PullHistoryConfirmFlagOnly:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    changed := AccountMetadata_ClearFlagEverywhere("H")
+    changed := changed = "" ? 0 : changed + 0
+
+    MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
+return
+
+PullHistoryConfirmCancel:
+PullHistoryConfirmGuiClose:
+PullHistoryConfirmGuiEscape:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    Gui, ToolsAndSystemSelect:Show
 return
 
 ClearForceInjectFlags:
@@ -2802,6 +2836,7 @@ HelpTT_Init() {
 
     ; --- Popup: Tools & System
     HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
+    HelpTT_Add("ui_inDepthHistoryImport_Popup", "inDepthHistoryImport", "This will recover all entries and also check days that already have entries. It is a slightly more time consuming operation")
     HelpTT_Add("ui_claimDailyMission_Popup", "claimDailyMission", "When enabled, claims the daily mission reward of 4 hourglasses on each account.")
     HelpTT_Add("ui_receiveGift_Popup", "receiveGift", "When enabled, opens received gifts on each account.")
     HelpTT_Add("ui_slowMotion_Popup", "slowMotion", "When enabled, skips ModMenu speed buttons (1x/2x/3x). Use only if you run the game without speedModMenu.`nLeave off when the game is sped up with the ModMenu.")
@@ -2827,7 +2862,7 @@ HelpTT_Init() {
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
-    HelpTT_Add("Clear History Flag", "clearHistoryFlag", "Clears the H flag from every account JSON file so pack history can be imported again.`nTimestamps are compared in UTC, with each history day starting at 06:00 UTC.")
+    HelpTT_Add("Clear Pull History", "clearPullHistory", "Opens reset options for pull history.`nYou can clear pulls and reset the history flag, or reset only the history flag while keeping existing pulls.`nOnly remove pulls when cards are missing in the card database; traded cards and shared cards are always kept.")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
     HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 
@@ -3047,6 +3082,8 @@ StartBot() {
 
     if (!ConfirmDiagnosticLogLevelForRun())
         return
+
+    LogSettingsSnapshotForRun(botConfig.settingsFile)
 
     ResetAccountLists()
 
@@ -3678,6 +3715,12 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
         return false
     }
 
+    if (!StopUpdateHelperPrograms()) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, Could not stop carddb.exe or cardimage.exe. Close the helper programs and try the update again.
+        return false
+    }
+
     FormatTime, backupStamp,, yyyyMMdd-HHmmss
     backupFolder := scriptFolder . "\Backups\before-" . localVersion . "-" . backupStamp
     if (!BackupFilesBeingReplaced(extractedFolder, scriptFolder, backupFolder)
@@ -3707,6 +3750,24 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
     FileRemoveDir, %tempRoot%, 1
     MsgBox, 0x40040, Version Manager, % "Version " . latestVersion . " installed successfully.`n`nBackup: " . backupFolder
     Reload
+    return true
+}
+
+StopUpdateHelperPrograms() {
+    helperNames := ["carddb.exe", "cardimage.exe"]
+    for _, helperName in helperNames {
+        deadline := A_TickCount + 5000
+        Loop {
+            Process, Exist, %helperName%
+            helperPID := ErrorLevel
+            if (!helperPID)
+                break
+            if (A_TickCount >= deadline)
+                return false
+            Process, Close, %helperPID%
+            Sleep, 100
+        }
+    }
     return true
 }
 
