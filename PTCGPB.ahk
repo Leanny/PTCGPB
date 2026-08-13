@@ -1764,28 +1764,31 @@ OpenSpecialEventExtractor:
 return
 
 saveToGit_Click:
-    GuiControlGet, saveToGit_Popup, ToolsAndSystemSelect:, saveToGit_Popup
-    if (saveToGit_Popup) {
+    GuiControlGet, ui_saveToGit_Popup, ToolsAndSystemSelect:, ui_saveToGit_Popup
+    if (ui_saveToGit_Popup) {
         gitRoot := A_ScriptDir
         if (!IsGitRepo(gitRoot)) {
-            GuiControl, ToolsAndSystemSelect:, saveToGit_Popup, 0
+            GuiControl, ToolsAndSystemSelect:, ui_saveToGit_Popup, 0
             MsgBox, 48, Git Error, The script directory is not a git repository.`nBackup to Git cannot be enabled.`n`nTo fix this, run: git init`nIt is also recommended to connect it to a remote repository.
         } else if (!BackupCategoriesSelected(botConfig)) {
-            GuiControl, ToolsAndSystemSelect:, saveToGit_Popup, 0
+            GuiControl, ToolsAndSystemSelect:, ui_saveToGit_Popup, 0
             MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Git.
         }
     }
 return
 
 saveToDisk_Click:
-    GuiControlGet, saveToDisk_Popup, ToolsAndSystemSelect:, saveToDisk_Popup
-    if (saveToDisk_Popup) {
+    GuiControlGet, ui_saveToDisk_Popup, ToolsAndSystemSelect:, ui_saveToDisk_Popup
+    if (ui_saveToDisk_Popup) {
         folder := botConfig.get("diskBackupFolder")
         if (folder = "" || !InStr(FileExist(folder), "D")) {
-            GuiControl, ToolsAndSystemSelect:, saveToDisk_Popup, 0
+            GuiControl, ToolsAndSystemSelect:, ui_saveToDisk_Popup, 0
             MsgBox, 48, Disk Backup, Choose a valid destination folder in Backup settings before enabling Backup to Disk.
+        } else if (!BackupDestinationIsSafe(A_ScriptDir, folder)) {
+            GuiControl, ToolsAndSystemSelect:, ui_saveToDisk_Popup, 0
+            MsgBox, 48, Disk Backup, The backup folder cannot be the application folder or one of its subfolders.
         } else if (!BackupCategoriesSelected(botConfig)) {
-            GuiControl, ToolsAndSystemSelect:, saveToDisk_Popup, 0
+            GuiControl, ToolsAndSystemSelect:, ui_saveToDisk_Popup, 0
             MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Disk.
         }
     }
@@ -1931,6 +1934,10 @@ ValidateAndSaveBackupSettings(requireDiskFolder := false) {
     folder := botConfig.get("diskBackupFolder")
     if ((requireDiskFolder || botConfig.get("saveToDisk")) && (folder = "" || !InStr(FileExist(folder), "D"))) {
         MsgBox, 48, Backup Settings, Choose a valid disk backup folder.
+        return false
+    }
+    if ((requireDiskFolder || botConfig.get("saveToDisk")) && !BackupDestinationIsSafe(A_ScriptDir, folder)) {
+        MsgBox, 48, Backup Settings, The backup folder cannot be the application folder or one of its subfolders.
         return false
     }
     return true

@@ -69,10 +69,41 @@ EnsureDirExists(dirPath) {
     return InStr(FileExist(dirPath), "D")
 }
 
+; Resolve a path without requiring it to exist. Comparison callers use this to
+; prevent a backup destination from recursively containing its own sources.
+BackupCanonicalPath(path) {
+    if (path = "")
+        return ""
+
+    VarSetCapacity(fullPath, 65536, 0)
+    length := DllCall("GetFullPathName", "Str", path, "UInt", 32768, "Str", fullPath, "Ptr", 0)
+    if (!length || length >= 32768)
+        return ""
+    return RTrim(StrReplace(fullPath, "/", "\"), "\")
+}
+
+BackupDestinationIsSafe(srcRoot, destFolder) {
+    source := BackupCanonicalPath(srcRoot)
+    destination := BackupCanonicalPath(destFolder)
+    if (source = "" || destination = "")
+        return false
+
+    sourceLower := source
+    destinationLower := destination
+    StringLower, sourceLower, sourceLower
+    StringLower, destinationLower, destinationLower
+    return destinationLower != sourceLower
+        && SubStr(destinationLower, 1, StrLen(sourceLower) + 1) != sourceLower . "\"
+}
+
 ; Copy selected backup paths from srcRoot into destFolder, preserving relative paths.
 ; Returns true on success (including zero files copied when sources are missing).
 BackupToDisk(srcRoot, destFolder, pathsList, logFile) {
     try {
+        if (!BackupDestinationIsSafe(srcRoot, destFolder)) {
+            LogError("Disk backup folder cannot be the application folder or one of its subfolders: " . destFolder, logFile)
+            return False
+        }
         if (!EnsureDirExists(destFolder)) {
             LogError("Disk backup folder missing or invalid: " . destFolder, logFile)
             return False
