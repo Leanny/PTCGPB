@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Reference for every PTCGPB main-window option."
+        />
+        <title>Main Window · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Settings reference</p>
+                <h1>Main window</h1>
+                <p class="lead">
+                    The main window controls instances, account workflow,
+                    timing, packs, detection, notifications and startup actions.
+                </p>
+                <div class="callout">
+                    <strong>Built-in help is available.</strong> Hover over a
+                    control in PTCGPB to see a short explanation. This page
+                    provides the expanded reference.
+                </div>
+
+                <h2>Friend and instance settings</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                                <th>Default / format</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Friend ID</td>
+                                <td>
+                                    Main account used for friend requests and
+                                    God Pack testing. Only appears where
+                                    relevant.
+                                </td>
+                                <td>16 digits, no spaces or dashes</td>
+                            </tr>
+                            <tr>
+                                <td>Instances</td>
+                                <td>
+                                    Number of numbered MuMu instances run in
+                                    parallel. Main instances are not included.
+                                </td>
+                                <td><code>1</code></td>
+                            </tr>
+                            <tr>
+                                <td>Columns</td>
+                                <td>
+                                    Maximum instance windows in each row when
+                                    arranging them.
+                                </td>
+                                <td><code>5</code></td>
+                            </tr>
+                            <tr>
+                                <td>Arrange</td>
+                                <td>
+                                    Moves recognized MuMu windows into a grid on
+                                    the selected monitor.
+                                </td>
+                                <td>Uses Columns and Row Gap</td>
+                            </tr>
+                            <tr>
+                                <td>Instance Start Delay</td>
+                                <td>
+                                    Seconds between starting one bot script and
+                                    the next.
+                                </td>
+                                <td><code>10</code> seconds</td>
+                            </tr>
+                            <tr>
+                                <td>Run Main(s)</td>
+                                <td>
+                                    Starts and uses Main account instances in
+                                    Wonderpick mode.
+                                </td>
+                                <td>Off</td>
+                            </tr>
+                            <tr>
+                                <td>Mains</td>
+                                <td>
+                                    Number of Main instances. Name them
+                                    <code>Main</code>, <code>Main2</code>, etc.
+                                </td>
+                                <td><code>1</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Bot settings</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                                <th>Availability</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Bot Mode</td>
+                                <td>
+                                    Selects the account workflow. See
+                                    <a href="bot-modes.html">Bot modes</a>.
+                                </td>
+                                <td>Always</td>
+                            </tr>
+                            <tr>
+                                <td>Force inject accounts</td>
+                                <td>
+                                    Bypasses normal account eligibility once per
+                                    account. A stored FI flag prevents the same
+                                    account from being forced again until the
+                                    flags are cleared.
+                                </td>
+                                <td>Inject 13P+, Wonderpick and Rewards</td>
+                            </tr>
+                            <tr>
+                                <td>Clear force inject flags</td>
+                                <td>
+                                    Clears FI from all account metadata so each
+                                    account can be force-injected once again.
+                                </td>
+                                <td>Always visible</td>
+                            </tr>
+                            <tr>
+                                <td>Min Packs</td>
+                                <td>
+                                    Minimum saved pack count required for
+                                    Wonderpick injection. Valid range 70–999.
+                                </td>
+                                <td>Inject Wonderpick 96P+</td>
+                            </tr>
+                            <tr>
+                                <td>One pack at a time</td>
+                                <td>
+                                    Removes and re-adds friends between each
+                                    opened pack.
+                                </td>
+                                <td>Inject Wonderpick 96P+</td>
+                            </tr>
+                            <tr>
+                                <td>Open Extra Pack</td>
+                                <td>
+                                    Opens one extra pack after the two free
+                                    packs.
+                                </td>
+                                <td>Inject modes except Rewards</td>
+                            </tr>
+                            <tr>
+                                <td>Spend Hourglasses</td>
+                                <td>
+                                    Uses the loaded account's hourglasses for
+                                    more packs.
+                                </td>
+                                <td>Inject 13P+ and Wonderpick</td>
+                            </tr>
+                            <tr>
+                                <td>10-pack opening</td>
+                                <td>
+                                    Uses the ten-pack opening option while
+                                    spending hourglasses.
+                                </td>
+                                <td>Inject 13P+ with Spend Hourglasses</td>
+                            </tr>
+                            <tr>
+                                <td>Hourglass pack count</td>
+                                <td>
+                                    Number of hourglass packs to open.
+                                    <code>0</code> means as many as possible;
+                                    maximum 999.
+                                </td>
+                                <td>When Spend Hourglasses is enabled</td>
+                            </tr>
+                            <tr>
+                                <td>Sort By</td>
+                                <td>
+                                    Orders saved accounts using stored metadata.
+                                </td>
+                                <td>Inject modes and Rename Account</td>
+                            </tr>
+                            <tr>
+                                <td>Account Name</td>
+                                <td>
+                                    Prefix used for newly created or renamed
+                                    accounts. PTCGPB adds a random number.
+                                </td>
+                                <td>Create Bots (13P) and Rename Account</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Configuration sections</h2>
+                <div class="grid">
+                    <div class="card accent-gold">
+                        <h3>Pack Selection</h3>
+                        <p>
+                            Choose which booster expansions can be opened. At
+                            least one should be selected.
+                        </p>
+                    </div>
+                    <div class="card accent-orange">
+                        <h3>Inject 96p Card Detection</h3>
+                        <p>
+                            Choose which high-value Wonderpick pulls trigger
+                            saving and notification in Inject Wonderpick 96P+.
+                        </p>
+                    </div>
+                    <div class="card accent-blue">
+                        <h3>Save for Trade</h3>
+                        <p>
+                            Choose tradeable rarities and optional synthetic
+                            screenshot behavior.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3>Group Settings</h3>
+                        <p>
+                            Configure shared friend lists, VIP lists and
+                            automatic GP testing.
+                        </p>
+                    </div>
+                    <div class="card accent-cyan">
+                        <h3>Discord Settings</h3>
+                        <p>
+                            Set notification destinations, account XML
+                            attachments and heartbeat reports.
+                        </p>
+                    </div>
+                    <div class="card accent-purple">
+                        <h3>Tools &amp; System</h3>
+                        <p>
+                            Configure MuMu, monitor, OCR, helper tools, daily
+                            actions, logging and Cockpit.
+                        </p>
+                    </div>
+                </div>
+
+                <h2>Time settings</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Delay</td>
+                                <td>
+                                    Milliseconds between bot actions. Increase
+                                    it when clicks are missed or screens have
+                                    not finished loading.
+                                </td>
+                                <td><code>250</code> ms</td>
+                            </tr>
+                            <tr>
+                                <td>Swipe Speed</td>
+                                <td>
+                                    Duration of card and menu swipe gestures.
+                                    Use the in-app tooltip for the
+                                    recommendation matching your speedmod setup.
+                                </td>
+                                <td><code>250</code> ms</td>
+                            </tr>
+                            <tr>
+                                <td>Wait Time</td>
+                                <td>
+                                    Seconds to wait after sending friend
+                                    requests so they can be accepted.
+                                </td>
+                                <td><code>5</code> seconds</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Actions and icons</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Control</th>
+                                <th>What it does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Balance XMLs</td>
+                                <td>
+                                    Redistributes saved account XML files evenly
+                                    between numbered instance folders.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Launch All MuMu</td>
+                                <td>
+                                    Starts all configured numbered and Main MuMu
+                                    instances.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Start Bot</td>
+                                <td>
+                                    Validates and saves settings, then starts
+                                    the instance scripts.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Open Card Database</td>
+                                <td>
+                                    Opens the local collection dashboard for
+                                    saved accounts.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Discord icon</td>
+                                <td>Opens the PTCGPB community server.</td>
+                            </tr>
+                            <tr>
+                                <td>Help icon</td>
+                                <td>Opens the online user guide.</td>
+                            </tr>
+                            <tr>
+                                <td>Tools icon</td>
+                                <td>Opens Tools &amp; System settings.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="bot-modes.html">← Bot modes</a
+                    ><a href="packs-and-card-detection.html"
+                        >Packs, Detection &amp; S4T →</a
+                    >
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>

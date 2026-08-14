@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v0.16.0-beta.7"
+    ,localVersion := "v10.0.1"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -529,7 +529,7 @@ NextStep:
     Gui, Add, Text, x535 y43 w180 h20 Center BackgroundTrans cWhite, % localVersion
     Gui, Font, s8 cWhite Bold
     Gui, Add, Text, x528 y68 w195 h18 Center BackgroundTrans cWhite, Release source: %repoUser%/%repoName%
-    Gui, Add, Text, x528 y91 w195 h18 Center BackgroundTrans cWhite, Modders: Lean && xedranort
+    Gui, Add, Text, x528 y91 w195 h18 Center BackgroundTrans cWhite, Main Developers: Lean && xedranort
 
     forceInjectVisible := InStr(botMethod, "Inject") ? "" : " Hidden"
     Gui, Font, s9 cWhite
@@ -1561,6 +1561,8 @@ ShowToolsAndSystemSettings:
         Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveAccountFriendInfo") ? "Checked" : "") " vui_saveAccountFriendInfo_Popup x" . col1X . " y" . yPos . " cWhite", Save Name + Friend Code
         yPos += leftStep
     }
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . col1X . " y" . yPos . " w190 cWhite", In-Depth History import
+    yPos += leftStep
     yPos += 31
 
     sectionColor := "cWhite"
@@ -1574,7 +1576,7 @@ ShowToolsAndSystemSettings:
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
     yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearHistoryFlag BackgroundTrans, Clear History Flag
+    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearPullHistory BackgroundTrans, Clear Pull History
     yPos += 24
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialMissions") ? "Checked" : "") " vui_claimSpecialMissions_Popup x25 y" . yPos . " cWhite", Claim Rewards
     yPos += 22
@@ -1658,8 +1660,14 @@ ShowToolsAndSystemSettings:
         Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("startCockpitWithBot") ? "Checked" : "") " vui_startCockpitWithBot_Popup x" . col2X . " y" . yPos2 . " " . sectionColor, Auto-open Cockpit
         yPos2 += 26
     }
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Auto Save to Git (hourly)
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Backup to Git
+    yPos2 += 26
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToDisk") ? "Checked" : "") " vui_saveToDisk_Popup gsaveToDisk_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Backup to Disk
+    yPos2 += 26
+    Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
+    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%yPos2% w170 h20 gShowBackupSettings BackgroundTrans, Backup settings...
     yPos2 += 30
+    Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
 
     logLevel := botConfig.get("logLevel")
     StringLower, logLevel, logLevel
@@ -1711,6 +1719,7 @@ return
 
 saveToolsAndSystemSettings:
     botConfig.set("showcaseEnabled", ui_showcaseEnabled_Popup, "ToolsAndSystem")
+    botConfig.set("inDepthHistoryImport", ui_inDepthHistoryImport_Popup, "ToolsAndSystem")
     botConfig.set("claimDailyMission", ui_claimDailyMission_Popup, "ToolsAndSystem")
     botConfig.set("slowMotion", ui_slowMotion_Popup, "ToolsAndSystem")
     botConfig.set("useSoloIdsFile", ui_UseSoloIdsFile_Popup, "ToolsAndSystem")
@@ -1734,6 +1743,7 @@ saveToolsAndSystemSettings:
     if (currentDeleteMethod != "Create Bots (13P)")
         botConfig.set("startCockpitWithBot", ui_startCockpitWithBot_Popup, "ToolsAndSystem")
     botConfig.set("saveToGit", ui_saveToGit_Popup, "ToolsAndSystem")
+    botConfig.set("saveToDisk", ui_saveToDisk_Popup, "ToolsAndSystem")
     botConfig.set("receiveGift", ui_receiveGift_Popup, "ToolsAndSystem")
 
     if(botConfig.get("SelectedMonitorIndex") = "")
@@ -1754,15 +1764,184 @@ OpenSpecialEventExtractor:
 return
 
 saveToGit_Click:
-    GuiControlGet, saveToGit_Popup, ToolsAndSystemSelect:, saveToGit_Popup
-    if (saveToGit_Popup) {
+    GuiControlGet, ui_saveToGit_Popup, ToolsAndSystemSelect:, ui_saveToGit_Popup
+    if (ui_saveToGit_Popup) {
         gitRoot := A_ScriptDir
         if (!IsGitRepo(gitRoot)) {
-            GuiControl, ToolsAndSystemSelect:, saveToGit_Popup, 0
-            MsgBox, 48, Git Error, The script directory is not a git repository.`nAuto Save to Git cannot be enabled.`n`nTo fix this, run: git init`nIt is also recommended to connect it to a remote repository.
+            GuiControl, ToolsAndSystemSelect:, ui_saveToGit_Popup, 0
+            MsgBox, 48, Git Error, The script directory is not a git repository.`nBackup to Git cannot be enabled.`n`nTo fix this, run: git init`nIt is also recommended to connect it to a remote repository.
+        } else if (!BackupCategoriesSelected(botConfig)) {
+            GuiControl, ToolsAndSystemSelect:, ui_saveToGit_Popup, 0
+            MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Git.
         }
     }
 return
+
+saveToDisk_Click:
+    GuiControlGet, ui_saveToDisk_Popup, ToolsAndSystemSelect:, ui_saveToDisk_Popup
+    if (ui_saveToDisk_Popup) {
+        folder := botConfig.get("diskBackupFolder")
+        if (folder = "" || !InStr(FileExist(folder), "D")) {
+            GuiControl, ToolsAndSystemSelect:, ui_saveToDisk_Popup, 0
+            MsgBox, 48, Disk Backup, Choose a valid destination folder in Backup settings before enabling Backup to Disk.
+        } else if (!BackupDestinationIsSafe(A_ScriptDir, folder)) {
+            GuiControl, ToolsAndSystemSelect:, ui_saveToDisk_Popup, 0
+            MsgBox, 48, Disk Backup, The backup folder cannot be the application folder or one of its subfolders.
+        } else if (!BackupCategoriesSelected(botConfig)) {
+            GuiControl, ToolsAndSystemSelect:, ui_saveToDisk_Popup, 0
+            MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Disk.
+        }
+    }
+return
+
+ShowBackupSettings:
+    Gui, BackupSettings:Destroy
+    Gui, BackupSettings:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +LastFound, Backup Settings
+    Gui, BackupSettings:Color, 1E1E1E, 333333
+    Gui, BackupSettings:Font, s10 cWhite, Segoe UI
+
+    y := 15
+    Gui, BackupSettings:Add, Text, x20 y%y% cAAAAAA, Interval (minutes, shared by Git and Disk)
+    y += 22
+    Gui, BackupSettings:Add, Edit, vui_backupIntervalMinutes w60 x20 y%y% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("backupIntervalMinutes")
+    y += 35
+
+    Gui, BackupSettings:Add, Text, x20 y%y% cAAAAAA, Disk backup folder
+    y += 22
+    Gui, BackupSettings:Add, Edit, vui_diskBackupFolder w250 x20 y%y% h22 -E0x200 Background2A2A2A cWhite, % botConfig.get("diskBackupFolder")
+    Gui, BackupSettings:Add, Button, x280 y%y% w70 h22 gBrowseDiskBackupFolder BackgroundTrans, Browse
+    y += 35
+
+    Gui, BackupSettings:Add, Text, x20 y%y% cAAAAAA, Include in backup (Git and Disk)
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupAccountsXml", 1) ? "Checked" : "") " vui_backupAccountsXml x20 y" . y . " cWhite", Accounts XML (Saved/*.xml)
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupAccountsJson", 1) ? "Checked" : "") " vui_backupAccountsJson x20 y" . y . " cWhite", Accounts JSON (Cards/accounts/*.json)
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupSettingsIni", 1) ? "Checked" : "") " vui_backupSettingsIni x20 y" . y . " cWhite", Settings.ini
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupShowcaseIds", 1) ? "Checked" : "") " vui_backupShowcaseIds x20 y" . y . " cWhite", showcase_ids.txt
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupManualVipIds", 1) ? "Checked" : "") " vui_backupManualVipIds x20 y" . y . " cWhite", manual_vip_ids.txt
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupFriendsGPTested", 1) ? "Checked" : "") " vui_backupFriendsGPTested x20 y" . y . " cWhite", FriendsGPTested_*.txt
+    y += 24
+    Gui, BackupSettings:Add, Checkbox, % (GetBackupFlag(botConfig, "backupSpecialEvents", 1) ? "Checked" : "") " vui_backupSpecialEvents x20 y" . y . " cWhite", SpecialEvents .sevt (Events + PastEvents)
+    y += 35
+
+    Gui, BackupSettings:Add, Button, x20 y%y% w100 h30 gBackupNow, Backup Now
+    Gui, BackupSettings:Add, Button, x140 y%y% w70 h30 gApplyBackupSettings, Apply
+    Gui, BackupSettings:Add, Button, x220 y%y% w70 h30 gCancelBackupSettings, Cancel
+    y += 45
+
+    WinGetPos, toolsX, toolsY, toolsW, toolsH, A
+    if (toolsX = "") {
+        Gui, BackupSettings:Show, w370 h%y%
+    } else {
+        bx := toolsX + 30
+        by := toolsY + 30
+        Gui, BackupSettings:Show, x%bx% y%by% w370 h%y%
+    }
+return
+
+BrowseDiskBackupFolder:
+    FileSelectFolder, selectedFolder, *%A_ScriptDir%, 3, Select disk backup folder
+    if (selectedFolder != "")
+        GuiControl, BackupSettings:, ui_diskBackupFolder, %selectedFolder%
+return
+
+ApplyBackupSettings:
+    Gui, BackupSettings:Submit, NoHide
+    if (!ValidateAndSaveBackupSettings())
+        return
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+    Gui, BackupSettings:Destroy
+return
+
+CancelBackupSettings:
+    Gui, BackupSettings:Destroy
+return
+
+BackupNow:
+    Gui, BackupSettings:Submit, NoHide
+    if (!ValidateAndSaveBackupSettings(true))
+        return
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+
+    paths := BuildBackupPaths(botConfig)
+    srcRoot := A_ScriptDir
+    destFolder := botConfig.get("diskBackupFolder")
+    summary := ""
+    doGit := botConfig.get("saveToGit")
+
+    Progress, M B1 FS10 ZH12 FM10 WM700 W420 CW1E1E1E CTFFFFFF CB4AAE3A, Preparing backup..., Backup Now, Backup Now
+    Progress, 15, Copying files to disk..., Backup Now, Backup Now
+
+    if (!BackupToDisk(srcRoot, destFolder, paths, "BackupNow.txt"))
+        summary .= "Disk backup failed.`n"
+    else
+        summary .= "Disk backup completed to:`n" . destFolder . "`n"
+
+    if (doGit) {
+        Progress, 55, Preparing Git backup..., Backup Now, Backup Now
+        if (!IsGitRepo(srcRoot)) {
+            summary .= "Git backup skipped: folder is not a git repository.`n"
+        } else {
+            Progress, 70, Committing and pushing to Git..., Backup Now, Backup Now
+            if (!CommitAndPushGit(srcRoot, "BackupNow.txt", paths))
+                summary .= "Git backup failed.`n"
+            else
+                summary .= "Git backup completed.`n"
+        }
+    }
+
+    Progress, 100, Backup complete, Backup Now, Backup Now
+    Sleep, 450
+    Progress, Off
+
+    MsgBox, 64, Backup Now, %summary%
+return
+
+; Saves Backup Settings popup values into botConfig.
+; For Backup Now, requireDiskFolder can force a destination folder check.
+ValidateAndSaveBackupSettings(requireDiskFolder := false) {
+    global botConfig
+    global ui_backupIntervalMinutes, ui_diskBackupFolder
+    global ui_backupAccountsXml, ui_backupAccountsJson, ui_backupSettingsIni
+    global ui_backupShowcaseIds, ui_backupManualVipIds, ui_backupFriendsGPTested, ui_backupSpecialEvents
+
+    mins := ui_backupIntervalMinutes + 0
+    if (mins < 5) {
+        MsgBox, 48, Backup Settings, Interval must be at least 5 minutes.
+        return false
+    }
+
+    botConfig.set("backupIntervalMinutes", mins, "ToolsAndSystem")
+    botConfig.set("diskBackupFolder", ui_diskBackupFolder, "ToolsAndSystem")
+    SetBackupFlag(botConfig, "backupAccountsXml", ui_backupAccountsXml)
+    SetBackupFlag(botConfig, "backupAccountsJson", ui_backupAccountsJson)
+    SetBackupFlag(botConfig, "backupSettingsIni", ui_backupSettingsIni)
+    SetBackupFlag(botConfig, "backupShowcaseIds", ui_backupShowcaseIds)
+    SetBackupFlag(botConfig, "backupManualVipIds", ui_backupManualVipIds)
+    SetBackupFlag(botConfig, "backupFriendsGPTested", ui_backupFriendsGPTested)
+    SetBackupFlag(botConfig, "backupSpecialEvents", ui_backupSpecialEvents)
+
+    if (!BackupCategoriesSelected(botConfig)) {
+        MsgBox, 48, Backup Settings, Select at least one backup category.
+        return false
+    }
+
+    folder := botConfig.get("diskBackupFolder")
+    if ((requireDiskFolder || botConfig.get("saveToDisk")) && (folder = "" || !InStr(FileExist(folder), "D"))) {
+        MsgBox, 48, Backup Settings, Choose a valid disk backup folder.
+        return false
+    }
+    if ((requireDiskFolder || botConfig.get("saveToDisk")) && !BackupDestinationIsSafe(A_ScriptDir, folder)) {
+        MsgBox, 48, Backup Settings, The backup folder cannot be the application folder or one of its subfolders.
+        return false
+    }
+    return true
+}
 
 ClearSpecialMissionHistory:
     MsgBox, 4, Clear Special Mission History, Reset Special Mission completion history for the current account metadata files? This will clear the X flag and specialEvents claim counts in Accounts\Cards\accounts so that PTCGPB will try collecting Special Missions again for those accounts.
@@ -1786,15 +1965,46 @@ ClearReceiveGiftHistory:
     }
 return
 
-ClearHistoryFlag:
-    MsgBox, 4, Clear History Flag, Clear the H flag from all account JSON files? This allows PTCGPB to import history again. Existing entries from the same history day will be skipped; history days start at 06:00 UTC.
-    IfMsgBox, Yes
-    {
-        changed := AccountMetadata_ClearFlagEverywhere("H")
-        changed := changed = "" ? 0 : changed + 0
+ClearPullHistory:
+    HelpTT_DismissForClick()
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:+Disabled
+    Gui, PullHistoryConfirm:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +OwnerToolsAndSystemSelect, Clear Pull History
+    Gui, PullHistoryConfirm:Color, 1E1E1E, 333333
+    Gui, PullHistoryConfirm:Font, s10 cWhite, Segoe UI
+    warningText := "Clearing pull history removes all recorded pulls and resets the H flag. The history will be recovered on a new login.`n`nOnly use this when cards are missing from the card database. Traded cards and shared cards will be kept."
+    Gui, PullHistoryConfirm:Add, Text, x15 y15 w450 h72 BackgroundTrans, %warningText%
+    Gui, PullHistoryConfirm:Font, s9 cWhite, Segoe UI
+    Gui, PullHistoryConfirm:Add, Button, x15 y98 w145 h28 gPullHistoryConfirmClearAll, Clear pull history
+    Gui, PullHistoryConfirm:Add, Button, x170 y98 w185 h28 gPullHistoryConfirmFlagOnly, Only clear history flag
+    Gui, PullHistoryConfirm:Add, Button, x365 y98 w100 h28 gPullHistoryConfirmCancel Default, Cancel
+    Gui, PullHistoryConfirm:Show, w480 h141
+return
 
-        MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
-    }
+PullHistoryConfirmClearAll:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    changed := AccountMetadata_ClearPullHistoryEverywhere()
+    changed := changed = "" ? 0 : changed + 0
+
+    MsgBox, 64, Clear Pull History Complete, % "Done`nAccounts changed: " . changed
+return
+
+PullHistoryConfirmFlagOnly:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    changed := AccountMetadata_ClearFlagEverywhere("H")
+    changed := changed = "" ? 0 : changed + 0
+
+    MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
+return
+
+PullHistoryConfirmCancel:
+PullHistoryConfirmGuiClose:
+PullHistoryConfirmGuiEscape:
+    Gui, PullHistoryConfirm:Destroy
+    Gui, ToolsAndSystemSelect:-Disabled
+    Gui, ToolsAndSystemSelect:Show
 return
 
 ClearForceInjectFlags:
@@ -2389,7 +2599,11 @@ DiscordLink:
 Return
 
 OpenToolTip:
-    Run, https://mixman208.github.io/PTCGPB/
+    docsPath := A_ScriptDir . "\docs\index.html"
+    if (FileExist(docsPath))
+        Run, %docsPath%
+    else
+        Run, https://mixman208.github.io/PTCGPB/
 return
 
 OpenDiscord:
@@ -2581,7 +2795,7 @@ HelpTT_Init() {
 
     ; --- Main window: icons (Picture controls are keyed by their image path)
     HelpTT_Add(A_ScriptDir . "\GUI\Images\discord-icon.png", "discordIcon", "Opens the PTCGPB Discord server.")
-    HelpTT_Add(A_ScriptDir . "\GUI\Images\help-icon.png", "helpIcon", "Opens the online guide in your browser.")
+    HelpTT_Add(A_ScriptDir . "\GUI\Images\help-icon.png", "helpIcon", "Opens the bundled user guide in your browser.")
     HelpTT_Add("ui_ToolsPicture", "toolsIcon", "Opens Tools && System settings:`nmonitor and MuMu options, OCR language, log level and extra tools.")
 
     ; --- Popup: InjectWP Card Detection
@@ -2629,6 +2843,7 @@ HelpTT_Init() {
 
     ; --- Popup: Tools & System
     HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
+    HelpTT_Add("ui_inDepthHistoryImport_Popup", "inDepthHistoryImport", "This will recover all entries and also check days that already have entries. It is a slightly more time consuming operation")
     HelpTT_Add("ui_claimDailyMission_Popup", "claimDailyMission", "When enabled, claims the daily mission reward of 4 hourglasses on each account.")
     HelpTT_Add("ui_receiveGift_Popup", "receiveGift", "When enabled, opens received gifts on each account.")
     HelpTT_Add("ui_slowMotion_Popup", "slowMotion", "When enabled, skips ModMenu speed buttons (1x/2x/3x). Use only if you run the game without speedModMenu.`nLeave off when the game is sped up with the ModMenu.")
@@ -2638,20 +2853,23 @@ HelpTT_Init() {
     HelpTT_Add("ui_wonderpickForEventMissions_Popup", "wonderpickForEventMissions", "When enabled, performs wonderpicks when an event mission requires them.")
     HelpTT_Add("ui_SelectedMonitorIndex_Popup", "SelectedMonitorIndex", "Monitor on which instance windows are arranged.")
     HelpTT_Add("ui_RowGap_Popup", "RowGap", "Vertical gap in pixels between rows of instance windows.")
-    HelpTT_Add("ui_folderPath_Popup", "folderPath", "Folder that contains the 'MuMuPlayer-12' folder, not the MuMuPlayer-12 folder itself.`nDefault: C:\Program Files\Netease")
+    HelpTT_Add("ui_folderPath_Popup", "folderPath", "MuMuPlayer installation folder. It is normally detected automatically from the current MuMuPlayer configuration.`nCommon location: C:\Program Files\Netease")
     HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
     HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")
     HelpTT_Add("ui_instanceLaunchDelay_Popup", "instanceLaunchDelay", "Seconds to wait between launching one MuMu instance and the next.")
     HelpTT_Add("ui_autoLaunchMonitor_Popup", "autoLaunchMonitor", "When enabled, opens the Monitor when the bot starts.`nThe Monitor watches all instances and restarts any that get stuck.")
     HelpTT_Add("ui_startCockpitWithBot_Popup", "startCockpitWithBot", "When enabled, opens the Cockpit when the bot starts.`nThe Cockpit is a live dashboard with the status and metrics of all running instances.")
-    HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits Accounts data (XML and JSON) to git automatically every hour.")
+    HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits the selected backup categories to git on the shared backup interval (configured in Backup settings).")
+    HelpTT_Add("ui_saveToDisk_Popup", "saveToDisk", "When enabled, copies the selected backup categories to the disk backup folder on the shared backup interval (configured in Backup settings).")
+    HelpTT_Add("ui_backupIntervalMinutes", "backupIntervalMinutes", "Shared interval in minutes for Backup to Git and Backup to Disk. Minimum 5 minutes.")
+    HelpTT_Add("ui_diskBackupFolder", "diskBackupFolder", "Destination folder for on-disk backups. Relative paths (Accounts, SpecialEvents, etc.) are preserved under this folder.")
     HelpTT_Add("ui_logLevel_Popup", "logLevel", "Verbosity of the log files: error < warn < info < debug < trace.`nUse 'info' normally; 'debug'/'trace' only when investigating problems.")
 
     ; --- Popup: Tools & System buttons (no v-variable, keyed by their text)
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
-    HelpTT_Add("Clear History Flag", "clearHistoryFlag", "Clears the H flag from every account JSON file so pack history can be imported again.`nTimestamps are compared in UTC, with each history day starting at 06:00 UTC.")
+    HelpTT_Add("Clear Pull History", "clearPullHistory", "Opens reset options for pull history.`nYou can clear pulls and reset the history flag, or reset only the history flag while keeping existing pulls.`nOnly remove pulls when cards are missing in the card database; traded cards and shared cards are always kept.")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
     HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 
@@ -2871,6 +3089,8 @@ StartBot() {
 
     if (!ConfirmDiagnosticLogLevelForRun())
         return
+
+    LogSettingsSnapshotForRun(botConfig.settingsFile)
 
     ResetAccountLists()
 
@@ -3502,6 +3722,12 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
         return false
     }
 
+    if (!StopUpdateHelperPrograms()) {
+        FileRemoveDir, %tempRoot%, 1
+        MsgBox, 0x40010, Version Manager, Could not stop carddb.exe or cardimage.exe. Close the helper programs and try the update again.
+        return false
+    }
+
     FormatTime, backupStamp,, yyyyMMdd-HHmmss
     backupFolder := scriptFolder . "\Backups\before-" . localVersion . "-" . backupStamp
     if (!BackupFilesBeingReplaced(extractedFolder, scriptFolder, backupFolder)
@@ -3531,6 +3757,24 @@ DownloadAndInstallUpdate(updateLabel, latestVersion, releaseNotes, zipDownloadUR
     FileRemoveDir, %tempRoot%, 1
     MsgBox, 0x40040, Version Manager, % "Version " . latestVersion . " installed successfully.`n`nBackup: " . backupFolder
     Reload
+    return true
+}
+
+StopUpdateHelperPrograms() {
+    helperNames := ["carddb.exe", "cardimage.exe"]
+    for _, helperName in helperNames {
+        deadline := A_TickCount + 5000
+        Loop {
+            Process, Exist, %helperName%
+            helperPID := ErrorLevel
+            if (!helperPID)
+                break
+            if (A_TickCount >= deadline)
+                return false
+            Process, Close, %helperPID%
+            Sleep, 100
+        }
+    }
     return true
 }
 

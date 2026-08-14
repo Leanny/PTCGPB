@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Manage PTCGPB saved accounts and Save for Trade."
+        />
+        <title>Accounts &amp; Trading · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Saved data</p>
+                <h1>Accounts and trading</h1>
+                <p class="lead">
+                    Understand saved account XML files, distribute them between
+                    instances, and configure Save for Trade notifications.
+                </p>
+
+                <div class="callout danger">
+                    <strong>Account files are valuable local user data.</strong>
+                    Back up both <code>Accounts\Saved</code> and
+                    <code>Accounts\Cards\accounts</code> before using duplicate
+                    removal, batch rename, separation or balancing tools. Do not
+                    share XML attachments publicly.
+                </div>
+
+                <h2>Account lifecycle</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>Create</h3>
+                        <p>
+                            Create Bots (13P) produces new accounts and saves
+                            them locally on the PC as XML files with associated
+                            metadata.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Store</h3>
+                        <p>
+                            Accounts are not stored inside MuMu. Saved XML
+                            accounts remain under <code>Accounts\Saved</code>,
+                            while Card Database account data is stored under
+                            <code>Accounts\Cards\accounts</code>.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Distribute</h3>
+                        <p>
+                            Balance XMLs spreads saved accounts evenly across
+                            the numbered instance folders.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Inject</h3>
+                        <p>
+                            An Inject mode temporarily loads a local account
+                            into a MuMu instance to open packs, test Wonder Pick
+                            eligibility or collect rewards.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Rename</h3>
+                        <p>
+                            Rename Account loads eligible saved XMLs and changes
+                            their in-game names. It includes accounts previously
+                            marked as used and leaves them available for other
+                            modes.
+                        </p>
+                    </li>
+                </ol>
+
+                <h2>Save for Trade</h2>
+                <p>
+                    Save for Trade saves an account and sends a Discord
+                    notification when it pulls a selected tradeable rarity. It
+                    is available in nearly every mode:
+                    <strong>Create Bots (13P)</strong>,
+                    <strong>Inject 13P+</strong> and
+                    <strong>Inject Wonderpick 96P+</strong>. It does not process
+                    pulls in Inject Rewards because that mode does not open
+                    packs.
+                </p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Enable S4T</td>
+                                <td>Turns Save for Trade processing on.</td>
+                            </tr>
+                            <tr>
+                                <td>Rarity checkboxes</td>
+                                <td>
+                                    Select any combination of ◆◆◆, ◆◆◆◆,
+                                    one-star, shiny, two-star Trainer, Rainbow,
+                                    Full Art, two-star Shiny, Immersive, Crown
+                                    Rare and Wishlist.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Wonder Pick</td>
+                                <td>
+                                    Only reports packs worth Wonder Picking from
+                                    the Main. Packs below Min. Cards are
+                                    skipped.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Min. Cards</td>
+                                <td>
+                                    Minimum tradeable cards required for a
+                                    Wonder Pick report. Valid values are
+                                    <code>1</code> and <code>2</code>.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Save Screenshots</td>
+                                <td>
+                                    Keeps generated pack screenshots in the
+                                    Screenshots folder after sending them.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Use Synthetic Screenshots</td>
+                                <td>
+                                    Builds pack images from card artwork where
+                                    possible. This is faster and more reliable
+                                    than a screen capture.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Track Shinedust</td>
+                                <td>
+                                    Reads the shinedust total with OCR and
+                                    stores it in account metadata.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Required Discord destination</h3>
+                <p>
+                    In Discord Settings, enter the
+                    <strong>S4T Discord ID</strong> and
+                    <strong>S4T Webhook URL</strong>. Enable
+                    <strong>Send Account XML</strong> only in a private, trusted
+                    channel.
+                </p>
+
+                <h2>Card Database</h2>
+                <p>
+                    The Card Database is a local browser dashboard built from
+                    the account metadata in
+                    <code>Accounts\Cards\accounts</code>. It lets you inspect
+                    pulls, find accounts that own particular cards, compare
+                    collections and maintain the wishlist used by PTCGPB.
+                </p>
+
+                <h3>Open it from PTCGPB</h3>
+                <ol class="steps">
+                    <li>
+                        <h3>Launch PTCGPB</h3>
+                        <p>
+                            Run <code>PTCGPB.ahk</code> and wait for the main
+                            settings window to open.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Open the dashboard</h3>
+                        <p>
+                            Click <strong>Open Card Database</strong>, directly
+                            below <strong>Save for Trade</strong>. PTCGPB starts
+                            the local dashboard server and opens the database in
+                            your default browser.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Keep the server running</h3>
+                        <p>
+                            Leave the Card Database PowerShell window open while
+                            using the page. Closing it stops server-backed
+                            actions such as wishlist synchronization, local
+                            image caching, opening metadata and starting a
+                            trade.
+                        </p>
+                    </li>
+                </ol>
+                <div class="callout">
+                    <strong>The address is local and temporary.</strong> A URL
+                    beginning with <code>http://127.0.0.1:</code> is served only
+                    on your PC. Its port and version query can change each time,
+                    so use the PTCGPB button instead of bookmarking a specific
+                    address. Account data is loaded automatically by the local
+                    launcher.
+                </div>
+
+                <figure class="doc-figure">
+                    <a
+                        href="assets/card-database/card-database-overview.png"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <img
+                            src="assets/card-database/card-database-overview.png"
+                            alt="Card Database Workspace showing the main navigation, data controls, statistics, search fields, rarity filters, pack filters and workspace views"
+                            loading="lazy"
+                        />
+                    </a>
+                    <figcaption>
+                        Database Workspace after local account data has loaded.
+                        Select the image to open the full-resolution version.
+                    </figcaption>
+                </figure>
+
+                <h3>Main sections</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>What you can do</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Database Workspace</td>
+                                <td>
+                                    Review individual pack pulls or aggregated
+                                    account totals. Search by account, name,
+                                    friend code, filename, card name or card ID;
+                                    then filter by pack, rarity, card type,
+                                    wishlist cards or God Packs. Sort accounts
+                                    by card count, shinedust or age.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>My Collection</td>
+                                <td>
+                                    View imported Main-account collections,
+                                    completion totals and rarity progress.
+                                    Search or filter by expansion and rarity,
+                                    and show only missing or wishlisted cards.
+                                    To add a collection, click
+                                    <strong>Import Collection</strong> on the
+                                    running Main instance toolbar, then reload
+                                    the dashboard.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Card Library</td>
+                                <td>
+                                    Browse every known card by expansion,
+                                    rarity, name or ID. Select a card to see
+                                    which accounts own it, how many copies are
+                                    available and its pull history. Sort or
+                                    filter accounts by copies, pull date,
+                                    instance, shinedust and trade-ready age; pin
+                                    useful accounts, open their metadata, mark a
+                                    card traded or shared, or start a trade.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Multi-card Search</td>
+                                <td>
+                                    Select several cards and rank accounts by
+                                    how many of them they contain. The results
+                                    distinguish matches from missing cards and
+                                    support pinning accounts, marking cards
+                                    traded or shared, and starting a trade with
+                                    the selected cards.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Wishlist</td>
+                                <td>
+                                    Review wishlisted cards grouped by expansion
+                                    and remove them with the heart button. Add
+                                    cards by clicking the heart in Card Library
+                                    or Multi-card Search.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <figure class="doc-figure">
+                    <a
+                        href="assets/card-database/my-collection-overview.png"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <img
+                            src="assets/card-database/my-collection-overview.png"
+                            alt="My Collection showing overall and rarity completion percentages, missing-card totals, filters and expansion progress"
+                            loading="lazy"
+                        />
+                    </a>
+                    <figcaption>
+                        My Collection summarizes an imported Main collection by
+                        rarity and expansion.
+                    </figcaption>
+                </figure>
+
+                <figure class="doc-figure">
+                    <a
+                        href="assets/card-database/card-library-availability.png"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <img
+                            src="assets/card-database/card-library-availability.png"
+                            alt="Card Library with Venusaur selected and the Card Availability panel listing account copies, shinedust, instance, age and trade actions"
+                            loading="lazy"
+                        />
+                    </a>
+                    <figcaption>
+                        Selecting a card opens Card Availability, where accounts
+                        can be filtered, inspected and used for a trade.
+                    </figcaption>
+                </figure>
+
+                <figure class="doc-figure">
+                    <a
+                        href="assets/card-database/multi-card-search-result.png"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <img
+                            src="assets/card-database/multi-card-search-result.png"
+                            alt="Multi-card Search with three selected cards and Best Accounts results ranked by matching cards"
+                            loading="lazy"
+                        />
+                    </a>
+                    <figcaption>
+                        Multi-card Search ranks accounts by selected-card
+                        matches and shows which cards each account can trade.
+                    </figcaption>
+                </figure>
+
+                <h3>Workspace views and saved actions</h3>
+                <ul>
+                    <li>
+                        <strong>Pack Pulls</strong> shows the recorded pull
+                        rows; <strong>Account Overview</strong> combines the
+                        records for each account.
+                    </li>
+                    <li>
+                        <strong>Traded Cards</strong> and
+                        <strong>Shared Cards</strong> show cards you marked from
+                        Card Library or Multi-card Search. These marks are saved
+                        to account metadata and reduce or annotate the available
+                        copies shown by the dashboard.
+                    </li>
+                    <li>
+                        <strong>Start trade</strong> asks you to choose a MuMu
+                        instance, injects the selected saved account and begins
+                        the trade workflow. The button is disabled for
+                        non-tradeable cards or accounts that have not reached
+                        the required account age.
+                    </li>
+                    <li>
+                        Use <strong>Expand all</strong>,
+                        <strong>Compact all</strong>, the page-size selector and
+                        <strong>Show more</strong> to control large result sets.
+                    </li>
+                </ul>
+
+                <h3>Wishlist automation</h3>
+                <p>
+                    Wishlist changes are synchronized to
+                    <code>Accounts\Cards\wishlist.json</code> when the local
+                    server is running. In PTCGPB, enable
+                    <strong>Save for Trade</strong> and its
+                    <strong>Wishlist</strong> rarity option for custom wishlist
+                    notifications. For Inject Wonderpick, enable
+                    <strong>Card Detection</strong> and
+                    <strong>Wishlist 2★</strong> to save accounts that find a
+                    wishlisted two-star card.
+                </p>
+
+                <figure class="doc-figure">
+                    <a
+                        href="assets/card-database/wishlist-overview.png"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <img
+                            src="assets/card-database/wishlist-overview.png"
+                            alt="Wishlist page showing Save for Trade and Inject Wonderpick guidance with wishlisted cards grouped by expansion"
+                            loading="lazy"
+                        />
+                    </a>
+                    <figcaption>
+                        The Wishlist groups selected cards by expansion and
+                        displays the matching PTCGPB automation settings.
+                    </figcaption>
+                </figure>
+
+                <h3>Dashboard controls</h3>
+                <ul>
+                    <li>
+                        <strong>Reload dashboard data</strong> rereads the local
+                        account data. Use it after the bot records new pulls or
+                        after importing a collection.
+                    </li>
+                    <li>
+                        <strong>Force update data</strong> clears cached card
+                        definitions, downloads them again and reloads the
+                        dashboard. <strong>Clear cached data</strong> clears
+                        only those definitions without reloading.
+                    </li>
+                    <li>
+                        Change the card language, image size and light/dark
+                        theme from the toolbar. When available,
+                        <strong>Local card images</strong> uses
+                        <code>Helper\CardImageCache</code>, downloads missing
+                        images and falls back to the remote artwork source.
+                    </li>
+                </ul>
+
+                <h2>Account utilities</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Utility</th>
+                                <th>What it does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Balance XMLs</td>
+                                <td>
+                                    Redistributes saved XML accounts evenly
+                                    across instance folders.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>XML Duplicate Remover</td>
+                                <td>
+                                    Finds duplicate saved XMLs and removes
+                                    extras.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>XML Account Manager</td>
+                                <td>
+                                    Analyzes, batch-renames and separates XMLs
+                                    using stored JSON metadata and rename
+                                    templates.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Auto Save to Git</td>
+                                <td>
+                                    Automatically commits XML and JSON account
+                                    data to the configured local git repository
+                                    every hour.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Moving accounts to another installation</h2>
+                <p>Copy both account-data locations into the new bot folder:</p>
+                <ul>
+                    <li>
+                        <code>Accounts\Saved</code> contains the XML login data
+                        required to load the accounts.
+                    </li>
+                    <li>
+                        <code>Accounts\Cards\accounts</code> contains metadata,
+                        eligibility flags and recorded card history.
+                    </li>
+                </ul>
+                <p>
+                    XML files remain usable if metadata was not copied, but some
+                    information must then be rebuilt. A JSON metadata file
+                    cannot replace a missing XML and generally cannot be used to
+                    recover the account.
+                </p>
+
+                <h2>Filenames and pack counts</h2>
+                <ul>
+                    <li>
+                        Newer XML files may use an alphanumeric name based on
+                        the account or device identifier. This is expected;
+                        account details live in the matching metadata under
+                        <code>Accounts\Cards\accounts</code>.
+                    </li>
+                    <li>
+                        Do not manually rename metadata JSON files. Use the
+                        supplied account tools when a rename or reorganization
+                        is required.
+                    </li>
+                    <li>
+                        A stored pack count of <code>0</code> can mean that the
+                        count is not known yet. PTCGPB may inject the account,
+                        determine the real count and update its metadata.
+                    </li>
+                </ul>
+
+                <h2>Privacy and recovery</h2>
+                <ul>
+                    <li>
+                        Treat account XML files, Card Database account data,
+                        friend codes, Discord user IDs and webhook URLs as
+                        private.
+                    </li>
+                    <li>
+                        Never include real webhook URLs in screenshots or
+                        support posts.
+                    </li>
+                    <li>
+                        Keep dated backups of both
+                        <code>Accounts\Saved</code> and
+                        <code>Accounts\Cards\accounts</code>, ideally on a
+                        different drive.
+                    </li>
+                    <li>
+                        Test account tools on copied data before applying a
+                        large batch operation.
+                    </li>
+                </ul>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="packs-and-card-detection.html"
+                        >← Packs, Detection &amp; S4T</a
+                    ><a href="group-and-discord.html">Group &amp; Discord →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>

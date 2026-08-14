@@ -105,11 +105,14 @@ enum Command {
         #[arg(long)]
         flag: String,
     },
+    ClearPullHistory,
     ImportHistory {
         #[arg(long)]
         device_account: String,
         #[arg(long)]
         input: PathBuf,
+        #[arg(long, default_value_t = false)]
+        in_depth: bool,
     },
     ImportRegistry {
         #[arg(long)]
@@ -312,10 +315,12 @@ fn run(cli: Cli) -> Result<()> {
             output,
         } => extract_metadata(&cli.root, device_account, instance, file_name, key, &output),
         Command::ClearFlag { flag } => clear_flag(&cli.root, &flag),
+        Command::ClearPullHistory => clear_pull_history(&cli.root),
         Command::ImportHistory {
             device_account,
             input,
-        } => import_history(&cli.root, &device_account, &input),
+            in_depth,
+        } => import_history(&cli.root, &device_account, &input, in_depth),
         Command::ImportRegistry {
             device_account,
             input,
@@ -2535,36 +2540,18 @@ fn special_event_last_claim_at<'a>(account: &'a Value, event_name: &str) -> &'a 
         .unwrap_or("")
 }
 
-fn has_special_event_progress(account: &Value) -> bool {
-    account
-        .get("specialEvents")
-        .and_then(Value::as_object)
-        .is_some_and(|events| !events.is_empty())
-}
-
 fn needs_special_mission_claim(account: &Value, active_events: &[ActiveSpecialEvent]) -> bool {
     if active_events.is_empty() {
         return false;
     }
 
-    // Match the AHK migration guard: a legacy permanent X without per-event
-    // progress remains complete until its history is explicitly cleared.
-    if flag_value(account, "X")
-        && !has_special_event_progress(account)
-        && flag_valid_until(account, "X").is_empty()
-    {
-        return false;
-    }
-
-    let needs_claim = active_events.iter().any(|event| {
+    active_events.iter().any(|event| {
         special_event_claim_count(account, &event.name) < event.claim_steps
             && !special_event_is_same_game_day(
                 special_event_last_claim_at(account, &event.name),
                 &event.expiry_time,
             )
-    });
-
-    needs_claim && flag_is_expired(account, "X", 24)
+    })
 }
 
 fn parse_special_event_file(path: &Path) -> Option<ActiveSpecialEvent> {
@@ -2690,10 +2677,12 @@ fn eligible(
     options: &ScheduleOptions,
     active_events: &[ActiveSpecialEvent],
 ) -> bool {
-    if options.force_inject {
-        return !flag_value(account, "FI");
+    if options.force_inject && !flag_value(account, "FI") {
+        return true;
     }
 
+    // FI only records that the one-time force override was consumed. Once it
+    // is set, fall back to the normal mode gates (including per-event claims).
     match options.delete_method.as_str() {
         "Create Bots (13P)" => true,
         "Rename Account" => rename_account_eligible(account),
@@ -3015,7 +3004,7 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
 
         let pack_count =
             field_i64(account, "packCount").unwrap_or_else(|| extract_pack_count(&file_name));
-        if !options.force_inject
+        if (!options.force_inject || flag_value(account, "FI"))
             && !pack_count_allowed(
                 &options.delete_method,
                 metadata_account,
@@ -3120,7 +3109,7 @@ fn count_eligible_for_all_instances(
 
             let pack_count =
                 field_i64(account, "packCount").unwrap_or_else(|| extract_pack_count(&file_name));
-            if options.force_inject
+            if (options.force_inject && !flag_value(account, "FI"))
                 || pack_count_allowed(
                     &options.delete_method,
                     metadata_account,
@@ -3266,10 +3255,42 @@ fn collect_xmls_for_balance(
     Ok(())
 }
 
-fn file_created_or_modified(path: &Path) -> std::time::SystemTime {
-    fs::metadata(path)
-        .and_then(|m| m.created().or_else(|_| m.modified()))
-        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+fn unique_balance_file_names(xmls: Vec<(String, PathBuf)>) -> Vec<(String, String, PathBuf)> {
+    // Reserve every original name up front so a duplicate `1.xml` cannot take
+    // the name of an existing `1_2.xml`. Windows filenames are case-insensitive,
+    // so use lowercase keys even when tests run on another platform.
+    let mut reserved: HashSet<String> = xmls
+        .iter()
+        .map(|(file_name, _)| file_name.to_lowercase())
+        .collect();
+    let mut emitted = HashSet::new();
+
+    xmls.into_iter()
+        .map(|(file_name, path)| {
+            if emitted.insert(file_name.to_lowercase()) {
+                return (file_name.clone(), file_name, path);
+            }
+
+            let file_path = Path::new(&file_name);
+            let stem = file_path
+                .file_stem()
+                .map(|value| value.to_string_lossy())
+                .unwrap_or_default();
+            let extension = file_path.extension().map(|value| value.to_string_lossy());
+            let mut suffix = 2usize;
+            loop {
+                let candidate = match &extension {
+                    Some(extension) => format!("{stem}_{suffix}.{extension}"),
+                    None => format!("{stem}_{suffix}"),
+                };
+                if reserved.insert(candidate.to_lowercase()) {
+                    emitted.insert(candidate.to_lowercase());
+                    break (file_name, candidate, path);
+                }
+                suffix += 1;
+            }
+        })
+        .collect()
 }
 
 fn pack_counts_by_file(store: &Value) -> HashMap<String, i64> {
@@ -3437,30 +3458,14 @@ fn balance_xmls(root: &Path, instances: usize, options: ScheduleOptions) -> Resu
         ensure_metadata(root).context("Failed while ensuring account metadata")?
     };
     let pack_counts = pack_counts_by_file(&store);
-    let mut newest_by_name: HashMap<String, (std::time::SystemTime, PathBuf)> = HashMap::new();
-
-    write_balance_progress(root, 35, "Removing duplicate XML files")?;
-    for (file_name, path) in xmls {
-        let file_time = file_created_or_modified(&path);
-        if let Some((prev_time, prev_path)) = newest_by_name.get(&file_name) {
-            if file_time > *prev_time {
-                let _ = fs::remove_file(prev_path);
-                newest_by_name.insert(file_name, (file_time, path));
-            } else {
-                let _ = fs::remove_file(&path);
-            }
-        } else {
-            newest_by_name.insert(file_name, (file_time, path));
-        }
-    }
-
-    let mut files: Vec<_> = newest_by_name
+    write_balance_progress(root, 35, "Resolving duplicate XML filenames")?;
+    let mut files: Vec<_> = unique_balance_file_names(xmls)
         .into_iter()
-        .map(|(file_name, (_time, path))| {
+        .map(|(original_file_name, file_name, path)| {
             let pack_count = pack_counts
-                .get(&file_name)
+                .get(&original_file_name)
                 .copied()
-                .unwrap_or_else(|| extract_pack_count(&file_name));
+                .unwrap_or_else(|| extract_pack_count(&original_file_name));
             (Reverse(pack_count), file_name, path)
         })
         .collect();
@@ -3671,6 +3676,81 @@ fn clear_flag(root: &Path, flag: &str) -> Result<()> {
     Ok(())
 }
 
+fn clear_pull_history_document(doc: &mut Value) -> bool {
+    let mut changed = false;
+
+    if let Some(metadata) = doc.get_mut("metadata").and_then(Value::as_object_mut) {
+        if let Some(flags) = metadata.get_mut("flags").and_then(Value::as_object_mut) {
+            if flags.remove("H").is_some() {
+                changed = true;
+            }
+            if flags.is_empty() {
+                metadata.remove("flags");
+            }
+        }
+    }
+
+    let pulls_have_entries = doc
+        .get("pulls")
+        .and_then(Value::as_array)
+        .is_some_and(|pulls| !pulls.is_empty());
+    if pulls_have_entries || !doc.get("pulls").is_some_and(Value::is_array) {
+        doc["pulls"] = json!([]);
+        changed = true;
+    }
+
+    changed
+}
+
+fn clear_pull_history(root: &Path) -> Result<()> {
+    let dir = account_files_dir(root);
+    let mut changed = 0usize;
+
+    write_clear_flag_progress(root, 1, "Preparing reset")?;
+    if dir.exists() {
+        let mut paths = fs::read_dir(&dir)
+            .with_context(|| format!("Could not read {:?}", dir))?
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter(|path| {
+                path.extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+            })
+            .collect::<Vec<_>>();
+        paths.sort();
+
+        let total = paths.len().max(1);
+        write_clear_flag_progress(root, 5, "Scanning account files")?;
+        for (index, path) in paths.into_iter().enumerate() {
+            let fallback = account_key_from_file(&path).unwrap_or_default();
+            let mut doc = load_account_document(&path, &fallback)?;
+            if clear_pull_history_document(&mut doc) {
+                let device_account = doc
+                    .get("deviceAccount")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&fallback)
+                    .to_owned();
+                write_account_document(root, &device_account, &doc)?;
+                changed += 1;
+            }
+
+            if index % 50 == 0 {
+                let percent = 5 + ((index + 1) * 90 / total) as u8;
+                write_clear_flag_progress(root, percent, "Clearing pull history")?;
+            }
+        }
+    }
+
+    fs::create_dir_all(saved_dir(root))?;
+    fs::write(
+        saved_dir(root).join("clear_flag_result.txt"),
+        format!("{changed}\n"),
+    )?;
+    write_clear_flag_progress(root, 100, "Reset complete")?;
+    println!("{changed}");
+    Ok(())
+}
+
 fn parse_pull_timestamp(timestamp: &str) -> Option<DateTime<Utc>> {
     let timestamp = timestamp.trim();
     if timestamp.is_empty() || timestamp == "0" {
@@ -3724,6 +3804,88 @@ fn pull_history_day_keys(doc: &Value) -> HashSet<String> {
         .filter_map(|pull| pull.get("timestamp").and_then(Value::as_str))
         .filter_map(parse_pull_timestamp)
         .map(history_day_key)
+        .collect()
+}
+
+type HistoryCardCounts = HashMap<(String, String, String), usize>;
+
+fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
+    let mut counts = HashMap::new();
+    for pull in doc
+        .get("pulls")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(timestamp) = pull
+            .get("timestamp")
+            .and_then(Value::as_str)
+            .and_then(parse_pull_timestamp)
+        else {
+            continue;
+        };
+        let day = history_day_key(timestamp);
+        let pack = pull
+            .get("pack")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        for card in pull
+            .get("cards")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            *counts
+                .entry((day.clone(), pack.to_owned(), card.to_owned()))
+                .or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+fn missing_history_pulls(
+    history_day: &str,
+    pulls: Vec<Value>,
+    remaining_existing_cards: &mut HistoryCardCounts,
+) -> Vec<Value> {
+    pulls
+        .into_iter()
+        .filter_map(|mut pull| {
+            let mut missing_cards = Vec::new();
+            let pack = pull
+                .get("pack")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_owned();
+            for card in pull
+                .get("cards")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let Some(card_id) = card.as_str() else {
+                    continue;
+                };
+                let key = (history_day.to_owned(), pack.clone(), card_id.to_owned());
+                let already_present = remaining_existing_cards.get_mut(&key).is_some_and(|count| {
+                    if *count == 0 {
+                        return false;
+                    }
+                    *count -= 1;
+                    true
+                });
+                if !already_present {
+                    missing_cards.push(card.clone());
+                }
+            }
+
+            if missing_cards.is_empty() {
+                return None;
+            }
+            pull["cards"] = Value::Array(missing_cards);
+            Some(pull)
+        })
         .collect()
 }
 
@@ -4012,7 +4174,7 @@ fn set_doc_flag(doc: &mut Value, flag: &str) {
     doc["metadata"]["flags"][flag] = new_flag(1, &now, "");
 }
 
-fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()> {
+fn import_history(root: &Path, device_account: &str, input: &Path, in_depth: bool) -> Result<()> {
     if device_account.trim().is_empty() {
         return Ok(());
     }
@@ -4023,6 +4185,7 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
         doc["pulls"] = json!([]);
     }
     let mut existing_history_days = pull_history_day_keys(&doc);
+    let mut remaining_existing_cards = in_depth.then(|| pull_history_card_counts(&doc));
     if input.exists() {
         let text = fs::read_to_string(input)
             .with_context(|| format!("Could not read history file {:?}", input))?;
@@ -4030,6 +4193,14 @@ fn import_history(root: &Path, device_account: &str, input: &Path) -> Result<()>
         for line in text.lines() {
             if let Some((timestamp, pulls)) = history_pulls_from_line(line, &cardmap) {
                 let history_day = history_day_key(timestamp);
+                if let Some(existing_cards) = remaining_existing_cards.as_mut() {
+                    let missing_pulls = missing_history_pulls(&history_day, pulls, existing_cards);
+                    doc["pulls"]
+                        .as_array_mut()
+                        .expect("pulls array")
+                        .extend(missing_pulls);
+                    continue;
+                }
                 if existing_history_days.contains(&history_day) {
                     continue;
                 }
@@ -4228,6 +4399,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn balance_assigns_unique_names_without_overwriting_reserved_suffixes() {
+        let xmls = vec![
+            ("1.xml".to_owned(), PathBuf::from("first")),
+            ("1.xml".to_owned(), PathBuf::from("second")),
+            ("1_2.xml".to_owned(), PathBuf::from("already-suffixed")),
+            ("1.xml".to_owned(), PathBuf::from("third")),
+        ];
+
+        let named = unique_balance_file_names(xmls);
+        let output_names = named
+            .iter()
+            .map(|(_, output_name, _)| output_name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(output_names, vec!["1.xml", "1_3.xml", "1_2.xml", "1_4.xml"]);
+        assert_eq!(named.len(), 4);
+    }
+
+    #[test]
+    fn balance_filename_collisions_are_case_insensitive() {
+        let xmls = vec![
+            ("Account.XML".to_owned(), PathBuf::from("first")),
+            ("account.xml".to_owned(), PathBuf::from("second")),
+        ];
+
+        let named = unique_balance_file_names(xmls);
+
+        assert_eq!(named[0].1, "Account.XML");
+        assert_eq!(named[1].1, "account_2.xml");
+    }
+
+    #[test]
     fn normalizes_pull_timestamp_inputs_to_display_format() {
         assert_eq!(
             normalize_pull_timestamp("2026-05-11 20:00:00").as_deref(),
@@ -4271,6 +4474,61 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains("2026-05-11"));
         assert!(keys.contains("2026-05-12"));
+    }
+
+    #[test]
+    fn in_depth_history_adds_only_missing_card_occurrences() {
+        let mut doc = json!({
+            "pulls": [{
+                "timestamp": "2026-05-11T08:00:00Z",
+                "pack": "A1",
+                "cards": ["PK001", "PK002"]
+            }]
+        });
+        let exported_pulls = vec![json!({
+            "timestamp": "2026-05-11 10:00:00",
+            "pack": "A1",
+            "cards": ["PK001", "PK001", "PK002", "PK003"]
+        })];
+        let history_day = "2026-05-11";
+
+        let mut existing_cards = pull_history_card_counts(&doc);
+        let missing =
+            missing_history_pulls(history_day, exported_pulls.clone(), &mut existing_cards);
+
+        assert_eq!(missing.len(), 1);
+        assert_eq!(missing[0]["cards"], json!(["PK001", "PK003"]));
+
+        doc["pulls"].as_array_mut().unwrap().extend(missing);
+        let mut reconciled_cards = pull_history_card_counts(&doc);
+        let repeated = missing_history_pulls(history_day, exported_pulls, &mut reconciled_cards);
+        assert!(repeated.is_empty());
+    }
+
+    #[test]
+    fn clearing_pull_history_removes_h_and_preserves_trade_data() {
+        let mut doc = json!({
+            "deviceAccount": "account-1",
+            "metadata": {
+                "flags": {
+                    "H": { "value": 1, "setAt": "20260811080000" },
+                    "B": { "value": 1 }
+                }
+            },
+            "pulls": [{ "timestamp": "2026-08-11 08:00:00", "cards": ["card-1"] }],
+            "tradedCards": { "card-2": 3 },
+            "sharedCards": { "card-3": 4 }
+        });
+        let traded_cards = doc["tradedCards"].clone();
+        let shared_cards = doc["sharedCards"].clone();
+
+        assert!(clear_pull_history_document(&mut doc));
+        assert_eq!(doc["pulls"], json!([]));
+        assert!(doc["metadata"]["flags"].get("H").is_none());
+        assert_eq!(doc["metadata"]["flags"]["B"]["value"], 1);
+        assert_eq!(doc["tradedCards"], traded_cards);
+        assert_eq!(doc["sharedCards"], shared_cards);
+        assert!(!clear_pull_history_document(&mut doc));
     }
 
     #[test]
@@ -4434,13 +4692,13 @@ mod tests {
         let old_claim = (Local::now() - Duration::days(2))
             .format("%Y%m%d%H%M%S")
             .to_string();
-        let account = json!({
+        let mut account = json!({
             "flags": { "X": new_flag(1, &old_claim, "") },
             "specialEvents": {
                 "completed-event": { "claimCount": 1, "lastClaimAt": old_claim }
             }
         });
-        let options = ScheduleOptions {
+        let mut options = ScheduleOptions {
             instance: "1".to_owned(),
             delete_method: "Inject Rewards".to_owned(),
             sort_method: "ModifiedAsc".to_owned(),
@@ -4468,6 +4726,20 @@ mod tests {
             },
         ];
 
+        assert!(eligible(&account, &options, &events));
+
+        // X is legacy status only. Even accounts without any per-event history
+        // must be eligible for every active .sevt event they have not claimed.
+        account["specialEvents"] = json!({});
+        assert!(eligible(&account, &options, &events));
+
+        account["flags"]["X"] = new_flag(1, &old_claim, "29991231235959");
+        assert!(eligible(&account, &options, &events));
+
+        // A consumed force override must not suppress normal special-event
+        // eligibility while Force inject accounts remains enabled.
+        account["flags"]["FI"] = new_flag(1, &old_claim, "");
+        options.force_inject = true;
         assert!(eligible(&account, &options, &events));
     }
 

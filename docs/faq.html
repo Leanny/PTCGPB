@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Frequently asked questions about PTCGPB accounts, metadata, injection and event tracking."
+        />
+        <title>FAQ · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Common questions</p>
+                <h1>Frequently asked questions</h1>
+                <p class="lead">
+                    Explanations of account data, injection behavior and event
+                    tracking. For a bot or emulator failure, start with
+                    <a href="troubleshooting.html">Troubleshooting</a>.
+                </p>
+
+                <h2>Accounts and metadata</h2>
+                <details>
+                    <summary>
+                        Can I move my reroll accounts to another installation or
+                        PC?
+                    </summary>
+                    <div>
+                        Yes. Copy <code>Accounts\Saved</code> for the account
+                        login XMLs and <code>Accounts\Cards\accounts</code> for
+                        metadata and recorded card history. XMLs remain usable
+                        without the metadata, but some stored information may
+                        need to be rebuilt. See
+                        <a href="accounts-and-trading.html"
+                            >Accounts and trading</a
+                        >.
+                    </div>
+                </details>
+
+                <details>
+                    <summary>What does Force inject do?</summary>
+                    <div>
+                        It bypasses normal Inject-mode eligibility once per
+                        account. It is useful for troubleshooting stale or
+                        incorrect metadata, but normally does not need to remain
+                        enabled. PTCGPB records an FI flag when the account is
+                        claimed. Use <strong>Clear force inject flags</strong>
+                        before another forced pass.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        Some XML files have random alphanumeric names. Is that
+                        broken?
+                    </summary>
+                    <div>
+                        No. Newer files can be named from the account or device
+                        identifier. Descriptive information is stored in
+                        <code>Accounts\Cards\accounts</code>. Do not manually
+                        rename the JSON metadata files.
+                    </div>
+                </details>
+                <details>
+                    <summary>Why does an account show 0 packs?</summary>
+                    <div>
+                        Zero can mean the metadata does not yet contain a known
+                        pack count. The bot may inject the account to determine
+                        the actual value and then update the metadata; zero does
+                        not by itself mean that the account is broken or empty.
+                    </div>
+                </details>
+                <details>
+                    <summary>
+                        The JSON metadata exists but the XML is missing. Can I
+                        recover the account?
+                    </summary>
+                    <div>
+                        Generally not. The XML contains the login data; JSON
+                        only describes the account. This is why
+                        <code>Accounts\Saved</code> must be backed up.
+                    </div>
+                </details>
+                <h2>Event and reward tracking</h2>
+                <details>
+                    <summary>
+                        Must I reset Claim Status after every event?
+                    </summary>
+                    <div>
+                        No. Current <code>.sevt</code> definitions track each
+                        event and its daily steps separately in account
+                        metadata. Reset Claim Status clears all of that progress
+                        and should be used only for recovery or an intentional
+                        replay. For an Elite Deck event, enable the extractor's
+                        Elite Deck option so PTCGPB restarts after claiming and
+                        registers the awarded cards.
+                    </div>
+                </details>
+                <div class="callout">
+                    <strong>Trying to fix a failure?</strong> Wrong clicks,
+                    stuck screens, MuMu errors, ineligible accounts, failed
+                    updates and support-data collection are covered in
+                    <a href="troubleshooting.html">Troubleshooting</a>.
+                </div>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="troubleshooting.html">← Troubleshooting</a
+                    ><a href="index.html">Back to overview →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>

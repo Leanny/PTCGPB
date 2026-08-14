@@ -651,7 +651,7 @@ AccountMetadata_ReadAccountUnlocked(deviceAccount, instance := "", fileName := "
     return account
 }
 
-AccountMetadata_WriteAccountUnlocked(deviceAccount, account) {
+AccountMetadata_WriteAccountUnlocked(deviceAccount, account, pullsJsonOverride := "") {
     if (deviceAccount = "")
         deviceAccount := account["deviceAccount"]
     if (deviceAccount = "")
@@ -662,15 +662,17 @@ AccountMetadata_WriteAccountUnlocked(deviceAccount, account) {
     if (!FileExist(dir))
         FileCreateDir, %dir%
 
-    pullsJson := "[]"
+    pullsJson := pullsJsonOverride != "" ? pullsJsonOverride : "[]"
     registeredCardsJson := "[]"
     tradedCardsJson := "{}"
     sharedCardsJson := "{}"
     if (FileExist(path)) {
         FileRead, oldJson, %path%
-        pullsJson := AccountMetadata_ExtractArrayValue(oldJson, "pulls")
-        if (pullsJson = "")
-            pullsJson := "[]"
+        if (pullsJsonOverride = "") {
+            pullsJson := AccountMetadata_ExtractArrayValue(oldJson, "pulls")
+            if (pullsJson = "")
+                pullsJson := "[]"
+        }
         registeredCardsJson := AccountMetadata_ExtractArrayValue(oldJson, "registeredCards")
         if (registeredCardsJson = "")
             registeredCardsJson := "[]"
@@ -2069,6 +2071,96 @@ AccountMetadata_ClearFlagEverywhere(flag) {
 
     AccountMetadata_WriteStoreUnlocked(store)
     AccountMetadata_ReleaseLock(hMutex)
+    return changed
+}
+
+AccountMetadata_ClearPullHistoryEverywhere() {
+    if (AccountMetadata_MigrationNeeded())
+        AccountMetadata_Ensure()
+
+    helperPath := AccountMetadata_HelperPath()
+    if (FileExist(helperPath)) {
+        root := getScriptBaseFolder()
+        resultPath := root . "\Accounts\Saved\clear_flag_result.txt"
+        errorPath := root . "\Accounts\Saved\carddb_error.txt"
+        progressPath := root . "\Accounts\Saved\clear_flag_progress.txt"
+        FileDelete, %resultPath%
+        FileDelete, %errorPath%
+        FileDelete, %progressPath%
+
+        title := "Clear Pull History"
+        command := """" . helperPath . """ --root """ . root . """ clear-pull-history"
+        Progress, M B1 FS10 ZH0 FM10 WM700 W480, Starting reset..., %title%, %title%
+        Run, %command%,, Hide, helperPid
+        if (ErrorLevel) {
+            Progress, Off
+            return 0
+        }
+
+        lastPercent := 0
+        lastMessage := "Starting reset..."
+        Loop {
+            if (FileExist(progressPath)) {
+                FileRead, progressText, %progressPath%
+                progressText := Trim(progressText, "`r`n ")
+                if (progressText != "") {
+                    parts := StrSplit(progressText, "|")
+                    if (parts.MaxIndex() >= 1)
+                        lastPercent := parts[1] + 0
+                    if (parts.MaxIndex() >= 2 && parts[2] != "")
+                        lastMessage := parts[2]
+                    Progress, %lastPercent%, %lastMessage%, %title%, %title%
+                }
+            } else if (lastPercent < 5) {
+                Progress, 5, Preparing reset..., %title%, %title%
+            }
+
+            Process, Exist, %helperPid%
+            if (!ErrorLevel)
+                break
+            Sleep, 250
+        }
+
+        Progress, 100, Reset complete, %title%, %title%
+        Sleep, 300
+        Progress, Off
+
+        if (FileExist(errorPath))
+            return 0
+        if (FileExist(resultPath)) {
+            FileRead, resultText, %resultPath%
+            resultText := Trim(resultText, "`r`n ")
+            return resultText = "" ? 0 : resultText + 0
+        }
+        return 0
+    }
+
+    accountDir := AccountMetadata_AccountDir()
+    if (!FileExist(accountDir))
+        return 0
+
+    changed := 0
+    Loop, Files, %accountDir%\*.json, F
+    {
+        SplitPath, A_LoopFileName,,,, deviceAccount
+        if (deviceAccount = "")
+            continue
+
+        FileRead, jsonText, %A_LoopFileFullPath%
+        pullsJson := RegExReplace(Trim(AccountMetadata_ExtractArrayValue(jsonText, "pulls")), "\s")
+        account := AccountMetadata_ReadAccountUnlocked(deviceAccount)
+        hasHistoryFlag := IsObject(account["flags"]) && account["flags"].HasKey("H")
+        if (!hasHistoryFlag && (pullsJson = "" || pullsJson = "[]"))
+            continue
+
+        if (hasHistoryFlag) {
+            account["flags"]["H"]["value"] := 0
+            account["flags"]["H"]["setAt"] := ""
+            account["flags"]["H"]["validUntil"] := ""
+        }
+        if (AccountMetadata_WriteAccountUnlocked(deviceAccount, account, "[]"))
+            changed++
+    }
     return changed
 }
 
