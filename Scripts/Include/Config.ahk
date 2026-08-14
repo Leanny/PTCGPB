@@ -75,7 +75,18 @@
         , "updateChannel": "stable"
         , "automaticUpdateChecks": 1
         , "lastNotifiedVersion": ""
-        , "skippedUpdateVersion": ""}
+        , "skippedUpdateVersion": ""
+        , "saveToGit": 0
+        , "saveToDisk": 0
+        , "backupIntervalMinutes": 60
+        , "diskBackupFolder": ""
+        , "backupAccountsXml": 1
+        , "backupAccountsJson": 1
+        , "backupSettingsIni": 1
+        , "backupShowcaseIds": 1
+        , "backupManualVipIds": 1
+        , "backupFriendsGPTested": 1
+        , "backupSpecialEvents": 1}
 
     generalSettings := {}
     packSettings := {}
