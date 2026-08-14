@@ -60,7 +60,6 @@ OnMessage(0x202, "WM_LBUTTONUP")
 OnMessage(0x204, "WM_RBUTTONDOWN")
 OnMessage(0x205, "WM_RBUTTONUP")
 OnMessage(0x200, "HelpTT_OnMouseMove")
-OnMessage(0x201, "HelpTT_OnLButtonDown")
 
 Gui, Show,, Special Event Extractor Tool
 
@@ -298,6 +297,7 @@ LoadInstanceList(){
 
 WM_LBUTTONDOWN(wParam, lParam, msg, hwnd) {
     global hScreenPic, RedBox
+    HelpTT_DismissForClick()
     if (hwnd = hScreenPic) {
         GetMousePosInCtrl(hScreenPic, x, y)
         RedBox.x1 := x, RedBox.y1 := y
@@ -360,6 +360,7 @@ WM_MOUSEMOVE(wParam, lParam, msg, hwnd) {
 
 HelpTT_OnMouseMove(wParam, lParam, msg, hwnd) {
     global g_HelpTT, g_HelpTT_Last, g_HelpTT_Visible
+    WM_MOUSEMOVE(wParam, lParam, msg, hwnd)
     ctrl := A_GuiControl
     if (ctrl = g_HelpTT_Last)
         return
@@ -371,10 +372,6 @@ HelpTT_OnMouseMove(wParam, lParam, msg, hwnd) {
         SetTimer, HelpTT_Show, -500
     else
         SetTimer, HelpTT_Show, Off
-}
-
-HelpTT_OnLButtonDown(wParam, lParam, msg, hwnd) {
-    HelpTT_DismissForClick()
 }
 
 HelpTT_Dismiss() {
