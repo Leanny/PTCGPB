@@ -47,7 +47,7 @@ GoToMain() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        if (FindOrLoseImage("Common_MainScreen", 0, failSafeTime))
+        if (FindOrLoseImage("Common_ShopButtonInMain", 0, failSafeTime))
             return
         adbInputEvent("111")
         Delay(1)
