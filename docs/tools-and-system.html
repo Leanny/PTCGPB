@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Reference for PTCGPB Tools and System settings."
+        />
+        <title>Tools &amp; System · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">Settings reference</p>
+                <h1>Tools and system</h1>
+                <p class="lead">
+                    Configure daily actions, event missions, MuMu Player,
+                    language recognition, monitoring and account utilities.
+                </p>
+
+                <h2>Account actions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>5x Showcase Likes</td>
+                                <td>
+                                    Gives five showcase likes daily to Friend
+                                    IDs in <code>showcase_ids.txt</code>, one ID
+                                    per line. The counter is shared across
+                                    instances and resets at server reset.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Claim Daily 4 Hourglasses</td>
+                                <td>
+                                    Claims the daily mission reward of four
+                                    hourglasses on each account.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Receive Gift</td>
+                                <td>Opens received gifts on each account.</td>
+                            </tr>
+                            <tr>
+                                <td>No Speedmod Menu Clicks</td>
+                                <td>
+                                    Skips 1x/2x/3x ModMenu buttons. Enable only
+                                    when running without the speedModMenu.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Use ids.txt in Solo Reroll</td>
+                                <td>
+                                    Uses Friend IDs from <code>ids.txt</code> in
+                                    the bot folder instead of only the main
+                                    Friend ID field.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Save Name + Friend Code</td>
+                                <td>
+                                    Stores each account's in-game name and
+                                    Friend ID in its metadata. Hidden in Create
+                                    Bots mode.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Special Event Missions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Control</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Special Event Extractor</td>
+                                <td>
+                                    Captures the current event's missions from
+                                    the game and saves the
+                                    <code>.sevt</code> definition used by the
+                                    bot.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Reset Claim Status</td>
+                                <td>
+                                    Clears the X flag and per-event claim counts
+                                    so special missions can be attempted again.
+                                    This is a recovery tool, not a required step
+                                    for each new event.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Reset Receive Gift Status</td>
+                                <td>
+                                    Clears gift history so the bot tries to open
+                                    gifts again on every account.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Clear History Flag</td>
+                                <td>
+                                    Clears the H flag from every account JSON
+                                    file so pack history can be imported again.
+                                    Existing entries from the same history day
+                                    are skipped; history days begin at 06:00
+                                    UTC.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Claim Rewards</td>
+                                <td>
+                                    Claims rewards for configured special event
+                                    missions.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Wonderpick</td>
+                                <td>
+                                    Performs Wonder Picks when required by an
+                                    event mission.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <h3>Special Event Extractor fields</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Claim Steps (Days)</td>
+                                <td>
+                                    Number of daily event steps to track. Use
+                                    <code>1</code> for a one-time claim.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Claim Days</td>
+                                <td>
+                                    Optional comma-separated steps on which the
+                                    claim UI is used, such as
+                                    <code>3,5</code>. Empty means every step.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Gift Days</td>
+                                <td>
+                                    Optional comma-separated steps on which gift
+                                    collection is forced. Empty means no forced
+                                    gift days.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Elite Deck event</td>
+                                <td>
+                                    Marks an event whose claim awards a deck.
+                                    PTCGPB restarts the game after a successful
+                                    claim and registers the deck cards in the
+                                    Card Database without sending a Discord
+                                    notification.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>
+                    Each active <code>.sevt</code> event keeps its own claim
+                    count and last-claim time in account metadata. Inject
+                    Rewards can therefore discover a new event or the next daily
+                    step without requiring a global Claim Status reset. Event
+                    game days follow the expiry time stored in the event
+                    definition; the extractor defaults to 05:59:59 UTC.
+                </p>
+                <div class="callout warning">
+                    <strong>Reset buttons affect all account metadata.</strong>
+                    Use them only when you intentionally want every account to
+                    repeat the corresponding action.
+                </div>
+
+                <h2>Display and MuMu Player</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Purpose</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Monitor</td>
+                                <td>
+                                    Screen on which Arrange places MuMu windows.
+                                </td>
+                                <td>Monitor 1</td>
+                            </tr>
+                            <tr>
+                                <td>Row Gap</td>
+                                <td>
+                                    Vertical pixel gap between arranged rows.
+                                </td>
+                                <td><code>105</code></td>
+                            </tr>
+                            <tr>
+                                <td>MuMu Folder Path</td>
+                                <td>
+                                    MuMuPlayer installation folder detected from
+                                    the current MuMuPlayer configuration. Change
+                                    it only if automatic detection fails.
+                                </td>
+                                <td>
+                                    Detected automatically; commonly under
+                                    <code>C:\Program Files\Netease</code>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Launch MuMu Delay</td>
+                                <td>
+                                    Seconds between launching one MuMu instance
+                                    and the next.
+                                </td>
+                                <td><code>5</code> seconds</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Language settings</h2>
+                <p>
+                    <strong>OCR</strong> is the language Windows uses to
+                    recognize text from the game. <strong>Client</strong> is the
+                    language selected inside Pokémon TCG Pocket. Select matching
+                    languages whenever possible.
+                </p>
+                <p>
+                    <strong>OCR choices:</strong> en, zh, es, de, fr, ja, ru,
+                    pt, ko, it, tr, pl, nl, sv, ar, uk, id, vi, th, he, cs, no,
+                    da, fi, hu, el, zh-TW.
+                </p>
+                <p>
+                    <strong>Client choices:</strong> en, es, fr, de, it, pt, jp,
+                    ko, cn.
+                </p>
+
+                <h2>Monitoring and storage</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Auto-open Monitor</td>
+                                <td>
+                                    Starts the Monitor with the bot. Monitor
+                                    watches instances and restarts ones that
+                                    become stuck.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Auto-open Cockpit</td>
+                                <td>
+                                    Starts the live status and metrics
+                                    dashboard. Hidden in Create Bots mode.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Auto Save to Git</td>
+                                <td>
+                                    Commits account XML and JSON data to git
+                                    every hour.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Log Level</td>
+                                <td>
+                                    Controls log detail: error, warn, info,
+                                    debug or trace. Use
+                                    <code>info</code> normally.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="callout">
+                    <strong>For support investigations:</strong> temporarily use
+                    <code>debug</code> or <code>trace</code> only when asked or
+                    when reproducing a problem. Higher levels create much more
+                    log output.
+                </div>
+
+                <h2>Account tools</h2>
+                <p>
+                    <strong>XML Duplicate Remover</strong> removes duplicate
+                    saved accounts, keeping the copy with more packs or the
+                    older one. <strong>XML Account Manager</strong> analyzes,
+                    renames and separates XML files using metadata. Back up both
+                    <code>Accounts\Saved</code> and
+                    <code>Accounts\Cards\accounts</code> before either
+                    operation.
+                </p>
+
+                <h2>Version Manager</h2>
+                <p>
+                    Version Manager retrieves releases from the configured
+                    PTCGPB GitHub repository. Choose the
+                    <strong>stable</strong> channel for normal releases or
+                    <strong>beta</strong> to include prereleases, then use
+                    <strong>Save &amp; Refresh</strong> to update the release
+                    list. Prerelease builds automatically follow the beta
+                    channel.
+                </p>
+                <ul>
+                    <li>
+                        <strong>Automatic notifications</strong> checks the
+                        selected channel at startup and offers newer releases.
+                    </li>
+                    <li>
+                        <strong>Install selected</strong> can upgrade, reinstall
+                        or, after an extra warning, downgrade.
+                    </li>
+                    <li>
+                        Release bundles are SHA-256 checked when a checksum is
+                        supplied. Files being replaced are copied to a dated
+                        folder under <code>Backups</code> before installation.
+                    </li>
+                    <li>
+                        Managed updates preserve settings, saved accounts, logs,
+                        screenshots and event data.
+                    </li>
+                </ul>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="group-and-discord.html">← Group &amp; Discord</a
+                    ><a href="troubleshooting.html">Troubleshooting →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>

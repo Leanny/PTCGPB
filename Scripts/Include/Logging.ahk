@@ -253,6 +253,52 @@ LogTrace(message, logFile := "") {
     LogMessage("trace", message, logFile)
 }
 
+LogSettingsSnapshotForRun(settingsFile := "") {
+    if (settingsFile = "")
+        settingsFile := getScriptBaseFolder() . "\Settings.ini"
+
+    if (!FileExist(settingsFile)) {
+        LogToFile("[warn] Run settings snapshot unavailable: Settings.ini was not found.")
+        return false
+    }
+
+    FileRead, settingsContents, %settingsFile%
+    if (ErrorLevel) {
+        LogToFile("[warn] Run settings snapshot unavailable: Settings.ini could not be read.")
+        return false
+    }
+
+    sanitizedSettings := ""
+    Loop, Parse, settingsContents, `n, `r
+    {
+        line := A_LoopField
+        equalPos := InStr(line, "=")
+
+        if (equalPos > 0) {
+            key := Trim(SubStr(line, 1, equalPos - 1))
+            value := SubStr(line, equalPos + 1)
+
+            ; URL settings commonly contain credentials (for example Discord webhooks).
+            ; Keep the key in the diagnostic snapshot, but never write its value.
+            if (value != "" && (InStr(key, "url", false) || InStr(key, "webhook", false)))
+                value := "<redacted URL>"
+            else
+                value := RegExReplace(value, "i)\b[a-z][a-z0-9+.-]*://\S+|\bwww\.\S+", "<redacted URL>")
+
+            line := SubStr(line, 1, equalPos) . value
+        } else {
+            ; Also protect URLs that might appear in comments or non-key lines.
+            line := RegExReplace(line, "i)\b[a-z][a-z0-9+.-]*://\S+|\bwww\.\S+", "<redacted URL>")
+        }
+
+        sanitizedSettings .= line . "`n"
+    }
+
+    ; Bypass level filtering: every explicitly started run needs this diagnostic context.
+    LogToFile("[info] Run settings snapshot (URLs redacted):`n" . RTrim(sanitizedSettings, "`r`n"))
+    return true
+}
+
 GetActiveDiscordProfile() {
     global botConfig, discordWebhookURL, discordUserId, sendAccountXml
 

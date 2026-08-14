@@ -20,12 +20,17 @@ global botConfig := new BotConfig()
 botConfig.loadSettingsToConfig("ALL")
 
 lastReduceMemory := 0
-lastGitCommit := 0
+lastBackup := 0
 
 waitAfterBulkLaunch := botConfig.get("waitAfterBulkLaunch")
 instanceLaunchDelay := botConfig.get("instanceLaunchDelay")
 Instances := botConfig.get("Instances")
 saveToGit := botConfig.get("saveToGit")
+saveToDisk := botConfig.get("saveToDisk")
+diskBackupFolder := botConfig.get("diskBackupFolder")
+backupIntervalMinutes := botConfig.get("backupIntervalMinutes") + 0
+if (backupIntervalMinutes < 5)
+    backupIntervalMinutes := 5
 deleteMethod := botConfig.get("deleteMethod")
 
 mumuFolder := getMuMuFolder()
@@ -131,16 +136,27 @@ Loop {
         }
     }
 
-    if (saveToGit && A_TickCount - lastGitCommit > 3600000) {
-        LogInfo("Git auto-commit start.", "Monitor.txt")
+    intervalMs := backupIntervalMinutes * 60000
+    if ((saveToGit || saveToDisk) && A_TickCount - lastBackup > intervalMs) {
         gitRoot := A_ScriptDir . "\..\.."
-        paths := []
-        paths.Push({path: "Accounts/Saved", suffix: ".xml"})
-        paths.Push({path: "Accounts/Cards/accounts", suffix: ".json"})
-        paths.Push({path: "Screenshots", suffix: ".png"})
-        isCommit := CommitAndPushGit(gitRoot, "Monitor.txt", paths)
-        if (isCommit) {
-            lastGitCommit := A_TickCount
+        paths := BuildBackupPaths(botConfig)
+        if (!paths.MaxIndex()) {
+            LogInfo("Backup skipped: no categories selected.", "Monitor.txt")
+            lastBackup := A_TickCount
+        } else {
+            ok := true
+            if (saveToGit) {
+                LogInfo("Git auto-commit start.", "Monitor.txt")
+                if (!CommitAndPushGit(gitRoot, "Monitor.txt", paths))
+                    ok := false
+            }
+            if (saveToDisk) {
+                LogInfo("Disk auto-backup start.", "Monitor.txt")
+                if (!BackupToDisk(gitRoot, diskBackupFolder, paths, "Monitor.txt"))
+                    ok := false
+            }
+            if (ok)
+                lastBackup := A_TickCount
         }
     }
 

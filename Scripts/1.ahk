@@ -53,6 +53,7 @@ OnExit("CleanupBeforeExit")
 global session := new Session()
 global botConfig := new BotConfig()
 botConfig.loadSettingsToConfig("ALL")
+LogSettingsSnapshotForRun(botConfig.settingsFile)
 
 parsePackData()
 pokemonList := getKeyList(session.get("pokemonPackObj"))
@@ -591,8 +592,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             ; If only claiming daily missions (no extra pack)
             if(botConfig.get("claimDailyMission") && !botConfig.get("openExtraPack")) {
                 GoToMain()
-                dailyRewardsClaimed := GetAllRewards(false, true)
-                ClaimSpecialMissionRewards(!dailyRewardsClaimed)
+                doSpecial := (botConfig.get("claimSpecialMissions") = 1)
+                ClaimAllMissionRewards(true, doSpecial)
             }
             ; If only opening extra pack (no daily mission claim)
             else if(!botConfig.get("claimDailyMission") && botConfig.get("openExtraPack")) {
@@ -616,8 +617,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 }
 
                 GoToMain()
-                dailyRewardsClaimed := GetAllRewards(false, true)
-                ClaimSpecialMissionRewards(!dailyRewardsClaimed)
+                doSpecial := (botConfig.get("claimSpecialMissions") = 1)
+                ClaimAllMissionRewards(true, doSpecial)
                 GoToMain()
                 SelectPack("HGPack")
                 if(!session.get("cantOpenMorePacks")) {
@@ -701,15 +702,14 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             DoWonderPickOnly()
         }
 
-        specialMissionsFromMain := true
-        if (botConfig.get("deleteMethod") = "Inject Rewards" && botConfig.get("claimDailyMission")) {
+        ; Daily + Special missions - unified single-pass claim
+        method := botConfig.get("deleteMethod")
+        doDaily := (method = "Inject Rewards" && botConfig.get("claimDailyMission"))
+        doSpecial := (botConfig.get("claimSpecialMissions") = 1 && !session.get("missionDoneList")["specialMissionsDone"] && (method = "Inject 13P+" || method = "Inject Wonderpick 96P+" || method = "Inject Rewards"))
+        if (doDaily || doSpecial) {
             GoToMain()
-            dailyRewardsClaimed := GetAllRewards(false, true)
-            specialMissionsFromMain := !dailyRewardsClaimed
+            ClaimAllMissionRewards(doDaily, doSpecial, accountMeta)
         }
-
-        ; Special missions
-        ClaimSpecialMissionRewards(specialMissionsFromMain, accountMeta)
 
         forceGift := session.get("forceReceiveGiftThisRun")
         if(!session.get("missionDoneList")["receivedGiftDone"] && botConfig.get("receiveGift") && session.get("injectMethod") && (forceGift || !IsObject(accountMeta) || !AccountEligibility_FlagIsSet(accountMeta, "R"))) {
@@ -1786,7 +1786,7 @@ EnsureAccountLanguageMetadata() {
 
 GetHistoryOfAccount() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
+    global session, botConfig
 
     if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
         return false
@@ -1794,6 +1794,7 @@ GetHistoryOfAccount() {
     LogInfo("GetHistoryOfAccount started for " . session.get("accountFileName"))
     accountPath := A_ScriptDir . "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
     accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountPath)
+    inDepthHistoryImport := botConfig.get("inDepthHistoryImport")
 
     deviceAccount := GetCurrentDeviceAccountForMetadata()
     if (deviceAccount = "") {
@@ -1801,7 +1802,7 @@ GetHistoryOfAccount() {
         return false
     }
 
-    if (AccountEligibility_FlagIsSet(accountMeta, "H") && AccountMetadata_AccountHasPulls(deviceAccount)) {
+    if (!inDepthHistoryImport && AccountEligibility_FlagIsSet(accountMeta, "H") && AccountMetadata_AccountHasPulls(deviceAccount)) {
         LogDebug("GetHistoryOfAccount skipped because history is already imported for " . session.get("accountFileName"))
         return true
     }
@@ -1849,8 +1850,11 @@ GetHistoryOfAccount() {
     }
 
     root := getScriptBaseFolder()
-    LogDebug("Importing history file with carddb for device account " . deviceAccount)
-    RunWait, % """" . helperPath . """ --root """ . root . """ import-history --device-account """ . deviceAccount . """ --input """ . localPath . """",, Hide
+    LogDebug("Importing history file with carddb for device account " . deviceAccount . (inDepthHistoryImport ? " (in-depth)" : ""))
+    importArgs := """" . helperPath . """ --root """ . root . """ import-history --device-account """ . deviceAccount . """ --input """ . localPath . """"
+    if (inDepthHistoryImport)
+        importArgs .= " --in-depth"
+    RunWait, %importArgs%,, Hide
     if (ErrorLevel) {
         LogWarn("GetHistoryOfAccount carddb import-history failed for " . session.get("accountFileName") . " ErrorLevel=" . ErrorLevel)
         return false
@@ -1917,6 +1921,7 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
 PullPackOpeningResultLog(failedDir, uniquePrefix) {
     global session
 
+    debugLogFile := "debug_cards.txt"
     if !FileExist(failedDir)
         FileCreateDir, %failedDir%
 
@@ -1924,16 +1929,40 @@ PullPackOpeningResultLog(failedDir, uniquePrefix) {
     sdcardPath := "/sdcard/" . uniquePrefix . "_result.log"
     localPath := failedDir . "\" . uniquePrefix . "_result.log"
 
-    if (FileExist(localPath))
-        FileDelete, %localPath%
+    remoteStatus := Trim(StrReplace(adbWriteRaw("if [ -f " . remotePath . " ]; then echo present:$(wc -c < " . remotePath . "); else echo missing; fi", true), "`r"), "`n`t ")
+    LogWarn("PullPackOpeningResultLog begin | remote=" . remotePath . " | remoteStatus=" . remoteStatus . " | staging=" . sdcardPath . " | local=" . localPath, debugLogFile)
 
-    adbWriteRaw("rm -f " . sdcardPath)
-    adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
+    localDeleteStatus := "not-needed"
+    if (FileExist(localPath)) {
+        FileDelete, %localPath%
+        localDeleteStatus := ErrorLevel ? "failed" : "ok"
+    }
+
+    stagingCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
+    stagingCopyStatus := Trim(StrReplace(adbWriteRaw("if [ ! -f " . remotePath . " ]; then echo remote-missing; elif cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
     RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
-    adbWriteRaw("rm -f " . sdcardPath)
+    pullExitCode := ErrorLevel
+    finalCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
 
     exists := FileExist(localPath) ? true : false
-    return { kind: "result.log", remotePath: remotePath, localPath: localPath, exists: exists }
+    localSize := 0
+    resultLogContent := "(local result.log is missing)"
+    readSucceeded := false
+    if (exists) {
+        FileGetSize, localSize, %localPath%
+        FileRead, resultLogContent, %localPath%
+        readError := ErrorLevel
+        readSucceeded := !readError
+        if (!readSucceeded)
+            resultLogContent := "(failed to read local result.log; ErrorLevel=" . readError . ")"
+        else if (resultLogContent = "")
+            resultLogContent := "(empty)"
+    }
+
+    LogWarn("PullPackOpeningResultLog transfer | localDelete=" . localDeleteStatus . " | initialCleanup=" . stagingCleanupStatus . " | stagingCopy=" . stagingCopyStatus . " | adbPullExitCode=" . pullExitCode . " | finalCleanup=" . finalCleanupStatus . " | localExists=" . (exists ? "yes" : "no") . " | localBytes=" . localSize . " | read=" . (readSucceeded ? "ok" : "unavailable"), debugLogFile)
+    LogWarn("PullPackOpeningResultLog contents begin`n" . resultLogContent . "`nPullPackOpeningResultLog contents end", debugLogFile)
+
+    return { kind: "result.log", remotePath: remotePath, localPath: localPath, exists: exists, remoteStatus: remoteStatus, pullExitCode: pullExitCode, localSize: localSize, readSucceeded: readSucceeded }
 }
 
 ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback mechanism") {
@@ -1947,7 +1976,7 @@ ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback me
     postSnapshot := PullPackOpeningMissionUserPrefsSnapshot("post", failedDir, uniquePrefix)
     resultLog := PullPackOpeningResultLog(failedDir, uniquePrefix)
 
-    message := reason . "\nVersion: 0.15.1\nPlease submit these files for the bug report as well."
+    message := reason . "\nPlease submit these files for the bug report as well."
     for _, snapshot in [preSnapshot, postSnapshot] {
         localPathForMessage := StrReplace(snapshot.localPath, "\", "/")
         if (snapshot.exists) {
@@ -5364,81 +5393,283 @@ DoWonderPick() {
     return true
 }
 
-ClaimSpecialMissionRewards(frommain := true, accountMeta := "") {
+;-------------------------------------------------------------------------------
+; ClaimAllMissionRewards - Unified single-pass claim for Daily + Special missions.
+; Handles the full Special-event lifecycle: AdvanceSpecialEventSteps, Elite Deck
+; claims and per-event metadata (claimCount). X remains legacy status metadata
+; and does not decide whether an active event can be claimed.
+; Returns {daily: bool, special: bool, eliteDeckRestart: bool}.
+;-------------------------------------------------------------------------------
+ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta := "") {
     global botConfig, session
 
+    if (!claimDaily && !claimSpecial)
+        return {daily: false, special: false, eliteDeckRestart: false}
+
     method := botConfig.get("deleteMethod")
-    if (botConfig.get("claimSpecialMissions") != 1)
-        return false
-    if (method != "Inject 13P+" && method != "Inject Wonderpick 96P+" && method != "Inject Rewards")
-        return false
-    if (session.get("missionDoneList")["specialMissionsDone"])
-        return false
 
-    if (!IsObject(accountMeta) && session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
-        accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
-        accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+    ; --- Special-mission eligibility & advance ---
+    specialEligible := false
+    if (claimSpecial) {
+        if (botConfig.get("claimSpecialMissions") = 1
+            && !session.get("missionDoneList")["specialMissionsDone"]
+            && (method = "Inject 13P+" || method = "Inject Wonderpick 96P+" || method = "Inject Rewards")) {
+
+            if (!IsObject(accountMeta) && session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
+                accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
+                accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+            }
+
+            syncSpecialEvents()
+
+            if (!IsObject(accountMeta) || AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
+                specialEligible := true
+        }
     }
-
-    syncSpecialEvents()
-
-    if (IsObject(accountMeta) && !AccountEligibility_NeedsSpecialMissionClaim(accountMeta))
-        return false
 
     session.set("forceReceiveGiftThisRun", 0)
     session.set("specialMissionClaimUiEvents", {})
 
-    accountMetaPath := ""
-    if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "")
-        accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
-
     advance := {"advancedAny": false, "needClaimUi": false, "forceGift": false, "eliteDeckClaim": false, "claimUiEvents": {}}
-    if (accountMetaPath != "")
-        advance := AccountMetadata_AdvanceSpecialEventSteps(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+    if (specialEligible) {
+        accountMetaPath := ""
+        if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "")
+            accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
 
-    if (advance["forceGift"])
-        session.set("forceReceiveGiftThisRun", 1)
-    if (IsObject(advance["claimUiEvents"]))
-        session.set("specialMissionClaimUiEvents", advance["claimUiEvents"])
+        if (accountMetaPath != "")
+            advance := AccountMetadata_AdvanceSpecialEventSteps(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
 
-    if (advance["needClaimUi"]) {
-        eliteDeckClaim := advance["eliteDeckClaim"]
-        if (frommain)
-            GoToMain()
-        ; Elite Deck events: start the Helper so the deck cards get registered after the claim.
-        ; Always clear any stale result.rc/result.log first so we don't mistake an
-        ; old file for this account's Elite Deck claim.
-        if (eliteDeckClaim) {
-            adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
-            RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.rc", , Hide
-            RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.log", , Hide
-            if (isTerminatePTCGPHelperApp())
-                InitPackOpening(true)
-        }
-        ; claim UI only for events advanced onto ClaimDays.
-        ; It returns true only if every event (including any Elite Deck) was
-        ; actually claimed; false means we hit Premium Lock or timed out.
-        claimSuccess := GetEventRewards(frommain, eliteDeckClaim)
+        if (advance["forceGift"])
+            session.set("forceReceiveGiftThisRun", 1)
+        if (IsObject(advance["claimUiEvents"]))
+            session.set("specialMissionClaimUiEvents", advance["claimUiEvents"])
+    }
 
-        ; Only attempt to read the Elite Deck result and restart if GetEventRewards
-        ; successfully claimed the Elite Deck and the Helper produced a result.
-        if (eliteDeckClaim && claimSuccess && HelperHasCardResult()) {
-            ; Read the Helper result written during the claim. If it contains the
-            ; deck cards we can store them directly and then restart.
-            eliteDeckResult := ReadEliteDeckResult(45)
-            FinishEliteDeckClaim(eliteDeckResult)
-            return ClaimSpecialMissionRewards(true, accountMeta) ; rerun the function to get all other rewards that might be pending
+    doSpecial := specialEligible && advance["needClaimUi"]
+    eliteDeckClaim := advance["eliteDeckClaim"]
+
+    ; --- Navigate to Missions page (single navigation for both Daily + Special) ---
+    if (!NavigateToMissions())
+        return {daily: false, special: false, eliteDeckRestart: false}
+
+    ; --- Elite Deck setup ---
+    if (doSpecial && eliteDeckClaim) {
+        adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+        RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.rc", , Hide
+        RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.log", , Hide
+        if (isTerminatePTCGPHelperApp())
+            InitPackOpening(true)
+    }
+
+    ; --- Check if all Special events are expired ---
+    isAllEventExpired := true
+    if (doSpecial) {
+        for specialEventName, specialEventObj in session.get("specialEventList") {
+            if(!specialEventObj.isExpiredSpecialEvent()){
+                isAllEventExpired := false
+                break
+            }
         }
     }
 
-    ; Avoid re-entering Special Missions again this session even if nothing was found.
-    session.get("missionDoneList")["specialMissionsDone"] := 1
-    session.set("cantOpenMorePacks", 0)
+    ; --- Single-pass scan loop ---
+    eventResult := initEventResult()
+    dailyClaimed := false
+    specialDone := !doSpecial || isAllEventExpired
+    eliteDeckRestart := false
 
-    if (advance["advancedAny"] && accountMetaPath != "") {
-        accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
-        AccountMetadata_ApplySpecialMissionXFlag(session.get("scriptName"), session.get("accountFileName"), accountMeta)
-        setMetaData()
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    movedRightCount := 0
+    maxMissionPages := 15
+    Loop {
+        if ((!claimDaily || dailyClaimed) && specialDone)
+            break
+
+        Delay(2)
+
+        ; Check for Daily Missions on this page
+        if (claimDaily && !dailyClaimed && FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            Loop {
+                Delay(2)
+                adbClick(174, 427)
+                adbClick(174, 427)
+                Delay(1)
+                if(FindOrLoseImage("Mission_CompleteGotAllClaims", 0, 0)) {
+                    dailyClaimed := true
+                    break
+                }
+                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+                if (failSafeTime > 20)
+                    break
+            }
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
+        }
+
+        ; Check for Special Missions on this page
+        if (doSpecial && !specialDone) {
+            ; Elite Deck: park and retry if on Elite Deck page
+            if (eliteDeckClaim && !isAllEventGotReward(eventResult)) {
+                eliteDeckVisible := false
+                for specialEventName, specialEventObj in session.get("specialEventList") {
+                    if (specialEventObj.isEliteDeck && !specialEventObj.isExpiredSpecialEvent()) {
+                        if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2) {
+                            eliteDeckVisible := true
+                            break
+                        }
+                    }
+                }
+                if (eliteDeckVisible) {
+                    session.set("failSafe", A_TickCount)
+                    parkTime := 0
+                    parked := false
+                    Loop {
+                        claimedEventName := ClaimVisibleEventRewards(eventResult)
+                        if (claimedEventName) {
+                            parked := true
+                            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
+                                accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
+                                AccountMetadata_BumpSpecialEventClaim(session.get("scriptName"), session.get("accountFileName"), claimedEventName, accountMetaPath)
+                            }
+                            if (HelperHasCardResult()) {
+                                eliteDeckRestart := true
+                                specialDone := true
+                            }
+                            ; already claimed
+                            if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                                specialDone := true
+                            }
+                            break
+                        }
+                        Delay(1)
+                        parkTime := (A_TickCount - session.get("failSafe")) // 1000
+                        CreateStatusMessage("Parking on Elite Deck claim page...`n(" . parkTime . "/45 seconds)")
+                        if (parkTime > 45)
+                            break
+                    }
+                    if (parked) {
+                        session.set("failSafe", A_TickCount)
+                        failSafeTime := 0
+                        if (eliteDeckRestart)
+                            break
+                        if (isAllEventGotReward(eventResult))
+                            specialDone := true
+                        continue
+                    }
+                }
+            }
+
+            claimedEventName := ClaimVisibleEventRewards(eventResult)
+            if (claimedEventName) {
+                session.set("failSafe", A_TickCount)
+                failSafeTime := 0
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
+                    accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
+                    AccountMetadata_BumpSpecialEventClaim(session.get("scriptName"), session.get("accountFileName"), claimedEventName, accountMetaPath)
+                }
+                if (isAllEventGotReward(eventResult))
+                    specialDone := true
+                continue
+            }
+        }
+
+        ; Wrapped around (Premium Lock = full loop completed)
+        if(FindOrLoseImage("Mission_PremiumLockImage", 0, failSafeTime))
+            break
+
+        movedRightCount++
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Scanning mission rewards page " . movedRightCount . "`n(" . failSafeTime . "/60 seconds)")
+        adbClick_wbb(197, 459)
+        Delay(0.2)
+        adbClick_wbb(175, 445)
+        Delay(3)
+
+        if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
+            break
+    }
+
+    ; --- Elite Deck restart: finish claim then re-run for remaining rewards ---
+    if (eliteDeckRestart && eliteDeckClaim && HelperHasCardResult()) {
+        eliteDeckResult := ReadEliteDeckResult(45)
+        FinishEliteDeckClaim(eliteDeckResult)
+        return ClaimAllMissionRewards(false, claimSpecial, accountMeta)
+    }
+
+    ; --- Post-claim metadata for Special missions ---
+    if (specialEligible) {
+        session.get("missionDoneList")["specialMissionsDone"] := 1
+        session.set("cantOpenMorePacks", 0)
+
+        if (advance["advancedAny"] && session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
+            accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
+            accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+            AccountMetadata_ApplySpecialMissionXFlag(session.get("scriptName"), session.get("accountFileName"), accountMeta)
+            setMetaData()
+        }
+    }
+
+    return {daily: dailyClaimed, special: specialEligible, eliteDeckRestart: false}
+}
+
+;-------------------------------------------------------------------------------
+; NavigateToMissions - Navigate from Main to the Missions page and activate the List tab.
+; Returns true if the missions page was reached, false on timeout.
+;-------------------------------------------------------------------------------
+NavigateToMissions() {
+    global session
+
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        adbClick(261, 478)
+        Delay(1)
+        if (FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime)
+            || FindOrLoseImage("Mission_ActivatedListTabButton", 0, failSafeTime)
+            || FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)
+            || FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime))
+            break
+        if (FindOrLoseImage("MissionDeck", 0, failSafeTime)) {
+            HandleMissionDeckFailsafe()
+            return false
+        }
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime > 60) {
+            restartGameInstance("Stuck navigating to Missions")
+            return false
+        }
+        CreateStatusMessage("Moving to Missions...(" . failSafeTime . "/60 seconds)")
+    }
+
+    ; Activate the List tab and confirm ListActivated is visible for 2 seconds
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if (FindOrLoseImage("Mission_ActivatedListTabButton", 0, 0)) {
+            confirmedStart := A_TickCount
+            Loop {
+                if (!FindOrLoseImage("Mission_ActivatedListTabButton", 0, 0)) {
+                    confirmedStart := 0
+                    break
+                }
+                if (A_TickCount - confirmedStart >= 2000)
+                    return true
+                Delay(0.5)
+            }
+        }
+        Delay(1)
+        adbClick_wbb(31, 495)
+        Delay(2)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime > 20) {
+            LogWarn("NavigateToMissions: timed out waiting for ListActivated")
+            return false
+        }
+        CreateStatusMessage("Activating List tab...(" . failSafeTime . "/20 seconds)")
     }
 
     return true
@@ -5506,135 +5737,6 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     GoToMain()
 }
 
-; For Special Missions 2025
-GetEventRewards(frommain := true, eliteDeckClaim := false){
-    global session
-
-    isAllEventExpired := true
-
-    for specialEventName, specialEventObj in session.get("specialEventList") {
-        if(!specialEventObj.isExpiredSpecialEvent()){
-            isAllEventExpired := false
-            break
-        }
-    }
-
-    if(isAllEventExpired){
-        GoToMain()
-        return false
-    }
-
-    if (frommain){
-        session.set("failSafe", A_TickCount)
-        failSafeTime := 0
-        Loop {
-            adbClick(261, 478)
-            Sleep, 1000
-            if FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime)
-                break
-            if FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)
-                break
-            if FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)
-                break
-            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-            if (FindOrLoseImage("MissionDeck", 0, failSafeTime)) {
-                HandleMissionDeckFailsafe()
-                return false
-            }
-            CreateStatusMessage("Moving to Missions...(" . failSafeTime . "/60 seconds)")
-        }
-    }
-    Delay(4)
-
-    eventResult := initEventResult()
-    if (frommain)
-        MoveToDailyMissionPageForRewards()
-
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    movedRightCount := 0
-    maxMissionPages := 12
-    Loop{
-        if (isAllEventGotReward(eventResult))
-            break
-
-        Delay(2)
-        ; Elite Deck events: if we are actually on the Elite Deck page and a claim
-        ; is still pending, don't scroll away immediately. The red/blue box may need
-        ; an extra moment to be detected, so keep trying the standard claim buttons.
-        if (eliteDeckClaim && !isAllEventGotReward(eventResult)) {
-            eliteDeckVisible := false
-            for specialEventName, specialEventObj in session.get("specialEventList") {
-                if (specialEventObj.isEliteDeck && !specialEventObj.isExpiredSpecialEvent()) {
-                    if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2) {
-                        eliteDeckVisible := true
-                        break
-                    }
-                }
-            }
-        }
-
-        claimedEventName := ClaimVisibleEventRewards(eventResult)
-        if (claimedEventName) {
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
-
-            ; Persist progress only after this specific event has actually been claimed.
-            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
-                accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
-                AccountMetadata_BumpSpecialEventClaim(session.get("scriptName"), session.get("accountFileName"), claimedEventName, accountMetaPath)
-            }
-            if (eliteDeckVisible && HelperHasCardResult()) {
-                return true ; we are finished for now as we want to restart the game
-            }
-            continue
-        }
-
-        ; Stop at Premium tab only. List is always visible on Missions pages - do not use as exit.
-        if (FindOrLoseImage("Mission_PremiumLockImage", 0, failSafeTime))
-            break
-
-        adbClick_wbb(235, 460)
-        Delay(0.2)
-        adbClick_wbb(175, 445)
-        movedRightCount++
-        Delay(3)
-
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Scanning event rewards page " . movedRightCount . "`n(" . failSafeTime . "/60 seconds)")
-        if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
-            break
-    }
-
-    ; Return whether every event was successfully claimed. If we exited early
-    ; (Premium Lock, timeout, no Elite Deck page found), this will be false and
-    ; the caller can skip the Elite Deck result/restart step.
-    return isAllEventGotReward(eventResult)
-}
-
-MoveToDailyMissionPageForRewards() {
-    global session
-
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        if FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)
-            return true
-        else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
-            Delay(1)
-            ClickMissionSubTab(42, 465)
-            Delay(2)
-            return true
-        }
-
-        ClickMissionSubTab(165, 465)
-        Sleep, 500
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (failSafeTime > 10)
-            return false
-    }
-}
-
 ClaimVisibleEventRewards(eventResult) {
     global session
 
@@ -5679,10 +5781,12 @@ ClaimVisibleEventRewards(eventResult) {
                         eventResult[specialEventName] := true
                         return specialEventName
                     }
-                } else if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                }
+                if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     eventResult[specialEventName] := true
                     return specialEventName
                 }
+
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
                 CreateStatusMessage("Get reward event: " . specialEventName . "`n(" . failSafeTime . "/45 seconds)")
                 if (failSafeTime > 45) {
@@ -5698,77 +5802,6 @@ ClaimVisibleEventRewards(eventResult) {
     }
 
     return false
-}
-
-GetAllRewards(tomain := true, dailies := false) {
-    global session
-
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        Delay(1)
-        if FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime) {
-            break
-        }
-        else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
-            Delay(2)
-            ClickMissionSubTab(42, 465) ; Daily / WB-shifted tabs
-            Delay(2)
-            break
-        }
-        else if FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)
-            break
-        adbClick(261, 478)
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-    }
-
-    Delay(4)
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    GotRewards := true
-    if(dailies) {
-        session.set("failSafe", A_TickCount)
-        failSafeTime := 0
-        Loop {
-            if FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)
-                break
-            else if (FindOrLoseImage("Mission_GoToDexButtonIcon", 0, failSafeTime)) {
-                Sleep, 500
-                ClickMissionSubTab(42, 465) ; Daily / WB-shifted tabs
-                Sleep, 500
-                break
-            }
-            else if (failSafeTime > 10) {
-                ; if DailyMissions doesn't show up, like if an account has already completed Dailies
-                ; and we are on the wrong tab like 'Deck' missions in the center tab instead.
-                GoToMain()
-                GotRewards := false
-                return GotRewards
-            }
-            ClickMissionSubTab(165, 465)
-            Sleep, 500
-        }
-
-    }
-    Loop {
-        Delay(2)
-        adbClick(174, 427)
-        adbClick(174, 427) ; changed 2px right & added 2nd click
-        Delay(1) ; new Delay
-
-        if(FindOrLoseImage("Mission_CompleteGotAllClaims", 0, 0)) {
-            break
-        }
-        else if (failSafeTime > 20) {
-            GotRewards := false
-            break
-        }
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-    }
-    if (tomain) {
-        GoToMain()
-    }
-    return GotRewards
 }
 
 ; Failsafe if Missions page lands on 'Deck' mission tutorial.

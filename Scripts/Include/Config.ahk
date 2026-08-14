@@ -51,6 +51,7 @@
         , "TestTime": 3600
         , "gpTestWaitTime": 150
         , "showcaseEnabled": 0
+        , "inDepthHistoryImport": 0
         , "claimDailyMission": 0
         , "slowMotion": 0
         , "claimSpecialMissions": 0
@@ -74,7 +75,18 @@
         , "updateChannel": "stable"
         , "automaticUpdateChecks": 1
         , "lastNotifiedVersion": ""
-        , "skippedUpdateVersion": ""}
+        , "skippedUpdateVersion": ""
+        , "saveToGit": 0
+        , "saveToDisk": 0
+        , "backupIntervalMinutes": 60
+        , "diskBackupFolder": ""
+        , "backupAccountsXml": 1
+        , "backupAccountsJson": 1
+        , "backupSettingsIni": 1
+        , "backupShowcaseIds": 1
+        , "backupManualVipIds": 1
+        , "backupFriendsGPTested": 1
+        , "backupSpecialEvents": 1}
 
     generalSettings := {}
     packSettings := {}

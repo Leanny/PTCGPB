@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="Set up PTCGPB and complete a first run."
+        />
+        <title>Getting Started · PTCGPB User Guide</title>
+        <link rel="stylesheet" href="assets/styles.css" />
+        <script src="assets/site.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#content">Skip to content</a>
+        <header class="topbar" data-docs-header></header>
+        <div class="layout">
+            <aside class="sidebar" data-docs-nav></aside>
+            <main id="content">
+                <p class="eyebrow">First run</p>
+                <h1>Getting started</h1>
+                <p class="lead">
+                    Prepare MuMu Player, confirm the game can be controlled, and
+                    test the bot with one instance before scaling up.
+                </p>
+
+                <h2>Before you start</h2>
+                <div class="grid">
+                    <div class="card">
+                        <h3>You need</h3>
+                        <ul>
+                            <li>
+                                Windows and the
+                                <a href="https://www.mumuplayer.com/download/"
+                                    >latest official MuMuPlayer</a
+                                >
+                                with an Android 12 instance.
+                            </li>
+                            <li>
+                                <a
+                                    href="https://www.autohotkey.com/download/1.1/"
+                                    >AutoHotkey v1.1</a
+                                >
+                                installed. AutoHotkey v2 is not supported.
+                            </li>
+                            <li>
+                                PTCGPB extracted to a writable folder whose full
+                                path contains <strong>no spaces</strong>.
+                            </li>
+                            <li>The supplied ready2go MuMu instance backup.</li>
+                            <li>
+                                Administrator permission when PTCGPB requests
+                                it.
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3>Recommended for the first test</h3>
+                        <ul>
+                            <li>Use exactly one numbered instance.</li>
+                            <li>Leave timing values at their defaults.</li>
+                            <li>
+                                Keep advanced group and Discord features
+                                disabled.
+                            </li>
+                            <li>
+                                Watch one complete run before adding instances.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Prepare MuMu Player</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>Install the current MuMuPlayer</h3>
+                        <p>
+                            Download the latest version from the
+                            <a href="https://www.mumuplayer.com/download/"
+                                >official MuMuPlayer website</a
+                            >
+                            and use an Android 12 instance for PTCGPB.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Restore the ready2go instance</h3>
+                        <p>
+                            In MuMuPlayer, restore the ready2go instance (see
+                            discord for the latest version). This is the
+                            recommended starting point because it already
+                            contains the expected Android 12 environment and
+                            game preparation.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>
+                            Name the restored instance exactly <code>1</code>
+                        </h3>
+                        <p>
+                            PTCGPB locates numbered instances by their exact
+                            title. Later instances must be cloned from the
+                            working instance and named <code>2</code>,
+                            <code>3</code>, and so on without gaps.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Set the game language</h3>
+                        <p>
+                            Remember the client language. You will select the
+                            matching value under Tools &amp; System. OCR works
+                            best when its language also matches your Windows
+                            display language.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Start the instance</h3>
+                        <p>
+                            You can start it in MuMu or use
+                            <strong>Launch All MuMu</strong> in PTCGPB after the
+                            MuMu folder is configured.
+                        </p>
+                    </li>
+                </ol>
+
+                <h2>Configure PTCGPB</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>Check the PTCGPB folder</h3>
+                        <p>
+                            Move the complete bot folder if any part of its path
+                            contains a space. For example, use
+                            <code>C:\PTCGPB</code>, not
+                            <code>C:\My Bots\PTCGPB</code>.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>
+                            Launch <code>PTCGPB.ahk</code> with AutoHotkey v1
+                        </h3>
+                        <p>
+                            Approve the administrator permission prompt. On the
+                            first run, select the bot interface language.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Open Tools &amp; System</h3>
+                        <p>
+                            Select the monitor, verify the MuMu parent folder,
+                            and set the OCR and game client languages. The
+                            default MuMu parent folder is
+                            <code>C:\Program Files\Netease</code>.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Set Instances to <code>1</code></h3>
+                        <p>
+                            Set Columns to <code>1</code> for the first test.
+                            <strong>Instance Start Delay</strong> can remain at
+                            its default of 10 seconds.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Choose a bot mode</h3>
+                        <p>
+                            Use <a href="bot-modes.html">Bot modes</a> to
+                            understand what each mode does to accounts. New
+                            users normally begin with
+                            <strong>Create Bots (13P)</strong>.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Select packs and timing</h3>
+                        <p>
+                            Choose at least one expansion. Start with Delay 250
+                            ms, Swipe Speed 250 ms and Wait Time 5 seconds.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Arrange and start</h3>
+                        <p>
+                            Use <strong>Arrange</strong> to check that PTCGPB
+                            recognizes the MuMu window, then select
+                            <strong>Start Bot</strong>.
+                        </p>
+                    </li>
+                </ol>
+
+                <div class="callout warning">
+                    <strong>Do not scale up yet.</strong> Let one instance
+                    finish a complete account cycle. Confirm that clicks,
+                    swipes, OCR and account saving behave correctly before
+                    increasing the Instances value.
+                </div>
+
+                <h2>Adding a Main account</h2>
+                <p>
+                    A Main account is useful only when you intend to run
+                    <strong>Inject Wonderpick 96P+</strong>. It accepts friend
+                    requests and performs God Pack tests. You do not need a Main
+                    for Create Bots, Inject 13P+ or Inject Rewards.
+                </p>
+                <ul>
+                    <li>Name its MuMu instance exactly <code>Main</code>.</li>
+                    <li>
+                        Name additional main instances <code>Main2</code>,
+                        <code>Main3</code>, and so on.
+                    </li>
+                    <li>
+                        Enable <strong>Run Main(s)</strong> where it appears and
+                        enter the number of Main instances.
+                    </li>
+                    <li>
+                        Enter the 16-digit Friend ID without spaces or dashes
+                        when the selected workflow uses the Friend ID field.
+                    </li>
+                </ul>
+
+                <h2>After the first successful run</h2>
+                <p>
+                    Add numbered MuMu instances one at a time. Increase
+                    <strong>Instance Start Delay</strong> or
+                    <strong>Launch MuMu Delay</strong> if startup overloads the
+                    PC. Use <strong>Auto-open Monitor</strong> once unattended
+                    runs are stable.
+                </p>
+
+                <nav class="page-nav" aria-label="Page navigation">
+                    <a href="index.html">← Overview</a
+                    ><a href="bot-modes.html">Bot modes →</a>
+                </nav>
+            </main>
+        </div>
+        <footer class="footer">
+            <div class="footer-inner">
+                PTCGPB end-user guide · <span data-year></span> · CC BY-NC 4.0
+            </div>
+        </footer>
+    </body>
+</html>
