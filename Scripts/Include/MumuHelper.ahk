@@ -5,9 +5,8 @@
 getMuMuFolderInConfig(){
     jsonPath := A_AppData . "\Netease\MuMuPlayerGlobal\install_config.json"
 
-    if (!FileExist(jsonPath)) {
-        return -1
-    }
+    if (!FileExist(jsonPath))
+        return ""
 
     FileRead, jsonText, %jsonPath%
 
@@ -17,36 +16,85 @@ getMuMuFolderInConfig(){
 
         ;SplitPath, fullPath,, parentDir
 
-        if (InStr(FileExist(fullPath), "D")) {
+        if (MuMuIsInstallFolder(fullPath)) {
             return fullPath
-        } else {
-            return -2
         }
-    } else {
-        return -3
     }
+
+    return ""
+}
+
+MuMuIsInstallFolder(folderPath) {
+    if (folderPath = "" || !InStr(FileExist(folderPath), "D"))
+        return false
+
+    return InStr(FileExist(folderPath . "\shell"), "D")
+        || InStr(FileExist(folderPath . "\nx_main"), "D")
+}
+
+MuMuTryResolveFolder(baseFolder) {
+    static subFolderList := ["", "MuMu", "MuMuPlayerGlobal-12.0", "MuMuPlayerGlobal", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
+
+    baseFolder := Trim(baseFolder, " `t`r`n""")
+    baseFolder := RTrim(baseFolder, "\/")
+    if (baseFolder = "")
+        return ""
+
+    For idx, value in subFolderList {
+        mumuFolder := baseFolder . (value = "" ? "" : "\" . value)
+        if (MuMuIsInstallFolder(mumuFolder))
+            return mumuFolder
+    }
+
+    return ""
+}
+
+MuMuResolveFolder(baseFolder := "", useInstallConfig := true) {
+    ; An explicitly configured path takes priority over auto-detection.
+    mumuFolder := MuMuTryResolveFolder(baseFolder)
+    if (mumuFolder != "")
+        return mumuFolder
+
+    if (useInstallConfig)
+        return getMuMuFolderInConfig()
+
+    return ""
 }
 
 getMuMuFolder() {
     global botConfig
-    static subFolderList
 
-    mumuFolder := getMuMuFolderInConfig()
-
-    if(!IsNumeric(mumuFolder))
+    baseFolder := IsObject(botConfig) ? botConfig.get("folderPath") : ""
+    mumuFolder := MuMuResolveFolder(baseFolder)
+    if (mumuFolder != "")
         return mumuFolder
 
-    baseFolder := botConfig.get("folderPath")
-    subFolderList := ["", "MuMuPlayerGlobal-12.0", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
+    MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
+    return ""
+}
 
-    For idx, value in subFolderList {
-        mumuFolder = %baseFolder%\%value%
-        if InStr(FileExist(mumuFolder), "D")
-            return mumuFolder
+MuMuFindAdbPath(targetDir, preferAndroid15 := false) {
+    if (targetDir = "" || !InStr(FileExist(targetDir), "D"))
+        return ""
+
+    if (preferAndroid15) {
+        android15Path := targetDir . "\nx_device\15.0\shell\adb.exe"
+        if (FileExist(android15Path))
+            return android15Path
     }
 
-    MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
-    return
+    rootPath := targetDir . "\adb.exe"
+    if (FileExist(rootPath))
+        return rootPath
+
+    Loop, Files, %targetDir%\*, D
+    {
+        checkPath := A_LoopFileFullPath . "\adb.exe"
+        if (FileExist(checkPath))
+            return checkPath
+    }
+
+    return ""
 }
 
 MuMuIsV5() {
@@ -179,7 +227,7 @@ MuMuManagerCommand(args, captureOutput := false) {
 
     command := """" . managerPath . """ " . args
     if (captureOutput && IsFunc("CmdRet"))
-        return CmdRet(command)
+        return Func("CmdRet").Call(command)
 
     RunWait, %command%,, Hide
     return !ErrorLevel
@@ -199,7 +247,7 @@ MuMuCliCommand(args, captureOutput := false) {
 
     command := """" . cliPath . """ " . args
     if (captureOutput && IsFunc("CmdRet"))
-        return CmdRet(command)
+        return Func("CmdRet").Call(command)
 
     RunWait, %command%,, Hide
     return !ErrorLevel

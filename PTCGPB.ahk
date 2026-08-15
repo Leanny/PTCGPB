@@ -1609,8 +1609,11 @@ ShowToolsAndSystemSettings:
     yPos2 += 20
     mumuFolderPath := botConfig.get("folderPath")
     if(mumuFolderPath = "" || mumuFolderPath = "C:\Program Files\Netease"){
-        mumuFolderPath := getMuMuFolderInConfig()
-        botConfig.set("folderPath", mumuFolderPath, "ToolsAndSystem")
+        detectedMuMuFolder := getMuMuFolderInConfig()
+        if (detectedMuMuFolder != "") {
+            mumuFolderPath := detectedMuMuFolder
+            botConfig.set("folderPath", mumuFolderPath, "ToolsAndSystem")
+        }
     }
     Gui, ToolsAndSystemSelect:Add, Edit, vui_folderPath_Popup w170 x%col2X% y%yPos2% h20 -E0x200 Background2A2A2A cWhite, % mumuFolderPath
     yPos2 += 30

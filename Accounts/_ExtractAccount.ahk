@@ -7,6 +7,8 @@ SetDefaultMouseSpeed, 0
 SetBatchLines, -1
 SetTitleMatchMode, 3
 
+#Include %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
+
 global adbShell, adbPath, adbPorts, winTitle, folderPath, mumuFolder, extractInProgress
 
 IniRead, winTitle, ExtractAccount.ini, UserSettings, winTitle, 1
@@ -65,11 +67,9 @@ SaveSettings:
     IniWrite, %folderPath%, %settingsIniFriend%, ToolsAndSystem, folderPath
 
     UpdateExtractUi("Resolving MuMu folder...", 12)
-    mumuFolder := getMumuFolder(folderPath)
+    mumuFolder := MuMuResolveFolder(folderPath)
 
-    adbPath := mumuFolder . "\shell\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := mumuFolder . "\nx_main\adb.exe"
+    adbPath := MuMuFindAdbPath(mumuFolder)
     findAdbPorts(mumuFolder)
 
     if(!WinExist(winTitle)) {
@@ -254,25 +254,6 @@ RunAdbPull(remotePath, localPath) {
     return (ErrorLevel = 0)
 }
 
-getMumuFolder(folderPath) {
-    candidateFolders := [folderPath
-        , folderPath . "\MuMu"
-        , folderPath . "\MuMuPlayerGlobal-12.0"
-        , folderPath . "\MuMuPlayerGlobal"
-        , folderPath . "\MuMuPlayer-12.0"
-        , folderPath . "\MuMu Player 12"
-        , folderPath . "\MuMuPlayer"
-        , folderPath . "\MuMuPlayer-12"
-        , folderPath . "\MuMuPlayer12"]
-
-    for _, candidateFolder in candidateFolders {
-        if FileExist(candidateFolder . "\nx_main")
-            return candidateFolder
-    }
-
-    return folderPath . "\MuMuPlayerGlobal-12.0"
-}
-
 GetVmDisplayName(folder) {
     configFolder := folder "\configs"
     extraConfigFile := configFolder "\extra_config.json"
@@ -304,7 +285,7 @@ UpdateExtractUi(statusText, progressValue := "") {
 
 GetInstanceList(baseFolder) {
     instanceList := ""
-    mumuFolder := getMumuFolder(baseFolder)
+    mumuFolder := MuMuResolveFolder(baseFolder)
 
     Loop, Files, %mumuFolder%\vms\*, D
     {
