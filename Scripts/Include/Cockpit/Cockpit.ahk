@@ -3464,15 +3464,34 @@ Cockpit_AgeResetTFlag(r) {
     IfMsgBox, No
         return
 
-    ; Directly rewrite the T flag in the JSON file (bypasses merge which ignores zero-value flags)
-    newContent := RegExReplace(content, "s)""T""\s*:\s*\{[^}]*\}", """T"": {""value"": 0, ""setAt"": """", ""validUntil"": """"}")
-    if (newContent = content) {
-        MsgBox, 16, Reset T Flag, Could not modify T flag in file for %acctName%.
+    ; Serialize with other account metadata writers and re-read after confirmation
+    ; so a concurrent bot update cannot be overwritten with stale content.
+    hMutex := AccountMetadata_AcquireLock()
+    if (!hMutex) {
+        MsgBox, 16, Reset T Flag, Could not acquire the account metadata lock for %acctName%.
         return
     }
 
-    FileDelete, %jsonPath%
-    FileAppend, %newContent%, %jsonPath%, UTF-8
+    saved := false
+    FileRead, latestContent, %jsonPath%
+    if (!ErrorLevel && RegExMatch(latestContent, "s)""deviceAccount""\s*:\s*""([^""]+)""", mDevice)) {
+        deviceAccount := mDevice1
+        if (!Cockpit_AgeFlagSet(latestContent, "T")) {
+            saved := true
+        } else {
+            accountMeta := AccountMetadata_ReadAccountUnlocked(deviceAccount)
+            accountMeta["flags"]["T"] := AccountMetadata_NewFlag(0)
+            ; The unlocked writer is safe here because the metadata mutex is held. It
+            ; preserves pull/card data and replaces the JSON through a temporary file.
+            saved := AccountMetadata_WriteAccountUnlocked(deviceAccount, accountMeta)
+        }
+    }
+    AccountMetadata_ReleaseLock(hMutex)
+
+    if (!saved) {
+        MsgBox, 16, Reset T Flag, Could not reset T flag in metadata for %acctName%.
+        return
+    }
 
     Cockpit_AgeRefresh()
     MsgBox, 64, Reset T Flag, T flag reset successfully for %acctName%.
