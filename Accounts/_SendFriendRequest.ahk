@@ -113,9 +113,12 @@ CreateStatusMessage(Message, GuiName := "StatusMessage", X := 0, Y := 565, debug
     } catch e {
     }
 }
-; Stub: GoToMain is defined in the instance scripts but not needed in here.
+; Stubs: These functions are defined in the instance scripts but not needed here.
 ; CountShinedust (OCR.ahk) references it but is never called from here.
 GoToMain() {
+    return
+}
+TryDismisMyCardsTutorial(failSafeTime) {
     return
 }
 ResetStatusMessage() {

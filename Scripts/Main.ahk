@@ -40,12 +40,14 @@ CoordMode, Pixel, Screen
 
 InitializeHiddenConsole()
 
-; Stub: GoToMain is defined in the instance scripts but not needed in Main.ahk.
+; Stubs: These functions are defined in the instance scripts but not needed here.
 ; CountShinedust (OCR.ahk) references it but is never called from here.
 GoToMain() {
     return
 }
-
+TryDismisMyCardsTutorial(failSafeTime) {
+    return
+}
 pToken := Gdip_Startup()
 
 global session := new Session()
