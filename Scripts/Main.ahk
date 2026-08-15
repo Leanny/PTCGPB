@@ -43,18 +43,7 @@ InitializeHiddenConsole()
 ; Stub: GoToMain is defined in the instance scripts but not needed in Main.ahk.
 ; CountShinedust (OCR.ahk) references it but is never called from here.
 GoToMain() {
-    global session
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        if (FindOrLoseImage("Common_ShopButtonInMain", 0, failSafeTime))
-            return
-        adbInputEvent("111")
-        Delay(1)
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (failSafeTime > 30)
-            return
-    }
+    return
 }
 
 pToken := Gdip_Startup()
