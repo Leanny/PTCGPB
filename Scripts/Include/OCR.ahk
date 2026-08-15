@@ -393,57 +393,116 @@ CountShinedust() {
 
     GoToMain()
 
-    ; Navigate to Social tab
-    session.set("failSafe", A_TickCount)
-    Loop {
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (failSafeTime > 30) {
-            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
-                IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
-            }
-            restartGameInstance("Stuck navigating to Social for Shinedust")
-            return
-        }
-        if (IsSocialTabActiveOnHub(failSafeTime))
-            break
-        adbClick_wbb(143, 518)
-        Delay(1)
-        if (TryDismissSocialFirstTutorial(failSafeTime))
-            continue
-        if (TryHandleTradeTutorial(failSafeTime))
-            continue
-    }
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+    createdAt := AccountMetadata_NormalizeCreatedAt(accountMeta["createdAt"])
+    if (createdAt != "" && (createdAt = "0" || AccountEligibility_DaysSince(createdAt) < 15)) {
+        ; OCR coordinates in screenshot pixels (540x960):
+        ; bot coords (161, 81) converted to pixel (307, 81)
+        ocrX := 307
+        ocrY := 81
 
-    ; Click Trade button and wait for ShinedustTrade needle
-    session.set("failSafe", A_TickCount)
-    confirmedStart := 0
-    lastTradeClick := A_TickCount
-    Loop {
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (failSafeTime > 30) {
-            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
-                IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+        ; new accounts dont have access to trade yet, so we go through My Cards > Flair
+        session.set("failSafe", A_TickCount)
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck navigating to Flair for Shinedust")
+                return
             }
-            restartGameInstance("Stuck at Trade screen for Shinedust")
-            return
-        }
-        if (FindOrLoseImage(47, 134, 59, 150, , "ShinedustTrade", 0, failSafeTime)) {
-            if (confirmedStart = 0)
-                confirmedStart := A_TickCount
-            else if (A_TickCount - confirmedStart >= 3000)
+            if (IsMyCardTabActiveOnHub(failSafeTime))
                 break
-        } else {
-            confirmedStart := 0
-            TryHandleTradeTutorial(failSafeTime)
-            ; Re-click Trade button every 5 seconds if needle not found
-            if (A_TickCount - lastTradeClick >= 5000) {
-                adbClick_wbb(196, 408)
-                lastTradeClick := A_TickCount
-            }
-        }
-        Delay(0.5)
-    }
+            adbClick_wbb(90, 518)
+            Delay(1)
+            TryDismisMyCardsTutorial(failSafeTime)
+            Delay(1)
 
+        }
+
+        ; Click Flair button and wait for ShinedustFlare needle
+        session.set("failSafe", A_TickCount)
+        confirmedStart := 0
+        lastTradeClick := A_TickCount
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck at Flair screen for Shinedust")
+                return
+            }
+            if (FindOrLoseImage("ShinedustFlair", 0, failSafeTime)) {
+                break
+            } else {
+                adbClick(203, 143)
+                Delay(0.5)
+                adbClick(166, 434)
+            }
+            Delay(0.5)
+            TryDismisMyCardsTutorial(failSafeTime)
+            Delay(1)
+        }
+
+    } else {
+        ; OCR coordinates in screenshot pixels (540x960):
+        ; bot coords (64, 132) -> (110, 151) converted to pixel (122, 181) -> (210, 218)
+        ocrX := 122
+        ocrY := 181
+
+        ; Navigate to Social tab
+        session.set("failSafe", A_TickCount)
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck navigating to Social for Shinedust")
+                return
+            }
+            if (IsSocialTabActiveOnHub(failSafeTime))
+                break
+            adbClick_wbb(143, 518)
+            Delay(1)
+            if (TryDismissSocialFirstTutorial(failSafeTime))
+                continue
+            if (TryHandleTradeTutorial(failSafeTime))
+                continue
+        }
+
+        ; Click Trade button and wait for ShinedustTrade needle
+        session.set("failSafe", A_TickCount)
+        confirmedStart := 0
+        lastTradeClick := A_TickCount
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck at Trade screen for Shinedust")
+                return
+            }
+            if (FindOrLoseImage("ShinedustTrade", 0, failSafeTime)) {
+                if (confirmedStart = 0)
+                    confirmedStart := A_TickCount
+                else if (A_TickCount - confirmedStart >= 3000)
+                    break
+            } else {
+                confirmedStart := 0
+                TryHandleTradeTutorial(failSafeTime)
+                ; Re-click Trade button every 5 seconds if needle not found
+                if (A_TickCount - lastTradeClick >= 5000) {
+                    adbClick_wbb(196, 408)
+                    lastTradeClick := A_TickCount
+                }
+            }
+            Delay(0.5)
+        }
+    }
     tempDir := A_ScriptDir . "\..\Screenshots\temp"
     if !FileExist(tempDir)
         FileCreateDir, %tempDir%
@@ -453,18 +512,14 @@ CountShinedust() {
     adbTakeScreenshot(shinedustScreenshotFile)
     Sleep, 500
 
+    ocrW := 88
+    ocrH := 37
+
     try {
         if (IsFunc("ocr")) {
             shineDustValue := ""
             allowedChars := "0123456789,. "
             validPattern := "^\d[\d,]*\d$|^\d$"
-
-            ; OCR coordinates in screenshot pixels (540x960):
-            ; bot coords (64, 132) -> (110, 151) converted to pixel (122, 181) -> (210, 218)
-            ocrX := 122
-            ocrY := 181
-            ocrW := 88
-            ocrH := 37
 
             if (RefinedOCRText(shinedustScreenshotFile, ocrX, ocrY, ocrW, ocrH, allowedChars, validPattern, shineDustValue)) {
                 shineDustValue := RegExReplace(shineDustValue, "[^\d,]", "")
