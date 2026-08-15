@@ -36,13 +36,21 @@ SetWorkingDir, %A_ScriptDir%\..\Scripts
 #Include %A_ScriptDir%\..\Scripts\Include\Profiler.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_All.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Gdip_Imagesearch.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Gdip_Extra.ahk
 
 global pToken := Gdip_Startup()
 
 #Include %A_ScriptDir%\..\Scripts\Include\Utils.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\AccountMetadata.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Database.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\AccountManager.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\OCR.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\ADB.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Coords.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Error.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\Crinity_UnofficialPatch.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\FriendManager.ahk
 
 global g_injectIniPath := A_ScriptDir . "\InjectAccount.ini"
 IniRead, g_injectRequestRaw, %g_injectIniPath%, UserSettings, injectFriendRequestIds,
@@ -57,16 +65,53 @@ if (g_injectExtraRaw = "ERROR")
 if (g_injectSelectedRaw = "")
     g_injectSelectedRaw := g_injectExtraRaw
 
-; Stubs for the few Logging.ahk symbols ADB.ahk / Utils.ahk reference,
-; without pulling in the floating status GUI from Logging.ahk itself.
+; Logging stubs (avoid pulling in the full Logging.ahk GUI)
 global ScriptDir := RegExReplace(A_LineFile, "\\[^\\]+$")
 global LogsDir   := A_ScriptDir . "\..\Logs"
 global Debug := 0
 global discordWebhookURL := ""
 global discordUserId := ""
 global sendAccountXml := 0
+global DeadCheck := 0
 
 CreateStatusMessage(Message, GuiName := "StatusMessage", X := 0, Y := 565, debugOnly := true, Persist := false) {
+    global g_mumuHwnd, session
+    static statusHwnd := 0
+    static statusTextHwnd := 0
+
+    if (Message = "")
+        return
+
+    guiWidth := 275
+    guiHeight := 30
+
+    try {
+        if (!statusHwnd || !DllCall("IsWindow", "Ptr", statusHwnd)) {
+            WinGetPos, wx, wy, ww, wh, ahk_id %g_mumuHwnd%
+            sx := wx + 4
+            sy := wy + wh - 2
+
+            Gui, SendFriendStatus:New, +Owner%g_mumuHwnd% -AlwaysOnTop +ToolWindow -Caption -DPIScale +LastFound
+            Gui, SendFriendStatus:Margin, 2, 2
+            Gui, SendFriendStatus:Color, 1c1c1c
+            Gui, SendFriendStatus:Font, s8 cWhite Norm, Segoe UI
+            Gui, SendFriendStatus:Add, Text, hwndstatusTextHwnd w%guiWidth% h%guiHeight% Center, %Message%
+            statusHwnd := WinExist()
+
+            DllCall("SetWindowPos", "Ptr", statusHwnd, "Ptr", 1
+                , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)
+
+            Gui, SendFriendStatus:Show, NoActivate x%sx% y%sy% w%guiWidth% h%guiHeight%
+        }
+        else {
+            GuiControl, SendFriendStatus:, %statusTextHwnd%, %Message%
+            WinGetPos, wx, wy, ww, wh, ahk_id %g_mumuHwnd%
+            sx := wx + 4
+            sy := wy + wh - 2
+            Gui, SendFriendStatus:Show, NoActivate x%sx% y%sy% w%guiWidth% h%guiHeight%
+        }
+    } catch e {
+    }
 }
 ResetStatusMessage() {
 }
@@ -104,6 +149,16 @@ LogTrace(message, logFile := "") {
 LogToDiscord(message, screenshotFile := "", ping := false, xmlFile := "", screenshotFile2 := "", altWebhookURL := "", altUserId := "") {
 }
 
+;-------------------------------------------------------------------------------
+; Stubs for functions that live in 1.ahk
+;-------------------------------------------------------------------------------
+restartGameInstance(reason, RL := true) {
+    LogWarn("restartGameInstance stub: " . reason)
+}
+Screenshot(filePath := "") {
+    return ""
+}
+
 global session   := new Session()
 global botConfig := new BotConfig()
 
@@ -120,6 +175,9 @@ session.set("dbg_bbox", 0)
 session.set("dbg_bboxNpause", 0)
 session.set("failSafe", A_TickCount)
 session.set("baseTime", 0)
+session.set("friended", false)
+session.set("setSpeed", 3)
+session.set("injectMethod", false)
 
 g_friendIDList := ParseFriendIdsCsv(g_injectRequestRaw)
 if (!g_friendIDList.MaxIndex())
@@ -136,15 +194,13 @@ if (!hwnd) {
 }
 
 global g_mumuHwnd := hwnd
-WinGetPos, g_savedWndX, g_savedWndY, g_savedWndW, g_savedWndH, ahk_id %hwnd%
-WinGet, g_savedWndStyle, Style, ahk_id %hwnd%
-if (g_savedWndStyle & 0x00C00000)
-    WinSet, Style, -0xC00000, ahk_id %hwnd%
-WinGetPos, wx, wy, ww, wh, ahk_id %hwnd%
-if (ww != 283 || wh != 532)
-    WinMove, ahk_id %hwnd%, , %wx%, %wy%, 283, 532
-Sleep, 180
 
+; Position the MuMu window at a fixed location on screen.
+CreateStatusMessage("Positioning emulator window...",,,, true)
+DirectlyPositionWindow()
+Sleep, 500
+
+CreateStatusMessage("Connecting to ADB...",,,, true)
 setADBBaseInfo()
 ConnectAdb()
 initializeAdbShell()
@@ -159,30 +215,390 @@ try {
 } catch e {
 }
 
-allFriendRequestsOk := true
+;-------------------------------------------------------------------------------
+; Main flow
+;-------------------------------------------------------------------------------
+botConfig.set("deleteMethod", "Inject Wonderpick 96P+")
+session.set("injectMethod", true)
+
+; === Step 1: Wait for boot screen ===
+waitForAppBootScreen()
+
+; === Step 2: Set speed mod ===
+FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
+if(session.get("setSpeed") = 3)
+    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
+else
+    FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+Delay(1)
+adbClick_wbb(51, 297)
+Delay(1)
+
+; === Step 3: startPreProcess - wait for Social tab ===
+startPreProcess("Inject Wonderpick 96P+")
+
+; === Step 4: Send friend requests (AddFriends flow, using InjectAccount.ini IDs) ===
 g_friendIdTotal := g_friendIDList.MaxIndex()
-Loop, %g_friendIdTotal% {
-    fid := g_friendIDList[A_Index]
-    if (A_Index = 1) {
-        if (!SendFriendRequestFromMainMenu(fid)) {
-            allFriendRequestsOk := false
-            LogWarn("SendFriendRequest failed for ID index " . A_Index . " / " . g_friendIdTotal)
-        }
-    } else {
-        if (!PrepareNextFriendIdEntry()) {
-            MsgBox, 48, Send Friend Request, Could not reset the add-friend dialog before request %A_Index%/%g_friendIdTotal%. Stopping.
-            allFriendRequestsOk := false
+CreateStatusMessage("Sending " . g_friendIdTotal . " friend request" . (g_friendIdTotal > 1 ? "s" : "") . "...",,,, true)
+result := DoAddFriends(g_friendIDList)
+
+CreateStatusMessage(result ? "All friend requests sent." : "Some requests failed.",,,, true)
+Sleep, 1000
+ExitWithCleanup(result ? 0 : 4)
+
+;===============================================================================
+; DoAddFriends - AddFriends flow using InjectAccount.ini friend IDs
+; but takes the friend ID list directly instead of reading ids.txt / Settings.ini.
+;===============================================================================
+DoAddFriends(friendIDs) {
+    global session, interceptProc
+
+    ; === PHASE 1: Wait for Social tab ===
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if (DismissFriendFlowBlockingPopup("Waiting for Social"))
+            continue
+
+        if (IsSocialTabActiveOnHub(failSafeTime))
+            break
+
+        adbClick_wbb(143, 518)
+        if(IsSocialTabActiveOnHub(failSafeTime)) {
             break
         }
-        if (!SubmitFriendIdSearchAndWait(fid)) {
-            allFriendRequestsOk := false
-            LogWarn("SendFriendRequest failed for ID index " . A_Index . " / " . g_friendIdTotal)
+        else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
+            adbClick_wbb(137, 480)
+            Delay(1)
+        }
+        else if(TryHandleTradeTutorial(failSafeTime))
+            continue
+        else if(TryDismissSocialFirstTutorial(failSafeTime))
+            continue
+        else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0)) {
+            Delay(3)
+            adbClick_wbb(146, 441)
+            Delay(3)
+            adbClick_wbb(146, 441)
+            Delay(3)
+            adbClick_wbb(146, 441)
+            Delay(3)
+
+            FindImageAndClick("Create_TutorialPremiumPass", 168, 438, , 500, 5)
+            Delay(1)
+
+            adbClick_wbb(203, 436)
+        }
+        else {
+            Delay(3)
+            if (!ShouldSkipGenericButtonInSocialWait()) {
+                clickButton := FindOrLoseImage("Common_ColorChangeButton", 0, , 80)
+                if(clickButton) {
+                    StringSplit, pos, clickButton, `,
+                    adbClick_wbb(pos1, pos2)
+                }
+            }
+        }
+
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Social (" . failSafeTime . "/90 seconds)",,,, true)
+    }
+
+    ; === PHASE 2: Go to friends list (keep search open) ===
+    GoToFriendsList(true, false)
+
+    ; === PHASE 3: Open add-friend-by-ID dialog ===
+    FindImageAndClick("Friend_SearchFriendWindowCancelButtonCorner", 75, 440)
+    FindFriendIDInputAndClick("", "initial")
+
+    ; === PHASE 4: Send friend requests ===
+    n := friendIDs.MaxIndex()
+    friendIDIdx := 1
+    while(friendIDIdx <= n){
+        value := friendIDs[friendIDIdx]
+
+        if (StrLen(value) != 16) {
+            friendIDIdx += 1
+            continue
+        }
+
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        skipCurrentID := false
+        Loop {
+            isContinue := false
+            isSendReqeest := false
+
+            if(!SubmitFriendIDSearch(value, friendIDIdx, n)) {
+                skipCurrentID := true
+                break
+            }
+            Delay(1)
+
+            if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 80)) {
+                CreateStatusMessage("Sending request " . friendIDIdx . "/" . n . "...",,,, true)
+                adbClick_wbb(243, 258)
+                MarkFriendCleanupPending("Friend request submitted")
+                Delay(1)
+                ; --- WaitAfterFriendRequestSend (inlined) ---
+                interceptProc := true
+                waitSendResult := A_TickCount
+                Loop{
+                    Delay(0.25)
+                    if(interceptErrorCheck("ADD")){
+                        isContinue := true
+                        break
+                    }
+                    if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
+                        MarkFriendCleanupPending("Friend request pending")
+                        break
+                    }
+                    else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
+                        MarkFriendCleanupPending("Friend accepted")
+                        break
+                    }
+                    else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+                        LogToFile("Skipping friend ID (cannot friend request) | index=" . friendIDIdx)
+                        break
+                    }
+                    if(!isSendReqeest
+                        && (A_TickCount - waitSendResult) > 2500
+                        && FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 40, true)
+                        && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
+                        && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
+                        adbClick_wbb(243, 258)
+                        MarkFriendCleanupPending("Friend request resubmitted")
+                        isSendReqeest := true
+                    }
+                    if ((A_TickCount - waitSendResult) > 10000)
+                        break
+                }
+                if(interceptErrorCheck("ADD"))
+                    isContinue := true
+                interceptProc := false
+                ; --- end WaitAfterFriendRequestSend ---
+                break
+            }
+            else if(FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime)) {
+                MarkFriendCleanupPending("Friend request pending")
+                break
+            }
+            else if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime)) {
+                LogToFile("Friend details request button detected | index=" . friendIDIdx)
+                adbClick_wbb(143, 407)
+                MarkFriendCleanupPending("Friend request submitted from details")
+                Delay(1)
+
+                interceptProc := true
+                waitSendResult := A_TickCount
+                Loop{
+                    Delay(0.25)
+                    if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
+                        MarkFriendCleanupPending("Friend accepted from details")
+                        break
+                    }
+                    else if(interceptErrorCheck("ADD")){
+                        skipCurrentID := true
+                        LogToFile("Skipping friend ID after ADD error from details | index=" . friendIDIdx)
+                        break
+                    }
+                    else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+                        LogToFile("Skipping friend ID (cannot request from details) | index=" . friendIDIdx)
+                        break
+                    }
+                    if(!isSendReqeest
+                        && (A_TickCount - waitSendResult) > 2500
+                        && FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime, , true)
+                        && !FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime, , true)) {
+                        adbClick_wbb(143, 407)
+                        MarkFriendCleanupPending("Friend request resubmitted from details")
+                        isSendReqeest := true
+                    }
+                    if ((A_TickCount - waitSendResult) > 10000)
+                        break
+                }
+                interceptProc := false
+                CloseFriendDetailsIfOpen()
+                break
+            }
+            else if(FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime)) {
+                MarkFriendCleanupPending("Friend accepted from details")
+                CloseFriendDetailsIfOpen()
+                break
+            }
+            else if(FindOrLoseImage("Friend_CannotFriendRequest", 0, failSafeTime)) {
+                LogToFile("Skipping friend ID (cannot friend request) | index=" . friendIDIdx)
+                break
+            }
+            else if(interceptErrorCheck("ADD")) {
+                isContinue := true
+                break
+            }
+            else if(FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime)) {
+                MarkFriendCleanupPending("Friend accepted")
+                break
+            }
+            else
+                adbInputEvent("59 122 67")
+
+            if (!IsFriendSearchInputReady() && !IsFriendSearchDialogOpen())
+                RecoverWrongScreenBeforeFriendIDInput("processing index=" . friendIDIdx)
+
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Processing add friends (" . failSafeTime . "/45 seconds)",,,, true)
+        }
+
+        if(skipCurrentID)
+            LogDebug("Skipped friend ID | index=" . friendIDIdx)
+
+        if(isContinue)
+            continue
+
+        if(friendIDIdx != n) {
+            if(interceptErrorCheck("ADD")) {
+                isContinue := true
+                continue
+            }
+            if (!FindFriendIDInputAndClick(1000, "next ID " . (friendIDIdx + 1) . "/" . n))
+                break
+            EraseInput(friendIDIdx, n)
+        }
+        friendIDIdx += 1
+    }
+
+    ; === PHASE 5: Return to social hub ===
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop, {
+        if (IsSocialTabActiveOnHub(failSafeTime))
+            break
+        adbClick_wbb(143, 518)
+        Delay(3)
+        if(IsSocialTabActiveOnHub(failSafeTime))
+            break
+        else if(FindOrLoseImage("Friend_SearchFriendWindowCancelButtonCorner", 0, failSafeTime))
+            adbClick_wbb(80, 365)
+    }
+
+    return true
+}
+
+;===============================================================================
+; FindOrLoseImage - local implementation matching 1.ahk's signature.
+; Supports needle mode (by name) only; coordinate mode is not used here.
+;===============================================================================
+FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0, coordImageName := "", coordEL := "", coordSafeTime := "") {
+    global needlesDict, g_mumuHwnd, botConfig
+
+    if (coordImageName != "")
+        return false
+
+    needleObj := needlesDict.Get(needleName)
+    if (!needleObj)
+        return false
+
+    ; slowMotion: skip speed mod needles (base game compatibility)
+    if(botConfig.get("slowMotion")) {
+        if(IsSpeedModImageName(needleObj.imageName))
+            return (EL = 0) ? true : false
+    }
+
+    pBitmap := from_window(g_mumuHwnd)
+    if (!pBitmap)
+        return false
+
+    Path := A_ScriptDir . "\..\Scripts\Needles\" . needleObj.imageName . ".png"
+    pNeedle := GetNeedle(Path)
+
+    vPosXY := ""
+    vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
+        , needleObj.coords.startX, needleObj.coords.startY
+        , needleObj.coords.endX,   needleObj.coords.endY
+        , searchVariation)
+    Gdip_DisposeImage(pBitmap)
+
+    if (EL = 0) {
+        if (vRet = 1)
+            return vPosXY ? vPosXY : true
+        return false
+    } else {
+        if (vRet != 1)
+            return true
+        return false
+    }
+}
+
+;===============================================================================
+; FindImageAndClick - local implementation matching 1.ahk's signature.
+; Clicks repeatedly until the needle appears, with a 45s timeout.
+;===============================================================================
+FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVariation := 20, sleepTime := "", skip := false, safeTime := 0) {
+    global botConfig, g_mumuHwnd, needlesDict
+
+    needleObj := needlesDict.Get(needleName)
+    if (!needleObj)
+        return false
+
+    ; slowMotion: skip speed mod needles (base game compatibility)
+    if(botConfig.get("slowMotion")) {
+        if(IsSpeedModImageName(needleObj.imageName))
+            return true
+    }
+
+    if (sleepTime = "")
+        sleepTime := botConfig.get("Delay")
+
+    imagePath := A_ScriptDir . "\..\Scripts\Needles\"
+    click := false
+    if(clickx > 0 and clicky > 0)
+        click := true
+
+    startTime := A_TickCount
+    confirmed := false
+
+    if(click) {
+        adbClick_wbb(clickx, clicky)
+        clickTime := A_TickCount
+    }
+
+    Loop {
+        Sleep, 100
+        if(click) {
+            ElapsedClickTime := A_TickCount - clickTime
+            if(ElapsedClickTime > sleepTime) {
+                adbClick_wbb(clickx, clicky)
+                clickTime := A_TickCount
+            }
+        }
+
+        if (confirmed)
+            break
+
+        pBitmap := from_window(g_mumuHwnd)
+        Path := imagePath . needleObj.imageName . ".png"
+        pNeedle := GetNeedle(Path)
+        X1 := needleObj.coords.startX
+        Y1 := needleObj.coords.startY
+        X2 := needleObj.coords.endX
+        Y2 := needleObj.coords.endY
+        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+        Gdip_DisposeImage(pBitmap)
+        if (vRet = 1) {
+            confirmed := vPosXY
+        }
+
+        elapsedTime := (A_TickCount - startTime) // 1000
+        if (elapsedTime >= 45) {
+            LogWarn("FindImageAndClick timed out looking for " . needleName)
+            break
         }
     }
-    Sleep, 1200
+    return confirmed
 }
-ExitWithCleanup(allFriendRequestsOk ? 0 : 4)
 
+;===============================================================================
+; GetNeedle - cached bitmap loader
+;===============================================================================
 GetNeedle(Path) {
     static NeedleBitmaps := Object()
 
@@ -199,68 +615,9 @@ GetNeedle(Path) {
     return needleObj
 }
 
-findNeedle(needleName, searchVariation := 20) {
-    global needlesDict, g_mumuHwnd
-
-    needleObj := needlesDict.Get(needleName)
-    if (!needleObj)
-        return false
-
-    pBitmap := from_window(g_mumuHwnd)
-    if (!pBitmap)
-        return false
-
-    Path := A_ScriptDir . "\..\Scripts\Needles\" . needleObj.imageName . ".png"
-    pNeedle := GetNeedle(Path)
-
-    vPosXY := ""
-    vRet := Gdip_ImageSearch(pBitmap, pNeedle.needle, vPosXY
-        , needleObj.coords.startX, needleObj.coords.startY
-        , needleObj.coords.endX,   needleObj.coords.endY
-        , searchVariation)
-    Gdip_DisposeImage(pBitmap)
-
-    if (vRet = 1)
-        return vPosXY ? vPosXY : true
-    return false
-}
-
-waitForNeedle(needleName, timeoutSec := 60) {
-    start := A_TickCount
-    Loop {
-        if (findNeedle(needleName))
-            return true
-        if ((A_TickCount - start) // 1000 >= timeoutSec)
-            return false
-        Sleep, 250
-    }
-    return false
-}
-
-tap(X, Y) {
-    adbClick(X, Y)
-}
-
-clickUntilNeedle(needleName, clickX, clickY, timeoutSec := 30, retryMs := 800) {
-    start := A_TickCount
-    lastClick := 0
-    Loop {
-        if (findNeedle(needleName))
-            return true
-
-        if ((A_TickCount - lastClick) >= retryMs) {
-            tap(clickX, clickY)
-            lastClick := A_TickCount
-        }
-
-        if ((A_TickCount - start) // 1000 >= timeoutSec)
-            return false
-
-        Sleep, 250
-    }
-    return false
-}
-
+;===============================================================================
+; ParseFriendIdsCsv / TruncateFriendRequestList
+;===============================================================================
 ParseFriendIdsCsv(rawCsv) {
     list := []
     cleaned := RegExReplace(rawCsv, "[\r\n]+", ",")
@@ -297,117 +654,88 @@ TruncateFriendRequestList(list) {
     return list
 }
 
-; Same pattern as FriendManager between multiple adds: close dialog, reopen blank field, clear text.
-PrepareNextFriendIdEntry() {
-    if (!clickUntilNeedle("Friend_SearchFriendWindowCancelButtonCorner", 143, 518, 25, 1500))
-        return false
-    Sleep, 400
-    if (!clickUntilNeedle("Friend_FriendIDInputReady", 138, 265, 25, 1500))
-        return false
-    Loop, 12 {
-        tap(138, 265)
-        Sleep, 120
-        adbInputEvent("59 122 67")
-        Sleep, 200
-        if (findNeedle("Friend_InputFormBlank"))
-            return true
-    }
-    return true
+;-------------------------------------------------------------------------------
+; DirectlyPositionWindow - position the MuMu window at a fixed location on the
+; selected monitor (first grid slot, since trade always uses a single instance).
+; Same sequence as 1.ahk: remove title bar, move, restore title bar, redraw,
+; then FixInstanceScreen.
+;-------------------------------------------------------------------------------
+DirectlyPositionWindow() {
+    global botConfig, g_winTitle
+
+    scaleParam := 283
+    titleHeight := 40 + MuMuBias()
+    rowHeight := titleHeight + 492
+
+    SelectedMonitorIndex := RegExReplace(botConfig.get("SelectedMonitorIndex"), ":.*$")
+    if (SelectedMonitorIndex = "")
+        SelectedMonitorIndex := 1
+    SysGet, Monitor, Monitor, %SelectedMonitorIndex%
+
+    ; Trade always uses a single instance - fix it at the first grid slot.
+    x := MonitorLeft
+    y := MonitorTop
+
+    WinSet, Style, -0xC00000, % "ahk_id " . getMuMuHwnd(g_winTitle)
+    WinMove, % "ahk_id " . getMuMuHwnd(g_winTitle), , %x%, %y%, %scaleParam%, %rowHeight%
+    WinSet, Style, +0xC00000, % "ahk_id " . getMuMuHwnd(g_winTitle)
+    WinSet, Redraw, , % "ahk_id " . getMuMuHwnd(g_winTitle)
+
+    FixInstanceScreen(g_winTitle)
 }
 
-SubmitFriendIdSearchAndWait(fid) {
-    Sleep, 300
-    adbInput(fid)
-    Sleep, 500
-    tap(187, 365)
+;-------------------------------------------------------------------------------
+; Gdip_ImageSearch_wbb - wrapper around Gdip_ImageSearch that applies MuMuBias
+; to Y coordinates.
+;-------------------------------------------------------------------------------
+Gdip_ImageSearch_wbb(pBitmapHaystack, pNeedle, ByRef OutputList=""
+    , OuterX1=0, OuterY1=0, OuterX2=0, OuterY2=0, Variation=0, Trans=""
+    , SearchDirection=1, Instances=1, LineDelim="`n", CoordDelim=",") {
+    global session
 
-    sent := false
-    start := A_TickCount
-    Loop {
-        if (!sent && findNeedle("Friend_RequestButtonInSearchResult")) {
-            tap(243, 258)
-            sent := true
-            Sleep, 700
-            continue
-        }
+    bias := MuMuBias()
 
-        if (findNeedle("Friend_WithdrawButton")) {
-            Sleep, 800
-            return true
-        }
-        if (findNeedle("Friend_AcceptedButtonInSearchResult")) {
-            Sleep, 800
-            return true
-        }
-        if (findNeedle("Friend_CannotFriendRequest")) {
-            MsgBox, 48, Send Friend Request, Game refused the friend request:`n  - already friends, OR`n  - friend list full, OR`n  - invalid Friend ID.
-            return false
-        }
-
-        if ((A_TickCount - start) // 1000 > 30) {
-            MsgBox, 48, Send Friend Request, Timed out waiting for the friend-request confirmation. The request may or may not have gone through.
-            return false
-        }
-
-        ; Dismiss soft keyboard if it stole focus.
-        if (!sent)
-            adbInputEvent("59 122 67")
-
-        Sleep, 300
-    }
+    vret := Gdip_ImageSearch(pBitmapHaystack, pNeedle.needle, OutputList
+        , OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, Variation, Trans
+        , SearchDirection, Instances, LineDelim, CoordDelim)
+    return vret
 }
 
-SendFriendRequestFromMainMenu(fid) {
-    if (!clickUntilNeedle("Common_ActivatedSocialInMainMenu", 143, 518, 240, 1500)) {
-        MsgBox, 16, Send Friend Request, Timed out (4 min) waiting for the game to reach the main menu.
-        return false
-    }
-
-    if (!gotoFriendSearchPanel(60)) {
-        MsgBox, 16, Send Friend Request, Could not reach the Friend Search panel within 60 s.
-        return false
-    }
-
-    if (!clickUntilNeedle("Friend_SearchFriendWindowCancelButtonCorner", 75, 440, 20, 1000)) {
-        MsgBox, 16, Send Friend Request, Could not open the "Add Friend by ID" dialog.
-        return false
-    }
-    if (!clickUntilNeedle("Friend_FriendIDInputReady", 138, 265, 20, 1000)) {
-        MsgBox, 16, Send Friend Request, Could not focus the Friend ID input field.
-        return false
-    }
-
-    return SubmitFriendIdSearchAndWait(fid)
+;-------------------------------------------------------------------------------
+; adbClick_wbb - adbClick with optional bounding-box debug overlay.
+;-------------------------------------------------------------------------------
+adbClick_wbb(X, Y) {
+    global session
+    if (session.get("dbg_bbox"))
+        bboxAndPause_click(X, Y, session.get("dbg_bboxNpause"))
+    adbClick(X, Y)
 }
 
-gotoFriendSearchPanel(timeoutSec := 60) {
-    start := A_TickCount
-    Loop {
-        if (findNeedle("Friend_SearchFriendButton"))
-            return true
+bboxAndPause_click(X, Y, doPause := false) {
+    global session
+    guiSuffix := session.get("winTitle")
+    color := "BackgroundBlue"
+    bboxDraw(X-5, Y-5, X+5, Y+5, color, guiSuffix)
+    if (doPause)
+        Pause
+    Gui, BoundingBox%guiSuffix%:Destroy
+}
 
-        if (findNeedle("Common_ActivatedSocialInMainMenu")) {
-            tap(38, 460)
-        }
-        else if (findNeedle("Friend_AddButtonInFriendList")) {
-            tap(240, 120)
-            Sleep, 300
-        }
-        else {
-            tap(155, 425)
-        }
-
-        if ((A_TickCount - start) // 1000 >= timeoutSec)
-            return false
-
-        Sleep, 400
-    }
-    return false
+bboxDraw(X1, Y1, X2, Y2, color, guiSuffix := "") {
+    global g_mumuHwnd
+    WinGetPos, wx, wy, , , ahk_id %g_mumuHwnd%
+    X1 += wx
+    Y1 += wy
+    X2 += wx
+    Y2 += wy
+    Gui, BoundingBox%guiSuffix%:New, +AlwaysOnTop -Caption +ToolWindow -DPIScale
+    Gui, BoundingBox%guiSuffix%:Color, %color%
+    Gui, BoundingBox%guiSuffix%:Show, x%X1% y%Y1% w%X2% h%Y2% NoActivate
 }
 
 ExitWithCleanup(code := 0) {
     global pToken, session
-    RestoreMuMuWindow()
+    Gui, SendFriendStatus:Destroy
     try {
         if (session.get("adbShell"))
             session.get("adbShell").Terminate()
@@ -418,18 +746,6 @@ ExitWithCleanup(code := 0) {
     } catch e {
     }
     ExitApp, % code
-}
-
-RestoreMuMuWindow() {
-    global g_mumuHwnd, g_savedWndX, g_savedWndY, g_savedWndW, g_savedWndH, g_savedWndStyle
-
-    if (!g_mumuHwnd || !WinExist("ahk_id " . g_mumuHwnd))
-        return
-
-    if (g_savedWndStyle & 0x00C00000)
-        WinSet, Style, +0xC00000, ahk_id %g_mumuHwnd%
-    WinMove, ahk_id %g_mumuHwnd%, , %g_savedWndX%, %g_savedWndY%, %g_savedWndW%, %g_savedWndH%
-    WinSet, Redraw, , ahk_id %g_mumuHwnd%
 }
 
 OnGuiClose:
