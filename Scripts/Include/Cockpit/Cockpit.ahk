@@ -161,6 +161,7 @@ Menu, CockpitAgeAcctMenu, Add,,
 Menu, CockpitAgeAcctMenu, Add, Open Account Metadata, Cockpit_AgeMenuOpenAccountMetadata
 Menu, CockpitAgeAcctMenu, Add, Copy Account Metadata, Cockpit_AgeMenuCopyAccountMetadata
 Menu, CockpitAgeAcctMenu, Add, Copy Account Metadata Name, Cockpit_AgeMenuCopyAccountMetadataName
+Menu, CockpitAgeAcctMenu, Add, Reset God Pack (T) Flag, Cockpit_AgeMenuResetTFlag
 Cockpit_LoadColumnsPrefs()
 
 if (g_ageStandalone) {
@@ -2408,10 +2409,10 @@ Cockpit_AgeEnsureGui() {
     Gui, Font, s8 c%THEME_TEXT%, %THEME_FONT%
     if (g_ageEvalMode != "Inject Packs" && g_ageEvalMode != "Inject Rewards")
         g_ageEvalMode := "Inject Packs"
-    Gui, Add, DropDownList, x428 y10 w126 vAgeEvalMode gCockpit_AgeEvalChanged, Inject Packs|Inject Rewards
+    Gui, Add, DropDownList, x438 y10 w126 vAgeEvalMode gCockpit_AgeEvalChanged, Inject Packs|Inject Rewards
     GuiControl, CockpitAge:ChooseString, AgeEvalMode, %g_ageEvalMode%
     Gui, Font, s8 c%THEME_TEXT%, %THEME_FONT%
-    Gui, Add, Button, x560 y10 w100 h22 gCockpit_AgeRefreshClick, Refresh now
+    Gui, Add, Button, x570 y10 w100 h22 gCockpit_AgeRefreshClick, Refresh now
     Gui, Font, s7 c%THEME_TEXT%, %THEME_FONT%
     Gui, Add, Checkbox, x428 y36 w56 h16 vAgeRwWonder gCockpit_AgeEvalChanged, Wonder
     Gui, Add, Checkbox, x486 y36 w50 h16 vAgeRwSpecial gCockpit_AgeEvalChanged, Special
@@ -2422,26 +2423,26 @@ Cockpit_AgeEnsureGui() {
     GuiControl, CockpitAge:, AgeRwGift, %g_ageRewardsGift%
     GuiControl, CockpitAge:, AgeRwShine, %g_ageRewardsShine%
 
-    Gui, Add, Progress, x10 y56 w654 h1 c2A3136 Background2A3136 Disabled, 100
+    Gui, Add, Progress, x10 y56 w660 h1 c2A3136 Background2A3136 Disabled, 100
 
     Gui, Font, s8 c%THEME_MUTED%, %THEME_FONT%
-    Gui, Add, Text, x10  y64 w218 h16 Center Background%THEME_BG%, Total
-    Gui, Add, Text, x228 y64 w218 h16 Center Background%THEME_BG%, Injectable
-    Gui, Add, Text, x446 y64 w218 h16 Center Background%THEME_BG%, Cooling
+    Gui, Add, Text, x10  y64 w220 h16 Center Background%THEME_BG%, Total
+    Gui, Add, Text, x230 y64 w220 h16 Center Background%THEME_BG%, Injectable
+    Gui, Add, Text, x450 y64 w220 h16 Center Background%THEME_BG%, Cooling
 
     Gui, Font, s15 c%THEME_TEXT% Bold, %THEME_FONT%
-    Gui, Add, Text, x10  y82 w218 h26 Center vAgeCntTotal Background%THEME_BG%, 0
+    Gui, Add, Text, x10  y82 w220 h26 Center vAgeCntTotal Background%THEME_BG%, 0
     Gui, Font, s15 c%THEME_SUCCESS% Bold, %THEME_FONT%
-    Gui, Add, Text, x228 y82 w218 h26 Center vAgeCntReady Background%THEME_BG%, 0
+    Gui, Add, Text, x230 y82 w220 h26 Center vAgeCntReady Background%THEME_BG%, 0
     Gui, Font, s15 c%THEME_WARN% Bold, %THEME_FONT%
-    Gui, Add, Text, x446 y82 w218 h26 Center vAgeCntWait Background%THEME_BG%, 0
+    Gui, Add, Text, x450 y82 w220 h26 Center vAgeCntWait Background%THEME_BG%, 0
 
-    Gui, Add, Progress, x10 y116 w654 h1 c2A3136 Background2A3136 Disabled, 100
+    Gui, Add, Progress, x10 y116 w660 h1 c2A3136 Background2A3136 Disabled, 100
 
     Gui, Font, s9 c%THEME_MUTED%, %THEME_FONT%
     Gui, Add, Text, x14 y124 w220 h16 Background%THEME_BG%, Instance summary
     Gui, Font, s9 c%THEME_TEXT%, %THEME_FONT%
-    Gui, Add, ListView, x10 y142 w654 h104 vAgeInstLv gCockpit_OnAgeInstLv hwndhAgeInstLv -Multi -ReadOnly Grid -0x100000 -0x200000 +0x2000 -0x200, Instance|Total|Injectable|Cooling
+    Gui, Add, ListView, x10 y142 w660 h104 vAgeInstLv gCockpit_OnAgeInstLv hwndhAgeInstLv -Multi -ReadOnly Grid -0x100000 -0x200000 +0x2000 -0x200, Instance|Total|Injectable|Cooling
     AGE_INST_HWND := hAgeInstLv
     LV_ModifyCol(1, "160 Center")
     LV_ModifyCol(2, "160 Center")
@@ -2452,17 +2453,19 @@ Cockpit_AgeEnsureGui() {
     Cockpit_DisableColumnResize(hAgeInstLv)
     Cockpit_ForceNoHScroll(hAgeInstLv)
 
-    Gui, Add, Progress, x10 y252 w654 h1 vAgeSepAccounts c2A3136 Background2A3136 Disabled, 100
+    Gui, Add, Progress, x10 y252 w660 h1 vAgeSepAccounts c2A3136 Background2A3136 Disabled, 100
     Gui, Font, s9 c%THEME_MUTED%, %THEME_FONT%
     Gui, Add, Text, x14 y260 w80 h16 vAgeLblAccounts Background%THEME_BG%, Accounts
     Gui, Font, s8 c%THEME_TEXT%, %THEME_FONT%
-    Gui, Add, Edit, x120 y258 w188 h20 vAgeFilterText gCockpit_AgeFilterChanged
-    Gui, Add, DropDownList, x324 y258 w118 vAgeFilterStatus gCockpit_AgeFilterChanged, All|Injectable|Cooling
-    Gui, Add, DropDownList, x458 y258 w90 vAgeFilterInst gCockpit_AgeFilterChanged, All
+    Gui, Add, Edit, x168 y258 w250 h20 vAgeFilterText gCockpit_AgeFilterChanged hwndhAgeFilterEdit
+    Gui, Add, DropDownList, x424 y258 w140 vAgeFilterStatus gCockpit_AgeFilterChanged, All|Injectable|Cooling|God Pack
+    Gui, Add, DropDownList, x570 y258 w100 vAgeFilterInst gCockpit_AgeFilterChanged, All
+    cueText := "Search account..."
+    SendMessage, 0x1501, 0, &cueText,, ahk_id %hAgeFilterEdit%
     GuiControl, CockpitAge:ChooseString, AgeFilterStatus, All
     GuiControl, CockpitAge:ChooseString, AgeFilterInst, All
     Gui, Font, s9 c%THEME_TEXT%, %THEME_FONT%
-    Gui, Add, ListView, x10 y286 w654 h214 vAgeAcctLv gCockpit_OnAgeAcctLv hwndhAgeAcctLv -Multi -ReadOnly Grid -0x100000 -0x200, XML|Instance|Last Login|Ready In|Status
+    Gui, Add, ListView, x10 y286 w660 h214 vAgeAcctLv gCockpit_OnAgeAcctLv hwndhAgeAcctLv -Multi -ReadOnly Grid -0x100000 -0x200, XML|Instance|Last Login|Ready In|Status
     AGE_ACCT_HWND := hAgeAcctLv
     LV_ModifyCol(1, "250 Center")
     LV_ModifyCol(2, "64 Center")
@@ -2474,7 +2477,7 @@ Cockpit_AgeEnsureGui() {
     Cockpit_DisableColumnResize(hAgeAcctLv)
 
     Gui, Font, s8 c%THEME_MUTED%, %THEME_FONT%
-    Gui, Add, Text, x10 y504 w654 h16 Center vAgeStatusLbl Background%THEME_BG%, Ready
+    Gui, Add, Text, x10 y504 w660 h16 Center vAgeStatusLbl Background%THEME_BG%, Ready
 
     g_ageGuiBuilt := 1
 }
@@ -2594,6 +2597,7 @@ Cockpit_AgeRefresh() {
         baseEligible := Cockpit_AgeEligibleForMethod(method, content, lastLogin, rewardsOpts)
         gateValue := Cockpit_AgeDriverTimeForMethod(method, content, lastLogin, hasLogin, rewardsOpts)
         gateValue := Cockpit_AgeNormalizeGateDisplay(gateValue)
+
         if (baseEligible) {
             status := "Injectable"
             gateValue := "Ready"
@@ -2614,7 +2618,8 @@ Cockpit_AgeRefresh() {
 
         displayName := (metaFileName != "" && metaFileName != "-") ? metaFileName : accountName
         instanceIdNum := inst + 0
-        acctRows.Push({"account": displayName, "inst": inst, "instanceId": instanceIdNum, "login": loginDisp, "gate": gateValue, "status": status, "jsonPath": filePath})
+        hasTFlag := (Cockpit_AgeFlagSet(content, "T") && !Cockpit_AgeFlagExpired(content, "T", 5 * 24))
+        acctRows.Push({"account": displayName, "inst": inst, "instanceId": instanceIdNum, "login": loginDisp, "gate": gateValue, "status": status, "jsonPath": filePath, "hasTFlag": hasTFlag})
         if (!instSeen.HasKey(inst))
             instSeen[inst] := 1
     }
@@ -2827,7 +2832,10 @@ Cockpit_AgeUpdateRewardsOptionsVisibility(method) {
 
 Cockpit_AgeRowMatchesFilters(row) {
     global g_ageFilterText, g_ageFilterStatus, g_ageFilterInst
-    if (g_ageFilterStatus != "" && g_ageFilterStatus != "All" && row.status != g_ageFilterStatus)
+    if (g_ageFilterStatus = "God Pack") {
+        if (!row.hasTFlag)
+            return false
+    } else if (g_ageFilterStatus != "" && g_ageFilterStatus != "All" && row.status != g_ageFilterStatus)
         return false
     if (g_ageFilterInst != "" && g_ageFilterInst != "All" && row.inst != g_ageFilterInst)
         return false
@@ -2871,6 +2879,20 @@ Cockpit_AgeDriverTimeForMethod(method, jsonText, lastLoggedIn, hasLogin, rewards
     }
 
     if (method = "Inject Packs") {
+        if (Cockpit_AgeFlagSet(jsonText, "T") && !Cockpit_AgeFlagExpired(jsonText, "T", 5 * 24)) {
+            validUntil := Cockpit_AgeFlagValidUntil(jsonText, "T")
+            if (validUntil != "") {
+                sec := validUntil
+                EnvSub, sec, %A_Now%, Seconds
+                if (sec < 0)
+                    sec := 0
+                return Metrics_FormatDurationHMSecs(sec)
+            }
+            setAt := Cockpit_AgeFlagSetAt(jsonText, "T")
+            if (setAt != "")
+                return Cockpit_AgeRemainingFromTimestamp(setAt, 5 * 24)
+            return "T-flag"
+        }
         return Cockpit_AgeRemainingFromTimestamp(Cockpit_AgeFieldTimestamp(jsonText, "lastPackPulled"), 24)
     }
 
@@ -3419,6 +3441,62 @@ Cockpit_OpenAgeRowAccountMetadata(r) {
     Run, % """" . jsonPath . """"
 }
 
+Cockpit_AgeResetTFlag(r) {
+    jsonPath := Cockpit_GetResolvedAgeRowMetadataPath(r)
+    if (jsonPath = "") {
+        MsgBox, 48, Injection Queue, Could not resolve account metadata (missing XML or deviceAccount).
+        return
+    }
+    if (!FileExist(jsonPath)) {
+        MsgBox, 48, Injection Queue, Metadata file not found: %jsonPath%
+        return
+    }
+
+    FileRead, content, %jsonPath%
+    if (!Cockpit_AgeFlagSet(content, "T")) {
+        MsgBox, 64, Reset T Flag, This account does not have a God Pack (T) flag set.
+        return
+    }
+
+    SplitPath, jsonPath, jsonFn
+    acctName := RegExReplace(jsonFn, "\.json$", "")
+    MsgBox, 4, Reset T Flag, Reset God Pack (T) flag for:`n%acctName%`n`nThis will make the account eligible for injection again.
+    IfMsgBox, No
+        return
+
+    ; Serialize with other account metadata writers and re-read after confirmation
+    ; so a concurrent bot update cannot be overwritten with stale content.
+    hMutex := AccountMetadata_AcquireLock()
+    if (!hMutex) {
+        MsgBox, 16, Reset T Flag, Could not acquire the account metadata lock for %acctName%.
+        return
+    }
+
+    saved := false
+    FileRead, latestContent, %jsonPath%
+    if (!ErrorLevel && RegExMatch(latestContent, "s)""deviceAccount""\s*:\s*""([^""]+)""", mDevice)) {
+        deviceAccount := mDevice1
+        if (!Cockpit_AgeFlagSet(latestContent, "T")) {
+            saved := true
+        } else {
+            accountMeta := AccountMetadata_ReadAccountUnlocked(deviceAccount)
+            accountMeta["flags"]["T"] := AccountMetadata_NewFlag(0)
+            ; The unlocked writer is safe here because the metadata mutex is held. It
+            ; preserves pull/card data and replaces the JSON through a temporary file.
+            saved := AccountMetadata_WriteAccountUnlocked(deviceAccount, accountMeta)
+        }
+    }
+    AccountMetadata_ReleaseLock(hMutex)
+
+    if (!saved) {
+        MsgBox, 16, Reset T Flag, Could not reset T flag in metadata for %acctName%.
+        return
+    }
+
+    Cockpit_AgeRefresh()
+    MsgBox, 64, Reset T Flag, T flag reset successfully for %acctName%.
+}
+
 CockpitAgeGuiContextMenu:
     if (A_GuiControl != "AgeAcctLv")
         return
@@ -3430,6 +3508,20 @@ CockpitAgeGuiContextMenu:
     if (row <= 0)
         return
     g_ageAcctMenuRow := row
+    r := Cockpit_AgeMenuRowObject()
+    hasTFlag := false
+    if (IsObject(r)) {
+        jsonPath := Cockpit_GetResolvedAgeRowMetadataPath(r)
+        if (jsonPath != "" && FileExist(jsonPath)) {
+            FileRead, ctxContent, %jsonPath%
+            if (Cockpit_AgeFlagSet(ctxContent, "T") && !Cockpit_AgeFlagExpired(ctxContent, "T", 5 * 24))
+                hasTFlag := true
+        }
+    }
+    if (hasTFlag)
+        Menu, CockpitAgeAcctMenu, Enable, Reset God Pack (T) Flag
+    else
+        Menu, CockpitAgeAcctMenu, Disable, Reset God Pack (T) Flag
     Menu, CockpitAgeAcctMenu, Show
 return
 
@@ -3480,6 +3572,13 @@ Cockpit_AgeMenuCopyAccountMetadataName:
     if (!IsObject(r))
         return
     Cockpit_CopyAgeRowAccountMetadataName(r)
+return
+
+Cockpit_AgeMenuResetTFlag:
+    r := Cockpit_AgeMenuRowObject()
+    if (!IsObject(r))
+        return
+    Cockpit_AgeResetTFlag(r)
 return
 
 CockpitAgeGuiClose:
