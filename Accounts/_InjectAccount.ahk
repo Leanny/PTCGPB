@@ -286,6 +286,28 @@ RunInjectFlow:
         return
     }
 
+    ; Position the MuMu window at a fixed location before injecting.
+    UpdateInjectUi("Positioning emulator window...", 14)
+    mumuBias := 0
+    if (InStr(FileExist(mumuFolder . "\nx_main"), "D"))
+        mumuBias := 0
+    else
+        mumuBias := -4
+    rowHeight := 40 + mumuBias + 492
+    hwnd := WinExist(winTitle . " ahk_class Qt5156QWindowIcon")
+    if (hwnd) {
+        WinSet, Style, -0xC00000, ahk_id %hwnd%
+        WinMove, ahk_id %hwnd%, , 0, 0, 283, %rowHeight%
+        WinSet, Style, +0xC00000, ahk_id %hwnd%
+        WinSet, Redraw, , ahk_id %hwnd%
+        SendMessage, 0x0005, 1, 0,, ahk_id %hwnd%
+        Sleep, 50
+        SendMessage, 0x0005, 0, 0,, ahk_id %hwnd%
+        Sleep, 500
+        fixY := 532 + mumuBias
+        WinMove, ahk_id %hwnd%, , , , 283, %fixY%
+    }
+
     if !FileExist(adbPath) ;if international mumu file path isn't found look for chinese domestic path
         adbPath := folderPath . "\MuMu Player 12\shell\adb.exe"
     if !FileExist(adbPath)
