@@ -1335,25 +1335,5 @@ generateStatusText(){
 }
 
 findAdbPath(targetDir, preferAndroid15 := false) {
-    if (preferAndroid15) {
-        android15Path := targetDir . "\nx_device\15.0\shell\adb.exe"
-        if (FileExist(android15Path))
-            return android15Path
-    }
-
-    rootPath := targetDir . "\adb.exe"
-    if (FileExist(rootPath)) {
-        return rootPath
-    }
-
-    Loop, Files, %targetDir%\*, D
-    {
-        checkPath := A_LoopFileFullPath . "\adb.exe"
-
-        if (FileExist(checkPath)) {
-            return checkPath
-        }
-    }
-
-    return ""
+    return MuMuFindAdbPath(targetDir, preferAndroid15)
 }

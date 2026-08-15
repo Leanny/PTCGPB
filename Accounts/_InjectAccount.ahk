@@ -7,6 +7,8 @@ SetDefaultMouseSpeed, 0
 SetBatchLines, -1
 SetTitleMatchMode, 3
 
+#Include %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
+
 global adbShell, adbPath, adbPorts, winTitle, folderPath, selectedFilePath, mumuFolder, headless, injectInProgress
 
 IniRead, winTitle, InjectAccount.ini, UserSettings, winTitle, 1
@@ -270,12 +272,10 @@ SaveSettings:
 
 RunInjectFlow:
     UpdateInjectUi("Resolving MuMu folder...", 10)
-    mumuFolder := getMumuFolder(folderPath)
+    mumuFolder := MuMuResolveFolder(folderPath)
 
     UpdateInjectUi("Locating ADB and instance port...", 18)
-    adbPath := mumuFolder . "\shell\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := mumuFolder . "\nx_main\adb.exe"
+    adbPath := MuMuFindAdbPath(mumuFolder)
     findAdbPorts(mumuFolder)
 
     if(!WinExist(winTitle)) {
@@ -307,27 +307,6 @@ RunInjectFlow:
         fixY := 532 + mumuBias
         WinMove, ahk_id %hwnd%, , , , 283, %fixY%
     }
-
-    if !FileExist(adbPath) ;if international mumu file path isn't found look for chinese domestic path
-        adbPath := folderPath . "\MuMu Player 12\shell\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := folderPath . "\MuMuPlayer-12.0\shell\adb.exe"
-    if !FileExist(adbPath) ;MuMu Player 12 v5
-        adbPath := folderPath . "\MuMuPlayerGlobal-12.0\nx_main\adb.exe"
-    if !FileExist(adbPath) ;MuMu Player 12 v5
-        adbPath := folderPath . "\MuMu Player 12\nx_main\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := folderPath . "\MuMuPlayer-12.0\nx_main\adb.exe"
-    if !FileExist(adbPath) ;MuMu Player 12 v5
-        adbPath := folderPath . "\MuMuPlayer\nx_main\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := folderPath . "\MuMuPlayer-12\shell\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := folderPath . "\MuMuPlayer-12\nx_main\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := folderPath . "\MuMuPlayer12\shell\adb.exe"
-    if !FileExist(adbPath)
-        adbPath := folderPath . "\MuMuPlayer12\nx_main\adb.exe"
 
     if !FileExist(adbPath) {
         MsgBox, 16, , Double check your folder path! It should be the one that contains the MuMuPlayer 12 folder! `nDefault is just C:\Program Files\Netease
@@ -395,25 +374,6 @@ RunInjectFlow:
     SetInjectUiBusy(false)
     injectInProgress := 0
 return
-
-getMumuFolder(folderPath) {
-    candidateFolders := [folderPath
-        , folderPath . "\MuMu"
-        , folderPath . "\MuMuPlayerGlobal-12.0"
-        , folderPath . "\MuMuPlayerGlobal"
-        , folderPath . "\MuMuPlayer-12.0"
-        , folderPath . "\MuMu Player 12"
-        , folderPath . "\MuMuPlayer"
-        , folderPath . "\MuMuPlayer-12"
-        , folderPath . "\MuMuPlayer12"]
-
-    for _, candidateFolder in candidateFolders {
-        if FileExist(candidateFolder . "\nx_main")
-            return candidateFolder
-    }
-
-    return folderPath . "\MuMuPlayerGlobal-12.0"
-}
 
 GetVmDisplayName(folder) {
     configFolder := folder "\configs"
@@ -646,7 +606,7 @@ loadAccount() {
 ; New function to get instance list
 GetInstanceList(baseFolder) {
     instanceList := ""
-    mumuFolder := getMumuFolder(baseFolder)
+    mumuFolder := MuMuResolveFolder(baseFolder)
 
     ; Loop through all VM directories
     Loop, Files, %mumuFolder%\vms\*, D
@@ -884,7 +844,7 @@ RunInstance:
         return
     }
     SaveInjectFriendIniSettings()
-    mumuFolder := getMumuFolder(folderPath)
+    mumuFolder := MuMuResolveFolder(folderPath)
     ; Find the instance number matching the selected name
     instanceNum := ""
     Loop, Files, %mumuFolder%\vms\*, D

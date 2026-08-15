@@ -228,37 +228,15 @@ CalcExpiryDateFromRemainingDays(remainingDays, expiryTimeCompact := "055959") {
 }
 
 ResolveMuMuFolder(){
-    mumuFolder := getMuMuFolderInConfig()
-    if (!IsNumeric(mumuFolder))
-        return mumuFolder
-
-    settingsPath := A_ScriptDir . "\..\ Settings.ini"
-    IniRead, configuredFolder, %settingsPath%, UserSettings, folderPath, C:\Program Files\Netease
+    settingsPath := A_ScriptDir . "\..\Settings.ini"
+    IniRead, configuredFolder, %settingsPath%, ToolsAndSystem, folderPath, C:\Program Files\Netease
     configuredFolder := Trim(configuredFolder)
 
-    resolvedFolder := TryResolveMuMuFolder(configuredFolder)
+    resolvedFolder := MuMuResolveFolder(configuredFolder)
     if (resolvedFolder != "")
         return resolvedFolder
 
     MsgBox, 16, , Can't Find MuMu, try old MuMu installer in Discord #announcements, otherwise double check your folder path setting!`nDefault path is C:\Program Files\Netease
-    return ""
-}
-
-TryResolveMuMuFolder(baseFolder){
-    subFolderList := ["MuMuPlayerGlobal-12.0", "MuMu Player 12", "MuMuPlayer-12.0", "MuMuPlayer", "MuMuPlayer-12", "MuMuPlayer12"]
-
-    if (!InStr(FileExist(baseFolder), "D"))
-        return ""
-
-    if (InStr(FileExist(baseFolder . "\vms"), "D") || InStr(FileExist(baseFolder . "\shell"), "D"))
-        return baseFolder
-
-    For idx, value in subFolderList {
-        mumuFolder := baseFolder . "\" . value
-        if (InStr(FileExist(mumuFolder), "D"))
-            return mumuFolder
-    }
-
     return ""
 }
 
