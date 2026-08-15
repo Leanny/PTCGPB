@@ -740,7 +740,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         if(botConfig.get("ocrShinedust") && session.get("injectMethod") && session.get("loadedAccount")) {
-            GoToMain()
             CountShinedust()
         }
 
@@ -5820,6 +5819,31 @@ HandleMissionDeckFailsafe() {
     adbInput("111") ; ESC to home screen
     Sleep, 1000
     return true
+}
+
+TryDismisMyCardsTutorial(failSafeTime) {
+    if (!FindOrLoseImage("Common_BlurryMyCards", 0, , , true)) {
+        return false
+    }
+
+    adbClick(168, 433)
+    Delay(1)
+    adbClick(168, 433)
+    Delay(1)
+    adbClick(168, 433)
+    Delay(10)
+
+    adbClick(168, 471)
+    Delay(1)
+    adbClick(168, 471)
+    Delay(1)
+    adbClick(168, 471)
+    Delay(1)
+    adbClick(168, 471)
+    Delay(10)
+
+    adbClick(168, 432)
+    Delay(10)
 }
 
 GoToMain() {

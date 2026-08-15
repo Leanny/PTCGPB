@@ -385,49 +385,124 @@ RegExEscape(str) {
 }
 
 ;-------------------------------------------------------------------------------
-; CountShinedust - Navigate to items and OCR shinedust value
+; CountShinedust - Navigate to Social > Trade and OCR shinedust value
 ;-------------------------------------------------------------------------------
 CountShinedust() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    FindImageAndClick("Shinedust_CopySupportIDButtonInSettings", 244, 518, , 2000)
+    GoToMain()
 
-    session.set("failSafe", A_TickCount)
-    Loop {
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (failSafeTime > 30) {
-            if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
-                IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+    createdAt := AccountMetadata_NormalizeCreatedAt(accountMeta["createdAt"])
+    if (createdAt != "" && (createdAt = "0" || AccountEligibility_DaysSince(createdAt) < 15)) {
+        ; OCR coordinates in screenshot pixels (540x960):
+        ; bot coords (161, 81) converted to pixel (307, 81)
+        ocrX := 307
+        ocrY := 81
+
+        ; new accounts dont have access to trade yet, so we go through My Cards > Flair
+        session.set("failSafe", A_TickCount)
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck navigating to Flair for Shinedust")
+                return
             }
-            restartGameInstance("Stuck at Shinedust menu")
-            return
+            if (IsMyCardTabActiveOnHub(failSafeTime))
+                break
+            adbClick_wbb(90, 518)
+            Delay(1)
+            TryDismisMyCardsTutorial(failSafeTime)
+            Delay(1)
+
         }
-        if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)) {
-            ; accidentally re-clicked hamburger menu while page was loading
-            ; and we're back on homescreen. we need to re-enter hamburger menu
-            adbClick(244, 518)
-            Sleep, 3000
-        }
-        if FindOrLoseImage("Shinedust_ShinedustInInventorys", 0, failSafeTime)
-            break
-        adbClick(99, 279)
-        ; be careful moving this. intentionally chosen to avoid
-        ; accidentally clicking a pack on the homescreen (clicks between instead.)
-        Sleep, 3000
-        if FindOrLoseImage("Shinedust_CloseButtonInDetailWindow", 0, failSafeTime) || FindOrLoseImage("Shinedust_CloseButtonInDetailWindow2", 0, failSafeTime) {
-            Sleep, 1000
-            adbInputEvent("111")
-            Sleep, 1000
-            ; still present
-            if FindOrLoseImage("Shinedust_CloseButtonInDetailWindow", 0, failSafeTime) || FindOrLoseImage("Shinedust_CloseButtonInDetailWindow2", 0, failSafeTime) {
-                Sleep, 1000
-                adbClick(140, 372)
-                Sleep, 1000
+
+        ; Click Flair button and wait for ShinedustFlare needle
+        session.set("failSafe", A_TickCount)
+        confirmedStart := 0
+        lastTradeClick := A_TickCount
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck at Flair screen for Shinedust")
+                return
             }
+            if (FindOrLoseImage("ShinedustFlair", 0, failSafeTime)) {
+                break
+            } else {
+                adbClick(203, 143)
+                Delay(0.5)
+                adbClick(166, 434)
+            }
+            Delay(0.5)
+            TryDismisMyCardsTutorial(failSafeTime)
+            Delay(1)
+        }
+
+    } else {
+        ; OCR coordinates in screenshot pixels (540x960):
+        ; bot coords (64, 132) -> (110, 151) converted to pixel (122, 181) -> (210, 218)
+        ocrX := 122
+        ocrY := 181
+
+        ; Navigate to Social tab
+        session.set("failSafe", A_TickCount)
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck navigating to Social for Shinedust")
+                return
+            }
+            if (IsSocialTabActiveOnHub(failSafeTime))
+                break
+            adbClick_wbb(143, 518)
+            Delay(1)
+            if (TryDismissSocialFirstTutorial(failSafeTime))
+                continue
+            if (TryHandleTradeTutorial(failSafeTime))
+                continue
+        }
+
+        ; Click Trade button and wait for ShinedustTrade needle
+        session.set("failSafe", A_TickCount)
+        confirmedStart := 0
+        lastTradeClick := A_TickCount
+        Loop {
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime > 30) {
+                if (session.get("injectMethod") && session.get("loadedAccount") && session.get("friended")) {
+                    IniWrite, 1, % session.get("scriptIniFile"), UserSettings, DeadCheck
+                }
+                restartGameInstance("Stuck at Trade screen for Shinedust")
+                return
+            }
+            if (FindOrLoseImage("ShinedustTrade", 0, failSafeTime)) {
+                if (confirmedStart = 0)
+                    confirmedStart := A_TickCount
+                else if (A_TickCount - confirmedStart >= 3000)
+                    break
+            } else {
+                confirmedStart := 0
+                TryHandleTradeTutorial(failSafeTime)
+                ; Re-click Trade button every 5 seconds if needle not found
+                if (A_TickCount - lastTradeClick >= 5000) {
+                    adbClick_wbb(196, 408)
+                    lastTradeClick := A_TickCount
+                }
+            }
+            Delay(0.5)
         }
     }
-
     tempDir := A_ScriptDir . "\..\Screenshots\temp"
     if !FileExist(tempDir)
         FileCreateDir, %tempDir%
@@ -437,34 +512,18 @@ CountShinedust() {
     adbTakeScreenshot(shinedustScreenshotFile)
     Sleep, 500
 
+    ocrW := 88
+    ocrH := 37
+
     try {
         if (IsFunc("ocr")) {
             shineDustValue := ""
-            ; Allow digits, commas, periods, and spaces (different languages format numbers differently)
             allowedChars := "0123456789,. "
-            ; Pattern allows digits with optional separators (commas, periods, or spaces)
-            validPattern := "^[\d,.\s]+$"
+            validPattern := "^\d[\d,]*\d$|^\d$"
 
-            ocrX := 385
-            ocrY := 310
-            ocrW := 150
-            ocrH := 27
-
-            pBitmapOriginal := Gdip_CreateBitmapFromFile(shinedustScreenshotFile)
-            pBitmapFormatted := Gdip_CropResizeGreyscaleContrast(pBitmapOriginal, ocrX, ocrY, ocrW, ocrH, 300, 75)
-
-            ; Use user's current language - numbers are recognized by all language packs
-            shineDustValue := GetTextFromBitmap(pBitmapFormatted, allowedChars)
-            Gdip_DisposeImage(pBitmapOriginal)
-            Gdip_DisposeImage(pBitmapFormatted)
-
-            ; Clean up the result: remove all non-digit characters except commas
-            ; This handles different number formats (spaces, periods as separators)
-            shineDustValue := RegExReplace(shineDustValue, "[^\d,]", "")
-
-            if (RegExMatch(shineDustValue, "^\d[\d,]*\d$|^\d$")) {
+            if (RefinedOCRText(shinedustScreenshotFile, ocrX, ocrY, ocrW, ocrH, allowedChars, validPattern, shineDustValue)) {
+                shineDustValue := RegExReplace(shineDustValue, "[^\d,]", "")
                 if (shineDustValue != "") {
-                    ; Store shinedust value globally for use in batched Discord messages
                     global shinedustValueGlobal
                     shinedustValueGlobal := shineDustValue
                     LogShinedustToDatabase(shineDustValue)
