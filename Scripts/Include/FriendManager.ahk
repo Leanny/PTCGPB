@@ -1078,9 +1078,18 @@ IsSocialHubReadyForFriends() {
     return FindOrLoseImage("Friend_SocialHubFriendButton", 0, , 20, true)
 }
 
+IsMyCardsReady() {
+    return FindOrLoseImage("Common_MyCardsFlair", 0, , 20, true)
+}
+
 IsSocialTabActiveOnHub(failSafeTime := 0) {
     return FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime)
         && IsSocialHubReadyForFriends()
+}
+
+IsMyCardTabActiveOnHub(failSafeTime := 0) {
+    return FindOrLoseImage("Common_ActivatedMyCardsInMainMenu", 0, failSafeTime)
+        && IsMyCardsReady()
 }
 
 ReturnToSocialHubIfNeeded() {

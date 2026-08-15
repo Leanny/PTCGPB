@@ -99,10 +99,8 @@ needlesDict.Add(new Needle("WonderPick_SelectCards", "Card", new Coordinate(166,
 ;==============================================================================================================================
 
 ; Shinedust
-needlesDict.Add(new Needle("Shinedust_CopySupportIDButtonInSettings", "inHamburgerMenu", new Coordinate(252, 73, 263, 87)))
-needlesDict.Add(new Needle("Shinedust_ShinedustInInventorys", "shinedustItems", new Coordinate(26, 183, 43, 199)))
-needlesDict.Add(new Needle("Shinedust_CloseButtonInDetailWindow", "wrongItem", new Coordinate(133, 364, 148, 380)))
-needlesDict.Add(new Needle("Shinedust_CloseButtonInDetailWindow2", "wrongItem", new Coordinate(133, 357, 148, 373)))
+needlesDict.Add(new Needle("ShinedustTrade", "ShinedustTrade", new Coordinate(47, 134, 59, 150)))
+needlesDict.Add(new Needle("ShinedustFlair", "ShinedustFlair", new Coordinate(145, 83, 161, 96)))
 
 ;==============================================================================================================================
 
@@ -128,6 +126,9 @@ needlesDict.Add(new Needle("Common_UnknownButton2", "Button2", new Coordinate(95
 needlesDict.Add(new Needle("StartupErrorX", "StartupErrorX", new Coordinate(124, 423, 155, 455))) ; ------------------------------ Finding
 needlesDict.Add(new Needle("Common_AlertForAppCrachDuringOpenPack", "closeduringpack", new Coordinate(241, 372, 269, 402)))
 needlesDict.Add(new Needle("TradeUnlocked", "TradeUnlocked", new Coordinate(114, 146, 163, 197)))
+needlesDict.Add(new Needle("Common_ActivatedMyCardsInMainMenu", "MyCards", new Coordinate(78, 502, 94, 520)))
+needlesDict.Add(new Needle("Common_BlurryMyCards", "BlurryMyCards", new Coordinate(77, 502, 94, 522)))
+needlesDict.Add(new Needle("Common_MyCardsFlair", "MyCardsFlair", new Coordinate(200, 118, 229, 141)))
 
 ; Common - Error
 needlesDict.Add(new Needle("Common_Error", "Error", new Coordinate(12, 160, 52, 180)))
