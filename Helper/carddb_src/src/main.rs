@@ -3807,7 +3807,7 @@ fn pull_history_day_keys(doc: &Value) -> HashSet<String> {
         .collect()
 }
 
-type HistoryCardCounts = HashMap<(String, String, String), usize>;
+type HistoryCardCounts = HashMap<(String, String), usize>;
 
 fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
     let mut counts = HashMap::new();
@@ -3825,10 +3825,6 @@ fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
             continue;
         };
         let day = history_day_key(timestamp);
-        let pack = pull
-            .get("pack")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
         for card in pull
             .get("cards")
             .and_then(Value::as_array)
@@ -3836,9 +3832,7 @@ fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
             .flatten()
             .filter_map(Value::as_str)
         {
-            *counts
-                .entry((day.clone(), pack.to_owned(), card.to_owned()))
-                .or_insert(0) += 1;
+            *counts.entry((day.clone(), card.to_owned())).or_insert(0) += 1;
         }
     }
     counts
@@ -3853,11 +3847,6 @@ fn missing_history_pulls(
         .into_iter()
         .filter_map(|mut pull| {
             let mut missing_cards = Vec::new();
-            let pack = pull
-                .get("pack")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_owned();
             for card in pull
                 .get("cards")
                 .and_then(Value::as_array)
@@ -3867,7 +3856,7 @@ fn missing_history_pulls(
                 let Some(card_id) = card.as_str() else {
                     continue;
                 };
-                let key = (history_day.to_owned(), pack.clone(), card_id.to_owned());
+                let key = (history_day.to_owned(), card_id.to_owned());
                 let already_present = remaining_existing_cards.get_mut(&key).is_some_and(|count| {
                     if *count == 0 {
                         return false;
@@ -4503,6 +4492,44 @@ mod tests {
         let mut reconciled_cards = pull_history_card_counts(&doc);
         let repeated = missing_history_pulls(history_day, exported_pulls, &mut reconciled_cards);
         assert!(repeated.is_empty());
+    }
+
+    #[test]
+    fn in_depth_history_reconciles_across_local_day_boundary_and_legacy_pack_lists() {
+        let doc = json!({
+            "pulls": [{
+                "timestamp": "2026-08-11T22:51:45-07:00",
+                "pack": "A4b, B1, B2",
+                "cards": ["PK001", "PK002", "PK003"]
+            }]
+        });
+        let exported_pulls = vec![
+            json!({
+                "timestamp": "2026-08-10T23:00:00-07:00",
+                "pack": "A4b",
+                "cards": ["PK001"]
+            }),
+            json!({
+                "timestamp": "2026-08-10T23:00:00-07:00",
+                "pack": "B1",
+                "cards": ["PK002"]
+            }),
+            json!({
+                "timestamp": "2026-08-10T23:00:00-07:00",
+                "pack": "B2",
+                "cards": ["PK003"]
+            }),
+        ];
+
+        let existing_day =
+            history_day_key(parse_pull_timestamp("2026-08-11T22:51:45-07:00").unwrap());
+        let exported_day =
+            history_day_key(parse_pull_timestamp("2026-08-10T23:00:00-07:00").unwrap());
+        assert_eq!(existing_day, exported_day);
+
+        let mut existing_cards = pull_history_card_counts(&doc);
+        let missing = missing_history_pulls(&exported_day, exported_pulls, &mut existing_cards);
+        assert!(missing.is_empty());
     }
 
     #[test]
