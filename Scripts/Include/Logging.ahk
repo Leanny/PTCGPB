@@ -172,6 +172,15 @@ SetTextAndResize(controlHwnd, newText) {
 }
 
 LogToFile(message, logFile := "") {
+    ; FileAppend cannot create its parent directory. Without this guard a fresh
+    ; install (or a deleted Logs folder) would leave the retry loop below
+    ; running forever.
+    if !InStr(FileExist(LogsDir), "D") {
+        FileCreateDir, %LogsDir%
+        if !InStr(FileExist(LogsDir), "D")
+            return false
+    }
+
     if (logFile = "") {
         logFile := LogsDir . "\Log_" . StrReplace(A_ScriptName, ".ahk") . ".txt"
     }
@@ -179,12 +188,15 @@ LogToFile(message, logFile := "") {
         logFile := LogsDir . "\" . logFile
     FormatTime, readableTime, %A_Now%, MMMM dd, yyyy HH:mm:ss
 
-    Loop, {
+    ; Keep the existing short retries for transient sharing violations, but do
+    ; not hang the bot indefinitely when the destination is not writable.
+    Loop, 100 {
         FileAppend, % "[" readableTime "] " message "`n", %logFile%
         if !ErrorLevel
-            break
+            return true
         Sleep, 10
     }
+    return false
 }
 
 LogLevelValue(level) {
