@@ -5487,6 +5487,14 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
 
         Delay(2)
 
+        ; special case: welcome back screen
+        if (FindOrLoseImage("Mission_WelcomeBackPreClaim", 0, 0, , true)) {
+            LogInfo(logContext . ": dismissing WelcomeBackPreClaim", "ADB.txt")
+            CreateStatusMessage("Welcome Back missions`nDismissing PreClaim...",,,, false)
+            adbClick_wbb(137, 389)
+            Delay(1)
+        }
+
         ; Check for Daily Missions on this page
         if (claimDaily && !dailyClaimed && FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)) {
             session.set("failSafe", A_TickCount)
