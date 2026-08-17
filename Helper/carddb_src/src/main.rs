@@ -1219,7 +1219,7 @@ fn pulls_from_fields(
     let cards: Vec<String> = fields[3]
         .split('|')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(str::to_owned)
         .collect();
 
@@ -4087,11 +4087,20 @@ fn card_ids_from_csv_fields(fields: &[String]) -> Vec<String> {
             cards
                 .split('|')
                 .map(str::trim)
-                .filter(|s| !s.is_empty())
+                .filter(|s| is_valid_card_id(s))
                 .map(str::to_owned)
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn is_valid_card_id(card_id: &str) -> bool {
+    let len = card_id.len();
+    len > 0
+        && len <= 64
+        && card_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 fn card_ids_from_history(text: &str) -> Vec<String> {
@@ -4099,7 +4108,7 @@ fn card_ids_from_history(text: &str) -> Vec<String> {
         .filter_map(|line| line.trim().trim_start_matches('\u{feff}').split_once('|'))
         .flat_map(|(_, cards)| cards.split(','))
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(str::to_owned)
         .collect()
 }
@@ -4125,7 +4134,7 @@ fn history_pulls_from_line(
     for card in cards_text
         .split(',')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
     {
         let pack = cardmap
             .get(card)
@@ -4218,7 +4227,7 @@ fn registered_cards_from_history_line(line: &str) -> Vec<String> {
     cards_text
         .split(',')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(str::to_owned)
         .collect()
 }
@@ -4370,7 +4379,7 @@ fn append_pull(
     let cards: Vec<Value> = cards_text
         .split('|')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(|s| json!(s))
         .collect();
 
@@ -4386,6 +4395,14 @@ fn append_pull(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn card_id_validation_rejects_mojibake_and_oversized_values() {
+        assert!(is_valid_card_id("TR_10_001330_00"));
+        assert!(is_valid_card_id("PK_20_014180_00"));
+        assert!(!is_valid_card_id("TR_10_0013ÃƒÂ±30_00"));
+        assert!(!is_valid_card_id(&"A".repeat(65)));
+    }
 
     #[test]
     fn balance_assigns_unique_names_without_overwriting_reserved_suffixes() {
