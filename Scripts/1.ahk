@@ -345,6 +345,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             FormatTime, formattedEndTime, %EndTime%, HH:mm:ss
             CreateStatusMessage("Waiting for daily server reset until " . formattedEndTime ,,,, false)
             session.set("dateChange", true)
+            writeLastActivityEpoch(session.get("scriptName"), 4000)
             Sleep, 5000
 
             StartCurrentTimeDiff := A_Now
@@ -4711,6 +4712,9 @@ PackOpening(tenPackOpening := false) {
 
     CheckPack()
     SetLastPackPulledNow()
+    ; A completed pack is forward progress even when the overall account task
+    ; runs longer than the monitor threshold.
+    writeLastActivityEpoch(session.get("scriptName"))
 
     if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
@@ -4917,6 +4921,9 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
 
     CheckPack()
     SetLastPackPulledNow()
+    ; A completed pack is forward progress even when the overall account task
+    ; runs longer than the monitor threshold.
+    writeLastActivityEpoch(session.get("scriptName"))
 
     if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
@@ -5175,6 +5182,8 @@ HandleSingleGiftPackOpening() {
         if(failSafeTime > 45)
             break
     }
+
+    writeLastActivityEpoch(session.get("scriptName"))
 }
 
 ; Wonder Pick reveals can show the first-time card-dex register tutorial.

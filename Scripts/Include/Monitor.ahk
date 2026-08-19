@@ -89,7 +89,8 @@ Loop {
             progressSource := ""
             isStuck := false
         }
-        ; Friend add/remove can outlive LastEndEpoch during 96P+ cleanup
+        ; Long-running work (for example pack opening, reset waits, and friend
+        ; add/remove flows) can outlive LastEndEpoch.
         if (LastActivityEpoch > 0 && LastActivityEpoch > LastEndEpoch) {
             secondsSinceLastProgress := nowEpoch - LastActivityEpoch
             progressSource := "LastActivityEpoch"
@@ -98,7 +99,7 @@ Loop {
         if(isStuck)
         {
             if (progressSource = "LastActivityEpoch")
-                msg := "Killing Instance " . instanceNum . "! Friend flow last updated " . secondsSinceLastProgress . " seconds ago"
+                msg := "Killing Instance " . instanceNum . "! Activity last updated " . secondsSinceLastProgress . " seconds ago"
             else
                 msg := "Killing Instance " . instanceNum . "! Last Run Completed " . secondsSinceLastProgress . " Seconds Ago"
             LogInfo(msg, "Monitor.txt")
