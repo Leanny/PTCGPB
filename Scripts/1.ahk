@@ -1441,10 +1441,10 @@ restartGameInstance(reason, RL := true) {
             launchInstance(session.get("scriptName"))
         }
 
-        ; Only restart MuMu when stuck - this is the nuclear option
+        ; For a detected stuck state, restart only the Pocket app through ADB.
+        ; The external Monitor handles full MuMu instance recovery if needed.
         clearMissionCache()
 
-        ; Kill the entire MuMu instance
         CreateStatusMessage("Restarting Pocket App...",,,, false)
         LogInfo("Restarting Pocket App " . session.get("scriptName") . " due to: " . reason)
         ;restartInstance()

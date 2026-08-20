@@ -108,31 +108,20 @@ Loop {
             coverHwnd := CaptureMuMuCoverWindow(instanceNum)
             StoreMuMuCoverWindow(instanceNum, coverHwnd)
 
-            killedAHK := killAHK(scriptName)
-            killedInstance := killInstance(instanceNum)
-            Sleep, 3000
-
-            cntAHK := checkAHK(scriptName)
-            pID := checkInstance(instanceNum)
-            if not pID && not cntAHK {
-                ; Change the last end date to now so that we don't keep trying to restart this beast
-                IniWrite, %nowEpoch%, %iniPath%, Metrics, LastEndEpoch
+            recovered := RecoverMonitoredInstance(instanceNum, scriptName)
+            if (recovered) {
+                ; Only reset the watchdog after the replacement MuMu window and
+                ; AHK process have both been observed. Issuing launch commands is
+                ; not sufficient evidence that recovery worked.
+                recoveryEpoch := A_NowUTC
+                EnvSub, recoveryEpoch, 1970, seconds
+                IniWrite, %recoveryEpoch%, %iniPath%, Metrics, LastEndEpoch
                 IniWrite, 0, %iniPath%, Metrics, LastActivityEpoch
-
-                launchInstance(instanceNum)
-
-                sleepTime := instanceLaunchDelay * 1000
-                Sleep, % sleepTime
                 launched := launched + 1
-
-                Sleep, %waitAfterBulkLaunch%
-
-                ;Command := "Scripts\" . scriptName
-                ;Run, %Command%
-                scriptPath := A_ScriptDir "\.." "\" scriptName
-                Run, "%A_AhkPath%" /restart "%scriptPath%"
                 LogInfo("Monitor restarted instance " . instanceNum . ". Reason: " . progressSource . " recorded "
                     . secondsSinceLastProgress . " seconds ago", "Log_" . instanceNum . ".txt")
+            } else {
+                LogError("Recovery " . instanceNum . ": FAILED; watchdog timestamp was not reset and recovery will be retried", "Monitor.txt")
             }
         }
     }
@@ -165,6 +154,231 @@ Loop {
     Sleep, 30000
 }
 
+RecoverMonitoredInstance(instanceNum, scriptName) {
+    global instanceLaunchDelay, waitAfterBulkLaunch, mumuFolder
+
+    vmFolderName := MonitorGetMuMuVmFolderName(instanceNum)
+    windowPid := checkInstance(instanceNum)
+    backendPids := MonitorGetMuMuBackendPids(vmFolderName)
+    LogInfo("Recovery " . instanceNum . ": start; window PID=" . MonitorValueOrNone(windowPid)
+        . ", backend PIDs=" . MonitorJoinPids(backendPids)
+        . ", VM folder=" . MonitorValueOrNone(vmFolderName), "Monitor.txt")
+
+    killedAHK := killAHK(scriptName)
+    LogInfo("Recovery " . instanceNum . ": requested termination of " . killedAHK . " AHK process(es)", "Monitor.txt")
+    if (!MonitorWaitForAHKExit(scriptName, 10000)) {
+        LogError("Recovery " . instanceNum . ": AHK process still present after 10 seconds", "Monitor.txt")
+        return false
+    }
+
+    managerPid := MonitorRequestMuMuShutdown(instanceNum)
+    if (managerPid)
+        LogInfo("Recovery " . instanceNum . ": MuMu Manager shutdown requested; command PID=" . managerPid, "Monitor.txt")
+    else
+        LogWarn("Recovery " . instanceNum . ": MuMu Manager shutdown could not be started; using bounded fallback", "Monitor.txt")
+
+    stoppedGracefully := MonitorWaitForMuMuExit(instanceNum, vmFolderName, 15000)
+    MonitorFinishManagerCommand(managerPid, instanceNum)
+    if (!stoppedGracefully) {
+        LogWarn("Recovery " . instanceNum . ": graceful shutdown timed out; terminating the scoped window/backend processes", "Monitor.txt")
+        killedWindow := killInstance(instanceNum)
+        killedBackends := MonitorKillMuMuBackendPids(vmFolderName)
+        LogInfo("Recovery " . instanceNum . ": fallback requested window kills=" . killedWindow
+            . ", backend kills=" . killedBackends, "Monitor.txt")
+
+        if (!MonitorWaitForMuMuExit(instanceNum, vmFolderName, 10000)) {
+            remainingWindowPid := checkInstance(instanceNum)
+            remainingBackends := MonitorGetMuMuBackendPids(vmFolderName)
+            LogError("Recovery " . instanceNum . ": MuMu did not stop; window PID="
+                . MonitorValueOrNone(remainingWindowPid) . ", backend PIDs=" . MonitorJoinPids(remainingBackends), "Monitor.txt")
+            return false
+        }
+    }
+
+    LogInfo("Recovery " . instanceNum . ": MuMu stopped; launching replacement instance", "Monitor.txt")
+    launchStartTick := A_TickCount
+    launchInstance(instanceNum)
+
+    configuredLaunchDelayMs := (instanceLaunchDelay * 1000) + waitAfterBulkLaunch
+    launchTimeoutMs := configuredLaunchDelayMs
+    if (launchTimeoutMs < 30000)
+        launchTimeoutMs := 30000
+    if (!MonitorWaitForMuMuStart(instanceNum, launchTimeoutMs)) {
+        LogError("Recovery " . instanceNum . ": replacement MuMu window did not become responsive within "
+            . Round(launchTimeoutMs / 1000) . " seconds", "Monitor.txt")
+        return false
+    }
+
+    remainingLaunchDelayMs := configuredLaunchDelayMs - (A_TickCount - launchStartTick)
+    if (remainingLaunchDelayMs > 0) {
+        LogInfo("Recovery " . instanceNum . ": MuMu window is responsive; waiting "
+            . Round(remainingLaunchDelayMs / 1000) . " more seconds before starting AHK", "Monitor.txt")
+        Sleep, %remainingLaunchDelayMs%
+    }
+    if (!MonitorWaitForMuMuStart(instanceNum, 2000)) {
+        LogError("Recovery " . instanceNum . ": MuMu became unresponsive during its startup delay", "Monitor.txt")
+        return false
+    }
+
+    scriptPath := A_ScriptDir "\.." "\" scriptName
+    Run, "%A_AhkPath%" /restart "%scriptPath%",, UseErrorLevel, newAhkPid
+    if (ErrorLevel) {
+        LogError("Recovery " . instanceNum . ": failed to launch " . scriptName . "; ErrorLevel=" . ErrorLevel, "Monitor.txt")
+        return false
+    }
+
+    if (!MonitorWaitForAHKStart(scriptName, 10000)) {
+        LogError("Recovery " . instanceNum . ": replacement AHK was not observed; launch PID=" . newAhkPid, "Monitor.txt")
+        return false
+    }
+
+    LogInfo("Recovery " . instanceNum . ": SUCCESS; MuMu window PID=" . checkInstance(instanceNum)
+        . ", AHK launch PID=" . newAhkPid, "Monitor.txt")
+    return true
+}
+
+MonitorRequestMuMuShutdown(instanceNum) {
+    global mumuFolder
+
+    mumuNum := getMumuInstanceNum(instanceNum, mumuFolder)
+    if (mumuNum = "")
+        return 0
+
+    managerPath := mumuFolder . "\shell\MuMuManager.exe"
+    if (!FileExist(managerPath))
+        managerPath := mumuFolder . "\nx_main\MuMuManager.exe"
+    if (!FileExist(managerPath))
+        return 0
+
+    command := """" . managerPath . """ control shutdown -v " . mumuNum
+    Run, %command%,, Hide UseErrorLevel, managerPid
+    if (ErrorLevel)
+        return 0
+    return managerPid
+}
+
+MonitorFinishManagerCommand(managerPid, instanceNum) {
+    if (!managerPid)
+        return
+
+    Process, Exist, %managerPid%
+    if (ErrorLevel != managerPid)
+        return
+
+    Process, Close, %managerPid%
+    Process, WaitClose, %managerPid%, 2
+    if (ErrorLevel)
+        LogWarn("Recovery " . instanceNum . ": timed-out MuMu Manager command PID " . managerPid . " could not be terminated", "Monitor.txt")
+    else
+        LogInfo("Recovery " . instanceNum . ": terminated timed-out MuMu Manager command PID " . managerPid, "Monitor.txt")
+}
+
+MonitorGetMuMuVmFolderName(instanceNum) {
+    global mumuFolder
+
+    Loop, Files, %mumuFolder%\vms\*, D
+    {
+        extraConfigFile := A_LoopFileFullPath . "\configs\extra_config.json"
+        if (!FileExist(extraConfigFile))
+            continue
+        FileRead, extraConfigContent, %extraConfigFile%
+        if (ErrorLevel)
+            continue
+        RegExMatch(extraConfigContent, """playerName""\s*:\s*""(.*?)""", playerName)
+        if (playerName1 = instanceNum)
+            return A_LoopFileName
+    }
+    return ""
+}
+
+MonitorGetMuMuBackendPids(vmFolderName) {
+    pids := []
+    if (vmFolderName = "")
+        return pids
+
+    try {
+        for process in ComObjGet("winmgmts:").ExecQuery("Select ProcessId, Name, CommandLine from Win32_Process Where Name like 'MuMu%'") {
+            if (process.CommandLine != "" && InStr(process.CommandLine, vmFolderName))
+                pids.Push(process.ProcessId + 0)
+        }
+    } catch e {
+        LogError("Monitor backend lookup failed for " . vmFolderName . ": " . e.Message, "Monitor.txt")
+    }
+    return pids
+}
+
+MonitorKillMuMuBackendPids(vmFolderName) {
+    killed := 0
+    pids := MonitorGetMuMuBackendPids(vmFolderName)
+    for _, pid in pids {
+        Process, Close, %pid%
+        Process, WaitClose, %pid%, 2
+        if (!ErrorLevel)
+            killed++
+        else
+            LogWarn("Monitor could not terminate scoped MuMu backend PID " . pid . " for " . vmFolderName, "Monitor.txt")
+    }
+    return killed
+}
+
+MonitorWaitForMuMuExit(instanceNum, vmFolderName, timeoutMs) {
+    startTick := A_TickCount
+    Loop {
+        backendPids := MonitorGetMuMuBackendPids(vmFolderName)
+        if (!checkInstance(instanceNum) && !backendPids.MaxIndex())
+            return true
+        if ((A_TickCount - startTick) >= timeoutMs)
+            return false
+        Sleep, 500
+    }
+}
+
+MonitorWaitForMuMuStart(instanceNum, timeoutMs) {
+    startTick := A_TickCount
+    Loop {
+        hwnd := WinExist(instanceNum . " ahk_class Qt5156QWindowIcon")
+        if (hwnd && !DllCall("user32\IsHungAppWindow", "Ptr", hwnd))
+            return true
+        if ((A_TickCount - startTick) >= timeoutMs)
+            return false
+        Sleep, 500
+    }
+}
+
+MonitorWaitForAHKExit(scriptName, timeoutMs) {
+    startTick := A_TickCount
+    Loop {
+        if (!checkAHK(scriptName))
+            return true
+        if ((A_TickCount - startTick) >= timeoutMs)
+            return false
+        Sleep, 250
+    }
+}
+
+MonitorWaitForAHKStart(scriptName, timeoutMs) {
+    startTick := A_TickCount
+    Loop {
+        if (checkAHK(scriptName))
+            return true
+        if ((A_TickCount - startTick) >= timeoutMs)
+            return false
+        Sleep, 250
+    }
+}
+
+MonitorJoinPids(pids) {
+    if (!IsObject(pids) || !pids.MaxIndex())
+        return "none"
+    result := ""
+    for _, pid in pids
+        result .= (result = "" ? "" : ",") . pid
+    return result
+}
+
+MonitorValueOrNone(value) {
+    return (value = "") ? "none" : value
+}
 ReduceVMMemory(){
     TargetProcess := "MuMuVMMHeadless.exe"
     CleanedCount := 0
