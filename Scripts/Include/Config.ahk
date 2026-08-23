@@ -86,7 +86,13 @@
         , "backupShowcaseIds": 1
         , "backupManualVipIds": 1
         , "backupFriendsGPTested": 1
-        , "backupSpecialEvents": 1}
+        , "backupSpecialEvents": 1
+        , "memoryCapEnabled": 0
+        , "memoryCapPerProcessMB": 0
+        , "memoryCapTotalMB": 0
+        , "memoryCapMarginMB": 0
+        , "cpuAffinityEnabled": 0
+        , "cpuAffinityCoresPerInstance": 0}
 
     generalSettings := {}
     packSettings := {}

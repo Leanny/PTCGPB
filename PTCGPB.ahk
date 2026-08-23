@@ -1530,7 +1530,7 @@ return
 ShowToolsAndSystemSettings:
     HelpTT_DismissForClick()
     Gui, Submit, NoHide
-    PTCGPB_PopupRightOfCtl(A_GuiControl, 410, 12, popupX, popupY)
+    PTCGPB_PopupRightOfCtl(A_GuiControl, 422, 12, popupX, popupY)
 
     Gui, ToolsAndSystemSelect:Destroy
     Gui, ToolsAndSystemSelect:New, +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Tools & System Settings
@@ -1542,53 +1542,101 @@ ShowToolsAndSystemSettings:
     if (selectedDeleteMethod != "")
         currentDeleteMethod := selectedDeleteMethod
 
+    ; Layout grid: two columns of GroupBoxes with shared metrics
+    rowStep := 24
+    boxGap := 12
     col1X := 15
-    col1W := 190
+    col1W := 200
+    inner1X := col1X + 8
+    inner1W := col1W - 16
+    col2X := 225
+    col2W := 182
+    inner2X := col2X + 8
+    inner2W := col2W - 16
+    smallEditX := col2X + col2W - 43
+
+    ; ===== Left column =====
+
+    ; --- Bot Options ---
     yPos := 15
-    leftStep := 24
-
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("showcaseEnabled") ? "Checked" : "") " vui_showcaseEnabled_Popup x" . col1X . " y" . yPos . " cWhite", 5x Showcase Likes
-    yPos += leftStep
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimDailyMission") ? "Checked" : "") " vui_claimDailyMission_Popup x" . col1X . " y" . yPos . " cWhite", Claim Daily 4 Hourglasses
-    yPos += leftStep
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("receiveGift") ? "Checked" : "") " vui_receiveGift_Popup x" . col1X . " y" . yPos . " cWhite", Receive Gift
-    yPos += leftStep
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("slowMotion") ? "Checked" : "") " vui_slowMotion_Popup x" . col1X . " y" . yPos . " cWhite", No Speedmod Menu Clicks
-    yPos += leftStep
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("useSoloIdsFile") ? "Checked" : "") " vui_UseSoloIdsFile_Popup x" . col1X . " y" . yPos . " cWhite", Use ids.txt in Solo Reroll
-    yPos += leftStep
+    botOptsRows := (currentDeleteMethod != "Create Bots (13P)") ? 7 : 6
+    botOptsH := 22 + botOptsRows * rowStep + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col1X% y%yPos% w%col1W% h%botOptsH% cWhite, Bot Options
+    y := yPos + 22
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("showcaseEnabled") ? "Checked" : "") " vui_showcaseEnabled_Popup x" . inner1X . " y" . y . " cWhite", 5x Showcase Likes
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimDailyMission") ? "Checked" : "") " vui_claimDailyMission_Popup x" . inner1X . " y" . y . " cWhite", Claim Daily 4 Hourglasses
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("receiveGift") ? "Checked" : "") " vui_receiveGift_Popup x" . inner1X . " y" . y . " cWhite", Receive Gift
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("slowMotion") ? "Checked" : "") " vui_slowMotion_Popup x" . inner1X . " y" . y . " cWhite", No Speedmod Menu Clicks
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("useSoloIdsFile") ? "Checked" : "") " vui_UseSoloIdsFile_Popup x" . inner1X . " y" . y . " cWhite", Use ids.txt in Solo Reroll
+    y += rowStep
     if (currentDeleteMethod != "Create Bots (13P)") {
-        Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveAccountFriendInfo") ? "Checked" : "") " vui_saveAccountFriendInfo_Popup x" . col1X . " y" . yPos . " cWhite", Save Name + Friend Code
-        yPos += leftStep
+        Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveAccountFriendInfo") ? "Checked" : "") " vui_saveAccountFriendInfo_Popup x" . inner1X . " y" . y . " cWhite", Save Name + Friend Code
+        y += rowStep
     }
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . col1X . " y" . yPos . " w190 cWhite", In-Depth History import
-    yPos += leftStep
-    yPos += 31
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . inner1X . " y" . y . " cWhite", In-Depth History import
+    yPos += botOptsH + boxGap
 
-    sectionColor := "cWhite"
-    eventMissionBoxH := 164
-    eventMissionBoxBottom := yPos + eventMissionBoxH
-    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col1X% y%yPos% w%col1W% h%eventMissionBoxH% %sectionColor%, Special Event Missions
-    yPos += 20
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gOpenSpecialEventExtractor BackgroundTrans, Special Event Extractor
-    yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearSpecialMissionHistory BackgroundTrans, Reset Claim Status
-    yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
-    yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Button, x25 y%yPos% w170 h20 gClearPullHistory BackgroundTrans, Clear Pull History
-    yPos += 24
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialMissions") ? "Checked" : "") " vui_claimSpecialMissions_Popup x25 y" . yPos . " cWhite", Claim Rewards
-    yPos += 22
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("wonderpickForEventMissions") ? "Checked" : "") " vui_wonderpickForEventMissions_Popup x40 y" . yPos . " cWhite", Wonderpick
+    ; --- Special Event Missions ---
+    eventBoxH := 22 + 6 * rowStep + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col1X% y%yPos% w%col1W% h%eventBoxH% cWhite, Special Event Missions
+    y := yPos + 22
+    Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gOpenSpecialEventExtractor BackgroundTrans, Special Event Extractor
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gClearSpecialMissionHistory BackgroundTrans, Reset Claim Status
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gClearReceiveGiftHistory BackgroundTrans, Reset Receive Gift Status
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gClearPullHistory BackgroundTrans, Clear Pull History
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialMissions") ? "Checked" : "") " vui_claimSpecialMissions_Popup x" . inner1X . " y" . y . " cWhite", Claim Rewards
+    y += rowStep
+    wpIndentX := inner1X + 15
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("wonderpickForEventMissions") ? "Checked" : "") " vui_wonderpickForEventMissions_Popup x" . wpIndentX . " y" . y . " cWhite", Wonderpick
+    yPos += eventBoxH + boxGap
 
-    col2X := 220
-    col2W := 190
+    ; --- Maintenance ---
+    maintBoxH := 22 + 26 + 3 * rowStep + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col1X% y%yPos% w%col1W% h%maintBoxH% cWhite, Maintenance
+    y := yPos + 22
+    Gui, ToolsAndSystemSelect:Add, Text, x%inner1X% y%y% cWhite, Log Level
+    logLevel := botConfig.get("logLevel")
+    StringLower, logLevel, logLevel
+    logLevelChoose := 3
+    if (logLevel = "error")
+        logLevelChoose := 1
+    else if (logLevel = "warn" || logLevel = "warning")
+        logLevelChoose := 2
+    else if (logLevel = "debug")
+        logLevelChoose := 4
+    else if (logLevel = "trace")
+        logLevelChoose := 5
+    logLevelX := col1X + col1W - 93
+    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_logLevel_Popup choose%logLevelChoose% x%logLevelX% y%y% w85 Background2A2A2A cWhite, error|warn|info|debug|trace
+    y += 26
+    Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gRunXMLDuplicateTool BackgroundTrans, XML Duplicate Remover
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gRunXMLManagerTool BackgroundTrans, XML Account Manager
+    y += rowStep
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner1X% y%y% w%inner1W% h20 gShowVersionManager BackgroundTrans, Version Manager
+    Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
+    leftBottom := yPos + maintBoxH
+
+    ; ===== Right column =====
+
+    ; --- MuMu & Display ---
     yPos2 := 15
-    sectionColor := "cWhite"
-
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_Monitor"]
-    yPos2 += 20
+    mumuBoxH := 22 + 18 + 28 + 26 + 18 + 28 + 26 + 26 + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col2X% y%yPos2% w%col2W% h%mumuBoxH% cWhite, MuMu && Display
+    y2 := yPos2 + 22
+    Gui, ToolsAndSystemSelect:Add, Text, x%inner2X% y%y2% cWhite, % dict["Txt_Monitor"]
+    y2 += 18
     SysGet, MonitorCount, MonitorCount
     MonitorOptions := ""
     Loop, %MonitorCount% {
@@ -1597,16 +1645,13 @@ ShowToolsAndSystemSettings:
         MonitorOptions .= (A_Index > 1 ? "|" : "") "" A_Index ": (" MonitorRight - MonitorLeft "x" MonitorBottom - MonitorTop ")"
     }
     SelectedMonitorIndex := RegExReplace(botConfig.get("SelectedMonitorIndex"), ":.*$")
-    Gui, ToolsAndSystemSelect:Add, DropDownList, x%col2X% y%yPos2% w170 vui_SelectedMonitorIndex_Popup Choose%SelectedMonitorIndex% Background2A2A2A cWhite, %MonitorOptions%
-    yPos2 += 30
-
-    rowGapY := yPos2 + 2
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%rowGapY% %sectionColor%, % dict["Txt_RowGap"]
-    Gui, ToolsAndSystemSelect:Add, Edit, vui_RowGap_Popup w25 x300 y%rowGapY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("RowGap")
-    yPos2 += 30
-
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_FolderPath"]
-    yPos2 += 20
+    Gui, ToolsAndSystemSelect:Add, DropDownList, x%inner2X% y%y2% w%inner2W% vui_SelectedMonitorIndex_Popup Choose%SelectedMonitorIndex% Background2A2A2A cWhite, %MonitorOptions%
+    y2 += 28
+    Gui, ToolsAndSystemSelect:Add, Text, x%inner2X% y%y2% cWhite, % dict["Txt_RowGap"]
+    Gui, ToolsAndSystemSelect:Add, Edit, vui_RowGap_Popup w35 x%smallEditX% y%y2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("RowGap")
+    y2 += 26
+    Gui, ToolsAndSystemSelect:Add, Text, x%inner2X% y%y2% cWhite, % dict["Txt_FolderPath"]
+    y2 += 18
     mumuFolderPath := botConfig.get("folderPath")
     if(mumuFolderPath = "" || mumuFolderPath = "C:\Program Files\Netease"){
         detectedMuMuFolder := getMuMuFolderInConfig()
@@ -1615,11 +1660,12 @@ ShowToolsAndSystemSettings:
             botConfig.set("folderPath", mumuFolderPath, "ToolsAndSystem")
         }
     }
-    Gui, ToolsAndSystemSelect:Add, Edit, vui_folderPath_Popup w170 x%col2X% y%yPos2% h20 -E0x200 Background2A2A2A cWhite, % mumuFolderPath
-    yPos2 += 30
-
-    ocrTextY := yPos2 + 2
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%ocrTextY% %sectionColor%, OCR:
+    Gui, ToolsAndSystemSelect:Add, Edit, vui_folderPath_Popup w%inner2W% x%inner2X% y%y2% h20 -E0x200 Background2A2A2A cWhite, % mumuFolderPath
+    y2 += 28
+    Gui, ToolsAndSystemSelect:Add, Text, x%inner2X% y%y2% cWhite, % dict["Txt_InstanceLaunchDelay"]
+    Gui, ToolsAndSystemSelect:Add, Edit, vui_instanceLaunchDelay_Popup w35 x%smallEditX% y%y2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("instanceLaunchDelay")
+    y2 += 26
+    Gui, ToolsAndSystemSelect:Add, Text, x%inner2X% y%y2% cWhite, OCR:
     ocrLanguageList := "en|zh|es|de|fr|ja|ru|pt|ko|it|tr|pl|nl|sv|ar|uk|id|vi|th|he|cs|no|da|fi|hu|el|zh-TW"
     defaultOcrLang := 1
     if (botConfig.get("ocrLanguage") != "") {
@@ -1633,10 +1679,10 @@ ShowToolsAndSystemSettings:
             }
         }
     }
-    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_ocrLanguage_Popup choose%defaultOcrLang% x255 y%yPos2% w40 Background2A2A2A cWhite, %ocrLanguageList%
-
-    clientTextY := yPos2 + 2
-    Gui, ToolsAndSystemSelect:Add, Text, x305 y%clientTextY% %sectionColor%, Client:
+    ocrDdlX := inner2X + 33
+    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_ocrLanguage_Popup choose%defaultOcrLang% x%ocrDdlX% y%y2% w44 Background2A2A2A cWhite, %ocrLanguageList%
+    clientTextX := inner2X + 83
+    Gui, ToolsAndSystemSelect:Add, Text, x%clientTextX% y%y2% cWhite, Client:
     clientLanguageList := "en|es|fr|de|it|pt|jp|ko|cn"
     defaultClientLang := 1
     if (botConfig.get("clientLanguage") != "") {
@@ -1650,64 +1696,56 @@ ShowToolsAndSystemSettings:
             }
         }
     }
-    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_clientLanguage_Popup choose%defaultClientLang% x345 y%yPos2% w40 Background2A2A2A cWhite, %clientLanguageList%
-    yPos2 += 30
+    clientDdlX := inner2X + 126
+    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_clientLanguage_Popup choose%defaultClientLang% x%clientDdlX% y%y2% w44 Background2A2A2A cWhite, %clientLanguageList%
+    yPos2 += mumuBoxH + boxGap
 
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_InstanceLaunchDelay"]
-    Gui, ToolsAndSystemSelect:Add, Edit, vui_instanceLaunchDelay_Popup w30 x355 y%yPos2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("instanceLaunchDelay")
-    yPos2 += 30
-
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("autoLaunchMonitor") ? "Checked" : "") " vui_autoLaunchMonitor_Popup x" . col2X . " y" . yPos2 . " " . sectionColor, % dict["Txt_autoLaunchMonitor"]
-    yPos2 += 26
+    ; --- Startup ---
+    startupRows := (currentDeleteMethod != "Create Bots (13P)") ? 2 : 1
+    startupBoxH := 22 + startupRows * rowStep + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col2X% y%yPos2% w%col2W% h%startupBoxH% cWhite, Startup
+    y2 := yPos2 + 22
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("autoLaunchMonitor") ? "Checked" : "") " vui_autoLaunchMonitor_Popup x" . inner2X . " y" . y2 . " cWhite", % dict["Txt_autoLaunchMonitor"]
+    y2 += rowStep
     if (currentDeleteMethod != "Create Bots (13P)") {
-        Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("startCockpitWithBot") ? "Checked" : "") " vui_startCockpitWithBot_Popup x" . col2X . " y" . yPos2 . " " . sectionColor, Auto-open Cockpit
-        yPos2 += 26
+        Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("startCockpitWithBot") ? "Checked" : "") " vui_startCockpitWithBot_Popup x" . inner2X . " y" . y2 . " cWhite", Auto-open Cockpit
+        y2 += rowStep
     }
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Backup to Git
-    yPos2 += 26
-    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToDisk") ? "Checked" : "") " vui_saveToDisk_Popup gsaveToDisk_Click x" . col2X . " y" . yPos2 . " " . sectionColor, Backup to Disk
-    yPos2 += 26
+    yPos2 += startupBoxH + boxGap
+
+    ; --- Backup ---
+    backupBoxH := 22 + 2 * rowStep + rowStep + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col2X% y%yPos2% w%col2W% h%backupBoxH% cWhite, Backup
+    y2 := yPos2 + 22
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToGit") ? "Checked" : "") " vui_saveToGit_Popup gsaveToGit_Click x" . inner2X . " y" . y2 . " cWhite", Backup to Git
+    y2 += rowStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("saveToDisk") ? "Checked" : "") " vui_saveToDisk_Popup gsaveToDisk_Click x" . inner2X . " y" . y2 . " cWhite", Backup to Disk
+    y2 += rowStep
     Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
-    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%yPos2% w170 h20 gShowBackupSettings BackgroundTrans, Backup settings...
-    yPos2 += 30
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner2X% y%y2% w%inner2W% h20 gShowBackupSettings BackgroundTrans, Backup settings...
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
+    yPos2 += backupBoxH + boxGap
 
-    logLevel := botConfig.get("logLevel")
-    StringLower, logLevel, logLevel
-    logLevelChoose := 3
-    if (logLevel = "error")
-        logLevelChoose := 1
-    else if (logLevel = "warn" || logLevel = "warning")
-        logLevelChoose := 2
-    else if (logLevel = "debug")
-        logLevelChoose := 4
-    else if (logLevel = "trace")
-        logLevelChoose := 5
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, Log Level
-    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_logLevel_Popup choose%logLevelChoose% x300 y%yPos2% w85 Background2A2A2A cWhite, error|warn|info|debug|trace
-    yPos2 += 40
-
+    ; --- Performance ---
+    perfBoxH := 22 + 2 * rowStep + rowStep + 10
+    Gui, ToolsAndSystemSelect:Add, GroupBox, x%col2X% y%yPos2% w%col2W% h%perfBoxH% cWhite, Performance
+    y2 := yPos2 + 22
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("memoryCapEnabled") ? "Checked" : "") " vui_memoryCapEnabled_Popup x" . inner2X . " y" . y2 . " cWhite", Memory Cap (auto)
+    y2 += rowStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("cpuAffinityEnabled") ? "Checked" : "") " vui_cpuAffinityEnabled_Popup x" . inner2X . " y" . y2 . " cWhite", CPU Affinity (auto)
+    y2 += rowStep
     Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
-    xmlDupY := yPos2 - 5
-    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlDupY% w170 h20 gRunXMLDuplicateTool BackgroundTrans, XML Duplicate Remover
-    yPos2 += 25
-    xmlMgrY := yPos2 - 5
-    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%xmlMgrY% w170 h20 gRunXMLManagerTool BackgroundTrans, XML Account Manager
-    yPos2 += 30
-
-    versionMgrY := yPos2 - 5
-    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%versionMgrY% w170 h20 gShowVersionManager BackgroundTrans, Version Manager
-    yPos2 += 30
-
+    Gui, ToolsAndSystemSelect:Add, Button, x%inner2X% y%y2% w%inner2W% h20 gShowPerformanceSettings BackgroundTrans, Performance settings...
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
+    rightBottom := yPos2 + perfBoxH
 
-    finalY := (yPos2 > eventMissionBoxBottom ? yPos2 : eventMissionBoxBottom)
+    finalY := (leftBottom > rightBottom ? leftBottom : rightBottom)
     buttonY := finalY + 15
-    Gui, ToolsAndSystemSelect:Add, Button, x130 y%buttonY% w70 h30 gApplyToolsAndSystemSettings, Apply
-    Gui, ToolsAndSystemSelect:Add, Button, x210 y%buttonY% w70 h30 gCancelToolsAndSystemSettings, Cancel
+    Gui, ToolsAndSystemSelect:Add, Button, x136 y%buttonY% w70 h30 gApplyToolsAndSystemSettings, Apply
+    Gui, ToolsAndSystemSelect:Add, Button, x216 y%buttonY% w70 h30 gCancelToolsAndSystemSettings, Cancel
     finalY := buttonY + 45
 
-    Gui, ToolsAndSystemSelect:Show, x%popupX% y%popupY% w410 h%finalY%
+    Gui, ToolsAndSystemSelect:Show, x%popupX% y%popupY% w422 h%finalY%
 return
 
 ApplyToolsAndSystemSettings:
@@ -1747,6 +1785,8 @@ saveToolsAndSystemSettings:
         botConfig.set("startCockpitWithBot", ui_startCockpitWithBot_Popup, "ToolsAndSystem")
     botConfig.set("saveToGit", ui_saveToGit_Popup, "ToolsAndSystem")
     botConfig.set("saveToDisk", ui_saveToDisk_Popup, "ToolsAndSystem")
+    botConfig.set("memoryCapEnabled", ui_memoryCapEnabled_Popup, "ToolsAndSystem")
+    botConfig.set("cpuAffinityEnabled", ui_cpuAffinityEnabled_Popup, "ToolsAndSystem")
     botConfig.set("receiveGift", ui_receiveGift_Popup, "ToolsAndSystem")
 
     if(botConfig.get("SelectedMonitorIndex") = "")
@@ -1795,6 +1835,74 @@ saveToDisk_Click:
             MsgBox, 48, Backup Error, Select at least one backup category in Backup settings before enabling Backup to Disk.
         }
     }
+return
+
+ShowPerformanceSettings:
+    Gui, PerformanceSettings:Destroy
+    Gui, PerformanceSettings:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +LastFound, Performance Settings
+    Gui, PerformanceSettings:Color, 1E1E1E, 333333
+    Gui, PerformanceSettings:Font, s10 cWhite, Segoe UI
+
+    perfBoxX := 15
+    perfBoxW := 340
+    perfLblX := perfBoxX + 10
+    perfEditX := perfBoxX + perfBoxW - 70
+    perfRowStep := 28
+
+    ; --- Memory Cap ---
+    y := 15
+    memBoxH := 22 + 3 * perfRowStep + 10
+    Gui, PerformanceSettings:Add, GroupBox, x%perfBoxX% y%y% w%perfBoxW% h%memBoxH% cWhite, Memory Cap
+    ry := y + 22
+    Gui, PerformanceSettings:Add, Text, x%perfLblX% y%ry% cWhite, Reserved for Windows (MB)
+    Gui, PerformanceSettings:Add, Edit, vui_perfMarginMB w60 x%perfEditX% y%ry% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("memoryCapMarginMB")
+    ry += perfRowStep
+    Gui, PerformanceSettings:Add, Text, x%perfLblX% y%ry% cWhite, Total cap for MuMu (MB)
+    Gui, PerformanceSettings:Add, Edit, vui_perfTotalMB w60 x%perfEditX% y%ry% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("memoryCapTotalMB")
+    ry += perfRowStep
+    Gui, PerformanceSettings:Add, Text, x%perfLblX% y%ry% cWhite, Cap per instance (MB)
+    Gui, PerformanceSettings:Add, Edit, vui_perfPerProcessMB w60 x%perfEditX% y%ry% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("memoryCapPerProcessMB")
+    y += memBoxH + 12
+
+    ; --- CPU Affinity ---
+    cpuBoxH := 22 + perfRowStep + 10
+    Gui, PerformanceSettings:Add, GroupBox, x%perfBoxX% y%y% w%perfBoxW% h%cpuBoxH% cWhite, CPU Affinity
+    ry := y + 22
+    Gui, PerformanceSettings:Add, Text, x%perfLblX% y%ry% cWhite, Cores per instance
+    Gui, PerformanceSettings:Add, Edit, vui_perfCoresPerInstance w60 x%perfEditX% y%ry% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("cpuAffinityCoresPerInstance")
+    y += cpuBoxH + 12
+
+    Gui, PerformanceSettings:Font, s9 c888888, Segoe UI
+    Gui, PerformanceSettings:Add, Text, x%perfBoxX% y%y% w%perfBoxW%, Leave any field at 0 for automatic calculation based on your hardware and instance count. Hover a field for details.
+    Gui, PerformanceSettings:Font, s10 cWhite, Segoe UI
+    y += 42
+
+    Gui, PerformanceSettings:Add, Button, x105 y%y% w70 h30 gApplyPerformanceSettings, Apply
+    Gui, PerformanceSettings:Add, Button, x195 y%y% w70 h30 gCancelPerformanceSettings, Cancel
+    y += 45
+
+    WinGetPos, toolsX, toolsY, toolsW, toolsH, A
+    if (toolsX = "") {
+        Gui, PerformanceSettings:Show, w370 h%y%
+    } else {
+        bx := toolsX + 30
+        by := toolsY + 30
+        Gui, PerformanceSettings:Show, x%bx% y%by% w370 h%y%
+    }
+return
+
+ApplyPerformanceSettings:
+    Gui, PerformanceSettings:Submit, NoHide
+    botConfig.set("memoryCapMarginMB", ui_perfMarginMB, "ToolsAndSystem")
+    botConfig.set("memoryCapTotalMB", ui_perfTotalMB, "ToolsAndSystem")
+    botConfig.set("memoryCapPerProcessMB", ui_perfPerProcessMB, "ToolsAndSystem")
+    botConfig.set("cpuAffinityCoresPerInstance", ui_perfCoresPerInstance, "ToolsAndSystem")
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+    Gui, PerformanceSettings:Destroy
+return
+
+CancelPerformanceSettings:
+    Gui, PerformanceSettings:Destroy
 return
 
 ShowBackupSettings:
@@ -2867,12 +2975,19 @@ HelpTT_Init() {
     HelpTT_Add("ui_backupIntervalMinutes", "backupIntervalMinutes", "Shared interval in minutes for Backup to Git and Backup to Disk. Minimum 5 minutes.")
     HelpTT_Add("ui_diskBackupFolder", "diskBackupFolder", "Destination folder for on-disk backups. Relative paths (Accounts, SpecialEvents, etc.) are preserved under this folder.")
     HelpTT_Add("ui_logLevel_Popup", "logLevel", "Verbosity of the log files: error < warn < info < debug < trace.`nUse 'info' normally; 'debug'/'trace' only when investigating problems.")
+    HelpTT_Add("ui_memoryCapEnabled_Popup", "memoryCapEnabled", "When enabled, the Monitor caps the RAM the MuMu instances can use (kernel Job Object).`nIf an instance exceeds its cap it crashes alone instead of freezing the whole PC.`nLimits are auto-sized from your RAM and instance count; fine-tune them in Performance settings.")
+    HelpTT_Add("ui_cpuAffinityEnabled_Popup", "cpuAffinityEnabled", "When enabled, the Monitor pins each MuMu instance to its own set of CPU cores,`nkeeping some cores free for Windows and reducing stutter from instances competing for the same cores.`nCore count is auto-sized; fine-tune it in Performance settings.")
+    HelpTT_Add("ui_perfMarginMB", "memoryCapMarginMB", "RAM reserved for Windows and other apps, excluded from the MuMu total cap.`n0 = auto: 12`% of physical RAM, minimum 2048 MB.")
+    HelpTT_Add("ui_perfTotalMB", "memoryCapTotalMB", "Maximum RAM all MuMu instances can use combined.`n0 = auto: physical RAM minus the reserved margin.")
+    HelpTT_Add("ui_perfPerProcessMB", "memoryCapPerProcessMB", "Maximum RAM a single MuMu instance can use.`nWhen an instance exceeds it, that instance crashes; the PC stays responsive.`n0 = auto: total cap divided by instance count, minimum 2048 MB.")
+    HelpTT_Add("ui_perfCoresPerInstance", "cpuAffinityCoresPerInstance", "Number of CPU cores assigned to each MuMu instance.`n0 = auto: available cores (1/8 reserved for Windows) divided by instance count.")
 
     ; --- Popup: Tools & System buttons (no v-variable, keyed by their text)
     HelpTT_Add("Special Event Extractor", "specialEventExtractor", "Opens a tool to capture a special event's missions from the game screen`nand save them as a .sevt file the bot uses to claim that event's rewards.")
     HelpTT_Add("Reset Claim Status", "resetClaimStatus", "Resets the special-mission claim history in account metadata,`nso the bot claims special missions again on every account.")
     HelpTT_Add("Reset Receive Gift Status", "resetReceiveGiftStatus", "Resets the Receive Gift history in account metadata,`nso the bot opens gifts again on every account.")
     HelpTT_Add("Clear Pull History", "clearPullHistory", "Opens reset options for pull history.`nYou can clear pulls and reset the history flag, or reset only the history flag while keeping existing pulls.`nOnly remove pulls when cards are missing in the card database; traded cards and shared cards are always kept.")
+    HelpTT_Add("Performance settings...", "performanceSettings", "Opens the Memory Cap and CPU Affinity limits.`nAll values default to 0 = automatic sizing based on your hardware and instance count.")
     HelpTT_Add("XML Duplicate Remover", "xmlDuplicateRemover", "Scans Accounts\Saved for duplicate account XMLs and removes them`n(keeps the copy with more packs or the older one).")
     HelpTT_Add("XML Account Manager", "xmlAccountManager", "Analyze, batch-rename, and separate saved account XMLs using JSON metadata.`nRename templates use packCount, flags, friend code, and more.")
 
