@@ -149,8 +149,14 @@ enum Command {
         timestamp: String,
         #[arg(long)]
         pack: String,
-        #[arg(long)]
-        cards: String,
+        #[arg(
+            long,
+            conflicts_with = "cards_file",
+            required_unless_present = "cards_file"
+        )]
+        cards: Option<String>,
+        #[arg(long, conflicts_with = "cards", required_unless_present = "cards")]
+        cards_file: Option<PathBuf>,
     },
     BuildDashboardIndex {
         #[arg(long)]
@@ -355,7 +361,16 @@ fn run(cli: Cli) -> Result<()> {
             timestamp,
             pack,
             cards,
-        } => append_pull(&cli.root, &device_account, &timestamp, &pack, &cards),
+            cards_file,
+        } => {
+            let cards_text = match (cards, cards_file) {
+                (Some(cards), None) => cards,
+                (None, Some(path)) => fs::read_to_string(&path)
+                    .with_context(|| format!("Could not read cards file {:?}", path))?,
+                _ => unreachable!("clap requires exactly one cards input"),
+            };
+            append_pull(&cli.root, &device_account, &timestamp, &pack, &cards_text)
+        }
         Command::BuildDashboardIndex {
             signature,
             source_count,

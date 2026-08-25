@@ -154,7 +154,24 @@ LogSinglePullToCardDatabase(helperPath, root, deviceAccount, timestamp, pack, ca
     if (cardStr = "")
         return false
 
-    RunWait, % """" . helperPath . """ --root """ . root . """ append-pull --device-account """ . deviceAccount . """ --timestamp """ . timestamp . """ --pack """ . pack . """ --cards """ . cardStr . """",, Hide
+    command := """" . helperPath . """ --root """ . root . """ append-pull --device-account """ . deviceAccount . """ --timestamp """ . timestamp . """ --pack """ . pack . """ --cards """ . cardStr . """"
+
+    ; The full command, including the installation path, counts toward the
+    ; Windows command-line limit. Leave some headroom below its maximum.
+    if (StrLen(command) > 30000) {
+        cardsFile := A_Temp . "\ptcgpb_cards_" . DllCall("GetCurrentProcessId") . "_" . A_TickCount . ".txt"
+        FileDelete, %cardsFile%
+        FileAppend, %cardStr%, %cardsFile%, UTF-8-RAW
+        if (ErrorLevel)
+            return false
+
+        RunWait, % """" . helperPath . """ --root """ . root . """ append-pull --device-account """ . deviceAccount . """ --timestamp """ . timestamp . """ --pack """ . pack . """ --cards-file """ . cardsFile . """",, Hide
+        helperExitCode := ErrorLevel
+        FileDelete, %cardsFile%
+        return !helperExitCode
+    }
+
+    RunWait, %command%,, Hide
     return !ErrorLevel
 }
 
