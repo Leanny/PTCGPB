@@ -121,9 +121,12 @@
                                 <td>
                                     Checks history days that already contain
                                     entries and imports individual missing card
-                                    occurrences. It takes longer than the normal
-                                    import and runs independently of the H flag
-                                    until disabled.
+                                    occurrences. Reconciliation is based on the
+                                    local history day and card occurrence, so it
+                                    also handles older entries that stored
+                                    several pack names together. It takes longer
+                                    than the normal import and runs independently
+                                    of the H flag until disabled.
                                 </td>
                             </tr>
                             <tr>
@@ -293,8 +296,10 @@
                                 <td>Auto-open Monitor</td>
                                 <td>
                                     Starts the Monitor with the bot. Monitor
-                                    watches instances and restarts ones that
-                                    become stuck.
+                                    watches instances and recovers ones that
+                                    become stuck. Pack openings, gift packs and
+                                    daily-reset waits count as activity during
+                                    long-running account work.
                                 </td>
                             </tr>
                             <tr>
@@ -342,6 +347,15 @@
                         </tbody>
                     </table>
                 </div>
+                <p>
+                    During recovery, Monitor stops only the affected MuMu VM,
+                    waits for its backend processes to exit, and verifies that
+                    both the replacement MuMu window and AHK process started.
+                    Failed recovery remains eligible for another attempt and is
+                    recorded in <code>Logs\Monitor.txt</code>. If the
+                    <code>Logs</code> folder is missing, PTCGPB recreates it
+                    automatically.
+                </p>
                 <p>
                     Backup categories include account XML and JSON data,
                     <code>Settings.ini</code>, showcase and manual VIP IDs,
