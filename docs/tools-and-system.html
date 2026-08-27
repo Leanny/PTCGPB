@@ -117,13 +117,26 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td>Clear History Flag</td>
+                                <td>In-Depth History Import</td>
                                 <td>
-                                    Clears the H flag from every account JSON
-                                    file so pack history can be imported again.
-                                    Existing entries from the same history day
-                                    are skipped; history days begin at 06:00
-                                    UTC.
+                                    Checks history days that already contain
+                                    entries and imports individual missing card
+                                    occurrences. Reconciliation is based on the
+                                    local history day and card occurrence, so it
+                                    also handles older entries that stored
+                                    several pack names together. It takes longer
+                                    than the normal import and runs independently
+                                    of the H flag until disabled.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Clear Pull History</td>
+                                <td>
+                                    Opens two recovery choices. Clear pull
+                                    history removes recorded pulls and resets
+                                    the H flag; Only clear history flag keeps
+                                    existing pulls and allows another import.
+                                    Traded and shared card records are preserved.
                                 </td>
                             </tr>
                             <tr>
@@ -283,8 +296,10 @@
                                 <td>Auto-open Monitor</td>
                                 <td>
                                     Starts the Monitor with the bot. Monitor
-                                    watches instances and restarts ones that
-                                    become stuck.
+                                    watches instances and recovers ones that
+                                    become stuck. Pack openings, gift packs and
+                                    daily-reset waits count as activity during
+                                    long-running account work.
                                 </td>
                             </tr>
                             <tr>
@@ -295,10 +310,30 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td>Auto Save to Git</td>
+                                <td>Backup to Git</td>
                                 <td>
-                                    Commits account XML and JSON data to git
-                                    every hour.
+                                    Commits and pushes the categories selected
+                                    in Backup settings on the shared backup
+                                    interval. The bot folder must be a git
+                                    repository.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Backup to Disk</td>
+                                <td>
+                                    Copies the selected categories to a chosen
+                                    folder while preserving their relative
+                                    paths. The destination cannot be the bot
+                                    folder or one of its subfolders.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Backup settings...</td>
+                                <td>
+                                    Sets the shared interval (minimum five
+                                    minutes), disk destination and included data.
+                                    Backup Now immediately performs a disk
+                                    backup and also a Git backup when enabled.
                                 </td>
                             </tr>
                             <tr>
@@ -312,6 +347,30 @@
                         </tbody>
                     </table>
                 </div>
+                <p>
+                    During recovery, Monitor stops only the affected MuMu VM,
+                    waits for its backend processes to exit, and verifies that
+                    both the replacement MuMu window and AHK process started.
+                    Failed recovery remains eligible for another attempt and is
+                    recorded in <code>Logs\Monitor.txt</code>. If the
+                    <code>Logs</code> folder is missing, PTCGPB recreates it
+                    automatically.
+                </p>
+                <p>
+                    Backup categories include account XML and JSON data,
+                    <code>Settings.ini</code>, showcase and manual VIP IDs,
+                    God Pack test lists, and active or past
+                    <code>.sevt</code> event definitions. At least one category
+                    must remain selected.
+                </p>
+                <p>
+                    In Cockpit's <strong>Injection Queue</strong>, the
+                    <strong>God Pack</strong> status filter shows accounts with
+                    an active T flag. Their remaining five-day T-flag cooldown
+                    is included in <strong>Ready In</strong>. Right-click an
+                    account and choose <strong>Reset God Pack (T) Flag</strong>
+                    to make it eligible again.
+                </p>
                 <div class="callout">
                     <strong>For support investigations:</strong> temporarily use
                     <code>debug</code> or <code>trace</code> only when asked or
@@ -357,6 +416,12 @@
                     <li>
                         Managed updates preserve settings, saved accounts, logs,
                         screenshots and event data.
+                    </li>
+                    <li>
+                        Before replacing files, the updater closes the Card
+                        Database helper programs. If either helper cannot be
+                        stopped, installation is cancelled without replacing
+                        files.
                     </li>
                 </ul>
 

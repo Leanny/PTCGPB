@@ -446,7 +446,9 @@
                                 <td>Balance XMLs</td>
                                 <td>
                                     Redistributes saved XML accounts evenly
-                                    across instance folders.
+                                    across instance folders. Filename collisions
+                                    are resolved with unique numeric suffixes so
+                                    no account is overwritten.
                                 </td>
                             </tr>
                             <tr>
@@ -465,11 +467,15 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td>Auto Save to Git</td>
+                                <td>Backup to Git / Disk</td>
                                 <td>
-                                    Automatically commits XML and JSON account
-                                    data to the configured local git repository
-                                    every hour.
+                                    Backs up selected account and configuration
+                                    data on a configurable interval or on
+                                    demand. Configure destinations and included
+                                    categories under
+                                    <a href="tools-and-system.html"
+                                        >Tools &amp; System</a
+                                    >.
                                 </td>
                             </tr>
                         </tbody>
