@@ -108,6 +108,43 @@ PackMethod_ConsumeStayOnPackScreen() {
 }
 
 ;-------------------------------------------------------------------------------
+; Friend request rate limit: max 10 requests per 60s window, window starts at first send
+;-------------------------------------------------------------------------------
+global frWindowStart := 0
+global frWindowCount := 0
+
+FriendRequestRateLimit_Gate() {
+    global frWindowStart, frWindowCount, session
+
+    if (frWindowStart && (A_TickCount - frWindowStart) >= 60000) {
+        frWindowStart := 0
+        frWindowCount := 0
+    }
+    if (frWindowCount < 10)
+        return
+
+    Loop {
+        remaining := Ceil((60000 - (A_TickCount - frWindowStart)) / 1000)
+        if (remaining <= 0)
+            break
+        CreateStatusMessage("Friend request limit (10/60s)`nNext slot in " . remaining . "s")
+        writeLastActivityEpoch(session.get("scriptName"), 4000)
+        Sleep, 1000
+    }
+    frWindowStart := 0
+    frWindowCount := 0
+    session.set("failSafe", A_TickCount)
+}
+
+FriendRequestRateLimit_Record() {
+    global frWindowStart, frWindowCount
+
+    if (!frWindowStart)
+        frWindowStart := A_TickCount
+    frWindowCount += 1
+}
+
+;-------------------------------------------------------------------------------
 ; AddFriends - Add friends from friend code list
 ;-------------------------------------------------------------------------------
 AddFriends(renew := false, getFC := false) {
@@ -239,7 +276,9 @@ AddFriends(renew := false, getFC := false) {
             }
             Delay(1)
             if(FindOrLoseImage("Friend_RequestButtonInSearchResult", 0, failSafeTime, 80)) {
+                FriendRequestRateLimit_Gate()
                 adbClick_wbb(243, 258)
+                FriendRequestRateLimit_Record()
                 MarkFriendCleanupPending("Friend request submitted")
                 Delay(1)
                 gosub, WaitAfterFriendRequestSend
@@ -251,7 +290,9 @@ AddFriends(renew := false, getFC := false) {
             }
             else if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime)) {
                 LogToFile("Friend details request button detected during AddFriends | index=" . friendIDIdx)
+                FriendRequestRateLimit_Gate()
                 adbClick_wbb(143, 407)
+                FriendRequestRateLimit_Record()
                 MarkFriendCleanupPending("Friend request submitted from details")
                 Delay(1)
 
@@ -277,6 +318,7 @@ AddFriends(renew := false, getFC := false) {
                         && FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime, , true)
                         && !FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, failSafeTime, , true)) {
                         adbClick_wbb(143, 407)
+                        FriendRequestRateLimit_Record()
                         MarkFriendCleanupPending("Friend request resubmitted from details")
                         isSendReqeest := true
                     }
@@ -318,7 +360,9 @@ AddFriends(renew := false, getFC := false) {
                         break
                     }
                     Delay(1) ; otherwise it will sometimes click before UI finishes loading
+                    FriendRequestRateLimit_Gate()
                     adbClick_wbb(243, 258)
+                    FriendRequestRateLimit_Record()
                     MarkFriendCleanupPending("Friend request renewed")
                     gosub, WaitAfterFriendRequestSend
                 }
@@ -468,6 +512,7 @@ AddFriends(renew := false, getFC := false) {
             && !FindOrLoseImage("Friend_WithdrawButton", 0, failSafeTime, , true)
             && !FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, failSafeTime, , true)) {
             adbClick_wbb(243, 258)
+            FriendRequestRateLimit_Record()
             MarkFriendCleanupPending("Friend request resubmitted")
             isSendReqeest := true
         }
