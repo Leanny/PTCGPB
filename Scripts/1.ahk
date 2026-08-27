@@ -4327,7 +4327,8 @@ EnterGameFromWelcomeIfNeeded(timeoutSec := 60) {
         }
 
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
-            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome2", 0, 0, , true)) {
             adbClick_wbb(140, 450) ; Tap to Start
             Delay(2)
             CreateStatusMessage("Entering game from Welcome...")
@@ -5872,7 +5873,8 @@ GoToMain() {
         ; 1.7.0: tutorials during GoToMain always force an app restart onto Welcome.
         ; ESC on Welcome opens quit confirmation — Cancel (if needed) + Tap to Start.
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
-            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome2", 0, 0, , true)) {
             if (FindOrLoseImage("Common_CloseAlertWindowInMain", 0, 0, , true)) {
                 adbClick_wbb(75, 365) ; Cancel quit dialog
                 Delay(1)
