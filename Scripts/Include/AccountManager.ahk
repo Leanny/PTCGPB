@@ -43,7 +43,7 @@ CreateAccountListSchedule_ReleaseLock(hMutex) {
 ;-------------------------------------------------------------------------------
 ; loadAccount - Load an account XML file into the game
 ;-------------------------------------------------------------------------------
-loadAccount() {
+loadAccount(favoritePackName := "") {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
@@ -158,6 +158,15 @@ loadAccount() {
     Sleep, 50
     clearMissionCache()
     Sleep, 100
+
+    ; Set favourite expansion while the game is closed so the game boots
+    ; directly into the correct pack screen. Reset first; SetPackFavorite will
+    ; set it to 1 on success.
+    session.set("packFavoriteSet", 0)
+    if (favoritePackName != "" && IsFunc("SetPackFavorite")) {
+        SetPackFavorite(favoritePackName)
+        session.set("packFavoriteSet", 1)
+    }
 
     RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
     CreateStatusMessage("Injecting: " . session.get("accountFileName"),,,, false)

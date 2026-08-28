@@ -234,7 +234,7 @@ if(session.get("injectMethod"))
 SetTimer, LiveMetricsTimer, 5000
 
 if(session.get("injectMethod") && DeadCheck != 1) {
-    session.set("loadedAccount", loadAccount())
+    ; loadAccount is called inside the loop after openPack is rolled
 } else if(session.get("injectMethod") && DeadCheck = 1) {
     ; DeadCheck = 1: Start the Pokemon app for the stuck account (don't inject new account)
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
@@ -246,7 +246,7 @@ clearMissionCache()
 if(isSevtFileExist())
     loadAllSevtFiles()
 
-if(!session.get("injectMethod") || (!session.get("loadedAccount") && DeadCheck != 1))
+if(!session.get("injectMethod"))
     restartGameInstance("Initializing bot...", false)
 
 ; Define default swipe params.
@@ -307,6 +307,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     Loop {
         clearMissionCache()
         session.set("isReloadAfterAddFriends", false)
+        session.set("favEnteredFromHome", false)
         Randmax := session.get("packList").Length()
         Random, rand, 1, Randmax
         session.set("openPack", session.get("packList")[rand])
@@ -379,7 +380,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(session.get("injectMethod")) {
             ; Only load account if we don't already have one loaded
             if(!session.get("loadedAccount")) {
-                session.set("loadedAccount", loadAccount())
+                session.set("loadedAccount", loadAccount(session.get("openPack")))
             }
 
             ; If no account could be loaded for injection methods, handle appropriately
@@ -529,8 +530,14 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     }
                 }
             }
-            if(!session.get("isReloadAfterAddFriends"))
+            if(!session.get("isReloadAfterAddFriends")) {
                 GoToMain()
+                if (session.get("packFavoriteSet"))
+                    EnterFavouritePackFromHome()
+            }
+            else if(session.get("packFavoriteSet")) {
+                EnterFavouritePackFromHome()
+            }
             else{
                 clickX := getPackCoordXInHome()
                 WaitForPackPointButtonFromHome(clickX, 203, "after friend reload")
@@ -4364,6 +4371,79 @@ WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
     }
 }
 
+;-------------------------------------------------------------------------------
+; EnterFavouritePackFromHome - switch to favourites view in Home, click the
+; pack once to enter the Points screen, then wait for Pack_PackPointButton.
+; Unlike WaitForPackPointButtonFromHome, this clicks only once (clicking the
+; pack in favourites enters Open Pack directly if clicked again).
+;-------------------------------------------------------------------------------
+EnterFavouritePackFromHome() {
+    global session
+
+    session.set("favEnteredFromHome", true)
+
+    ; Skip favourites switch for packs already stable in Home.
+    mainScreenPacks := session.get("mainScreenPackList")
+    isStableInHome := false
+    homePosition := ""
+    if (IsObject(mainScreenPacks)) {
+        for pos, packName in mainScreenPacks {
+            if (packName = session.get("openPack")) {
+                isStableInHome := true
+                homePosition := pos
+                break
+            }
+        }
+    }
+
+    if (!isStableInHome) {
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop {
+            adbClick_wbb(265, 236)
+            Delay(1)
+            if (FindOrLoseImage(245, 146, 251, 153, , "FavouriteBooster", 0, failSafeTime))
+                break
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime >= 30) {
+                LogWarn("EnterFavouritePackFromHome: timed out waiting for FavouriteBooster", "ADB.txt")
+                break
+            }
+        }
+    }
+
+    ; For stable Home packs, use the Home position (Left/Middle/Right).
+    ; For favourite packs, use GetPackFavoriteHomeX (position within expansion).
+    mapHomeX := {"Left":60, "Middle":140, "Right":215}
+    if (isStableInHome) {
+        favHomeX := mapHomeX[homePosition]
+        if (favHomeX = "")
+            favHomeX := 140
+    } else if (IsFunc("GetPackFavoriteHomeX")) {
+        favHomeX := GetPackFavoriteHomeX(session.get("openPack"))
+    } else {
+        favHomeX := 140
+    }
+
+    ; Single click to enter the pack's Points screen.
+    adbClick_wbb(favHomeX, 203)
+    Delay(2)
+
+    ; Wait for Pack_PackPointButton without clicking again.
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime))
+            return true
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime >= 45) {
+            LogWarn("EnterFavouritePackFromHome: timed out waiting for PackPointButton", "ADB.txt")
+            return false
+        }
+        Delay(1)
+    }
+}
+
 RecoverPackOpeningToMainIfNeeded(caller := "") {
     global session
 
@@ -4451,6 +4531,51 @@ SelectPack(HG := false) {
     packy := HomeScreenAllPackY
     enteredPackScreenFromHome := false
 
+    LogInfo("SelectPack: HG=" . HG . " packFavoriteSet=" . session.get("packFavoriteSet") . " isSkipSelectExpansion=" . session.get("isSkipSelectExpansion") . " openPack=" . session.get("openPack"), "ADB.txt")
+
+    ; When favourite pack is set and we are coming from Home (not First boot),
+    ; switch to the favourites view in Home before clicking the pack.
+    ; Skip the switch for packs that are already stable in the Home screen
+    ; (listed in mainScreenPackList).
+    if (session.get("packFavoriteSet") && HG != "First") {
+        mainScreenPacks := session.get("mainScreenPackList")
+        isStableInHome := false
+        homePosition := ""
+        if (IsObject(mainScreenPacks)) {
+            for pos, packName in mainScreenPacks {
+                if (packName = session.get("openPack")) {
+                    isStableInHome := true
+                    homePosition := pos
+                    break
+                }
+            }
+        }
+        if (!isStableInHome) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            Loop {
+                adbClick_wbb(265, 236)
+                Delay(1)
+                if (FindOrLoseImage(245, 146, 251, 153, , "FavouriteBooster", 0, failSafeTime))
+                    break
+                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+                if (failSafeTime >= 30) {
+                    LogWarn("SelectPack: timed out waiting for FavouriteBooster in Home", "ADB.txt")
+                    break
+                }
+            }
+        }
+        ; For stable Home packs, use the Home position (Left/Middle/Right).
+        ; For favourite packs, use GetPackFavoriteHomeX (position within expansion).
+        if (isStableInHome) {
+            packx := mapPackX[homePosition]
+            if (packx = "")
+                packx := 140
+        } else if (IsFunc("GetPackFavoriteHomeX")) {
+            packx := GetPackFavoriteHomeX(session.get("openPack"))
+        }
+    }
+
     ensureMissionUserPrefsExist()
     InitPackOpening()
     if(HG = "First" && session.get("injectMethod") && session.get("loadedAccount") ){
@@ -4462,7 +4587,10 @@ SelectPack(HG := false) {
                 continue
             }
 
-            adbClick_wbb(packx, HomeScreenAllPackY)
+            ; When favourite pack is set, the game boots directly into the
+            ; Points screen. Don't click in Home, just wait for Points.
+            if (!session.get("packFavoriteSet"))
+                adbClick_wbb(packx, HomeScreenAllPackY)
             Delay(1)
             if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime)) {
                 break
@@ -4523,9 +4651,29 @@ SelectPack(HG := false) {
         Delay(2)
         session.get("packCoordinates")[session.get("openPack")].additionalAction()
     }
+    else if (session.get("packFavoriteSet")) {
+        ; Favourite pack: already on the correct expansion screen.
+        ; Nothing to do here. The pack selection click happens after
+        ; FindPackStats() below, so we don't interfere with it.
+    }
 
     if(HG = "First" && session.get("injectMethod") && session.get("loadedAccount") && !session.get("accountHasPackInfo")) {
         FindPackStats()
+    }
+
+    ; Favourite pack: now that FindPackStats is done (or skipped), click the
+    ; specific pack within the expansion to select it. Only needed on cold
+    ; boot (game boots with centre pack in foreground). When entering from
+    ; Home favourites, the clicked pack is already in foreground.
+    if (session.get("packFavoriteSet") && HG = "First" && !session.get("favEnteredFromHome")) {
+        if (IsFunc("GetPackFavoritePointsX"))
+            favPackX := GetPackFavoritePointsX(session.get("openPack"))
+        else
+            favPackX := 140
+        if (favPackX != 140) {
+            adbClick_wbb(favPackX, PackScreenAllPackY)
+            Delay(1)
+        }
     }
 
     if(HG = "Tutorial") {

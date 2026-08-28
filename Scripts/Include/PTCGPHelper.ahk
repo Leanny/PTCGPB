@@ -2,6 +2,157 @@
 ; PTCGPHelper.ahk - Android ptcgpb helper install/runtime utilities
 ;===============================================================================
 
+;-------------------------------------------------------------------------------
+; Pack name → Expansion ID mapping for --pack favourite command
+;-------------------------------------------------------------------------------
+GetExpansionIdForPack(packName) {
+    static map := ""
+    if (map = "") {
+        map := {}
+        ; A1 - Genetic Apex (3 packs)
+        map["Mewtwo"] := "A1"
+        map["Charizard"] := "A1"
+        map["Pikachu"] := "A1"
+        ; A1a - Mythical Island (1 pack)
+        map["Mew"] := "A1a"
+        ; A2 - Space-Time Smackdown (2 packs)
+        map["Dialga"] := "A2"
+        map["Palkia"] := "A2"
+        ; A2a - Triumphant Light (1 pack)
+        map["Arceus"] := "A2a"
+        ; A2b - Shining Revelry (1 pack)
+        map["Shining"] := "A2b"
+        ; A3 - Celestial Guardians (2 packs)
+        map["Solgaleo"] := "A3"
+        map["Lunala"] := "A3"
+        ; A3a - Extradimensional Crisis (1 pack)
+        map["Buzzwole"] := "A3a"
+        ; A3b - Eevee Grove (1 pack)
+        map["Eevee"] := "A3b"
+        ; A4 - Wisdom of Sea and Sky (2 packs)
+        map["HoOh"] := "A4"
+        map["Lugia"] := "A4"
+        ; A4a - Secluded Springs (1 pack)
+        map["Springs"] := "A4a"
+        ; A4b - Deluxe Pack: ex (1 pack)
+        map["Deluxe"] := "A4b"
+        ; B1 - Mega Rising (3 packs)
+        map["MegaGyarados"] := "B1"
+        map["MegaBlaziken"] := "B1"
+        map["MegaAltaria"] := "B1"
+        ; B1a - Crimson Blaze (1 pack)
+        map["CrimsonBlaze"] := "B1a"
+        ; B2 - Fantastical Parade (1 pack)
+        map["Parade"] := "B2"
+        ; B2a - Paldean Wonders (1 pack)
+        map["PaldeanWonders"] := "B2a"
+        ; B2b - Mega Shine (1 pack)
+        map["MegaShine"] := "B2b"
+        ; B3 - Pulsing Aura (1 pack)
+        map["PulsingAura"] := "B3"
+        ; B3a - Paradox Drive (1 pack)
+        map["ParadoxDrive"] := "B3a"
+        ; B3b - Everyday Wonders (1 pack)
+        map["EverydayWonders"] := "B3b"
+        ; B4 - Ruler of the Skies (1 pack)
+        map["RulerOfTheSkies"] := "B4"
+    }
+    return map[packName]
+}
+
+;-------------------------------------------------------------------------------
+; Get the X coordinate for a pack in the Points screen (Y=320) based on its
+; position within the expansion. The Points screen always shows one pack in
+; the centre; a second pack (if any) is to its right; a third (if any) is to
+; the left.
+;-------------------------------------------------------------------------------
+GetPackFavoritePointsX(packName) {
+    global session
+    packInfo := session.get("pokemonPackObj")[packName]
+    if (!IsObject(packInfo))
+        return 140
+    pos := packInfo["PositionInExtension"]
+    numOfPacks := packInfo["NumOfPackInSet"]
+    ; Position suffix determines left/centre/right within the expansion.
+    isLeft := InStr(pos, "-Left")
+    isMiddle := InStr(pos, "-Middle")
+    isRight := InStr(pos, "-Right")
+    if (numOfPacks = 3) {
+        if (isLeft)
+            return 60
+        else if (isMiddle)
+            return 140
+        else if (isRight)
+            return 215
+    }
+    else if (numOfPacks = 2) {
+        if (isLeft)
+            return 140
+        else if (isRight)
+            return 215
+    }
+    return 140
+}
+
+;-------------------------------------------------------------------------------
+; Get the X coordinate for a pack in the Home favourites view (Y=203).
+; Favourites show packs symmetrically: 3 packs use Left/Center/Right,
+; 2 packs use symmetric Left/Right around centre.
+;-------------------------------------------------------------------------------
+GetPackFavoriteHomeX(packName) {
+    global session
+    packInfo := session.get("pokemonPackObj")[packName]
+    if (!IsObject(packInfo))
+        return 140
+    pos := packInfo["PositionInExtension"]
+    numOfPacks := packInfo["NumOfPackInSet"]
+    isLeft := InStr(pos, "-Left")
+    isMiddle := InStr(pos, "-Middle")
+    isRight := InStr(pos, "-Right")
+    if (numOfPacks = 3) {
+        if (isLeft)
+            return 60
+        else if (isMiddle)
+            return 140
+        else if (isRight)
+            return 215
+    }
+    else if (numOfPacks = 2) {
+        if (isLeft)
+            return 90
+        else if (isRight)
+            return 190
+    }
+    return 140
+}
+
+;-------------------------------------------------------------------------------
+; SetPackFavorite - set the favourite expansion via ptcgpb helper --pack command.
+; Must be called while the game is closed. Returns true on success.
+;-------------------------------------------------------------------------------
+SetPackFavorite(packName) {
+    global session
+
+    expansionId := GetExpansionIdForPack(packName)
+    if (expansionId = "") {
+        LogWarn("SetPackFavorite: unknown pack name '" . packName . "', skipping")
+        return false
+    }
+
+    if (!EnsurePTCGPBHelperInstalled()) {
+        LogWarn("SetPackFavorite: helper not installed, skipping")
+        return false
+    }
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    output := Trim(CmdRet(adbCommand . " shell /data/ptcgp/ptcgpb --pack " . expansionId), "`r`n`t ")
+    LogInfo("SetPackFavorite: pack=" . packName . " expansion=" . expansionId . " result=" . output, "ADB.txt")
+
+    if (InStr(output, "True") || output = "")
+        return true
+    return (InStr(output, "True"))
+}
+
 ; Run ptcgpb via a one-off adb shell so the persistent shell is not desynced by nohup.
 StartPtcgpbWatchCards(full := false) {
     global session
