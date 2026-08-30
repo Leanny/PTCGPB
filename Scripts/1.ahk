@@ -5933,6 +5933,7 @@ GoToMain() {
 CleanupBeforeExit(){
     global session
 
+    TerminateHelper()
     CloseCardDatabase(session.get("deviceAccount"))
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     allSpecialEventDispose()
