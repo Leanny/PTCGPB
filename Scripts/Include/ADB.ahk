@@ -229,6 +229,13 @@ initializeAdbShell() {
         try {
             if (!session.get("adbShell") || session.get("adbShell").Status != 0) {
                 ADB_LogTrace("initializeAdbShell creating new shell")
+                oldShell := session.get("adbShell")
+                if (IsObject(oldShell)) {
+                    try {
+                        oldShell.Terminate()
+                    } catch {
+                    }
+                }
                 session.set("adbShell", "")  ; Reset before reattempting
 
                 ; Validate adbPath and adbPort
