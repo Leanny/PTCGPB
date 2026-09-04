@@ -1,9 +1,9 @@
 ﻿global errorImageList := ["Common_Error"
-                        , "Common_Error_Cache"
-                        , "Common_Error_NoResponse"
-                        , "Common_Error_NoResponseDark"
-                        , "Common_Error_NoBackground_1Button"
-                        , "Common_Error_3ButtonError_Nodata"]
+    , "Common_Error_Cache"
+    , "Common_Error_NoResponse"
+    , "Common_Error_NoResponseDark"
+    , "Common_Error_NoBackground_1Button"
+    , "Common_Error_3ButtonError_Nodata"]
 global errorFuncList := {}
 global interceptProc := false
 
@@ -24,17 +24,17 @@ ErrorCheckInScreen(pBitmap, searchVariation := 20){
         Path := imagePath . needleObj.imageName . ".png"
         pNeedle := GetNeedle(Path)
         vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
-                                        , needleObj.coords.startX
-                                        , needleObj.coords.startY
-                                        , needleObj.coords.endX
-                                        , needleObj.coords.endY
-                                        , searchVariation)
+            , needleObj.coords.startX
+            , needleObj.coords.startY
+            , needleObj.coords.endX
+            , needleObj.coords.endY
+            , searchVariation)
         if (vRet = 1 && !interceptProc) {
             errorFuncList[value].Call()
         }
     }
 
-}   
+}
 
 procError_Common(){
     CreateStatusMessage("Found error message in " . A_ScriptName . ". Clicking Button...",,,, false)
@@ -74,9 +74,66 @@ procError_NoResponseDark(){
 }
 
 procError_NoSaveData(){
-    global botConfig
+    global botConfig, session
 
-    LogToDiscord(A_ScriptName . " An error has occurred indicating that no save data exists, or an unknown error has occurred.`nThe bot is currently paused. Please resolve the error and reload.",, true,,, botConfig.get("heartBeatOwnerWebHookURL"))
-    Pause, On
+    bannedDir := getScriptBaseFolder() . "\Accounts\banned"
+    archivedFiles := ""
+    archiveErrors := ""
+
+    if !FileExist(bannedDir) {
+        FileCreateDir, %bannedDir%
+        if (ErrorLevel)
+            archiveErrors .= "`n- Could not create Accounts\banned."
+    }
+
+    xmlSource := session.get("loadedAccount")
+    if (xmlSource = "" && session.get("loadDir") != "" && session.get("accountFileName") != "")
+        xmlSource := session.get("loadDir") . "\" . session.get("accountFileName")
+
+    deviceAccount := ""
+    if (xmlSource != "" && FileExist(xmlSource)) {
+        deviceAccount := AccountMetadata_GetDeviceAccountFromFile(xmlSource)
+        SplitPath, xmlSource, xmlFileName
+        xmlDestination := bannedDir . "\" . xmlFileName
+        FileMove, %xmlSource%, %xmlDestination%, 1
+        if (ErrorLevel)
+            archiveErrors .= "`n- Could not move XML: " . xmlSource
+        else
+            archivedFiles .= "`n- " . xmlFileName
+    } else {
+        archiveErrors .= "`n- The active account XML could not be found."
+    }
+
+    if (deviceAccount = "")
+        deviceAccount := session.get("deviceAccount")
+
+    if (deviceAccount != "") {
+        jsonSource := AccountMetadata_AccountPath(deviceAccount)
+        if (FileExist(jsonSource)) {
+            SplitPath, jsonSource, jsonFileName
+            jsonDestination := bannedDir . "\" . jsonFileName
+            FileMove, %jsonSource%, %jsonDestination%, 1
+            if (ErrorLevel)
+                archiveErrors .= "`n- Could not move JSON: " . jsonSource
+            else
+                archivedFiles .= "`n- " . jsonFileName
+        } else {
+            archiveErrors .= "`n- No metadata JSON was found for device account " . deviceAccount . "."
+        }
+    } else {
+        archiveErrors .= "`n- The device account could not be resolved, so its metadata JSON could not be found."
+    }
+
+    message := A_ScriptName . " detected an error indicating that no save data exists, or that an unknown account error occurred."
+    if (archivedFiles != "")
+        message .= "`nMoved the following account files to Accounts\banned:" . archivedFiles
+    if (archiveErrors != "")
+        message .= "`nSome account files could not be archived:" . archiveErrors
+    message .= "`nThe bot is currently paused. Please resolve the error and reload."
+
+    LogToDiscord(message,, true,,, botConfig.get("heartBeatOwnerWebHookURL"))
+    LogInfo("Restarted game. Reason: Banned account found")
+    CleanupBeforeExit()
+    SafeReload("Banned account found")
     return
 }
