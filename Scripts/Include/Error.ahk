@@ -133,7 +133,6 @@ procError_NoSaveData(){
 
     LogToDiscord(message,, true,,, botConfig.get("heartBeatOwnerWebHookURL"))
     LogInfo("Restarted game. Reason: Banned account found")
-    CleanupBeforeExit()
     SafeReload("Banned account found")
     return
 }
