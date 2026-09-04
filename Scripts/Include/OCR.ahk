@@ -493,7 +493,7 @@ CountShinedust() {
                     break
             } else {
                 confirmedStart := 0
-                TryHandleTradeTutorial(failSafeTime)
+                TryHandleTradeTutorial(failSafeTime, False)
                 ; Re-click Trade button every 5 seconds if needle not found
                 if (A_TickCount - lastTradeClick >= 5000) {
                     adbClick_wbb(196, 408)
