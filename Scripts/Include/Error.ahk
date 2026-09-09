@@ -129,7 +129,6 @@ procError_NoSaveData(){
         message .= "`nMoved the following account files to Accounts\banned:" . archivedFiles
     if (archiveErrors != "")
         message .= "`nSome account files could not be archived:" . archiveErrors
-    message .= "`nThe bot is currently paused. Please resolve the error and reload."
 
     LogToDiscord(message,, true,,, botConfig.get("heartBeatOwnerWebHookURL"))
     LogInfo("Restarted game. Reason: Banned account found")
