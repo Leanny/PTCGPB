@@ -3907,6 +3907,25 @@ DoTutorial() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        if(FindOrLoseImage("Create_SignupNotification", 0,failSafeTime)) {
+            ; notification flow
+            adbClick(138, 434)
+            Sleep, 1000
+            adbClick(136, 350)
+            Sleep, 1000
+            adbClick(136, 350)
+            Delay(1)
+        }
+        if(FindOrLoseImage("Create_SignupsDataSharing", 0, failSafeTime)) {
+            adbClick(82, 287)
+            Sleep, 1000
+            adbClick(80, 355)
+            Sleep, 100
+            adbClick(90, 425)
+            Sleep, 100
+            adbClick(141, 484)
+            Delay(1)
+        }
         if(FindImageAndClick("Create_BeginNewAccountButton", 145, 484, , , 2, failSafeTime)) ;wait to be at create save data screen while clicking
             break
         Delay(1)
@@ -3925,16 +3944,29 @@ DoTutorial() {
 
     Delay(1)
 
-    FindImageAndClick("Create_NintendoLink") ;wait for link account screen%
+    failSafeTime := 0
+    match := ""
+    Loop {
+        if(FindOrLoseImage("Create_NintendoLink", 0, failSafeTime)) {
+            match :="Create_NintendoLink"
+            break
+        }
+        if(FindOrLoseImage("Create_NintendoLink2", 0, failSafeTime)) {
+            match :="Create_NintendoLink2"
+            break
+        }
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Nintendo Link`n(" . failSafeTime . "/45 seconds)")
+    }
     Delay(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        if(FindOrLoseImage("Create_NintendoLink", 0, failSafeTime)){
+        if(FindOrLoseImage(match, 0, failSafeTime)){
             adbClick_wbb(140, 460)
             Loop {
                 Delay(1)
-                if(FindOrLoseImage("Create_NintendoLink", 1, failSafeTime)){
+                if(FindOrLoseImage(match, 1, failSafeTime)){
                     adbClick_wbb(140, 380) ; click ok on the interrupted while opening pack prompt
                     break
                 }
