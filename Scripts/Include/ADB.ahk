@@ -446,6 +446,7 @@ startPTCGPApp() {
         if(isTerminatePTCGPApp()) {
             ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+            adbWRiteRaw("rm -f /data/media/0/Android/data/jp.pokemon.pokemontcgp/files/dc.bin")
             adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
             DelayH(100)
         }
@@ -645,6 +646,7 @@ clearMissionCache() {
     prof := Prof_Scope(A_ThisFunc)
     ADB_LogTrace("clearMissionCache")
     adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+    adbWRiteRaw("rm -f /data/media/0/Android/data/jp.pokemon.pokemontcgp/files/dc.bin")
     Sleep, 250
 }
 
@@ -755,8 +757,24 @@ waitadb(){
 
 adbClick(X, Y) {
     prof := Prof_Scope(A_ThisFunc)
+    global botConfig
     static clickCommands := Object()
+    static lastClickTime := 0
     static convX := 540/283, convY := 960/488, offset :=40
+
+    minDelay := botConfig.get("clickDelayMin") + 0
+    maxDelay := botConfig.get("clickDelayMax") + 0
+    if (minDelay < 0)
+        minDelay := 0
+    if (maxDelay < minDelay)
+        maxDelay := minDelay
+
+    Random, clickDelay, %minDelay%, %maxDelay%
+    elapsed := A_TickCount - lastClickTime
+    if (lastClickTime && elapsed < clickDelay) {
+        remaining := clickDelay - elapsed
+        Sleep, %remaining%
+    }
 
     key := X << 16 | Y
 
@@ -767,6 +785,7 @@ adbClick(X, Y) {
     }
     ADB_LogTrace("adbClick logical=(" . X . "," . Y . ") command=" . clickCommands[key])
     adbWriteRaw(clickCommands[key])
+    lastClickTime := A_TickCount
 }
 
 adbInput(name) {

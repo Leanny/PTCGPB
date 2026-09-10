@@ -50,7 +50,7 @@ repoUser := "Leanny"
     ,g_UpdateReleases := []
 
 global GUI_WIDTH := 750
-global GUI_HEIGHT := 418
+global GUI_HEIGHT := 465
 global MainGuiName
 
 global ProcessedIDs := {}
@@ -511,13 +511,17 @@ NextStep:
     ; =================== UI - Time Settings ===================
     Gui, Font, s10 cWhite, Segoe UI
     sectionColor := "c9370DB"
-    Gui, Add, GroupBox, x255 y312 w240 h101 %sectionColor%, % dict["TimeSettings"]
+    Gui, Add, GroupBox, x255 y312 w240 h145 %sectionColor%, % dict["TimeSettings"]
     Gui, Add, Text, x270 y332 %sectionColor%, % GuiLabel(dict["Txt_Delay"])
     Gui, Add, Edit, vui_Delay w34 x446 y330 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
     Gui, Add, Text, x270 y360 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
     Gui, Add, Edit, vui_swipeSpeed w34 x446 y358 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
     Gui, Add, Text, x270 y388 w150 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
     Gui, Add, Edit, vui_waitTime w34 x446 y386 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
+    Gui, Add, Text, x270 y416 w170 %sectionColor%, % GuiLabel(dict["Txt_ClickDelayMin"])
+    Gui, Add, Edit, vui_clickDelayMin w34 x446 y414 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("clickDelayMin")
+    Gui, Add, Text, x270 y444 w170 %sectionColor%, % GuiLabel(dict["Txt_ClickDelayMax"])
+    Gui, Add, Edit, vui_clickDelayMax w34 x446 y442 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("clickDelayMax")
 
     ; =================== UI - Description & Button ===================
     sectionColor := "cWhite"
@@ -2781,6 +2785,8 @@ HelpTT_Init() {
 
     ; --- Main window: Time Settings
     HelpTT_Add("ui_Delay", "Delay", "Global delay between bot actions, in milliseconds.`nHigher = slower but more reliable (suggested: 250ms).")
+    HelpTT_Add("ui_clickDelayMin", "Click Delay Min", "Minimum time between consecutive ADB clicks, in milliseconds.")
+    HelpTT_Add("ui_clickDelayMax", "Click Delay Max", "Maximum time between consecutive ADB clicks, in milliseconds.`nSet equal to the minimum for a fixed delay.")
     HelpTT_Add("ui_swipeSpeed", "swipeSpeed", "Duration of the card swipe gesture, in milliseconds.`n" . dict["RecommandSwipeSpeedNoModMenu"] . "`n" . dict["RecommandSwipeSpeedUseModMenu"])
     HelpTT_Add("ui_waitTime", "waitTime", "Seconds to wait after sending friend requests before continuing, giving time for them to be accepted.")
 
@@ -3011,6 +3017,27 @@ SaveAllSettings() {
         GuiControl, Focus, ui_injectWonderpickMinPacks
         return false
     }
+
+    GuiControlGet, clickDelayMinInput, , ui_clickDelayMin
+    GuiControlGet, clickDelayMaxInput, , ui_clickDelayMax
+    clickDelayMin := Trim(clickDelayMinInput)
+    clickDelayMax := Trim(clickDelayMaxInput)
+    if (clickDelayMin = "")
+        clickDelayMin := 250
+    if (clickDelayMax = "")
+        clickDelayMax := clickDelayMin
+    if (!RegExMatch(clickDelayMin, "^\d+$") || clickDelayMin > 60000) {
+        MsgBox, 0x40000, Invalid Setting, Minimum click delay must be a whole number between 0 and 60000 ms.
+        GuiControl, Focus, ui_clickDelayMin
+        return false
+    }
+    if (!RegExMatch(clickDelayMax, "^\d+$") || clickDelayMax > 60000 || clickDelayMax < clickDelayMin) {
+        MsgBox, 0x40000, Invalid Setting, Maximum click delay must be a whole number between the minimum delay and 60000 ms.
+        GuiControl, Focus, ui_clickDelayMax
+        return false
+    }
+    botConfig.set("clickDelayMin", clickDelayMin, "General")
+    botConfig.set("clickDelayMax", clickDelayMax, "General")
 
     if (botConfig.get("spendHourglassPackCount") = "")
         botConfig.set("spendHourglassPackCount", 0, "General")
