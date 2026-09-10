@@ -61,6 +61,8 @@ Txt_runMain:Main Account laufen:
 Txt_AccountName:Kontoname:
 Txt_autoUseGPTest:Auto GPTest (s):
 Txt_Delay:Verzögerung:
+Txt_ClickDelayMin:Klick-Min. (ms):
+Txt_ClickDelayMax:Klick-Max. (ms):
 Txt_WaitTime:Wartezeit:
 Txt_SwipeSpeed:Wischgeschwindigkeit:
 Txt_slowMotion:Kompatibilität mit Basisspiel

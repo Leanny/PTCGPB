@@ -3851,6 +3851,12 @@ DoTutorial() {
 
     adbClick_wbb(200, 400)
     Delay(3)
+    ; Scroll the year picker up once before selecting the year.
+    Random, yearScrollCount, 4, 7
+    Loop, %yearScrollCount% {
+        adbSwipe_wbb("389 707 389 903 150")
+        Delay(3)
+    }
     adbClick_wbb(200, 375)
     Delay(3)
     session.set("failSafe", A_TickCount)

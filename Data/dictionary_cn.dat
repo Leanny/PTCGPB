@@ -61,6 +61,8 @@ Txt_runMain:運行主帳
 Txt_AccountName:帳號名稱：
 Txt_autoUseGPTest:自動使用 GP Test（秒）：
 Txt_Delay:指令延遲：
+Txt_ClickDelayMin:點擊最小值：
+Txt_ClickDelayMax:點擊最大值：
 Txt_WaitTime:等待同意：
 Txt_SwipeSpeed:劃包速度：
 Txt_slowMotion:兼容原版速度

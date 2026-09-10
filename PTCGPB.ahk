@@ -50,7 +50,7 @@ repoUser := "Leanny"
     ,g_UpdateReleases := []
 
 global GUI_WIDTH := 750
-global GUI_HEIGHT := 465
+global GUI_HEIGHT := 470
 global MainGuiName
 
 global ProcessedIDs := {}
@@ -214,7 +214,7 @@ GuiLabel(labelText) {
 
 UpdateBotSettingsLayout(deleteMethod) {
     botSettings_grpY := 185
-    botSettings_grpH := 228
+    botSettings_grpH := 275
     botSettings_titleBand := 22
     botSettings_origY1 := 207
     botSettings_topPad := 6
@@ -370,7 +370,7 @@ NextStep:
     sectionColor := "c39FF14"
     botSettings_grpY := 185
     botSettings_titleBand := 22
-    botSettings_grpH := 228
+    botSettings_grpH := 238
     botSettings_origY1 := 207
     botSettings_topPad := 6
     botSettings_innerTop := botSettings_grpY + botSettings_titleBand
@@ -511,21 +511,21 @@ NextStep:
     ; =================== UI - Time Settings ===================
     Gui, Font, s10 cWhite, Segoe UI
     sectionColor := "c9370DB"
-    Gui, Add, GroupBox, x255 y312 w240 h145 %sectionColor%, % dict["TimeSettings"]
-    Gui, Add, Text, x270 y332 %sectionColor%, % GuiLabel(dict["Txt_Delay"])
+    Gui, Add, GroupBox, x255 y312 w240 h148 %sectionColor%, % dict["TimeSettings"]
+    Gui, Add, Text, x270 y332 w170 %sectionColor%, % GuiLabel(dict["Txt_Delay"])
     Gui, Add, Edit, vui_Delay w34 x446 y330 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("Delay")
-    Gui, Add, Text, x270 y360 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
+    Gui, Add, Text, x270 y360 w170 %sectionColor%, % GuiLabel(dict["Txt_SwipeSpeed"])
     Gui, Add, Edit, vui_swipeSpeed w34 x446 y358 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("swipeSpeed")
-    Gui, Add, Text, x270 y388 w150 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
+    Gui, Add, Text, x270 y388 w170 %sectionColor%, % GuiLabel(dict["Txt_WaitTime"])
     Gui, Add, Edit, vui_waitTime w34 x446 y386 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("waitTime")
-    Gui, Add, Text, x270 y416 w170 %sectionColor%, % GuiLabel(dict["Txt_ClickDelayMin"])
-    Gui, Add, Edit, vui_clickDelayMin w34 x446 y414 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("clickDelayMin")
-    Gui, Add, Text, x270 y444 w170 %sectionColor%, % GuiLabel(dict["Txt_ClickDelayMax"])
-    Gui, Add, Edit, vui_clickDelayMax w34 x446 y442 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("clickDelayMax")
+    Gui, Add, Text, x270 y414 w170 h19 %sectionColor%, % GuiLabel(dict["Txt_ClickDelayMin"])
+    Gui, Add, Edit, vui_clickDelayMin w34 x446 y412 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("clickDelayMin")
+    Gui, Add, Text, x270 y436 w170 h19 %sectionColor%, % GuiLabel(dict["Txt_ClickDelayMax"])
+    Gui, Add, Edit, vui_clickDelayMax w34 x446 y434 h19 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("clickDelayMax")
 
     ; =================== UI - Description & Button ===================
     sectionColor := "cWhite"
-    Gui, Add, GroupBox, x505 y0 w240 h413 %sectionColor%
+    Gui, Add, GroupBox, x505 y0 w240 h460 %sectionColor%
 
     Gui, Font, s12 cWhite Bold
     Gui, Add, Text, x535 y20 w180 h50 Center BackgroundTrans cWhite, % dict["title_main"]
@@ -3023,7 +3023,7 @@ SaveAllSettings() {
     clickDelayMin := Trim(clickDelayMinInput)
     clickDelayMax := Trim(clickDelayMaxInput)
     if (clickDelayMin = "")
-        clickDelayMin := 250
+        clickDelayMin := 0
     if (clickDelayMax = "")
         clickDelayMax := clickDelayMin
     if (!RegExMatch(clickDelayMin, "^\d+$") || clickDelayMin > 60000) {

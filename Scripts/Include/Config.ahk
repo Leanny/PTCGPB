@@ -42,7 +42,7 @@
         , "spendHourglassPackCount": 0
         , "injectSortMethod": "PacksDesc"
         , "Delay": 250
-        , "clickDelayMin": 250
+        , "clickDelayMin": 0
         , "clickDelayMax": 250
         , "swipeSpeed": 250
         , "waitTime": 5
