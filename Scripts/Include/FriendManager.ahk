@@ -51,7 +51,7 @@ TryDismissSocialFirstTutorial(failSafeTime := 0) {
     return true
 }
 
-TryHandleTradeTutorial(failSafeTime := 0) {
+TryHandleTradeTutorial(failSafeTime := 0, clickFriendlist := True) {
     if (failSafeTime < 6 || Mod(failSafeTime, 2) != 0)
         return false
 
@@ -60,9 +60,17 @@ TryHandleTradeTutorial(failSafeTime := 0) {
 
     adbClick_wbb(167, 447)
     Delay(0.3)
-    adbClick_wbb(38, 460)
+    if(clickFriendlist) {
+        adbClick_wbb(38, 460)
+    } else {
+        adbClick_wbb(138, 480)
+    }
     Delay(1)
-    adbClick_wbb(38, 460)
+    if(clickFriendlist) {
+        adbClick_wbb(38, 460)
+    } else {
+        adbClick_wbb(138, 480)
+    }
     Delay(0.3)
 
     return true

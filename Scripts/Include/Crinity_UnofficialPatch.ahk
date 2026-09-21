@@ -203,6 +203,10 @@ waitForAppBootScreen() {
             LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
             return true
         }
+        if (FindOrLoseImage("Boot_Welcome2", 0, 0, 30, true)) {
+            LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
+            return true
+        }
         if (FindOrLoseImage("Create_CinematicBackground", 0, , , true)) {
             LogInfo("Boot gate: Cinematic screen ready", "ADB.txt")
             return true
@@ -241,6 +245,23 @@ getPackCoordXInHome(){
 
     mapPackX := {"Left":60, "Middle":140, "Right":215}
     packx := mapPackX["Middle"]
+
+    ; Latest is an alias for the pack shown in the centre of Home. It has no
+    ; fixed expansion-screen coordinates because its expansion changes.
+    if (session.get("openPack") = "Latest") {
+        session.set("isSkipSelectExpansion", 1)
+        return packx
+    }
+
+    ; When favourite pack was set via helper, the game boots directly into the
+    ; correct expansion. Use the favourite home coordinate and skip expansion
+    ; selection entirely.
+    if(session.get("packFavoriteSet")){
+        session.set("isSkipSelectExpansion", 1)
+        if (IsFunc("GetPackFavoriteHomeX"))
+            packx := GetPackFavoriteHomeX(session.get("openPack"))
+        return packx
+    }
 
     if(botConfig.get("deleteMethod") = "Inject 13p+" || session.get("isReloadAfterAddFriends")){
         session.set("isSkipSelectExpansion", 1)
@@ -302,7 +323,10 @@ startPreProcess(methodType){
     imagePath := A_ScriptDir . "\Needles\"
     searchVariation := 20
     pBitmap := 0
-    session.set("isSkipSelectExpansion", 0)
+    ; Preserve isSkipSelectExpansion when favourite pack is set (getPackCoordXInHome
+    ; already set it to 1); only reset for the normal UI-navigation flow.
+    if (!session.get("packFavoriteSet"))
+        session.set("isSkipSelectExpansion", 0)
     isSkip := false
 
     session.set("failSafe", A_TickCount)

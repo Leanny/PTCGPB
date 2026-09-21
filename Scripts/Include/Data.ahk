@@ -48,13 +48,16 @@ parsePackData(){
         }
 
         if (InStr(line, "Pack:") = 1) {
-            ; Mewtwo|A|3|Col-First-Left|405|1
+            ; Mewtwo|A|3|Col-First-Left|405|1|A1
             packValue := Trim(SubStr(line, 6))
             splitData := StrSplit(packValue, "|")
 
-            pokemonPackObj[splitData[1]] := {"PackID":splitData[1], "Series":splitData[2], "NumOfPackInSet":splitData[3], "PositionInExtension":splitData[4], "YPosInExtension":splitData[5], "DragType":splitData[6]}
+            pokemonPackObj[splitData[1]] := {"PackID":splitData[1], "Series":splitData[2], "NumOfPackInSet":splitData[3], "PositionInExtension":splitData[4], "YPosInExtension":splitData[5], "DragType":splitData[6], "ExpansionID":splitData[7]}
             pokemonPackOrder.Push(splitData[1])
-            lastPackID := splitData[1]
+            ; Latest is an alias, not a concrete pack to use as the initial
+            ; default when no pack setting exists yet.
+            if (splitData[1] != "Latest")
+                lastPackID := splitData[1]
             continue
         }
     }

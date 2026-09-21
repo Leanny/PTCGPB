@@ -35,7 +35,6 @@ pToken := Gdip_Startup()
 #Include RarityBorder.ahk
 #Include SpecialEvent.ahk
 #Include Crinity_UnofficialPatch.ahk
-#Include PTCGPHelper.ahk
 #Include HourglassSpend.ahk
 
 InitializeHiddenConsole()
@@ -234,19 +233,17 @@ if(session.get("injectMethod"))
 SetTimer, LiveMetricsTimer, 5000
 
 if(session.get("injectMethod") && DeadCheck != 1) {
-    session.set("loadedAccount", loadAccount())
+    ; loadAccount is called inside the loop after openPack is rolled
 } else if(session.get("injectMethod") && DeadCheck = 1) {
     ; DeadCheck = 1: Start the Pokemon app for the stuck account (don't inject new account)
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     startPTCGPApp()
 }
 
-clearMissionCache()
-
 if(isSevtFileExist())
     loadAllSevtFiles()
 
-if(!session.get("injectMethod") || (!session.get("loadedAccount") && DeadCheck != 1))
+if(!session.get("injectMethod"))
     restartGameInstance("Initializing bot...", false)
 
 ; Define default swipe params.
@@ -307,6 +304,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     Loop {
         clearMissionCache()
         session.set("isReloadAfterAddFriends", false)
+        session.set("favEnteredFromHome", false)
         Randmax := session.get("packList").Length()
         Random, rand, 1, Randmax
         session.set("openPack", session.get("packList")[rand])
@@ -345,6 +343,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             FormatTime, formattedEndTime, %EndTime%, HH:mm:ss
             CreateStatusMessage("Waiting for daily server reset until " . formattedEndTime ,,,, false)
             session.set("dateChange", true)
+            writeLastActivityEpoch(session.get("scriptName"), 4000)
             Sleep, 5000
 
             StartCurrentTimeDiff := A_Now
@@ -378,7 +377,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(session.get("injectMethod")) {
             ; Only load account if we don't already have one loaded
             if(!session.get("loadedAccount")) {
-                session.set("loadedAccount", loadAccount())
+                session.set("loadedAccount", loadAccount(session.get("openPack")))
             }
 
             ; If no account could be loaded for injection methods, handle appropriately
@@ -528,8 +527,14 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     }
                 }
             }
-            if(!session.get("isReloadAfterAddFriends"))
+            if(!session.get("isReloadAfterAddFriends")) {
                 GoToMain()
+                if (session.get("packFavoriteSet"))
+                    EnterFavouritePackFromHome()
+            }
+            else if(session.get("packFavoriteSet")) {
+                EnterFavouritePackFromHome()
+            }
             else{
                 clickX := getPackCoordXInHome()
                 WaitForPackPointButtonFromHome(clickX, 203, "after friend reload")
@@ -1440,10 +1445,8 @@ restartGameInstance(reason, RL := true) {
             launchInstance(session.get("scriptName"))
         }
 
-        ; Only restart MuMu when stuck - this is the nuclear option
-        clearMissionCache()
-
-        ; Kill the entire MuMu instance
+        ; For a detected stuck state, restart only the Pocket app through ADB.
+        ; The external Monitor handles full MuMu instance recovery if needed.
         CreateStatusMessage("Restarting Pocket App...",,,, false)
         LogInfo("Restarting Pocket App " . session.get("scriptName") . " due to: " . reason)
         ;restartInstance()
@@ -1463,7 +1466,6 @@ restartGameInstance(reason, RL := true) {
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
         Sleep, 100
 
-        clearMissionCache()
         if (!RL && DeadCheck = 0) {
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml") ; delete account data
         }
@@ -3850,6 +3852,12 @@ DoTutorial() {
 
     adbClick_wbb(200, 400)
     Delay(3)
+    ; Scroll the year picker up once before selecting the year.
+    Random, yearScrollCount, 4, 7
+    Loop, %yearScrollCount% {
+        adbSwipe_wbb("389 707 389 903 150")
+        Delay(3)
+    }
     adbClick_wbb(200, 375)
     Delay(3)
     session.set("failSafe", A_TickCount)
@@ -3900,6 +3908,25 @@ DoTutorial() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        if(FindOrLoseImage("Create_SignupNotification", 0,failSafeTime)) {
+            ; notification flow
+            adbClick(138, 434)
+            Sleep, 1000
+            adbClick(136, 350)
+            Sleep, 1000
+            adbClick(136, 350)
+            Delay(1)
+        }
+        if(FindOrLoseImage("Create_SignupsDataSharing", 0, failSafeTime)) {
+            adbClick(82, 287)
+            Sleep, 1000
+            adbClick(80, 355)
+            Sleep, 100
+            adbClick(90, 425)
+            Sleep, 100
+            adbClick(141, 484)
+            Delay(1)
+        }
         if(FindImageAndClick("Create_BeginNewAccountButton", 145, 484, , , 2, failSafeTime)) ;wait to be at create save data screen while clicking
             break
         Delay(1)
@@ -3918,16 +3945,29 @@ DoTutorial() {
 
     Delay(1)
 
-    FindImageAndClick("Create_NintendoLink") ;wait for link account screen%
+    failSafeTime := 0
+    match := ""
+    Loop {
+        if(FindOrLoseImage("Create_NintendoLink", 0, failSafeTime)) {
+            match :="Create_NintendoLink"
+            break
+        }
+        if(FindOrLoseImage("Create_NintendoLink2", 0, failSafeTime)) {
+            match :="Create_NintendoLink2"
+            break
+        }
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Nintendo Link`n(" . failSafeTime . "/45 seconds)")
+    }
     Delay(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        if(FindOrLoseImage("Create_NintendoLink", 0, failSafeTime)){
+        if(FindOrLoseImage(match, 0, failSafeTime)){
             adbClick_wbb(140, 460)
             Loop {
                 Delay(1)
-                if(FindOrLoseImage("Create_NintendoLink", 1, failSafeTime)){
+                if(FindOrLoseImage(match, 1, failSafeTime)){
                     adbClick_wbb(140, 380) ; click ok on the interrupted while opening pack prompt
                     break
                 }
@@ -4326,7 +4366,8 @@ EnterGameFromWelcomeIfNeeded(timeoutSec := 60) {
         }
 
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
-            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome2", 0, 0, , true)) {
             adbClick_wbb(140, 450) ; Tap to Start
             Delay(2)
             CreateStatusMessage("Entering game from Welcome...")
@@ -4359,6 +4400,79 @@ WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for Points`n(" . failSafeTime . "/90 seconds)")
+    }
+}
+
+;-------------------------------------------------------------------------------
+; EnterFavouritePackFromHome - switch to favourites view in Home, click the
+; pack once to enter the Points screen, then wait for Pack_PackPointButton.
+; Unlike WaitForPackPointButtonFromHome, this clicks only once (clicking the
+; pack in favourites enters Open Pack directly if clicked again).
+;-------------------------------------------------------------------------------
+EnterFavouritePackFromHome() {
+    global session
+
+    session.set("favEnteredFromHome", true)
+
+    ; Skip favourites switch for packs already stable in Home.
+    mainScreenPacks := session.get("mainScreenPackList")
+    isStableInHome := false
+    homePosition := ""
+    if (IsObject(mainScreenPacks)) {
+        for pos, packName in mainScreenPacks {
+            if (packName = session.get("openPack")) {
+                isStableInHome := true
+                homePosition := pos
+                break
+            }
+        }
+    }
+
+    if (!isStableInHome) {
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop {
+            adbClick_wbb(265, 236)
+            Delay(1)
+            if (FindOrLoseImage(245, 146, 251, 153, , "FavouriteBooster", 0, failSafeTime))
+                break
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime >= 30) {
+                LogWarn("EnterFavouritePackFromHome: timed out waiting for FavouriteBooster", "ADB.txt")
+                break
+            }
+        }
+    }
+
+    ; For stable Home packs, use the Home position (Left/Middle/Right).
+    ; For favourite packs, use GetPackFavoriteHomeX (position within expansion).
+    mapHomeX := {"Left":60, "Middle":140, "Right":215}
+    if (isStableInHome) {
+        favHomeX := mapHomeX[homePosition]
+        if (favHomeX = "")
+            favHomeX := 140
+    } else if (IsFunc("GetPackFavoriteHomeX")) {
+        favHomeX := GetPackFavoriteHomeX(session.get("openPack"))
+    } else {
+        favHomeX := 140
+    }
+
+    ; Single click to enter the pack's Points screen.
+    adbClick_wbb(favHomeX, 203)
+    Delay(2)
+
+    ; Wait for Pack_PackPointButton without clicking again.
+    session.set("failSafe", A_TickCount)
+    failSafeTime := 0
+    Loop {
+        if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime))
+            return true
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        if (failSafeTime >= 45) {
+            LogWarn("EnterFavouritePackFromHome: timed out waiting for PackPointButton", "ADB.txt")
+            return false
+        }
+        Delay(1)
     }
 }
 
@@ -4449,6 +4563,51 @@ SelectPack(HG := false) {
     packy := HomeScreenAllPackY
     enteredPackScreenFromHome := false
 
+    LogInfo("SelectPack: HG=" . HG . " packFavoriteSet=" . session.get("packFavoriteSet") . " isSkipSelectExpansion=" . session.get("isSkipSelectExpansion") . " openPack=" . session.get("openPack"), "ADB.txt")
+
+    ; When favourite pack is set and we are coming from Home (not First boot),
+    ; switch to the favourites view in Home before clicking the pack.
+    ; Skip the switch for packs that are already stable in the Home screen
+    ; (listed in mainScreenPackList).
+    if (session.get("packFavoriteSet") && HG != "First") {
+        mainScreenPacks := session.get("mainScreenPackList")
+        isStableInHome := false
+        homePosition := ""
+        if (IsObject(mainScreenPacks)) {
+            for pos, packName in mainScreenPacks {
+                if (packName = session.get("openPack")) {
+                    isStableInHome := true
+                    homePosition := pos
+                    break
+                }
+            }
+        }
+        if (!isStableInHome) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            Loop {
+                adbClick_wbb(265, 236)
+                Delay(1)
+                if (FindOrLoseImage(245, 146, 251, 153, , "FavouriteBooster", 0, failSafeTime))
+                    break
+                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+                if (failSafeTime >= 30) {
+                    LogWarn("SelectPack: timed out waiting for FavouriteBooster in Home", "ADB.txt")
+                    break
+                }
+            }
+        }
+        ; For stable Home packs, use the Home position (Left/Middle/Right).
+        ; For favourite packs, use GetPackFavoriteHomeX (position within expansion).
+        if (isStableInHome) {
+            packx := mapPackX[homePosition]
+            if (packx = "")
+                packx := 140
+        } else if (IsFunc("GetPackFavoriteHomeX")) {
+            packx := GetPackFavoriteHomeX(session.get("openPack"))
+        }
+    }
+
     ensureMissionUserPrefsExist()
     InitPackOpening()
     if(HG = "First" && session.get("injectMethod") && session.get("loadedAccount") ){
@@ -4460,7 +4619,10 @@ SelectPack(HG := false) {
                 continue
             }
 
-            adbClick_wbb(packx, HomeScreenAllPackY)
+            ; When favourite pack is set, the game boots directly into the
+            ; Points screen. Don't click in Home, just wait for Points.
+            if (!session.get("packFavoriteSet"))
+                adbClick_wbb(packx, HomeScreenAllPackY)
             Delay(1)
             if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime)) {
                 break
@@ -4521,9 +4683,29 @@ SelectPack(HG := false) {
         Delay(2)
         session.get("packCoordinates")[session.get("openPack")].additionalAction()
     }
+    else if (session.get("packFavoriteSet")) {
+        ; Favourite pack: already on the correct expansion screen.
+        ; Nothing to do here. The pack selection click happens after
+        ; FindPackStats() below, so we don't interfere with it.
+    }
 
     if(HG = "First" && session.get("injectMethod") && session.get("loadedAccount") && !session.get("accountHasPackInfo")) {
         FindPackStats()
+    }
+
+    ; Favourite pack: now that FindPackStats is done (or skipped), click the
+    ; specific pack within the expansion to select it. Only needed on cold
+    ; boot (game boots with centre pack in foreground). When entering from
+    ; Home favourites, the clicked pack is already in foreground.
+    if (session.get("packFavoriteSet") && HG = "First" && !session.get("favEnteredFromHome")) {
+        if (IsFunc("GetPackFavoritePointsX"))
+            favPackX := GetPackFavoritePointsX(session.get("openPack"))
+        else
+            favPackX := 140
+        if (favPackX != 140) {
+            adbClick_wbb(favPackX, PackScreenAllPackY)
+            Delay(1)
+        }
     }
 
     if(HG = "Tutorial") {
@@ -4711,6 +4893,9 @@ PackOpening(tenPackOpening := false) {
 
     CheckPack()
     SetLastPackPulledNow()
+    ; A completed pack is forward progress even when the overall account task
+    ; runs longer than the monitor threshold.
+    writeLastActivityEpoch(session.get("scriptName"))
 
     if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
@@ -4917,6 +5102,9 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
 
     CheckPack()
     SetLastPackPulledNow()
+    ; A completed pack is forward progress even when the overall account task
+    ; runs longer than the monitor threshold.
+    writeLastActivityEpoch(session.get("scriptName"))
 
     if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
@@ -5175,6 +5363,8 @@ HandleSingleGiftPackOpening() {
         if(failSafeTime > 45)
             break
     }
+
+    writeLastActivityEpoch(session.get("scriptName"))
 }
 
 ; Wonder Pick reveals can show the first-time card-dex register tutorial.
@@ -5487,6 +5677,14 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
 
         Delay(2)
 
+        ; special case: welcome back screen
+        if (FindOrLoseImage("Mission_WelcomeBackPreClaim", 0, 0, , true)) {
+            LogInfo(logContext . ": dismissing WelcomeBackPreClaim", "ADB.txt")
+            CreateStatusMessage("Welcome Back missions`nDismissing PreClaim...",,,, false)
+            adbClick_wbb(137, 389)
+            Delay(1)
+        }
+
         ; Check for Daily Missions on this page
         if (claimDaily && !dailyClaimed && FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)) {
             session.set("failSafe", A_TickCount)
@@ -5691,7 +5889,6 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     CreateStatusMessage("Restarting game to speed up " . contextName . " registration...",,,, false)
     closePTCGPApp()
     Sleep, 100
-    clearMissionCache()
     startPTCGPApp()
 
     ; Treat the restart as a boot gate: reuse the same sequence used when
@@ -5855,7 +6052,8 @@ GoToMain() {
         ; 1.7.0: tutorials during GoToMain always force an app restart onto Welcome.
         ; ESC on Welcome opens quit confirmation — Cancel (if needed) + Tap to Start.
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
-            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome2", 0, 0, , true)) {
             if (FindOrLoseImage("Common_CloseAlertWindowInMain", 0, 0, , true)) {
                 adbClick_wbb(75, 365) ; Cancel quit dialog
                 Delay(1)
@@ -5914,6 +6112,7 @@ GoToMain() {
 CleanupBeforeExit(){
     global session
 
+    TerminateHelper()
     CloseCardDatabase(session.get("deviceAccount"))
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     allSpecialEventDispose()

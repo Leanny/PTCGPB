@@ -17,6 +17,18 @@ AccountMetadata_AccountPath(deviceAccount) {
     return AccountMetadata_AccountDir() . "\" . safeName . ".json"
 }
 
+; Account JSON is written as UTF-8 by both AHK and carddb. FileRead without an
+; explicit encoding uses the active Windows code page, so every read/write cycle
+; would expand any non-ASCII text into another generation of mojibake.
+AccountMetadata_ReadUtf8(path) {
+    file := FileOpen(path, "r", "UTF-8")
+    if (!IsObject(file))
+        return ""
+    text := file.Read()
+    file.Close()
+    return text
+}
+
 AccountMetadata_AccountHasPulls(deviceAccount) {
     if (deviceAccount = "")
         return false
@@ -25,7 +37,7 @@ AccountMetadata_AccountHasPulls(deviceAccount) {
     if (!FileExist(path))
         return false
 
-    FileRead, jsonText, %path%
+    jsonText := AccountMetadata_ReadUtf8(path)
     pullsJson := AccountMetadata_ExtractArrayValue(jsonText, "pulls")
     pullsJson := RegExReplace(Trim(pullsJson), "\s")
     return pullsJson != "" && pullsJson != "[]"
@@ -606,7 +618,7 @@ AccountMetadata_ReadStoreUnlocked() {
     if (!FileExist(path))
         return AccountMetadata_NewStore()
 
-    FileRead, jsonText, %path%
+    jsonText := AccountMetadata_ReadUtf8(path)
     if (Trim(jsonText) = "")
         return AccountMetadata_NewStore()
 
@@ -636,7 +648,7 @@ AccountMetadata_ReadAccountUnlocked(deviceAccount, instance := "", fileName := "
     if (!FileExist(path))
         return AccountMetadata_NewAccount(instance, fileName)
 
-    FileRead, jsonText, %path%
+    jsonText := AccountMetadata_ReadUtf8(path)
     metadataJson := AccountMetadata_ExtractObjectValue(jsonText, "metadata")
     if (metadataJson = "")
         account := AccountMetadata_NewAccount(instance, fileName)
@@ -667,7 +679,7 @@ AccountMetadata_WriteAccountUnlocked(deviceAccount, account, pullsJsonOverride :
     tradedCardsJson := "{}"
     sharedCardsJson := "{}"
     if (FileExist(path)) {
-        FileRead, oldJson, %path%
+        oldJson := AccountMetadata_ReadUtf8(path)
         if (pullsJsonOverride = "") {
             pullsJson := AccountMetadata_ExtractArrayValue(oldJson, "pulls")
             if (pullsJson = "")
@@ -1372,7 +1384,7 @@ AccountMetadata_GetPackCountMap() {
     if (FileExist(accountDir)) {
         Loop, Files, %accountDir%\*.json, F
         {
-            FileRead, jsonText, %A_LoopFileFullPath%
+            jsonText := AccountMetadata_ReadUtf8(A_LoopFileFullPath)
             metadataJson := AccountMetadata_ExtractObjectValue(jsonText, "metadata")
             if (metadataJson = "")
                 continue
@@ -2146,7 +2158,7 @@ AccountMetadata_ClearPullHistoryEverywhere() {
         if (deviceAccount = "")
             continue
 
-        FileRead, jsonText, %A_LoopFileFullPath%
+        jsonText := AccountMetadata_ReadUtf8(A_LoopFileFullPath)
         pullsJson := RegExReplace(Trim(AccountMetadata_ExtractArrayValue(jsonText, "pulls")), "\s")
         account := AccountMetadata_ReadAccountUnlocked(deviceAccount)
         hasHistoryFlag := IsObject(account["flags"]) && account["flags"].HasKey("H")

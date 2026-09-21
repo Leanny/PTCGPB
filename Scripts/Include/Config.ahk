@@ -19,6 +19,8 @@
         , "ui_spendHourglassPackCount": "spendHourglassPackCount"
         , "ui_AccountName": "AccountName"
         , "ui_Delay": "Delay"
+        , "ui_clickDelayMin": "clickDelayMin"
+        , "ui_clickDelayMax": "clickDelayMax"
         , "ui_swipeSpeed": "swipeSpeed"
         , "ui_waitTime": "waitTime"}
 
@@ -40,6 +42,8 @@
         , "spendHourglassPackCount": 0
         , "injectSortMethod": "PacksDesc"
         , "Delay": 250
+        , "clickDelayMin": 0
+        , "clickDelayMax": 250
         , "swipeSpeed": 250
         , "waitTime": 5
         , "heartBeat": 0
