@@ -167,7 +167,7 @@ RemoveOldFiles() {
         return
     }
 
-    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 10, 4)) {
+    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 11, 0)) {
         LogInfo("RemoveOldFiles deleting old ptcgpb helper version " . versionMatch1 . "." . versionMatch2 . "." . versionMatch3, "ADB.txt")
         adbWriteRaw("rm -f " . remotePath)
     } else {
@@ -185,4 +185,19 @@ IsPtcgpbVersionLessThan(major, minor, patch, minMajor, minMinor, minPatch) {
     if (minor != minMinor)
         return minor < minMinor
     return patch < minPatch
+}
+
+StartCleanup() {
+    if (!EnsurePTCGPBHelperInstalled()) {
+        LogWarn("StartCleanup skipped because the ptcgpb helper could not be installed")
+        return false
+    }
+
+    LogTrace("Running ptcgpb cleanup", "ADB.txt")
+    if (!adbWriteRaw("/data/ptcgp/ptcgpb cleanup")) {
+        LogWarn("StartCleanup failed to run ptcgpb cleanup", "ADB.txt")
+        return false
+    }
+
+    return true
 }

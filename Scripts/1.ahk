@@ -35,7 +35,6 @@ pToken := Gdip_Startup()
 #Include RarityBorder.ahk
 #Include SpecialEvent.ahk
 #Include Crinity_UnofficialPatch.ahk
-#Include PTCGPHelper.ahk
 #Include HourglassSpend.ahk
 
 InitializeHiddenConsole()
@@ -240,8 +239,6 @@ if(session.get("injectMethod") && DeadCheck != 1) {
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     startPTCGPApp()
 }
-
-clearMissionCache()
 
 if(isSevtFileExist())
     loadAllSevtFiles()
@@ -1443,8 +1440,6 @@ restartGameInstance(reason, RL := true) {
 
         ; For a detected stuck state, restart only the Pocket app through ADB.
         ; The external Monitor handles full MuMu instance recovery if needed.
-        clearMissionCache()
-
         CreateStatusMessage("Restarting Pocket App...",,,, false)
         LogInfo("Restarting Pocket App " . session.get("scriptName") . " due to: " . reason)
         ;restartInstance()
@@ -1464,7 +1459,6 @@ restartGameInstance(reason, RL := true) {
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
         Sleep, 100
 
-        clearMissionCache()
         if (!RL && DeadCheck = 0) {
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml") ; delete account data
         }
@@ -5747,7 +5741,6 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     CreateStatusMessage("Restarting game to speed up " . contextName . " registration...",,,, false)
     closePTCGPApp()
     Sleep, 100
-    clearMissionCache()
     startPTCGPApp()
 
     ; Treat the restart as a boot gate: reuse the same sequence used when

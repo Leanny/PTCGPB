@@ -592,7 +592,6 @@ loadAccount() {
     ; Launch the app (same activity/flags as Scripts\Include\ADB.ahk startPTCGPApp)
     UpdateInjectUi("Launching game...", 80)
     RunAdbRootCommand("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
-    RunAdbRootCommand("rm -f /data/media/0/Android/data/jp.pokemon.pokemontcgp/files/dc.bin")
     if !RunAdbRootCommand("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000") {
         Sleep, 100
         if !RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x20000000") {
