@@ -149,8 +149,14 @@ enum Command {
         timestamp: String,
         #[arg(long)]
         pack: String,
-        #[arg(long)]
-        cards: String,
+        #[arg(
+            long,
+            conflicts_with = "cards_file",
+            required_unless_present = "cards_file"
+        )]
+        cards: Option<String>,
+        #[arg(long, conflicts_with = "cards", required_unless_present = "cards")]
+        cards_file: Option<PathBuf>,
     },
     BuildDashboardIndex {
         #[arg(long)]
@@ -355,7 +361,16 @@ fn run(cli: Cli) -> Result<()> {
             timestamp,
             pack,
             cards,
-        } => append_pull(&cli.root, &device_account, &timestamp, &pack, &cards),
+            cards_file,
+        } => {
+            let cards_text = match (cards, cards_file) {
+                (Some(cards), None) => cards,
+                (None, Some(path)) => fs::read_to_string(&path)
+                    .with_context(|| format!("Could not read cards file {:?}", path))?,
+                _ => unreachable!("clap requires exactly one cards input"),
+            };
+            append_pull(&cli.root, &device_account, &timestamp, &pack, &cards_text)
+        }
         Command::BuildDashboardIndex {
             signature,
             source_count,
@@ -1219,7 +1234,7 @@ fn pulls_from_fields(
     let cards: Vec<String> = fields[3]
         .split('|')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(str::to_owned)
         .collect();
 
@@ -3807,7 +3822,7 @@ fn pull_history_day_keys(doc: &Value) -> HashSet<String> {
         .collect()
 }
 
-type HistoryCardCounts = HashMap<(String, String, String), usize>;
+type HistoryCardCounts = HashMap<(String, String), usize>;
 
 fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
     let mut counts = HashMap::new();
@@ -3825,10 +3840,6 @@ fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
             continue;
         };
         let day = history_day_key(timestamp);
-        let pack = pull
-            .get("pack")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
         for card in pull
             .get("cards")
             .and_then(Value::as_array)
@@ -3836,9 +3847,7 @@ fn pull_history_card_counts(doc: &Value) -> HistoryCardCounts {
             .flatten()
             .filter_map(Value::as_str)
         {
-            *counts
-                .entry((day.clone(), pack.to_owned(), card.to_owned()))
-                .or_insert(0) += 1;
+            *counts.entry((day.clone(), card.to_owned())).or_insert(0) += 1;
         }
     }
     counts
@@ -3853,11 +3862,6 @@ fn missing_history_pulls(
         .into_iter()
         .filter_map(|mut pull| {
             let mut missing_cards = Vec::new();
-            let pack = pull
-                .get("pack")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_owned();
             for card in pull
                 .get("cards")
                 .and_then(Value::as_array)
@@ -3867,7 +3871,7 @@ fn missing_history_pulls(
                 let Some(card_id) = card.as_str() else {
                     continue;
                 };
-                let key = (history_day.to_owned(), pack.clone(), card_id.to_owned());
+                let key = (history_day.to_owned(), card_id.to_owned());
                 let already_present = remaining_existing_cards.get_mut(&key).is_some_and(|count| {
                     if *count == 0 {
                         return false;
@@ -4098,11 +4102,20 @@ fn card_ids_from_csv_fields(fields: &[String]) -> Vec<String> {
             cards
                 .split('|')
                 .map(str::trim)
-                .filter(|s| !s.is_empty())
+                .filter(|s| is_valid_card_id(s))
                 .map(str::to_owned)
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn is_valid_card_id(card_id: &str) -> bool {
+    let len = card_id.len();
+    len > 0
+        && len <= 64
+        && card_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 fn card_ids_from_history(text: &str) -> Vec<String> {
@@ -4110,7 +4123,7 @@ fn card_ids_from_history(text: &str) -> Vec<String> {
         .filter_map(|line| line.trim().trim_start_matches('\u{feff}').split_once('|'))
         .flat_map(|(_, cards)| cards.split(','))
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(str::to_owned)
         .collect()
 }
@@ -4136,7 +4149,7 @@ fn history_pulls_from_line(
     for card in cards_text
         .split(',')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
     {
         let pack = cardmap
             .get(card)
@@ -4229,7 +4242,7 @@ fn registered_cards_from_history_line(line: &str) -> Vec<String> {
     cards_text
         .split(',')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(str::to_owned)
         .collect()
 }
@@ -4381,7 +4394,7 @@ fn append_pull(
     let cards: Vec<Value> = cards_text
         .split('|')
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| is_valid_card_id(s))
         .map(|s| json!(s))
         .collect();
 
@@ -4397,6 +4410,14 @@ fn append_pull(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn card_id_validation_rejects_mojibake_and_oversized_values() {
+        assert!(is_valid_card_id("TR_10_001330_00"));
+        assert!(is_valid_card_id("PK_20_014180_00"));
+        assert!(!is_valid_card_id("TR_10_0013ÃƒÂ±30_00"));
+        assert!(!is_valid_card_id(&"A".repeat(65)));
+    }
 
     #[test]
     fn balance_assigns_unique_names_without_overwriting_reserved_suffixes() {
@@ -4503,6 +4524,44 @@ mod tests {
         let mut reconciled_cards = pull_history_card_counts(&doc);
         let repeated = missing_history_pulls(history_day, exported_pulls, &mut reconciled_cards);
         assert!(repeated.is_empty());
+    }
+
+    #[test]
+    fn in_depth_history_reconciles_across_local_day_boundary_and_legacy_pack_lists() {
+        let doc = json!({
+            "pulls": [{
+                "timestamp": "2026-08-11T22:51:45-07:00",
+                "pack": "A4b, B1, B2",
+                "cards": ["PK001", "PK002", "PK003"]
+            }]
+        });
+        let exported_pulls = vec![
+            json!({
+                "timestamp": "2026-08-10T23:00:00-07:00",
+                "pack": "A4b",
+                "cards": ["PK001"]
+            }),
+            json!({
+                "timestamp": "2026-08-10T23:00:00-07:00",
+                "pack": "B1",
+                "cards": ["PK002"]
+            }),
+            json!({
+                "timestamp": "2026-08-10T23:00:00-07:00",
+                "pack": "B2",
+                "cards": ["PK003"]
+            }),
+        ];
+
+        let existing_day =
+            history_day_key(parse_pull_timestamp("2026-08-11T22:51:45-07:00").unwrap());
+        let exported_day =
+            history_day_key(parse_pull_timestamp("2026-08-10T23:00:00-07:00").unwrap());
+        assert_eq!(existing_day, exported_day);
+
+        let mut existing_cards = pull_history_card_counts(&doc);
+        let missing = missing_history_pulls(&exported_day, exported_pulls, &mut existing_cards);
+        assert!(missing.is_empty());
     }
 
     #[test]

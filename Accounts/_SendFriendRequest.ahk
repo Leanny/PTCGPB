@@ -125,6 +125,11 @@ ResetStatusMessage() {
 }
 LogToFile(message, logFile := "") {
     global LogsDir
+    if !InStr(FileExist(LogsDir), "D") {
+        FileCreateDir, %LogsDir%
+        if !InStr(FileExist(LogsDir), "D")
+            return false
+    }
     if (logFile = "")
         logFile := LogsDir . "\Log_" . StrReplace(A_ScriptName, ".ahk") . ".txt"
     else
@@ -132,7 +137,9 @@ LogToFile(message, logFile := "") {
     FormatTime, readableTime, %A_Now%, MMMM dd, yyyy HH:mm:ss
     try {
         FileAppend, % "[" readableTime "] " message "`n", %logFile%
+        return !ErrorLevel
     } catch e {
+        return false
     }
 }
 LogInfo(message, logFile := "") {

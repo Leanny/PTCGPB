@@ -61,6 +61,8 @@ Txt_runMain:Run Main:
 Txt_AccountName:New Bot Names:
 Txt_autoUseGPTest:Auto GPTest ():
 Txt_Delay:Global Delay (ms):
+Txt_ClickDelayMin:Click Min (ms):
+Txt_ClickDelayMax:Click Max (ms):
 Txt_WaitTime:Wait for Main (s):
 Txt_SwipeSpeed:Swipe Speed (ms):
 Txt_slowMotion:Base Game Compatibility
@@ -101,6 +103,7 @@ Txt_openExtraPack:Open Extra Pack
 Txt_claimSpecialMissions:Claim Special Missions
 SortByText:Sort By:
 
+Txt_TeamRocketsAmbition:Team Rocket's Ambition
 Txt_RulerOfTheSkies:Ruler of the Skies
 Txt_EverydayWonders:Everyday Wonders
 Txt_ParadoxDrive:Paradox Drive

@@ -61,6 +61,8 @@ Txt_runMain:メインアカウント起動
 Txt_AccountName:アカウント名稱：
 Txt_autoUseGPTest:GP Test自動起動（秒）：
 Txt_Delay:遅延：
+Txt_ClickDelayMin:クリック最小値：
+Txt_ClickDelayMax:クリック最大値：
 Txt_WaitTime:待機時間：
 Txt_SwipeSpeed:スワイプ速度：
 Txt_slowMotion:互換モード
@@ -101,6 +103,7 @@ Txt_openExtraPack:追加パックを開く
 Txt_claimSpecialMissions:イベント
 SortByText:注入序列：
 
+Txt_TeamRocketsAmbition:ロケット団の野望
 Txt_RulerOfTheSkies:天空の支配者
 Txt_EverydayWonders:ミラクルデイズ
 Txt_Parade:夢幻パレード

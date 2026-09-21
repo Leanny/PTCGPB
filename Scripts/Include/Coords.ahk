@@ -222,11 +222,13 @@ needlesDict.Add(new Needle("Create_TosOpenButton", "TosScreen", new Coordinate(2
 needlesDict.Add(new Needle("Create_TosCloseButton", "Tos", new Coordinate(130, 473, 145, 488)))
 needlesDict.Add(new Needle("Create_BeginNewAccountButton", "Save", new Coordinate(36, 332, 41, 353)))
 needlesDict.Add(new Needle("Create_NintendoLink", "Link", new Coordinate(65, 340, 91, 347)))
+needlesDict.Add(new Needle("Create_NintendoLink2", "Link2", new Coordinate(64, 320, 92, 326)))
 needlesDict.Add(new Needle("Create_DownloadAlertWindow", "Confirm", new Coordinate(118, 347, 135, 384)))
 needlesDict.Add(new Needle("Create_DownloadComplete", "Complete", new Coordinate(215, 369, 233, 397)))
 needlesDict.Add(new Needle("Create_CinematicBackground", "Cinematic", new Coordinate(0, 40, 7, 47)))
 needlesDict.Add(new Needle("Create_WelcomePopup", "Welcome", new Coordinate(72, 234, 125, 239)))
 needlesDict.Add(new Needle("Boot_Welcome", "Welcome", new Coordinate(70, 278, 140, 295)))
+needlesDict.Add(new Needle("Boot_Welcome2", "Welcome2", new Coordinate(70, 278, 140, 295)))
 needlesDict.Add(new Needle("Boot_WelcomeBack", "WelcomeBack", new Coordinate(236, 123, 248, 133)))
 needlesDict.Add(new Needle("Create_NameInputIcon", "Name", new Coordinate(190, 241, 209, 257)))
 needlesDict.Add(new Needle("Create_DeactivatedOKButton", "OK", new Coordinate(0, 455, 30, 500)))
@@ -248,6 +250,8 @@ needlesDict.Add(new Needle("Create_InfoIconInStandByOpenPack", "Hourglass2", new
 needlesDict.Add(new Needle("Create_TitleBottomBorderInWPSelectCard", "Pick", new Coordinate(65, 128, 198, 133)))
 needlesDict.Add(new Needle("Create_SoloBattleMissionIconInDetail", "1solobattlemission", new Coordinate(108, 135, 177, 163)))
 needlesDict.Add(new Needle("Create_FullFreepackInMainCenter", "Main", new Coordinate(123, 314, 135, 323)))
+needlesDict.Add(new Needle("Create_SignupNotification", "SignupNotification", new Coordinate(218, 117, 253, 153)))
+needlesDict.Add(new Needle("Create_SignupsDataSharing", "SignupsDataSharing", new Coordinate(8, 488, 34, 512)))
 
 ;==============================================================================================================================
 

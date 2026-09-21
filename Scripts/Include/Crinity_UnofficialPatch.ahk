@@ -203,6 +203,10 @@ waitForAppBootScreen() {
             LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
             return true
         }
+        if (FindOrLoseImage("Boot_Welcome2", 0, 0, 30, true)) {
+            LogInfo("Boot gate: Welcome title screen ready", "ADB.txt")
+            return true
+        }
         if (FindOrLoseImage("Create_CinematicBackground", 0, , , true)) {
             LogInfo("Boot gate: Cinematic screen ready", "ADB.txt")
             return true

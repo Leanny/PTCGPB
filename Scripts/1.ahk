@@ -35,7 +35,6 @@ pToken := Gdip_Startup()
 #Include RarityBorder.ahk
 #Include SpecialEvent.ahk
 #Include Crinity_UnofficialPatch.ahk
-#Include PTCGPHelper.ahk
 #Include HourglassSpend.ahk
 
 InitializeHiddenConsole()
@@ -241,8 +240,6 @@ if(session.get("injectMethod") && DeadCheck != 1) {
     startPTCGPApp()
 }
 
-clearMissionCache()
-
 if(isSevtFileExist())
     loadAllSevtFiles()
 
@@ -346,6 +343,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             FormatTime, formattedEndTime, %EndTime%, HH:mm:ss
             CreateStatusMessage("Waiting for daily server reset until " . formattedEndTime ,,,, false)
             session.set("dateChange", true)
+            writeLastActivityEpoch(session.get("scriptName"), 4000)
             Sleep, 5000
 
             StartCurrentTimeDiff := A_Now
@@ -1447,10 +1445,8 @@ restartGameInstance(reason, RL := true) {
             launchInstance(session.get("scriptName"))
         }
 
-        ; Only restart MuMu when stuck - this is the nuclear option
-        clearMissionCache()
-
-        ; Kill the entire MuMu instance
+        ; For a detected stuck state, restart only the Pocket app through ADB.
+        ; The external Monitor handles full MuMu instance recovery if needed.
         CreateStatusMessage("Restarting Pocket App...",,,, false)
         LogInfo("Restarting Pocket App " . session.get("scriptName") . " due to: " . reason)
         ;restartInstance()
@@ -1470,7 +1466,6 @@ restartGameInstance(reason, RL := true) {
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
         Sleep, 100
 
-        clearMissionCache()
         if (!RL && DeadCheck = 0) {
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml") ; delete account data
         }
@@ -3857,6 +3852,12 @@ DoTutorial() {
 
     adbClick_wbb(200, 400)
     Delay(3)
+    ; Scroll the year picker up once before selecting the year.
+    Random, yearScrollCount, 4, 7
+    Loop, %yearScrollCount% {
+        adbSwipe_wbb("389 707 389 903 150")
+        Delay(3)
+    }
     adbClick_wbb(200, 375)
     Delay(3)
     session.set("failSafe", A_TickCount)
@@ -3907,6 +3908,25 @@ DoTutorial() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        if(FindOrLoseImage("Create_SignupNotification", 0,failSafeTime)) {
+            ; notification flow
+            adbClick(138, 434)
+            Sleep, 1000
+            adbClick(136, 350)
+            Sleep, 1000
+            adbClick(136, 350)
+            Delay(1)
+        }
+        if(FindOrLoseImage("Create_SignupsDataSharing", 0, failSafeTime)) {
+            adbClick(82, 287)
+            Sleep, 1000
+            adbClick(80, 355)
+            Sleep, 100
+            adbClick(90, 425)
+            Sleep, 100
+            adbClick(141, 484)
+            Delay(1)
+        }
         if(FindImageAndClick("Create_BeginNewAccountButton", 145, 484, , , 2, failSafeTime)) ;wait to be at create save data screen while clicking
             break
         Delay(1)
@@ -3925,16 +3945,29 @@ DoTutorial() {
 
     Delay(1)
 
-    FindImageAndClick("Create_NintendoLink") ;wait for link account screen%
+    failSafeTime := 0
+    match := ""
+    Loop {
+        if(FindOrLoseImage("Create_NintendoLink", 0, failSafeTime)) {
+            match :="Create_NintendoLink"
+            break
+        }
+        if(FindOrLoseImage("Create_NintendoLink2", 0, failSafeTime)) {
+            match :="Create_NintendoLink2"
+            break
+        }
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Nintendo Link`n(" . failSafeTime . "/45 seconds)")
+    }
     Delay(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        if(FindOrLoseImage("Create_NintendoLink", 0, failSafeTime)){
+        if(FindOrLoseImage(match, 0, failSafeTime)){
             adbClick_wbb(140, 460)
             Loop {
                 Delay(1)
-                if(FindOrLoseImage("Create_NintendoLink", 1, failSafeTime)){
+                if(FindOrLoseImage(match, 1, failSafeTime)){
                     adbClick_wbb(140, 380) ; click ok on the interrupted while opening pack prompt
                     break
                 }
@@ -4333,7 +4366,8 @@ EnterGameFromWelcomeIfNeeded(timeoutSec := 60) {
         }
 
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
-            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome2", 0, 0, , true)) {
             adbClick_wbb(140, 450) ; Tap to Start
             Delay(2)
             CreateStatusMessage("Entering game from Welcome...")
@@ -4859,6 +4893,9 @@ PackOpening(tenPackOpening := false) {
 
     CheckPack()
     SetLastPackPulledNow()
+    ; A completed pack is forward progress even when the overall account task
+    ; runs longer than the monitor threshold.
+    writeLastActivityEpoch(session.get("scriptName"))
 
     if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
@@ -5065,6 +5102,9 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
 
     CheckPack()
     SetLastPackPulledNow()
+    ; A completed pack is forward progress even when the overall account task
+    ; runs longer than the monitor threshold.
+    writeLastActivityEpoch(session.get("scriptName"))
 
     if(!CardDetection_HasPendingGodPack() && !session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum"))
         return
@@ -5323,6 +5363,8 @@ HandleSingleGiftPackOpening() {
         if(failSafeTime > 45)
             break
     }
+
+    writeLastActivityEpoch(session.get("scriptName"))
 }
 
 ; Wonder Pick reveals can show the first-time card-dex register tutorial.
@@ -5635,6 +5677,14 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
 
         Delay(2)
 
+        ; special case: welcome back screen
+        if (FindOrLoseImage("Mission_WelcomeBackPreClaim", 0, 0, , true)) {
+            LogInfo(logContext . ": dismissing WelcomeBackPreClaim", "ADB.txt")
+            CreateStatusMessage("Welcome Back missions`nDismissing PreClaim...",,,, false)
+            adbClick_wbb(137, 389)
+            Delay(1)
+        }
+
         ; Check for Daily Missions on this page
         if (claimDaily && !dailyClaimed && FindOrLoseImage("Mission_DailyMissionImage", 0, failSafeTime)) {
             session.set("failSafe", A_TickCount)
@@ -5839,7 +5889,6 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     CreateStatusMessage("Restarting game to speed up " . contextName . " registration...",,,, false)
     closePTCGPApp()
     Sleep, 100
-    clearMissionCache()
     startPTCGPApp()
 
     ; Treat the restart as a boot gate: reuse the same sequence used when
@@ -6003,7 +6052,8 @@ GoToMain() {
         ; 1.7.0: tutorials during GoToMain always force an app restart onto Welcome.
         ; ESC on Welcome opens quit confirmation — Cancel (if needed) + Tap to Start.
         if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)
-            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)) {
+            || FindOrLoseImage("Boot_Welcome", 0, 0, , true)
+            || FindOrLoseImage("Boot_Welcome2", 0, 0, , true)) {
             if (FindOrLoseImage("Common_CloseAlertWindowInMain", 0, 0, , true)) {
                 adbClick_wbb(75, 365) ; Cancel quit dialog
                 Delay(1)
@@ -6062,6 +6112,7 @@ GoToMain() {
 CleanupBeforeExit(){
     global session
 
+    TerminateHelper()
     CloseCardDatabase(session.get("deviceAccount"))
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     allSpecialEventDispose()

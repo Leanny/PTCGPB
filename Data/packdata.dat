@@ -1,5 +1,5 @@
 # Pack list in Home screen
-Home:Left|ParadoxDrive,Middle|RulerOfTheSkies,Right|EveryDayWonders
+Home:Left|EverydayWonders,Middle|TeamRocketsAmbition,Right|RulerOfTheSkies
 
 # Pack data(Structure)
 # PackID, Series Type, Number of packs in the set, Location of extension window, y Pos, Scroll Type
@@ -22,17 +22,17 @@ Pack:Springs|A|1|Col-Second|298|0
 Pack:Deluxe|A|1|Col-First|298|0
 
 # B Series
-Pack:MegaGyarados|B|3|Col-First-Left|400|1
-Pack:MegaBlaziken|B|3|Col-First-Middle|400|1
-Pack:MegaAltaria|B|3|Col-First-Right|400|1
-Pack:CrimsonBlaze|B|1|Col-Second|230|1
-Pack:Parade|B|1|Col-First|230|1
-Pack:PaldeanWonders|B|1|Col-Second|434|2
-Pack:MegaShine|B|1|Col-First|434|2
-Pack:PulsingAura|B|1|Col-Second|434|0
-Pack:ParadoxDrive|B|1|Col-First|434|0
-Pack:EverydayWonders|B|1|Col-Second|298|0
-Pack:RulerOfTheSkies|B|1|Col-First|298|0
-
+Pack:MegaGyarados|B|3|Col-Second-Left|405|1
+Pack:MegaBlaziken|B|3|Col-Second-Middle|405|1
+Pack:MegaAltaria|B|3|Col-Second-Right|405|1
+Pack:CrimsonBlaze|B|1|Col-First|405|1
+Pack:Parade|B|1|Col-Second|238|1
+Pack:PaldeanWonders|B|1|Col-First|238|1
+Pack:MegaShine|B|1|Col-Second|434|2
+Pack:PulsingAura|B|1|Col-First|434|2
+Pack:ParadoxDrive|B|1|Col-Second|434|0
+Pack:EverydayWonders|B|1|Col-First|434|0
+Pack:RulerOfTheSkies|B|1|Col-Second|298|0
+Pack:TeamRocketsAmbition|B|1|Col-First|298|0
 # DO NOT Delete End
 ---END---

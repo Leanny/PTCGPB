@@ -493,7 +493,7 @@ CountShinedust() {
                     break
             } else {
                 confirmedStart := 0
-                TryHandleTradeTutorial(failSafeTime)
+                TryHandleTradeTutorial(failSafeTime, False)
                 ; Re-click Trade button every 5 seconds if needle not found
                 if (A_TickCount - lastTradeClick >= 5000) {
                     adbClick_wbb(196, 408)
@@ -519,10 +519,12 @@ CountShinedust() {
         if (IsFunc("ocr")) {
             shineDustValue := ""
             allowedChars := "0123456789,. "
-            validPattern := "^\d[\d,]*\d$|^\d$"
+            ; Accept plain digits or consistently grouped thousands using the
+            ; separators used by supported locales (for example 63,380 or 63.380).
+            validPattern := "^\d+$|^\d{1,3}([,. ])\d{3}(\1\d{3})*$"
 
             if (RefinedOCRText(shinedustScreenshotFile, ocrX, ocrY, ocrW, ocrH, allowedChars, validPattern, shineDustValue)) {
-                shineDustValue := RegExReplace(shineDustValue, "[^\d,]", "")
+                shineDustValue := RegExReplace(shineDustValue, "\D", "")
                 if (shineDustValue != "") {
                     global shinedustValueGlobal
                     shinedustValueGlobal := shineDustValue
