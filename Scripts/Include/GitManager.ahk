@@ -116,7 +116,98 @@ BackupToDisk(srcRoot, destFolder, pathsList, logFile) {
         destFolder := RegExReplace(destFolder, "\\+$")
         copied := 0
         pruned := 0
+        copyFailed := false
 
+        for i, entry in pathsList {
+            normPath := StrReplace(entry.path, "/", "\")
+            normPath := RegExReplace(normPath, "\\+$")
+            hasSuffix := entry.HasKey("suffix") && entry.suffix != ""
+            isGlob := InStr(normPath, "*")
+            isDir := entry.HasKey("dir") && entry.dir
+            absPath := srcRoot . "\" . normPath
+
+            if (hasSuffix) {
+                if (!InStr(FileExist(absPath), "D"))
+                    continue
+                entrySuffix := entry.suffix
+                Loop, Files, %absPath%\*%entrySuffix%, R
+                {
+                    rel := SubStr(A_LoopFileFullPath, StrLen(srcRoot) + 2)
+                    destFile := destFolder . "\" . rel
+                    SplitPath, destFile, , destDir
+                    if (!EnsureDirExists(destDir)) {
+                        copyFailed := true
+                        continue
+                    }
+                    FileCopy, %A_LoopFileFullPath%, %destFile%, 1
+                    if (!ErrorLevel)
+                        copied++
+                    else
+                        copyFailed := true
+                }
+            } else if (isGlob) {
+                Loop, Files, %srcRoot%\%normPath%
+                {
+                    if (InStr(A_LoopFileAttrib, "D"))
+                        continue
+                    rel := SubStr(A_LoopFileFullPath, StrLen(srcRoot) + 2)
+                    destFile := destFolder . "\" . rel
+                    SplitPath, destFile, , destDir
+                    if (!EnsureDirExists(destDir)) {
+                        copyFailed := true
+                        continue
+                    }
+                    FileCopy, %A_LoopFileFullPath%, %destFile%, 1
+                    if (!ErrorLevel)
+                        copied++
+                    else
+                        copyFailed := true
+                }
+            } else if (isDir) {
+                if (!InStr(FileExist(absPath), "D"))
+                    continue
+                Loop, Files, %absPath%\*.*, R
+                {
+                    if (InStr(A_LoopFileAttrib, "D"))
+                        continue
+                    rel := SubStr(A_LoopFileFullPath, StrLen(srcRoot) + 2)
+                    destFile := destFolder . "\" . rel
+                    SplitPath, destFile, , destDir
+                    if (!EnsureDirExists(destDir)) {
+                        copyFailed := true
+                        continue
+                    }
+                    FileCopy, %A_LoopFileFullPath%, %destFile%, 1
+                    if (!ErrorLevel)
+                        copied++
+                    else
+                        copyFailed := true
+                }
+            } else {
+                if (!FileExist(absPath))
+                    continue
+                destFile := destFolder . "\" . normPath
+                SplitPath, destFile, , destDir
+                if (!EnsureDirExists(destDir)) {
+                    copyFailed := true
+                    continue
+                }
+                FileCopy, %absPath%, %destFile%, 1
+                if (!ErrorLevel)
+                    copied++
+                else
+                    copyFailed := true
+            }
+        }
+
+        if (copyFailed) {
+            LogError("Disk backup failed while copying; stale files were retained in " . destFolder, logFile)
+            return False
+        }
+
+        ; Prune only after every selected source file has been copied
+        ; successfully, and only when the corresponding source file is absent.
+        ; This keeps freshly copied files in place while removing stale ones.
         for i, entry in pathsList {
             normPath := StrReplace(entry.path, "/", "\")
             normPath := RegExReplace(normPath, "\\+$")
@@ -135,43 +226,25 @@ BackupToDisk(srcRoot, destFolder, pathsList, logFile) {
                     {
                         if (InStr(A_LoopFileAttrib, "D"))
                             continue
+                        rel := SubStr(A_LoopFileFullPath, StrLen(destFolder) + 2)
+                        if (FileExist(srcRoot . "\" . rel))
+                            continue
                         FileDelete, %A_LoopFileFullPath%
                         if (!ErrorLevel)
                             pruned++
                     }
-                }
-                Loop, Files, %absPath%\*%entrySuffix%, R
-                {
-                    rel := SubStr(A_LoopFileFullPath, StrLen(srcRoot) + 2)
-                    destFile := destFolder . "\" . rel
-                    SplitPath, destFile, , destDir
-                    if (!EnsureDirExists(destDir))
-                        continue
-                    FileCopy, %A_LoopFileFullPath%, %destFile%, 1
-                    if (!ErrorLevel)
-                        copied++
                 }
             } else if (isGlob) {
                 Loop, Files, %destFolder%\%normPath%
                 {
                     if (InStr(A_LoopFileAttrib, "D"))
                         continue
+                    rel := SubStr(A_LoopFileFullPath, StrLen(destFolder) + 2)
+                    if (FileExist(srcRoot . "\" . rel))
+                        continue
                     FileDelete, %A_LoopFileFullPath%
                     if (!ErrorLevel)
                         pruned++
-                }
-                Loop, Files, %srcRoot%\%normPath%
-                {
-                    if (InStr(A_LoopFileAttrib, "D"))
-                        continue
-                    rel := SubStr(A_LoopFileFullPath, StrLen(srcRoot) + 2)
-                    destFile := destFolder . "\" . rel
-                    SplitPath, destFile, , destDir
-                    if (!EnsureDirExists(destDir))
-                        continue
-                    FileCopy, %A_LoopFileFullPath%, %destFile%, 1
-                    if (!ErrorLevel)
-                        copied++
                 }
             } else if (isDir) {
                 if (!InStr(FileExist(absPath), "D"))
@@ -182,37 +255,16 @@ BackupToDisk(srcRoot, destFolder, pathsList, logFile) {
                     {
                         if (InStr(A_LoopFileAttrib, "D"))
                             continue
+                        rel := SubStr(A_LoopFileFullPath, StrLen(destFolder) + 2)
+                        if (FileExist(srcRoot . "\" . rel))
+                            continue
                         FileDelete, %A_LoopFileFullPath%
                         if (!ErrorLevel)
                             pruned++
                     }
                 }
-                Loop, Files, %absPath%\*.*, R
-                {
-                    if (InStr(A_LoopFileAttrib, "D"))
-                        continue
-                    rel := SubStr(A_LoopFileFullPath, StrLen(srcRoot) + 2)
-                    destFile := destFolder . "\" . rel
-                    SplitPath, destFile, , destDir
-                    if (!EnsureDirExists(destDir))
-                        continue
-                    FileCopy, %A_LoopFileFullPath%, %destFile%, 1
-                    if (!ErrorLevel)
-                        copied++
-                }
-            } else {
-                if (!FileExist(absPath))
-                    continue
-                destFile := destFolder . "\" . normPath
-                SplitPath, destFile, , destDir
-                if (!EnsureDirExists(destDir))
-                    continue
-                FileCopy, %absPath%, %destFile%, 1
-                if (!ErrorLevel)
-                    copied++
             }
         }
-
         LogInfo("Disk backup complete. Copied " . copied . " file(s), pruned " . pruned . " stale file(s) to " . destFolder, logFile)
         return True
     } catch e {
