@@ -246,6 +246,13 @@ getPackCoordXInHome(){
     mapPackX := {"Left":60, "Middle":140, "Right":215}
     packx := mapPackX["Middle"]
 
+    ; Latest is an alias for the pack shown in the centre of Home. It has no
+    ; fixed expansion-screen coordinates because its expansion changes.
+    if (session.get("openPack") = "Latest") {
+        session.set("isSkipSelectExpansion", 1)
+        return packx
+    }
+
     ; When favourite pack was set via helper, the game boots directly into the
     ; correct expansion. Use the favourite home coordinate and skip expansion
     ; selection entirely.

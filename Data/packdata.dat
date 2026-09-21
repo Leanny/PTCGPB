@@ -2,37 +2,40 @@
 Home:Left|EverydayWonders,Middle|TeamRocketsAmbition,Right|RulerOfTheSkies
 
 # Pack data(Structure)
-# PackID, Series Type, Number of packs in the set, Location of extension window, y Pos, Scroll Type
+# PackID, Series Type, Number of packs in the set, Location of extension window, y Pos, Scroll Type, Expansion ID
 # A Series
-Pack:Mewtwo|A|3|Col-First-Middle|405|1
-Pack:Charizard|A|3|Col-First-Left|405|1
-Pack:Pikachu|A|3|Col-First-Right|405|1
-Pack:Mew|A|1|Col-Second|238|1
-Pack:Dialga|A|2|Col-First-Left|238|1
-Pack:Palkia|A|2|Col-First-Right|238|1
-Pack:Arceus|A|1|Col-Second|107|1
-Pack:Shining|A|1|Col-First|107|1
-Pack:Solgaleo|A|2|Col-Second-Left|440|2
-Pack:Lunala|A|2|Col-Second-Right|440|2
-Pack:Buzzwole|A|1|Col-First|440|2
-Pack:Eevee|A|1|Col-Second|434|0
-Pack:HoOh|A|2|Col-First-Left|434|0
-Pack:Lugia|A|2|Col-First-Right|434|0
-Pack:Springs|A|1|Col-Second|298|0
-Pack:Deluxe|A|1|Col-First|298|0
+Pack:Mewtwo|A|3|Col-First-Middle|405|1|A1
+Pack:Charizard|A|3|Col-First-Left|405|1|A1
+Pack:Pikachu|A|3|Col-First-Right|405|1|A1
+Pack:Mew|A|1|Col-Second|238|1|A1a
+Pack:Dialga|A|2|Col-First-Left|238|1|A2
+Pack:Palkia|A|2|Col-First-Right|238|1|A2
+Pack:Arceus|A|1|Col-Second|107|1|A2a
+Pack:Shining|A|1|Col-First|107|1|A2b
+Pack:Solgaleo|A|2|Col-Second-Left|440|2|A3
+Pack:Lunala|A|2|Col-Second-Right|440|2|A3
+Pack:Buzzwole|A|1|Col-First|440|2|A3a
+Pack:Eevee|A|1|Col-Second|434|0|A3b
+Pack:HoOh|A|2|Col-First-Left|434|0|A4
+Pack:Lugia|A|2|Col-First-Right|434|0|A4
+Pack:Springs|A|1|Col-Second|298|0|A4a
+Pack:Deluxe|A|1|Col-First|298|0|A4b
 
 # B Series
-Pack:MegaGyarados|B|3|Col-Second-Left|405|1
-Pack:MegaBlaziken|B|3|Col-Second-Middle|405|1
-Pack:MegaAltaria|B|3|Col-Second-Right|405|1
-Pack:CrimsonBlaze|B|1|Col-First|405|1
-Pack:Parade|B|1|Col-Second|238|1
-Pack:PaldeanWonders|B|1|Col-First|238|1
-Pack:MegaShine|B|1|Col-Second|434|2
-Pack:PulsingAura|B|1|Col-First|434|2
-Pack:ParadoxDrive|B|1|Col-Second|434|0
-Pack:EverydayWonders|B|1|Col-First|434|0
-Pack:RulerOfTheSkies|B|1|Col-Second|298|0
-Pack:TeamRocketsAmbition|B|1|Col-First|298|0
+Pack:MegaGyarados|B|3|Col-Second-Left|405|1|B1
+Pack:MegaBlaziken|B|3|Col-Second-Middle|405|1|B1
+Pack:MegaAltaria|B|3|Col-Second-Right|405|1|B1
+Pack:CrimsonBlaze|B|1|Col-First|405|1|B1a
+Pack:Parade|B|1|Col-Second|238|1|B2
+Pack:PaldeanWonders|B|1|Col-First|238|1|B2a
+Pack:MegaShine|B|1|Col-Second|434|2|B2b
+Pack:PulsingAura|B|1|Col-First|434|2|B3
+Pack:ParadoxDrive|B|1|Col-Second|434|0|B3a
+Pack:EverydayWonders|B|1|Col-First|434|0|B3b
+Pack:RulerOfTheSkies|B|1|Col-Second|298|0|B4
+Pack:TeamRocketsAmbition|B|1|Col-First|298|0|B4a
+
+# Special pack: ptcgpb resolves this to the newest available expansion.
+Pack:Latest|Special|1|Col-First|0|0|latest
 # DO NOT Delete End
 ---END---

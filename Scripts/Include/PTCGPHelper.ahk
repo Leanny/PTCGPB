@@ -3,61 +3,16 @@
 ;===============================================================================
 
 ;-------------------------------------------------------------------------------
-; Pack name → Expansion ID mapping for --pack favourite command
+; Pack name → Expansion ID for the --pack favourite command. The mapping is
+; maintained in Data/packdata.dat together with the rest of the pack data.
 ;-------------------------------------------------------------------------------
-GetExpansionIdForPack(packName) {
-    static map := ""
-    if (map = "") {
-        map := {}
-        ; A1 - Genetic Apex (3 packs)
-        map["Mewtwo"] := "A1"
-        map["Charizard"] := "A1"
-        map["Pikachu"] := "A1"
-        ; A1a - Mythical Island (1 pack)
-        map["Mew"] := "A1a"
-        ; A2 - Space-Time Smackdown (2 packs)
-        map["Dialga"] := "A2"
-        map["Palkia"] := "A2"
-        ; A2a - Triumphant Light (1 pack)
-        map["Arceus"] := "A2a"
-        ; A2b - Shining Revelry (1 pack)
-        map["Shining"] := "A2b"
-        ; A3 - Celestial Guardians (2 packs)
-        map["Solgaleo"] := "A3"
-        map["Lunala"] := "A3"
-        ; A3a - Extradimensional Crisis (1 pack)
-        map["Buzzwole"] := "A3a"
-        ; A3b - Eevee Grove (1 pack)
-        map["Eevee"] := "A3b"
-        ; A4 - Wisdom of Sea and Sky (2 packs)
-        map["HoOh"] := "A4"
-        map["Lugia"] := "A4"
-        ; A4a - Secluded Springs (1 pack)
-        map["Springs"] := "A4a"
-        ; A4b - Deluxe Pack: ex (1 pack)
-        map["Deluxe"] := "A4b"
-        ; B1 - Mega Rising (3 packs)
-        map["MegaGyarados"] := "B1"
-        map["MegaBlaziken"] := "B1"
-        map["MegaAltaria"] := "B1"
-        ; B1a - Crimson Blaze (1 pack)
-        map["CrimsonBlaze"] := "B1a"
-        ; B2 - Fantastical Parade (1 pack)
-        map["Parade"] := "B2"
-        ; B2a - Paldean Wonders (1 pack)
-        map["PaldeanWonders"] := "B2a"
-        ; B2b - Mega Shine (1 pack)
-        map["MegaShine"] := "B2b"
-        ; B3 - Pulsing Aura (1 pack)
-        map["PulsingAura"] := "B3"
-        ; B3a - Paradox Drive (1 pack)
-        map["ParadoxDrive"] := "B3a"
-        ; B3b - Everyday Wonders (1 pack)
-        map["EverydayWonders"] := "B3b"
-        ; B4 - Ruler of the Skies (1 pack)
-        map["RulerOfTheSkies"] := "B4"
-    }
-    return map[packName]
+GetExpansionIDForPack(packName) {
+    global session
+
+    packInfo := session.get("pokemonPackObj")[packName]
+    if (!IsObject(packInfo))
+        return ""
+    return Trim(packInfo["ExpansionID"])
 }
 
 ;-------------------------------------------------------------------------------
@@ -68,6 +23,9 @@ GetExpansionIdForPack(packName) {
 ;-------------------------------------------------------------------------------
 GetPackFavoritePointsX(packName) {
     global session
+    if (packName = "Latest")
+        return 140
+
     packInfo := session.get("pokemonPackObj")[packName]
     if (!IsObject(packInfo))
         return 140
@@ -101,6 +59,9 @@ GetPackFavoritePointsX(packName) {
 ;-------------------------------------------------------------------------------
 GetPackFavoriteHomeX(packName) {
     global session
+    if (packName = "Latest")
+        return 140
+
     packInfo := session.get("pokemonPackObj")[packName]
     if (!IsObject(packInfo))
         return 140
@@ -133,7 +94,7 @@ GetPackFavoriteHomeX(packName) {
 SetPackFavorite(packName) {
     global session
 
-    expansionId := GetExpansionIdForPack(packName)
+    expansionId := GetExpansionIDForPack(packName)
     if (expansionId = "") {
         LogWarn("SetPackFavorite: unknown pack name '" . packName . "', skipping")
         return false
@@ -318,7 +279,7 @@ RemoveOldFiles() {
         return
     }
 
-    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 11, 0)) {
+    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 11, 1)) {
         LogInfo("RemoveOldFiles deleting old ptcgpb helper version " . versionMatch1 . "." . versionMatch2 . "." . versionMatch3, "ADB.txt")
         adbWriteRaw("rm -f " . remotePath)
     } else {

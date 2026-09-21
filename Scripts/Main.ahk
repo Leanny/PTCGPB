@@ -161,7 +161,7 @@ if(session.get("isDead")){
     session.set("isDead", false)
     IniWrite, 0, % session.get("scriptIniFile"), Metrics, isDead
 }
-startPTCGPApp()
+startPTCGPApp(true)
 waitUntilActivatePTCGPApp()
 
 ; Dismiss in-game data download dialogs if the app is still syncing
