@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.1.5"
+    ,localVersion := "v10.2.0"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
