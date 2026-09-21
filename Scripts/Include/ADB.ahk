@@ -434,7 +434,7 @@ isCrashPTCGPApp() {
     return hasPTCGPAppCrashInLogcat()
 }
 
-startPTCGPApp() {
+startPTCGPApp(isMain := false) {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
@@ -447,7 +447,8 @@ startPTCGPApp() {
     Loop {
         if(isTerminatePTCGPApp()) {
             ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
-            StartCleanup()
+            if (!isMain)
+                StartCleanup()
             adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
             DelayH(100)
         }

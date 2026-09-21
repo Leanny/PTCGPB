@@ -2,6 +2,118 @@
 ; PTCGPHelper.ahk - Android ptcgpb helper install/runtime utilities
 ;===============================================================================
 
+;-------------------------------------------------------------------------------
+; Pack name → Expansion ID for the --pack favourite command. The mapping is
+; maintained in Data/packdata.dat together with the rest of the pack data.
+;-------------------------------------------------------------------------------
+GetExpansionIDForPack(packName) {
+    global session
+
+    packInfo := session.get("pokemonPackObj")[packName]
+    if (!IsObject(packInfo))
+        return ""
+    return Trim(packInfo["ExpansionID"])
+}
+
+;-------------------------------------------------------------------------------
+; Get the X coordinate for a pack in the Points screen (Y=320) based on its
+; position within the expansion. The Points screen always shows one pack in
+; the centre; a second pack (if any) is to its right; a third (if any) is to
+; the left.
+;-------------------------------------------------------------------------------
+GetPackFavoritePointsX(packName) {
+    global session
+    if (packName = "Latest")
+        return 140
+
+    packInfo := session.get("pokemonPackObj")[packName]
+    if (!IsObject(packInfo))
+        return 140
+    pos := packInfo["PositionInExtension"]
+    numOfPacks := packInfo["NumOfPackInSet"]
+    ; Position suffix determines left/centre/right within the expansion.
+    isLeft := InStr(pos, "-Left")
+    isMiddle := InStr(pos, "-Middle")
+    isRight := InStr(pos, "-Right")
+    if (numOfPacks = 3) {
+        if (isLeft)
+            return 60
+        else if (isMiddle)
+            return 140
+        else if (isRight)
+            return 215
+    }
+    else if (numOfPacks = 2) {
+        if (isLeft)
+            return 140
+        else if (isRight)
+            return 215
+    }
+    return 140
+}
+
+;-------------------------------------------------------------------------------
+; Get the X coordinate for a pack in the Home favourites view (Y=203).
+; Favourites show packs symmetrically: 3 packs use Left/Center/Right,
+; 2 packs use symmetric Left/Right around centre.
+;-------------------------------------------------------------------------------
+GetPackFavoriteHomeX(packName) {
+    global session
+    if (packName = "Latest")
+        return 140
+
+    packInfo := session.get("pokemonPackObj")[packName]
+    if (!IsObject(packInfo))
+        return 140
+    pos := packInfo["PositionInExtension"]
+    numOfPacks := packInfo["NumOfPackInSet"]
+    isLeft := InStr(pos, "-Left")
+    isMiddle := InStr(pos, "-Middle")
+    isRight := InStr(pos, "-Right")
+    if (numOfPacks = 3) {
+        if (isLeft)
+            return 60
+        else if (isMiddle)
+            return 140
+        else if (isRight)
+            return 215
+    }
+    else if (numOfPacks = 2) {
+        if (isLeft)
+            return 90
+        else if (isRight)
+            return 190
+    }
+    return 140
+}
+
+;-------------------------------------------------------------------------------
+; SetPackFavorite - set the favourite expansion via ptcgpb helper --pack command.
+; Must be called while the game is closed. Returns true on success.
+;-------------------------------------------------------------------------------
+SetPackFavorite(packName) {
+    global session
+
+    expansionId := GetExpansionIDForPack(packName)
+    if (expansionId = "") {
+        LogWarn("SetPackFavorite: unknown pack name '" . packName . "', skipping")
+        return false
+    }
+
+    if (!EnsurePTCGPBHelperInstalled()) {
+        LogWarn("SetPackFavorite: helper not installed, skipping")
+        return false
+    }
+
+    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    output := Trim(CmdRet(adbCommand . " shell /data/ptcgp/ptcgpb --pack " . expansionId), "`r`n`t ")
+    LogInfo("SetPackFavorite: pack=" . packName . " expansion=" . expansionId . " result=" . output, "ADB.txt")
+
+    if (InStr(output, "True") || output = "")
+        return true
+    return (InStr(output, "True"))
+}
+
 ; Run ptcgpb via a one-off adb shell so the persistent shell is not desynced by nohup.
 StartPtcgpbWatchCards(full := false) {
     global session
@@ -167,7 +279,7 @@ RemoveOldFiles() {
         return
     }
 
-    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 11, 0)) {
+    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 11, 1)) {
         LogInfo("RemoveOldFiles deleting old ptcgpb helper version " . versionMatch1 . "." . versionMatch2 . "." . versionMatch3, "ADB.txt")
         adbWriteRaw("rm -f " . remotePath)
     } else {

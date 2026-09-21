@@ -1030,7 +1030,8 @@ ShowPackSelection:
 
         seriesXPos := xInitSeries + ((seriesLoopIdx - 1) * seriesColumnSize)
         packYPos := yInitSeries
-        Gui, PackSelect:Add, Text, % "x" . seriesXPos . " y10 cWhite", % seriesValue . "-Series"
+        seriesTitle := (seriesValue = "Special") ? "Special" : seriesValue . "-Series"
+        Gui, PackSelect:Add, Text, % "x" . seriesXPos . " y10 cWhite", %seriesTitle%
 
         For orderIdx, packID in pokemonPackOrder {
             packInfo := pokemonPackObj[packID]
