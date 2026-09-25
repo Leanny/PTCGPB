@@ -73,6 +73,7 @@ needlesDict.Add(new Needle("Friend_CannotFriendRequest", "CannotFriendRequest", 
 needlesDict.Add(new Needle("Friend_RemoveConfirmButtonInFriendDetails", "Remove", new Coordinate(143, 357, 152, 374)))
 needlesDict.Add(new Needle("Friend_AcceptedButtonInFriendDetails", "Accepted2", new Coordinate(87, 396, 99, 407)))
 needlesDict.Add(new Needle("Friend_ReqeustButtonInFriendDetails", "Send2", new Coordinate(80, 395, 94, 409)))
+needlesDict.Add(new Needle("Friend_ReqeustButtonInFriendDetails2", "Send3", new Coordinate(80, 422, 94, 435)))
 
 ; Friend - Showcase
 needlesDict.Add(new Needle("Friend_FriendIDSearchWindow", "FriendIDSearch", new Coordinate(215, 247, 240, 272)))

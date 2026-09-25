@@ -208,7 +208,7 @@ Loop {
     Delay(1)
     FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30)
     FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
-    FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464)
+    FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464, , , false, 0, true)
 /* ; Deny all option
 if(firstRun) {
     Sleep, 1000
@@ -333,7 +333,7 @@ DismissExpiredFriendRequestInApprove() {
     Delay(1)
     FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30)
     FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
-    FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464, , 500)
+    FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464, , 500, false, 0, true)
     return true
 }
 
@@ -410,7 +410,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     return confirmed
 }
 
-FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVariation := 20, sleepTime := "", skip := false, safeTime := 0) {
+FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVariation := 20, sleepTime := "", skip := false, safeTime := 0, handleCommonError := false) {
     prof := Prof_Scope(A_ThisFunc)
     profNeedle := Prof_Scope(A_ThisFunc . ":" . needleName)
     global botConfig, session, needlesDict
@@ -479,6 +479,17 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
                     session.set("failSafe", A_TickCount)
                 }
             }
+        }
+
+        if (handleCommonError && FindOrLoseImage("Common_Error", 0)) {
+            CreateStatusMessage("Error message detected. Clicking retry...",,,, false)
+            LogWarn("Error message in Main " . session.get("scriptName") . ". Clicking retry...")
+            Sleep, 1000
+            adbClick(82, 389)  ; Click retry button
+            Sleep, 1000
+            adbClick(139, 386) ; Click OK/confirm
+            Sleep, 1000
+            SafeReload("Main communication error")
         }
 
         pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
@@ -1395,6 +1406,8 @@ FavoriteVipFriends() {
                         adbClick_wbb(200, 372)
                         if (FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, removeWaitTime))
                             break
+                        if (FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, removeWaitTime))
+                            break
                         if (session.get("hasUnopenedPack") && FindOrLoseImage("Common_Error", 0, removeWaitTime)) {
                             CreateStatusMessage("Rate limit hit. Recovering...",,,, false)
                             Loop, 5 {
@@ -1705,6 +1718,8 @@ RemoveNonVipFriends() {
                 removeWaitTime := (A_TickCount - removeWaitStart) // 1000
                 adbClick_wbb(200, 372)
                 if (FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, removeWaitTime))
+                    break
+                if (FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, removeWaitTime))
                     break
                 if (session.get("hasUnopenedPack") && FindOrLoseImage("Common_Error", 0, removeWaitTime)) {
                     CreateStatusMessage("Rate limit hit. Recovering...",,,, false)

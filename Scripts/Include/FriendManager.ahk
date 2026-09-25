@@ -641,6 +641,8 @@ RemoveFriends() {
             }
             else if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, failSafeTime))
                 break
+            else if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, failSafeTime))
+                break
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Waiting for Accepted2`n(" . failSafeTime . "/45 seconds)")
             writeLastActivityEpoch(session.get("scriptName"), 4000)
@@ -661,6 +663,8 @@ RemoveFriends() {
                 adbClick(200, 372)
                 Delay(0.5)
                 if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0))
+                    break
+                if(FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0))
                     break
                 else if(interceptErrorCheck("REMOVE")){
                     isContinue := true
@@ -838,6 +842,7 @@ IsFriendSearchInputReady() {
 
 IsFriendProfileDetailsOpen() {
     return FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+        || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, , , true)
         || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
         || FindOrLoseImage("GPTest_NotFavouriteInDetails", 0, , , true)
         || FindOrLoseImage("GPTest_FavouritedInDetails", 0, , , true)
@@ -946,6 +951,7 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
                 || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
                 || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
                 || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+                || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, , , true)
                 || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
                 || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
                 || FindOrLoseImage("Common_Error", 0, , , true))
@@ -964,6 +970,7 @@ SubmitFriendIDSearch(value, num := 0, total := 0) {
             || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
             || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+            || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
             || FindOrLoseImage("Friend_CannotFriendRequest", 0, , , true)
             || FindOrLoseImage("Common_Error", 0, , , true)
@@ -1007,6 +1014,7 @@ EraseInput(num := 0, total := 0) {
             || FindOrLoseImage("Friend_WithdrawButton", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInSearchResult", 0, , , true)
             || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails", 0, , , true)
+            || FindOrLoseImage("Friend_ReqeustButtonInFriendDetails2", 0, , , true)
             || FindOrLoseImage("Friend_AcceptedButtonInFriendDetails", 0, , , true)
             || FindOrLoseImage("Common_Error", 0, , , true)) {
             LogToFile("EraseInput skipped because search result is open | index=" . num)

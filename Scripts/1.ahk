@@ -4406,8 +4406,6 @@ WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
 ;-------------------------------------------------------------------------------
 ; EnterFavouritePackFromHome - switch to favourites view in Home, click the
 ; pack once to enter the Points screen, then wait for Pack_PackPointButton.
-; Unlike WaitForPackPointButtonFromHome, this clicks only once (clicking the
-; pack in favourites enters Open Pack directly if clicked again).
 ;-------------------------------------------------------------------------------
 EnterFavouritePackFromHome() {
     global session
@@ -4457,23 +4455,7 @@ EnterFavouritePackFromHome() {
         favHomeX := 140
     }
 
-    ; Single click to enter the pack's Points screen.
-    adbClick_wbb(favHomeX, 203)
-    Delay(2)
-
-    ; Wait for Pack_PackPointButton without clicking again.
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime))
-            return true
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        if (failSafeTime >= 45) {
-            LogWarn("EnterFavouritePackFromHome: timed out waiting for PackPointButton", "ADB.txt")
-            return false
-        }
-        Delay(1)
-    }
+    WaitForPackPointButtonFromHome(favHomeX, 203, "after fav pack select")
 }
 
 RecoverPackOpeningToMainIfNeeded(caller := "") {
