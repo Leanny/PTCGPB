@@ -206,8 +206,8 @@ Loop {
         IniWrite, 1, %A_ScriptDir%\..\HeartBeat.ini, HeartBeat, Main
     DismissCreateDownloadScreens()
     Delay(1)
-    FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30)
-    FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
+    FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30, 0, true)
+    FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500, false, 0, true)
     FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464, , , false, 0, true)
 /* ; Deny all option
 if(firstRun) {
@@ -331,8 +331,8 @@ DismissExpiredFriendRequestInApprove() {
 
     session.set("failSafe", A_TickCount)
     Delay(1)
-    FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30)
-    FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500)
+    FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30, 0, true)
+    FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500, false, 0, true)
     FindImageAndClick("Friend_BlankFriendSlotAreaInApproveSubmenu", 228, 464, , 500, false, 0, true)
     return true
 }
