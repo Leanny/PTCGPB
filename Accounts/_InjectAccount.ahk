@@ -589,9 +589,13 @@ loadAccount() {
         return 0
     }
 
+    ; Clean up ptcgpb data before launching the app.
+    RunAdbRootCommand("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
+    UpdateInjectUi("Cleaning up account data...", 78)
+    if (!StartInjectPtcgpbCleanup())
+        UpdateInjectUi("Cleanup skipped or failed; launching game...", 80)
     ; Launch the app (same activity/flags as Scripts\Include\ADB.ahk startPTCGPApp)
     UpdateInjectUi("Launching game...", 80)
-    RunAdbRootCommand("rm -f /data/data/jp.pokemon.pokemontcgp/files/UserPreferences/v1/MissionUserPrefs")
     if !RunAdbRootCommand("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000") {
         Sleep, 100
         if !RunAdbRootCommand("am start -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x20000000") {
@@ -601,6 +605,105 @@ loadAccount() {
     }
 
     return 1
+}
+
+StartInjectPtcgpbCleanup() {
+    UpdateInjectUi("Checking ptcgpb helper...", 78)
+    if (!EnsureInjectPtcgpbHelperInstalled()) {
+        UpdateInjectUi("Could not install ptcgpb helper; continuing...", 80)
+        return false
+    }
+
+    if (!RunAdbRootCommand("/data/ptcgp/ptcgpb cleanup")) {
+        UpdateInjectUi("ptcgpb cleanup failed; continuing...", 80)
+        return false
+    }
+    return true
+}
+
+EnsureInjectPtcgpbHelperInstalled() {
+    global adbPath, adbPorts
+
+    remotePath := "/data/ptcgp/ptcgpb"
+    minHelperSize := 2500000
+    safeScriptName := RegExReplace(A_ScriptName, "[^A-Za-z0-9_.-]", "_")
+    remoteTmpPath := "/data/ptcgp/ptcgpb." . safeScriptName . ".tmp"
+    sdcardTmpPath := "/sdcard/ptcgpb-helper." . safeScriptName . ".tmp"
+    localPath := A_Temp . "\ptcgpb-helper-android." . safeScriptName
+    helperUrl := "https://leanny.github.io/ptcgpb-helper/ptcgpb-helper-android"
+
+    UpdateInjectUi("Checking ptcgpb helper...", 78)
+    RunAdbRootCommand("mkdir -p /data/ptcgp")
+    remoteSize := RunAdbShellOutput("if [ -x " . remotePath . " ]; then wc -c < " . remotePath . "; else echo 0; fi")
+    remoteSize := RegExReplace(Trim(StrReplace(remoteSize, "`r"), "`n`t "), "[^\d]")
+    if (remoteSize >= minHelperSize)
+        return true
+
+    if (remoteSize > 0)
+        RunAdbRootCommand("rm -f " . remotePath)
+
+    UpdateInjectUi("Downloading ptcgpb helper...", 78)
+    if (!DownloadInjectPtcgpbHelper(helperUrl, localPath))
+        return false
+
+    FileGetSize, helperSize, %localPath%
+    if (helperSize < minHelperSize)
+        return false
+
+    if (!RunAdbPush(localPath, sdcardTmpPath))
+        return false
+
+    UpdateInjectUi("Installing ptcgpb helper...", 78)
+    installCommand := "cp -f " . sdcardTmpPath . " " . remoteTmpPath
+        . " && mv -f " . remoteTmpPath . " " . remotePath
+        . " && chmod 777 " . remotePath
+        . " && rm -f " . sdcardTmpPath
+    if (!RunAdbRootCommand(installCommand))
+        return false
+
+    remoteSize := RunAdbShellOutput("if [ -x " . remotePath . " ]; then wc -c < " . remotePath . "; else echo 0; fi")
+    remoteSize := RegExReplace(Trim(StrReplace(remoteSize, "`r"), "`n`t "), "[^\d]")
+    return (remoteSize >= minHelperSize)
+}
+
+RunAdbShellOutput(shellCommand) {
+    global adbPath, adbPorts
+    command := """" . adbPath . """ -s 127.0.0.1:" . adbPorts . " shell " . Chr(34) . shellCommand . Chr(34)
+    try {
+        shell := ComObjCreate("WScript.Shell")
+        process := shell.Exec(command)
+        return process.StdOut.ReadAll()
+    } catch e {
+        return ""
+    }
+}
+
+DownloadInjectPtcgpbHelper(url, localPath) {
+    try {
+        RegRead, proxyEnabled, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyEnable
+        RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
+
+        request := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+        if (proxyEnabled)
+            request.SetProxy(2, proxyServer)
+        request.SetTimeouts(10000, 10000, 30000, 120000)
+        request.Open("GET", url, false)
+        request.Send()
+        if (request.Status != 200)
+            return false
+
+        if (FileExist(localPath))
+            FileDelete, %localPath%
+        stream := ComObjCreate("ADODB.Stream")
+        stream.Type := 1
+        stream.Open()
+        stream.Write(request.ResponseBody)
+        stream.SaveToFile(localPath, 2)
+        stream.Close()
+        return FileExist(localPath)
+    } catch e {
+        return false
+    }
 }
 
 ; New function to get instance list

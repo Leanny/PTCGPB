@@ -3829,6 +3829,30 @@ DoTutorial() {
     Delay(3)
     adbClick_wbb(80, 400)
     Delay(3)
+
+    tutorialLanguage := Trim(session.get("language"))
+    if (tutorialLanguage = "") {
+        ; New accounts have no metadata yet, so read the active game's language
+        if (EnsurePTCGPBHelperInstalled()) {
+            tutorialLanguage := adbWriteRaw("/data/ptcgp/ptcgpb lang", true)
+            tutorialLanguage := Trim(StrReplace(tutorialLanguage, "`r"), "`n`t ")
+            if (RegExMatch(tutorialLanguage, "i)^[a-z][a-z0-9_-]{0,15}$"))
+                session.set("language", tutorialLanguage)
+            else
+                tutorialLanguage := ""
+        }
+    }
+    StringLower, tutorialLanguage, tutorialLanguage
+    isYearInFront := (tutorialLanguage = "ja" || tutorialLanguage = "ko" || tutorialLanguage = "zh")
+    if (isYearInFront) {
+        ; JP/KR display the month picker in the opposite order.
+        Random, monthScrollCount, 4, 7
+        Loop, %monthScrollCount% {
+            adbSwipe_wbb("100 707 100 903 150")
+            Delay(3)
+        }
+    }
+
     adbClick_wbb(80, 375)
     Delay(3)
     session.set("failSafe", A_TickCount)
@@ -3852,11 +3876,14 @@ DoTutorial() {
 
     adbClick_wbb(200, 400)
     Delay(3)
-    ; Scroll the year picker up once before selecting the year.
-    Random, yearScrollCount, 4, 7
-    Loop, %yearScrollCount% {
-        adbSwipe_wbb("389 707 389 903 150")
-        Delay(3)
+
+    if (!isYearInFront) {
+        ; Other languages display the year picker in the opposite order.
+        Random, yearScrollCount, 4, 7
+        Loop, %yearScrollCount% {
+            adbSwipe_wbb("389 707 389 903 150")
+            Delay(3)
+        }
     }
     adbClick_wbb(200, 375)
     Delay(3)
