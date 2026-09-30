@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    const documentationVersion = "v10.0.0";
+    const documentationVersion = "v10.2.1";
 
     const pages = [
         ["index.html", "Overview"],

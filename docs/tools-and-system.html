@@ -321,9 +321,11 @@
                             <tr>
                                 <td>Backup to Disk</td>
                                 <td>
-                                    Copies the selected categories to a chosen
+                                    Mirrors the selected categories to a chosen
                                     folder while preserving their relative
-                                    paths. The destination cannot be the bot
+                                    paths. Files removed from the source are
+                                    pruned from the destination on a successful
+                                    backup. The destination cannot be the bot
                                     folder or one of its subfolders.
                                 </td>
                             </tr>
@@ -346,6 +348,11 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="callout warning">
+                    <strong>Disk backups mirror the selected data.</strong>
+                    Keep separate dated copies if you need to retain files
+                    after they are removed from the bot folder.
                 </div>
                 <p>
                     During recovery, Monitor stops only the affected MuMu VM,
