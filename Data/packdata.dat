@@ -1,5 +1,5 @@
 # Pack list in Home screen
-Home:Left|EverydayWonders,Middle|TeamRocketsAmbition,Right|RulerOfTheSkies
+Home:Left|RulerOfTheSkies,Middle|DeluxeB,Right|TeamRocketsAmbition
 
 # Pack data(Structure)
 # PackID, Series Type, Number of packs in the set, Location of extension window, y Pos, Scroll Type, Expansion ID
@@ -22,18 +22,19 @@ Pack:Springs|A|1|Col-Second|298|0|A4a
 Pack:Deluxe|A|1|Col-First|298|0|A4b
 
 # B Series
-Pack:MegaGyarados|B|3|Col-Second-Left|405|1|B1
-Pack:MegaBlaziken|B|3|Col-Second-Middle|405|1|B1
-Pack:MegaAltaria|B|3|Col-Second-Right|405|1|B1
-Pack:CrimsonBlaze|B|1|Col-First|405|1|B1a
-Pack:Parade|B|1|Col-Second|238|1|B2
-Pack:PaldeanWonders|B|1|Col-First|238|1|B2a
-Pack:MegaShine|B|1|Col-Second|434|2|B2b
-Pack:PulsingAura|B|1|Col-First|434|2|B3
-Pack:ParadoxDrive|B|1|Col-Second|434|0|B3a
-Pack:EverydayWonders|B|1|Col-First|434|0|B3b
-Pack:RulerOfTheSkies|B|1|Col-Second|298|0|B4
-Pack:TeamRocketsAmbition|B|1|Col-First|298|0|B4a
+Pack:MegaGyarados|B|3|Col-First-Left|405|1|B1
+Pack:MegaBlaziken|B|3|Col-First-Middle|405|1|B1
+Pack:MegaAltaria|B|3|Col-First-Right|405|1|B1
+Pack:CrimsonBlaze|B|1|Col-Second|238|1|B1a
+Pack:Parade|B|1|Col-First|238|1|B2
+Pack:PaldeanWonders|B|1|Col-Second|107|1|B2a
+Pack:MegaShine|B|1|Col-First|107|2|B2b
+Pack:PulsingAura|B|1|Col-Second|440|2|B3
+Pack:ParadoxDrive|B|1|Col-First|440|0|B3a
+Pack:EverydayWonders|B|1|Col-Second|434|0|B3b
+Pack:RulerOfTheSkies|B|1|Col-First|434|0|B4
+Pack:TeamRocketsAmbition|B|1|Col-Second|298|0|B4a
+Pack:DeluxeB|B|1|Col-First|298|0|B4b
 
 # Special pack: ptcgpb resolves this to the newest available expansion.
 Pack:Latest|Special|1|Col-First|0|0|latest
