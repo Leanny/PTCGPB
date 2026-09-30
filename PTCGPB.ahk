@@ -3159,7 +3159,8 @@ StartBot() {
             mainInstanceName := "Main" . (A_Index > 1 ? A_Index : "")
             FileName := "Scripts\" . mainInstanceName . ".ahk"
             Command := FileName
-
+            mainInstanceIni := A_ScriptDir . "\Scripts\" . mainInstanceName . ".ini"
+            FileDelete, %mainInstanceIni%
             if (A_Index > 1 && botConfig.get("instanceStartDelay") > 0) {
                 instanceStartDelayMS := botConfig.get("instanceStartDelay") * 1000
                 Sleep, instanceStartDelayMS
@@ -3207,13 +3208,12 @@ StartBot() {
         }
 
         metricFile := A_ScriptDir . "\Scripts\" . A_Index . ".ini"
-        if (FileExist(metricFile)) {
-            IniWrite, 0, %metricFile%, Metrics, LastEndEpoch
-            IniWrite, 0, %metricFile%, UserSettings, DeadCheck
-            IniWrite, 0, %metricFile%, Metrics, rerolls
-            now := A_TickCount
-            IniWrite, %now%, %metricFile%, Metrics, rerollStartTime
-        }
+        FileDelete, %metricFile%
+        IniWrite, 0, %metricFile%, Metrics, LastEndEpoch
+        IniWrite, 0, %metricFile%, UserSettings, DeadCheck
+        IniWrite, 0, %metricFile%, Metrics, rerolls
+        now := A_TickCount
+        IniWrite, %now%, %metricFile%, Metrics, rerollStartTime
 
         Run, %Command%
     }
