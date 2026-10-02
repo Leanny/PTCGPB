@@ -49,7 +49,7 @@ DetectSixCardPack() {
 DetectFourCardPack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    if (session.get("openPack") = "Deluxe") {
+    if (SubStr(session.get("openPack"), 1, 6) = "Deluxe") {
         return true
     }
     return false

@@ -2289,9 +2289,11 @@ CheckPack(stopEarly := false) {
 
     result := EvaluatePack()
     if (!result) {
+        LogWarn("Failed at 1", "debug_cards.txt")
         result := RecoverPack()
     }
     if (!result) {
+        LogWarn("Failed at 2", "debug_cards.txt")
         ReportPackRecognitionFailure()
         if (!stopEarly && expectedOpenedPacks > 1) {
             UpdatePackCountAfterOpening()
@@ -2307,6 +2309,7 @@ CheckPack(stopEarly := false) {
     shinedust := result.shinedust
     raw_msg := result.raw
     if(rarity[1] = 0) {
+        LogWarn(raw_msg, "debug_cards.txt")
         ; Fallback in case recognition failed
         ReportPackRecognitionFailure()
         if (!stopEarly && expectedOpenedPacks > 1) {
