@@ -74,3 +74,6 @@ Accounts3
 /.ptcgpb-managed-files.txt
 /update-manifest.json
 /Backups/
+
+# Large apks used by the instance manager
+apks/

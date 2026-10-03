@@ -33,8 +33,8 @@
                                 Windows and the
                                 <a href="https://www.mumuplayer.com/download/"
                                     >latest official MuMuPlayer</a
-                                >
-                                with an Android 12 instance.
+                                >. You do not need to create an instance
+                                yourself; the Instance Manager does that.
                             </li>
                             <li>
                                 <a
@@ -47,7 +47,11 @@
                                 PTCGPB extracted to a writable folder whose full
                                 path contains <strong>no spaces</strong>.
                             </li>
-                            <li>The supplied ready2go MuMu instance backup.</li>
+                            <li>
+                                The game APK you want to run (Mod Menu or
+                                Speedgame), placed in the <code>apks</code>
+                                folder of your PTCGPB folder.
+                            </li>
                             <li>
                                 Administrator permission when PTCGPB requests
                                 it.
@@ -79,29 +83,37 @@
                             <a href="https://www.mumuplayer.com/download/"
                                 >official MuMuPlayer website</a
                             >
-                            and use an Android 12 instance for PTCGPB.
-                        </p>
-                    </li>
-                    <li>
-                        <h3>Restore the ready2go instance</h3>
-                        <p>
-                            In MuMuPlayer, restore the ready2go instance (see
-                            discord for the latest version). This is the
-                            recommended starting point because it already
-                            contains the expected Android 12 environment and
-                            game preparation.
+                            and install it. You do not have to create or restore
+                            an instance in MuMuPlayer: the
+                            <a href="#create-instance">Instance Manager</a>
+                            creates a ready-to-use instance for you in a later
+                            step.
                         </p>
                     </li>
                     <li>
                         <h3>
-                            Name the restored instance exactly <code>1</code>
+                            Put the game APK in the <code>apks</code> folder
                         </h3>
                         <p>
-                            PTCGPB locates numbered instances by their exact
-                            title. Later instances must be cloned from the
-                            working instance and named <code>2</code>,
-                            <code>3</code>, and so on without gaps.
+                            Copy the APK file you want to run into the
+                            <code>apks</code> folder inside your PTCGPB folder
+                            (for example
+                            <code>C:\PTCGPB\apks</code>). The folder is created
+                            automatically the first time you open the Instance
+                            Manager. Keep the original file name: the Instance
+                            Manager recognizes the Mod Menu APK by
+                            <code>MODMENU</code> in its name and enables the
+                            overlay permission for it automatically.
                         </p>
+                        <div class="callout">
+                            <strong>No APK, no Instance Manager.</strong> While
+                            the <code>apks</code> folder contains no
+                            <code>.apk</code> file, the Instance Manager shows
+                            "Put your apks in folder [&hellip;] to use the
+                            update manager" and all of its controls stay
+                            disabled. They become available again shortly after
+                            you add a file.
+                        </div>
                     </li>
                     <li>
                         <h3>Set the game language</h3>
@@ -110,14 +122,6 @@
                             matching value under Tools &amp; System. OCR works
                             best when its language also matches your Windows
                             display language.
-                        </p>
-                    </li>
-                    <li>
-                        <h3>Start the instance</h3>
-                        <p>
-                            You can start it in MuMu or use
-                            <strong>Launch All MuMu</strong> in PTCGPB after the
-                            MuMu folder is configured.
                         </p>
                     </li>
                 </ol>
@@ -149,6 +153,139 @@
                             and set the OCR and game client languages. The
                             default MuMu parent folder is
                             <code>C:\Program Files\Netease</code>.
+                        </p>
+                    </li>
+                    <li id="create-instance">
+                        <h3>Open the Instance Manager</h3>
+                        <p>
+                            In Tools &amp; System, select
+                            <strong>Instance Manager</strong>. It opens in its
+                            own window and lists every MuMu instance with its
+                            Android version and status. For running instances it
+                            also shows the installed game version in the
+                            <strong>App Version</strong> column.
+                        </p>
+                        <figure class="doc-figure">
+                            <a
+                                href="assets/instance-manager/select-manager.png"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                <img
+                                    src="assets/instance-manager/select-manager.png"
+                                    alt="Tools and System Settings window with the Instance Manager button highlighted below the Version Manager button"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <figcaption>
+                                The Instance Manager button is at the bottom of
+                                the Tools &amp; System window.
+                            </figcaption>
+                        </figure>
+                    </li>
+                    <li>
+                        <h3>
+                            Create the instance and name it exactly
+                            <code>1</code>
+                        </h3>
+                        <p>
+                            Select <strong>Add Instance</strong>. PTCGPB locates
+                            numbered instances by their exact name, so the first
+                            instance must be called <code>1</code>. By default
+                            the dialog suggests the lowest number that is not
+                            used yet.
+                        </p>
+                        <figure class="doc-figure">
+                            <a
+                                href="assets/instance-manager/add-instance.png"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                <img
+                                    src="assets/instance-manager/add-instance.png"
+                                    alt="MuMu Instance Manager window listing the existing instances with the Add Instance button highlighted"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <figcaption>
+                                The Instance Manager lists all MuMu instances.
+                                Select Add Instance to create a new one.
+                            </figcaption>
+                        </figure>
+                        <p>In the dialog, choose:</p>
+                        <ul>
+                            <li>
+                                <strong>Android version</strong>: Android 12 or
+                                Android 15. Use Android 12 for your first test.
+                            </li>
+                            <li>
+                                <strong>APK to install</strong>: one of the
+                                files from your <code>apks</code> folder, newest
+                                first.
+                            </li>
+                            <li>
+                                <strong>New instance name</strong>:
+                                <code>1</code>.
+                            </li>
+                        </ul>
+                        <figure class="doc-figure narrow">
+                            <a
+                                href="assets/instance-manager/select-instance-details.png"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                <img
+                                    src="assets/instance-manager/select-instance-details.png"
+                                    alt="Add Instance dialog with the Android version drop-down open showing Android 12 and Android 15, the APK drop-down and the new instance name field set to 1"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <figcaption>
+                                The Add Instance dialog: Android version, APK
+                                and instance name.
+                            </figcaption>
+                        </figure>
+                        <p>
+                            Select <strong>Create</strong>. The Instance Manager
+                            then does everything that used to be manual:
+                        </p>
+                        <ol>
+                            <li>
+                                Creates an empty MuMu instance of the chosen
+                                Android version.
+                            </li>
+                            <li>
+                                Applies the PTCGPB settings (540 &times; 960
+                                resolution at 220 DPI, 2 CPU cores and 2 GB
+                                RAM, among others) and gives the instance the
+                                name you entered.
+                            </li>
+                            <li>
+                                Starts the instance, waits until Android has
+                                booted and installs the APK. For the Mod Menu
+                                APK it also enables the overlay permission.
+                            </li>
+                            <li>
+                                Restarts the instance so it runs with the new
+                                APK.
+                            </li>
+                        </ol>
+                        <p>
+                            This takes a few minutes. The window waits while it
+                            works and the status bar shows the current step, so
+                            do not close it. A message tells you when the
+                            instance is ready. The instance keeps running
+                            afterwards.
+                        </p>
+                    </li>
+                    <li>
+                        <h3>Start and stop instances</h3>
+                        <p>
+                            The new instance is already running. To start or
+                            stop instances later, select them in the Instance
+                            Manager and use the <strong>Start</strong> /
+                            <strong>Stop</strong> button, or use
+                            <strong>Launch All MuMu</strong> in PTCGPB.
                         </p>
                     </li>
                     <li>
@@ -200,7 +337,11 @@
                     for Create Bots, Inject 13P+ or Inject Rewards.
                 </p>
                 <ul>
-                    <li>Name its MuMu instance exactly <code>Main</code>.</li>
+                    <li>
+                        Create its MuMu instance with the
+                        <a href="#create-instance">Instance Manager</a> and name
+                        it exactly <code>Main</code>.
+                    </li>
                     <li>
                         Name additional main instances <code>Main2</code>,
                         <code>Main3</code>, and so on.
@@ -217,12 +358,92 @@
 
                 <h2>After the first successful run</h2>
                 <p>
-                    Add numbered MuMu instances one at a time. Increase
-                    <strong>Instance Start Delay</strong> or
+                    Add numbered MuMu instances one at a time with
+                    <strong>Add Instance</strong> in the Instance Manager. Name
+                    them <code>2</code>, <code>3</code>, and so on without gaps;
+                    the suggested name in the dialog is always the next free
+                    number. Increase <strong>Instance Start Delay</strong> or
                     <strong>Launch MuMu Delay</strong> if startup overloads the
                     PC. Use <strong>Auto-open Monitor</strong> once unattended
                     runs are stable.
                 </p>
+
+                <h2>Updating the game APK</h2>
+                <p>
+                    When a new APK is available, copy it to the
+                    <code>apks</code> folder and update your running instances
+                    from the Instance Manager. The update installs over the
+                    existing game, so the data of the instance is kept.
+                </p>
+                <ol class="steps">
+                    <li>
+                        <h3>Select the running instances</h3>
+                        <p>
+                            Click an instance, or hold
+                            <kbd>Ctrl</kbd>/<kbd>Shift</kbd> to select several.
+                            <strong>Update APK</strong> is available only when
+                            every selected instance is
+                            <strong>Running</strong>. The
+                            <strong>App Version</strong> column shows which game
+                            version each running instance currently has.
+                        </p>
+                        <figure class="doc-figure">
+                            <a
+                                href="assets/instance-manager/update-apk.png"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                <img
+                                    src="assets/instance-manager/update-apk.png"
+                                    alt="MuMu Instance Manager with two running instances selected, both showing app version 1.7.2, and the Update APK button highlighted"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <figcaption>
+                                Two running instances selected. Select Update
+                                APK to continue.
+                            </figcaption>
+                        </figure>
+                    </li>
+                    <li>
+                        <h3>Choose the APK and confirm</h3>
+                        <p>
+                            Pick the APK from the drop-down (the files in your
+                            <code>apks</code> folder, newest first) and select
+                            <strong>Update</strong>.
+                        </p>
+                        <figure class="doc-figure narrow">
+                            <a
+                                href="assets/instance-manager/update-apk-finalize.png"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                <img
+                                    src="assets/instance-manager/update-apk-finalize.png"
+                                    alt="Update APK dialog for instances 2 and 3 with the Mod Menu APK selected"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <figcaption>
+                                The Update APK dialog lists the selected
+                                instances and the APK to install.
+                            </figcaption>
+                        </figure>
+                    </li>
+                    <li>
+                        <h3>Wait for the result</h3>
+                        <p>
+                            The APK is installed on all selected instances at
+                            the same time. For the Mod Menu APK the overlay
+                            permission is enabled again, and every updated
+                            instance is restarted. A summary lists the result
+                            per instance, for example
+                            <em>2: updated and restarted</em>. An instance that
+                            stopped in the meantime is reported as
+                            <em>not running</em> and skipped.
+                        </p>
+                    </li>
+                </ol>
 
                 <nav class="page-nav" aria-label="Page navigation">
                     <a href="index.html">← Overview</a

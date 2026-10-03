@@ -434,6 +434,23 @@ isCrashPTCGPApp() {
     return hasPTCGPAppCrashInLogcat()
 }
 
+; If for any reason any file has the wrong owner, the app crashes
+FixPTCGPAppUserPreferencesOwnership() {
+    prof := Prof_Scope(A_ThisFunc)
+
+    appDir := "/data/data/jp.pokemon.pokemontcgp"
+    prefsDir := appDir . "/files/UserPreferences"
+
+    wrongOwner := Trim(adbWriteRaw("find " . prefsDir . " ! -user $(stat -c %u " . appDir . ") 2>/dev/null", true), "`r`n`t ")
+    if (wrongOwner = "") {
+        ADB_LogTrace("FixPTCGPAppUserPreferencesOwnership nothing to fix")
+        return
+    }
+
+    LogWarn("[" . A_ScriptName . "] Fixing ownership of files/UserPreferences, not owned by the app: " . StrReplace(StrReplace(wrongOwner, "`r"), "`n", ", "), "ADB.txt")
+    adbWriteRaw("find " . prefsDir . " -exec chown $(stat -c %u:%g " . appDir . ") {} +`; chmod -R u+rwX " . prefsDir . "`; chcon -R $(ls -Zd " . appDir . "/files | cut -d' ' -f1) " . prefsDir)
+}
+
 startPTCGPApp(isMain := false) {
     prof := Prof_Scope(A_ThisFunc)
     global session
@@ -449,6 +466,7 @@ startPTCGPApp(isMain := false) {
             ADB_LogTrace("startPTCGPApp home/outside-app state detected; starting app")
             if (!isMain)
                 StartCleanup()
+            FixPTCGPAppUserPreferencesOwnership()
             adbWriteRaw("am start -W -n jp.pokemon.pokemontcgp/com.unity3d.player.UnityPlayerActivity -f 0x10018000")
             DelayH(100)
         }

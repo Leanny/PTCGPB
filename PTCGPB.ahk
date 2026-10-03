@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.2.3"
+    ,localVersion := "v10.3.0-beta.1"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -1690,6 +1690,19 @@ ShowToolsAndSystemSettings:
         logLevelChoose := 5
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, Log Level
     Gui, ToolsAndSystemSelect:Add, DropDownList, vui_logLevel_Popup choose%logLevelChoose% x300 y%yPos2% w85 Background2A2A2A cWhite, error|warn|info|debug|trace
+    yPos2 += 30
+
+    uiLanguageList := "English|中文|日本語|Deutsch"
+    defaultUiLang := 1
+    Loop, Parse, uiLanguageList, |
+    {
+        if (A_LoopField = botConfig.get("BotLanguage")) {
+            defaultUiLang := A_Index
+            break
+        }
+    }
+    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, UI Language
+    Gui, ToolsAndSystemSelect:Add, DropDownList, vui_BotLanguage_Popup choose%defaultUiLang% x290 y%yPos2% w95 Background2A2A2A cWhite, %uiLanguageList%
     yPos2 += 40
 
     Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
@@ -1702,6 +1715,9 @@ ShowToolsAndSystemSettings:
 
     versionMgrY := yPos2 - 5
     Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%versionMgrY% w170 h20 gShowVersionManager BackgroundTrans, Version Manager
+    yPos2 += 25
+    instanceMgrY := yPos2 - 5
+    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%instanceMgrY% w170 h20 gRunInstanceManager BackgroundTrans, Instance Manager
     yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
@@ -1723,6 +1739,15 @@ ApplyToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Destroy
 
     Gui, 1:Default
+
+    ; The main window is built once at startup, so a language change needs a reload to take effect.
+    if (ui_BotLanguage_Popup != "" && ui_BotLanguage_Popup != botConfig.get("BotLanguage")) {
+        langMap := { "English": "en", "中文": "cn", "日本語": "jp", "Deutsch": "de" }
+        botConfig.set("BotLanguage", ui_BotLanguage_Popup, "General")
+        botConfig.set("defaultBotLanguage", (langMap.HasKey(ui_BotLanguage_Popup) ? langMap[ui_BotLanguage_Popup] : "en"), "General")
+        botConfig.saveConfigToSettings("ALL")
+        Reload
+    }
 return
 
 saveToolsAndSystemSettings:
@@ -2710,6 +2735,14 @@ return
 
 ShowVersionManager:
     ShowVersionManager()
+return
+
+RunInstanceManager:
+    instanceManagerFile := A_ScriptDir . "\Scripts\Include\UpdateInstance.ahk"
+    if (FileExist(instanceManagerFile))
+        Run, "%instanceManagerFile%"
+    else
+        MsgBox, 48, Instance Manager, Could not find %instanceManagerFile%
 return
 
 UpdateManagerRefresh:
