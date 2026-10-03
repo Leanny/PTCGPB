@@ -345,6 +345,9 @@ h3 {
 .doc-figure {
     margin: 1.5rem 0 2rem;
 }
+.doc-figure.narrow {
+    max-width: 26rem;
+}
 .doc-figure a {
     display: block;
     border: 1px solid var(--line);
