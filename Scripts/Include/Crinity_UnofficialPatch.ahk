@@ -60,6 +60,7 @@ TryDismissPackOpeningRecoveryFinding(failSafeTime := 0) {
 ; so mode clicks (e.g. Social tab) can run. Do NOT call from boot.
 ; Returns true when a dismiss click was issued this tick.
 TryAdvanceWelcomeBackWhileFinding(logContext, ByRef advancing, ByRef useSecondClick, failSafeTime := 0) {
+    ; todo: handle pack clicks
     ; Pack recovery can land right after the two Welcome Back pages; stop sticky so Finding can dismiss it.
     if (FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0, 0, , true)) {
         if (advancing) {
