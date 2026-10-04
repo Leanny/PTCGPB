@@ -1,0 +1,25 @@
+﻿; Includes shared by the bot scripts (1.ahk, Main.ahk). Order matters for files that run code at load time.
+#Include %A_LineFile%\..\Config.ahk
+#Include %A_LineFile%\..\Session.ahk
+#Include %A_LineFile%\..\Data.ahk
+#Include %A_LineFile%\..\ExtraConfig.ahk
+#Include %A_LineFile%\..\Profiler.ahk
+#Include %A_LineFile%\..\Gdip_All.ahk
+#Include %A_LineFile%\..\Gdip_Imagesearch.ahk
+#Include %A_LineFile%\..\MumuHelper.ahk
+#Include %A_LineFile%\..\Utils.ahk
+#Include %A_LineFile%\..\Logging.ahk
+#Include %A_LineFile%\..\ADB.ahk
+#Include %A_LineFile%\..\OCR.ahk
+#Include %A_LineFile%\..\Gdip_Extra.ahk
+#Include %A_LineFile%\..\AccountMetadata.ahk
+#Include %A_LineFile%\..\Database.ahk
+#Include %A_LineFile%\..\Wishlist.ahk
+#Include %A_LineFile%\..\CardNames.ahk
+#Include %A_LineFile%\..\CardDetection.ahk
+#Include %A_LineFile%\..\AccountManager.ahk
+#Include %A_LineFile%\..\FriendManager.ahk
+#Include %A_LineFile%\..\Error.ahk
+#Include %A_LineFile%\..\Coords.ahk
+#Include %A_LineFile%\..\Crinity_UnofficialPatch.ahk
+#Include %A_LineFile%\..\BoundingBox.ahk

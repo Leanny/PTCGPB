@@ -7,34 +7,12 @@ CoordMode, Pixel, Screen
 #NoEnv
 
 #Include %A_ScriptDir%\Include\
-#Include Config.ahk
-#Include Session.ahk
-#Include Data.ahk
-#Include ExtraConfig.ahk
-#Include Profiler.ahk
-#Include Gdip_All.ahk
-#Include Gdip_Imagesearch.ahk
+#Include BotCommon.ahk
 pToken := Gdip_Startup()
-#Include MumuHelper.ahk
-#Include Utils.ahk
-#Include Logging.ahk
-#Include ADB.ahk
-#Include OCR.ahk
-#Include Gdip_Extra.ahk
-#Include AccountMetadata.ahk
-#Include Database.ahk
-#Include Wishlist.ahk
-#Include CardNames.ahk
-#Include CardDetection.ahk
-#Include AccountManager.ahk
-#Include FriendManager.ahk
 ;#Include %A_ScriptDir%\Include\Recorder.ahk
 #Include Packs.ahk
-#Include Error.ahk
-#Include Coords.ahk
 #Include RarityBorder.ahk
 #Include SpecialEvent.ahk
-#Include Crinity_UnofficialPatch.ahk
 #Include HourglassSpend.ahk
 
 InitializeHiddenConsole()
@@ -3381,32 +3359,6 @@ TogglebboxNpause() {
     session.set("dbg_bboxNpause", !session.get("dbg_bboxNpause"))
 }
 
-bboxDraw(X1, Y1, X2, Y2, color) {
-    global session
-
-    WinGetPos, xwin, ywin, Width, Height, % "ahk_id " . getMuMuHwnd(session.get("winTitle"))
-    BoxWidth := X2-X1
-    BoxHeight := Y2-Y1
-    ; Create a GUI
-    guiSuffix := session.get("winTitle")
-    Gui, BoundingBox%guiSuffix%:+AlwaysOnTop +ToolWindow -Caption +E0x20
-    Gui, BoundingBox%guiSuffix%:Color, 123456
-    Gui, BoundingBox%guiSuffix%:+LastFound  ; Make the GUI window the last found window for use by the line below. (straght from documentation)
-    WinSet, TransColor, 123456 ; Makes that specific color transparent in the gui
-
-    ; Create the borders and show
-    Gui, BoundingBox%guiSuffix%:Add, Progress, x0 y0 w%BoxWidth% h2 %color%
-    Gui, BoundingBox%guiSuffix%:Add, Progress, x0 y0 w2 h%BoxHeight% %color%
-    Gui, BoundingBox%guiSuffix%:Add, Progress, x%BoxWidth% y0 w2 h%BoxHeight% %color%
-    Gui, BoundingBox%guiSuffix%:Add, Progress, x0 y%BoxHeight% w%BoxWidth% h2 %color%
-
-    xshow := X1+xwin
-    yshow := Y1+ywin
-    Gui, BoundingBox%guiSuffix%:Show, x%xshow% y%yshow% NoActivate
-    Sleep, 100
-
-}
-
 bboxDraw2(X1, Y1, X2, Y2, color) {
     global session
 
@@ -3481,59 +3433,6 @@ bboxAndPause_swipe(params, doPause := False) {
 
     bboxDraw(X2-5, Y2-5, X2+5, Y2+5, color)
     if (doPause) {
-        Pause
-    }
-    Gui, BoundingBox%guiSuffix%:Destroy
-}
-
-adbClick_wbb(X,Y)  {
-    prof := Prof_Scope(A_ThisFunc)
-    global session
-
-    if(session.get("dbg_bbox"))
-        bboxAndPause_click(X, Y, session.get("dbg_bboxNpause"))
-    adbClick(X,Y)
-}
-
-bboxAndPause_click(X, Y, doPause := False) {
-    global session
-
-    guiSuffix := session.get("winTitle")
-    CreateStatusMessage("Clicking X " . X . " Y " . Y,,,, false)
-
-    color := "BackgroundBlue"
-
-    bboxDraw(X-5, Y-5, X+5, Y+5, color)
-
-    if (doPause) {
-        Pause
-    }
-
-    if GetKeyState("F4", "P") {
-        Pause
-    }
-    Gui, BoundingBox%guiSuffix%:Destroy
-}
-
-bboxAndPause_immage(X1, Y1, X2, Y2, pNeedleObj, vret := False, doPause := False) {
-    global session
-
-    guiSuffix := session.get("winTitle")
-    CreateStatusMessage("Searching " . pNeedleObj.Name . " returns " . vret,,,, false)
-
-    if(vret>0) {
-        color := "BackgroundGreen"
-    } else {
-        color := "BackgroundRed"
-    }
-
-    bboxDraw(X1, Y1, X2, Y2, color)
-
-    if (doPause && vret) {
-        Pause
-    }
-
-    if GetKeyState("F4", "P") {
         Pause
     }
     Gui, BoundingBox%guiSuffix%:Destroy
