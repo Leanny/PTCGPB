@@ -38,6 +38,7 @@ DllCall("ntdll\ZwDelayExecution","Int",0,"Int64*",-5000)
 #Include Utils.ahk
 #Include AccountMetadata.ahk
 #Include GitManager.ahk
+#Include TestRecorder.ahk
 
 version = Arturos PTCGP Bot
 
@@ -1674,6 +1675,8 @@ ShowToolsAndSystemSettings:
     yPos2 += 26
     Gui, ToolsAndSystemSelect:Font, s8 cWhite, Segoe UI
     Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%yPos2% w170 h20 gShowBackupSettings BackgroundTrans, Backup settings...
+    yPos2 += 25
+    Gui, ToolsAndSystemSelect:Add, Button, x%col2X% y%yPos2% w170 h20 vui_testRecordingButton gShowTestRecordingSettings BackgroundTrans, % "Test recording..." . (botConfig.get("testRecording") ? " (on)" : "")
     yPos2 += 30
     Gui, ToolsAndSystemSelect:Font, s10 cWhite, Segoe UI
 
@@ -1894,6 +1897,115 @@ return
 CancelBackupSettings:
     Gui, BackupSettings:Destroy
 return
+
+; =================== UI - Test Recording (opened from Tools & System) ===================
+ShowTestRecordingSettings:
+    Gui, TestRecordingSettings:Destroy
+    Gui, TestRecordingSettings:New, +ToolWindow -MaximizeBox -MinimizeBox +AlwaysOnTop +LastFound, Test Recording
+    Gui, TestRecordingSettings:Color, 1E1E1E, 333333
+    Gui, TestRecordingSettings:Font, s10 cWhite, Segoe UI
+
+    y := 15
+    Gui, TestRecordingSettings:Add, Checkbox, % (botConfig.get("testRecording") ? "Checked" : "") " vui_testRecording x20 y" . y . " cWhite", Record screens for detection tests
+    y += 24
+    Gui, TestRecordingSettings:Font, s8 cAAAAAA, Segoe UI
+    Gui, TestRecordingSettings:Add, Text, x38 y%y% w320, Saves the screens the bot checks together with what it detected, so developers can test changes to the image detection. Uses disk space while enabled. Changes apply to instances started afterwards.
+    y += 48
+    Gui, TestRecordingSettings:Font, s10 cWhite, Segoe UI
+
+    Gui, TestRecordingSettings:Add, Text, x20 y%y% cAAAAAA, Recording folder (empty = Screenshots\recorded)
+    y += 22
+    Gui, TestRecordingSettings:Add, Edit, vui_testRecordingDir w250 x20 y%y% h22 -E0x200 Background2A2A2A cWhite, % botConfig.get("testRecordingDir")
+    Gui, TestRecordingSettings:Add, Button, x280 y%y% w70 h22 gBrowseTestRecordingDir BackgroundTrans, Browse
+    y += 35
+
+    Gui, TestRecordingSettings:Add, Text, x20 y%y% cAAAAAA, Repeat unchanged results after (seconds)
+    Gui, TestRecordingSettings:Add, Edit, vui_testRecordingIntervalSec w60 x290 y%y% h22 -E0x200 Background2A2A2A cWhite Center, % Round(botConfig.get("testRecordingIntervalMs") / 1000)
+    y += 30
+    Gui, TestRecordingSettings:Add, Text, x20 y%y% cAAAAAA, Max. new screens per instance start
+    Gui, TestRecordingSettings:Add, Edit, vui_testRecordingMaxFrames w60 x290 y%y% h22 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("testRecordingMaxFrames")
+    y += 35
+
+    Gui, TestRecordingSettings:Add, Text, x20 y%y% w330 cAAAAAA, % TestRecording_StatusText(TestRec_RootDir())
+    y += 30
+
+    Gui, TestRecordingSettings:Add, Button, x20 y%y% w100 h30 gOpenTestRecordingFolder, Open Folder
+    Gui, TestRecordingSettings:Add, Button, x140 y%y% w70 h30 gApplyTestRecordingSettings, Apply
+    Gui, TestRecordingSettings:Add, Button, x220 y%y% w70 h30 gCancelTestRecordingSettings, Cancel
+    y += 45
+
+    WinGetPos, toolsX, toolsY, toolsW, toolsH, A
+    if (toolsX = "") {
+        Gui, TestRecordingSettings:Show, w370 h%y%
+    } else {
+        bx := toolsX + 30
+        by := toolsY + 30
+        Gui, TestRecordingSettings:Show, x%bx% y%by% w370 h%y%
+    }
+return
+
+BrowseTestRecordingDir:
+    Gui, TestRecordingSettings:+OwnDialogs
+    FileSelectFolder, selectedFolder, % "*" . TestRec_RootDir(), 3, Select test recording folder
+    if (selectedFolder != "")
+        GuiControl, TestRecordingSettings:, ui_testRecordingDir, %selectedFolder%
+return
+
+OpenTestRecordingFolder:
+    recordingDir := TestRec_RootDir()
+    FileCreateDir, %recordingDir%
+    Run, explorer.exe "%recordingDir%"
+return
+
+ApplyTestRecordingSettings:
+    Gui, TestRecordingSettings:+OwnDialogs
+    Gui, TestRecordingSettings:Submit, NoHide
+    recordingDir := Trim(ui_testRecordingDir)
+    intervalSec := Trim(ui_testRecordingIntervalSec)
+    maxFrames := Trim(ui_testRecordingMaxFrames)
+    if intervalSec is not integer
+    {
+        MsgBox, 48, Test Recording, The repeat interval must be a whole number of seconds.
+        return
+    }
+    if maxFrames is not integer
+    {
+        MsgBox, 48, Test Recording, Max. new screens must be a whole number.
+        return
+    }
+    if (intervalSec < 0 || maxFrames < 1) {
+        MsgBox, 48, Test Recording, The repeat interval cannot be negative and max. new screens must be at least 1.
+        return
+    }
+    if (recordingDir != "" && !InStr(FileExist(recordingDir), "D")) {
+        FileCreateDir, %recordingDir%
+        if (ErrorLevel) {
+            MsgBox, 48, Test Recording, Could not create the recording folder:`n%recordingDir%
+            return
+        }
+    }
+
+    botConfig.set("testRecording", ui_testRecording, "ToolsAndSystem")
+    botConfig.set("testRecordingDir", recordingDir, "ToolsAndSystem")
+    botConfig.set("testRecordingIntervalMs", intervalSec * 1000, "ToolsAndSystem")
+    botConfig.set("testRecordingMaxFrames", maxFrames, "ToolsAndSystem")
+    botConfig.saveConfigToSettings("ToolsAndSystem")
+    GuiControl, ToolsAndSystemSelect:, ui_testRecordingButton, % "Test recording..." . (ui_testRecording ? " (on)" : "")
+    Gui, TestRecordingSettings:Destroy
+return
+
+CancelTestRecordingSettings:
+    Gui, TestRecordingSettings:Destroy
+return
+
+TestRecording_StatusText(recordingDir) {
+    count := 0, bytes := 0
+    Loop, Files, %recordingDir%\frames\*.png
+        count += 1, bytes += A_LoopFileSize
+    if (!count)
+        return "Nothing recorded yet."
+    return count . " screens recorded (" . Round(bytes / 1048576, 1) . " MB)."
+}
 
 BackupNow:
     Gui, BackupSettings:Submit, NoHide
@@ -2906,6 +3018,12 @@ HelpTT_Init() {
     HelpTT_Add("ui_saveToDisk_Popup", "saveToDisk", "When enabled, copies the selected backup categories to the disk backup folder on the shared backup interval (configured in Backup settings).")
     HelpTT_Add("ui_backupIntervalMinutes", "backupIntervalMinutes", "Shared interval in minutes for Backup to Git and Backup to Disk. Minimum 5 minutes.")
     HelpTT_Add("ui_diskBackupFolder", "diskBackupFolder", "Destination folder for on-disk backups. Relative paths (Accounts, SpecialEvents, etc.) are preserved under this folder.")
+
+    ; --- Test Recording popup
+    HelpTT_Add("ui_testRecording", "testRecording", "Saves the screens the bot checks and what it detected on them.`nDevelopers replay these with Scripts\DetectionTests.ahk to check that detection changes do not break anything.")
+    HelpTT_Add("ui_testRecordingDir", "testRecordingDir", "Where recordings are stored. Leave empty to use Screenshots\recorded in the bot folder.`nAll instances share this folder; identical screens are only stored once.")
+    HelpTT_Add("ui_testRecordingIntervalSec", "testRecordingIntervalMs", "A check whose result did not change is recorded again only after this many seconds.`nHigher values use less disk space. Changed results are always recorded.")
+    HelpTT_Add("ui_testRecordingMaxFrames", "testRecordingMaxFrames", "Each instance stops saving new screens after this many, until it is restarted.")
     HelpTT_Add("ui_logLevel_Popup", "logLevel", "Verbosity of the log files: error < warn < info < debug < trace.`nUse 'info' normally; 'debug'/'trace' only when investigating problems.")
 
     ; --- Popup: Tools & System buttons (no v-variable, keyed by their text)

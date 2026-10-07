@@ -25,7 +25,9 @@ pToken := Gdip_Startup()
 #Include Database.ahk
 #Include Wishlist.ahk
 #Include CardNames.ahk
+#Include PackAnalysis.ahk
 #Include CardDetection.ahk
+#Include TestRecorder.ahk
 #Include AccountManager.ahk
 #Include FriendManager.ahk
 ;#Include %A_ScriptDir%\Include\Recorder.ahk
@@ -3549,6 +3551,7 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     bias := MuMuBias()
 
     vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+bias,OuterX2,OuterY2+bias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
+    TestRec_OnSearch(pBitmapHaystack, pNeedle, OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, bias, Variation, Trans, SearchDirection, Instances, vret, OutputList)
     if(session.get("dbg_bbox"))
         bboxAndPause_immage(OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret

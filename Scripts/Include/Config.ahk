@@ -90,7 +90,11 @@
         , "backupShowcaseIds": 1
         , "backupManualVipIds": 1
         , "backupFriendsGPTested": 1
-        , "backupSpecialEvents": 1}
+        , "backupSpecialEvents": 1
+        , "testRecording": 0
+        , "testRecordingDir": ""
+        , "testRecordingIntervalMs": 10000
+        , "testRecordingMaxFrames": 3000}
 
     generalSettings := {}
     packSettings := {}

@@ -25,7 +25,9 @@ CoordMode, Pixel, Screen
 #Include Database.ahk
 #Include Wishlist.ahk
 #Include CardNames.ahk
+#Include PackAnalysis.ahk
 #Include CardDetection.ahk
+#Include TestRecorder.ahk
 #Include AccountManager.ahk
 #Include FriendManager.ahk
 #Include Dictionary.ahk
@@ -2329,6 +2331,7 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     yBias := -5 + MuMuBias()
 
     vret := Gdip_ImageSearch(pBitmapHaystack,pNeedle.needle,OutputList,OuterX1,OuterY1+yBias,OuterX2,OuterY2+yBias,Variation,Trans,SearchDirection,Instances,LineDelim,CoordDelim)
+    TestRec_OnSearch(pBitmapHaystack, pNeedle, OuterX1, OuterY1+yBias, OuterX2, OuterY2+yBias, yBias, Variation, Trans, SearchDirection, Instances, vret, OutputList)
     if(session.get("dbg_bbox"))
         bboxAndPause_immage(OuterX1, OuterY1+yBias, OuterX2, OuterY2+yBias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret

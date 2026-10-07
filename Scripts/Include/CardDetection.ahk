@@ -131,35 +131,10 @@ AnalysisBorder(totalCardsInPack) {
         }
     }
 
-    Loop, % totalCardsInPack {
-        cardIndex := A_Index
-        if(currentPackInfo["CardSlot"][cardIndex] != "")
-            continue
-
-        cardRarityName := ""
-        for index, Checker in rarityCheckers {
-            cardRarityName := Checker.RarityName
-
-            isFound := Checker.Search(pBitmap, totalCardsInPack, cardIndex)
-            if (isFound) {
-                if(currentPackInfo["TypeCount"][cardRarityName] = "")
-                    currentPackInfo["TypeCount"][cardRarityName] := 0
-
-                currentPackInfo["CardSlot"][cardIndex] := cardRarityName
-                currentPackInfo["TypeCount"][cardRarityName] := (currentPackInfo["TypeCount"].HasKey(cardRarityName) ? currentPackInfo["TypeCount"][cardRarityName] : 0) + 1
-                break
-            }
-        }
-    }
-
-    For idx, Checker in rarityCheckers {
-        rarityName := Checker.RarityName
-        if(!currentPackInfo["TypeCount"].HasKey(rarityName) || currentPackInfo["TypeCount"][rarityName] == "")
-            currentPackInfo["TypeCount"][rarityName] := 0
-    }
+    currentPackInfo := AnalyzeBorderBitmap(pBitmap, totalCardsInPack)
+    TestRec_OnAnalysis(pBitmap, totalCardsInPack, currentPackInfo)
 
     Gdip_DisposeImage(pBitmap)
-    currentPackInfo["isVerified"] := true
     return currentPackInfo
 }
 

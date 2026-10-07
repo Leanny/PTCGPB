@@ -9,6 +9,7 @@ Scripts/*.ahk
 Scripts/*.ini
 !Scripts/1.ahk
 !Scripts/Main.ahk
+!Scripts/DetectionTests.ahk
 *.txt
 *.ini
 *.bak
@@ -78,3 +79,6 @@ banned/
 
 # Large apks used by the instance manager
 apks/
+
+# Detection test recordings (Tools & System > Test recording...)
+Screenshots/recorded/
