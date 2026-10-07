@@ -2726,7 +2726,7 @@ GuiClose:
 
     KillAllScripts()
 
-ExitApp
+    ExitApp
 return
 
 CheckForUpdates:
@@ -4121,7 +4121,7 @@ return
 
 ~+F7::
     SendAllInstancesOfflineStatus()
-ExitApp
+    ExitApp
 return
 
 ~+F12::

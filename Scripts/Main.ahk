@@ -134,7 +134,7 @@ Loop {
         Gui, ToolBar:Add, Button, % "x" . (buttonWidth * 5) . " y0 w" . buttonWidth . " h25 gStopScript", Stop (Shift+F10)
         gpTestButtonHwnd := hGPTestButton
         DllCall("SetWindowPos", "Ptr", WinExist(), "Ptr", 1  ; HWND_BOTTOM
-                , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)  ; SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE
+            , "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)  ; SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE
         Gui, ToolBar:Show, NoActivate x%x4% y%y4% w275 h30
         UpdateGPTestButtonLabel()
         RestoreMuMuCoverWindow(windowCoverHwnd, session.get("winTitle"))
@@ -666,14 +666,14 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
         FileCreateDir, %fileDir%
     if (subDir) {
         fileDir .= "\" . subDir
-		if !FileExist(fileDir)
-			FileCreateDir, %fileDir%
+        if !FileExist(fileDir)
+            FileCreateDir, %fileDir%
     }
-	if (fileType = "PACKSTATS") {
+    if (fileType = "PACKSTATS") {
         fileDir .= "\temp"
-		if !FileExist(fileDir)
-			FileCreateDir, %fileDir%
-	}
+        if !FileExist(fileDir)
+            FileCreateDir, %fileDir%
+    }
 
     ; File path for saving the screenshot locally
     fileName := A_Now . "_" . session.get("scriptName") . "_" . fileType . "_" . session.get("packsInPool") . "_packs.png"
@@ -692,7 +692,7 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
     ; Don't dispose pBitmap if it's a PACKSTATS screenshot
     if (fileType != "PACKSTATS") {
         Gdip_DisposeImage(pBitmap)
-		return filePath
+        return filePath
     }
 
     ; For PACKSTATS, return both values and delete temp file after OCR is done
@@ -1101,7 +1101,7 @@ GPTestScript() {
 ; In auto GP Test mode, returns false when the rate limit is reached ? caller should abort.
 ; In manual GP Test mode, waits for the 5-minute window to reset and returns true.
 CheckFriendOpsRateLimit() {
-        static RateLimitText
+    static RateLimitText
     global session
     if (session.get("friendOpsCount") = 0) {
         ; First operation of this window ? start the clock now
@@ -2314,8 +2314,8 @@ bboxAndPause_immage(X1, Y1, X2, Y2, pNeedleObj, vret := False, doPause := False)
 
 ; Wrapper for Gdip_ImageSearch with bounding box debugging and title bar offset adjustment.
 Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
-,OuterX1=0,OuterY1=0,OuterX2=0,OuterY2=0,Variation=0,Trans=""
-,SearchDirection=1,Instances=1,LineDelim="`n",CoordDelim=",") {
+    ,OuterX1=0,OuterY1=0,OuterX2=0,OuterY2=0,Variation=0,Trans=""
+    ,SearchDirection=1,Instances=1,LineDelim="`n",CoordDelim=",") {
     ; ------------------------------------------------------------------------------
     ; Wrapper around Gdip_ImageSearch that:
     ;   1. Adjusts Y coordinates for title bar height

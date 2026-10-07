@@ -665,7 +665,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             HourglassOpening(true) ;9
             if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
                 Goto, EndOfRun
-             HourglassOpening(true) ;10
+            HourglassOpening(true) ;10
             if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
                 Goto, EndOfRun
 
@@ -2522,7 +2522,7 @@ CheckPack(stopEarly := false) {
         foundLabel := "Rainbow"
     }
     if (botConfig.get("FullArtCheck") && !foundLabel && foundFullArt) {
-            foundLabel := "Full Art"
+        foundLabel := "Full Art"
     }
     if (botConfig.get("WishlistCheck") && !foundLabel && foundWishlist2Star) {
         session.set("wishlistMatches", Wishlist_TwoStarMatchEntries(cards, rarity, session.get("wishlistMap")))
@@ -2857,12 +2857,12 @@ Screenshot_dev(fileType := "Dev", subDir := "", srcPath := "") {
             adbClick_wbb(%X3%, %Y3%)
             OCR coordinates: %OCR_X3%, %OCR_Y3%, %OCR_W%, %OCR_H%
         )
-}
-catch {
-    msgbox Failed to create screenshot GUI
-}
-CoordMode, Pixel, Screen
-return filePath
+    }
+    catch {
+        msgbox Failed to create screenshot GUI
+    }
+    CoordMode, Pixel, Screen
+    return filePath
 }
 
 Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
@@ -3063,7 +3063,7 @@ StopImmediatelySingle:
     }
     Gui, StopConfirm:Destroy
     CleanupBeforeExit()
-ExitApp
+    ExitApp
 return
 
 StopWaitEndSingle:

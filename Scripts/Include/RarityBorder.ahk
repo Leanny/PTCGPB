@@ -155,68 +155,67 @@ class RarityBorder {
 
         return false
     }
-}
 
-DoMaskSearch(pBitmap, cardX, cardY) {
-    vRet := false
-    Sleep, 20
+    DoMaskSearch(pBitmap, cardX, cardY) {
+        vRet := false
+        Sleep, 20
 
-    lImgW := Gdip_GetImageWidth(pBitmap)
-    lImgH := Gdip_GetImageHeight(pBitmap)
+        lImgW := Gdip_GetImageWidth(pBitmap)
+        lImgH := Gdip_GetImageHeight(pBitmap)
 
-    if (lImgW <= 100 && lImgH <= 150) {
-        LockX := 0
-        LockY := 0
-    } else {
-        LockX := cardX
-        LockY := cardY
-    }
-
-    Gdip_LockBits(pBitmap, LockX, LockY, 76, 105, Stride, Scan0, BitmapData)
-
-    for idx, pixelSet in this.ValidPixelSets {
-        if (this.CheckSingleMask(Scan0, Stride, pixelSet)) {
-            vRet := true
-            break
-        }
-    }
-
-    UnlockAndReturn:
-    Gdip_UnlockBits(pBitmap, BitmapData)
-    return vRet
-}
-
-CheckSingleMask(Scan0, Stride, pixelSet) {
-    TargetConsecutive := 10
-    Variation := 15
-    CurrentConsecutive := 0
-
-    for index, pixel in pixelSet {
-        CurrentColor := NumGet(Scan0+0, (pixel.X*4) + (pixel.Y*Stride), "UInt")
-
-        if (this.ColorMatch(CurrentColor, pixel.Color, Variation)) {
-            CurrentConsecutive++
-            if (CurrentConsecutive >= TargetConsecutive) {
-                return true
-            }
+        if (lImgW <= 100 && lImgH <= 150) {
+            LockX := 0
+            LockY := 0
         } else {
-            CurrentConsecutive := 0
+            LockX := cardX
+            LockY := cardY
         }
+
+        Gdip_LockBits(pBitmap, LockX, LockY, 76, 105, Stride, Scan0, BitmapData)
+
+        for idx, pixelSet in this.ValidPixelSets {
+            if (this.CheckSingleMask(Scan0, Stride, pixelSet)) {
+                vRet := true
+                break
+            }
+        }
+
+        Gdip_UnlockBits(pBitmap, BitmapData)
+        return vRet
     }
-    return false
-}
 
-ColorMatch(c1, c2, var) {
-    r1 := (c1 >> 16) & 0xFF, g1 := (c1 >> 8) & 0xFF, b1 := c1 & 0xFF
-    r2 := (c2 >> 16) & 0xFF, g2 := (c2 >> 8) & 0xFF, b2 := c2 & 0xFF
-    return (Abs(r1-r2) <= var && Abs(g1-g2) <= var && Abs(b1-b2) <= var)
-}
+    CheckSingleMask(Scan0, Stride, pixelSet) {
+        TargetConsecutive := 10
+        Variation := 15
+        CurrentConsecutive := 0
 
-IsMaskColor(c) {
-    r := (c >> 16) & 0xFF
-    g := (c >> 8) & 0xFF
-    b := c & 0xFF
-    return (r > 200 && g < 50 && b > 200)
+        for index, pixel in pixelSet {
+            CurrentColor := NumGet(Scan0+0, (pixel.X*4) + (pixel.Y*Stride), "UInt")
+
+            if (this.ColorMatch(CurrentColor, pixel.Color, Variation)) {
+                CurrentConsecutive++
+                if (CurrentConsecutive >= TargetConsecutive) {
+                    return true
+                }
+            } else {
+                CurrentConsecutive := 0
+            }
+        }
+        return false
+    }
+
+    ColorMatch(c1, c2, var) {
+        r1 := (c1 >> 16) & 0xFF, g1 := (c1 >> 8) & 0xFF, b1 := c1 & 0xFF
+        r2 := (c2 >> 16) & 0xFF, g2 := (c2 >> 8) & 0xFF, b2 := c2 & 0xFF
+        return (Abs(r1-r2) <= var && Abs(g1-g2) <= var && Abs(b1-b2) <= var)
+    }
+
+    IsMaskColor(c) {
+        r := (c >> 16) & 0xFF
+        g := (c >> 8) & 0xFF
+        b := c & 0xFF
+        return (r > 200 && g < 50 && b > 200)
+    }
 }
 
 ; Rarity: "normal", "3diamond", "1star", "trainer", "rainbow", "fullart", "immersive", "crown", "gimmighoul", "ShinyEx", "shiny1star"
