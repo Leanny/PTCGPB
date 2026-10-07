@@ -775,7 +775,7 @@ ShowDiscordSettings:
 return
 
 ShowDiscordSettingsPopup(anchorCtl := "") {
-    global botConfig, dict
+    global botConfig, dict, ui_TestDiscordWebhooksButton
 
     Gui, Submit, NoHide
     popupWidth := 540
@@ -831,6 +831,7 @@ ShowDiscordSettingsPopup(anchorCtl := "") {
     Gui, DiscordSettingsSelect:Add, Text, x15 y475 w%discordRightLblW% Right %heartBeatDiscordColor%, HB Delay (min)
     Gui, DiscordSettingsSelect:Add, Edit, vui_heartBeatDelay_Popup w60 x%discordEditLX% y472 h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("heartBeatDelay")
 
+    Gui, DiscordSettingsSelect:Add, Button, x20 y520 w120 h30 vui_TestDiscordWebhooksButton gTestDiscordWebhooks, Test Webhooks
     Gui, DiscordSettingsSelect:Add, Button, x185 y520 w80 h30 gApplyDiscordSettings, Apply
     Gui, DiscordSettingsSelect:Add, Button, x275 y520 w80 h30 gCancelDiscordSettings, Cancel
     Gui, DiscordSettingsSelect:Show, x%popupX% y%popupY% w540 h565
@@ -875,6 +876,48 @@ return
 
 CancelDiscordSettings:
     Gui, DiscordSettingsSelect:Destroy
+return
+
+; Tests the URLs currently typed in the popup, so users can verify before pressing Apply.
+TestDiscordWebhooks:
+    Gui, DiscordSettingsSelect:Submit, NoHide
+
+    webhookTests := [["Solo", ui_soloDiscordWebhookURL_Popup]
+        , ["Group Reroll", ui_groupDiscordWebhookURL_Popup]
+        , ["Save for Trade", ui_s4tDiscordWebhookURL_Popup]
+        , ["Solo Heartbeat", ui_heartBeatWebhookURL_Popup]
+        , ["Solo Detailed Heartbeat", ui_heartBeatOwnerWebHookURL_Popup]
+        , ["Group Heartbeat", ui_groupHeartBeatWebhookURL_Popup]]
+
+    GuiControl, DiscordSettingsSelect:Disable, ui_TestDiscordWebhooksButton
+    GuiControl, DiscordSettingsSelect:, ui_TestDiscordWebhooksButton, Testing...
+
+    testReport := ""
+    testedCount := 0
+    failedCount := 0
+    for _, webhookTest in webhookTests {
+        if (Trim(webhookTest[2]) = "")
+            continue
+        testedCount++
+        testResult := TestDiscordWebhook(webhookTest[2], webhookTest[1])
+        if (!testResult.ok)
+            failedCount++
+        testReport .= (testResult.ok ? "[OK]  " : "[FAILED]  ") . webhookTest[1] . ": " . testResult.message . "`n`n"
+    }
+
+    GuiControl, DiscordSettingsSelect:, ui_TestDiscordWebhooksButton, Test Webhooks
+    GuiControl, DiscordSettingsSelect:Enable, ui_TestDiscordWebhooksButton
+
+    if (testedCount = 0) {
+        MsgBox, 48, Test Webhooks, No webhook URLs are filled in.
+        return
+    }
+
+    testReport := RTrim(testReport, "`n")
+    if (failedCount = 0)
+        MsgBox, 64, Test Webhooks, % "All webhooks work. A test message was posted to each channel.`n`n" . testReport
+    else
+        MsgBox, 48, Test Webhooks, % failedCount . " of " . testedCount . " webhook(s) failed:`n`n" . testReport
 return
 
 GetActiveHeartbeatWebhookURL() {
@@ -2883,6 +2926,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_heartBeatOwnerWebHookURL_Popup", "heartBeatOwnerWebHookURL", "Webhook URL for the detailed heartbeat: adds per-instance pack counts and last-update times.`nAlso receives owner alerts (card recognition failures, instance restart warnings).")
     HelpTT_Add("ui_groupHeartBeatWebhookURL_Popup", "groupRerollHeartBeatWebhookURL", "Webhook URL for your group's shared heartbeat channel.")
     HelpTT_Add("ui_heartBeatDelay_Popup", "heartBeatDelay", "Minutes between heartbeat messages.")
+    HelpTT_Add("ui_TestDiscordWebhooksButton", "testDiscordWebhooks", "Posts a test message to every webhook URL filled in above (no need to Apply first)`nand reports which ones work.")
 
     ; --- Popup: Tools & System
     HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
