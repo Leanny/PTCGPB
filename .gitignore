@@ -54,7 +54,10 @@ SpecialEvents/PastEvents
 carddb_balance.log
 Cargo.lock
 
-.vscode
+# Shared editor setup (format on save); other .vscode files stay local
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 Helper/saveimport*
 debug_settings.log
 Accounts2

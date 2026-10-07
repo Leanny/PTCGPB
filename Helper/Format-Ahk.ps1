@@ -33,6 +33,12 @@
 .PARAMETER Test
     Run the formatter's own tests in Helper\ahkfmt-tests.
 
+.PARAMETER Stdin
+    Format the text from standard input and write it to standard output, for
+    editor integration (.vscode/settings.json). Pass the file name as Path so the
+    exclude list applies. Code that cannot be formatted, for example while a
+    block is still being typed, is returned unchanged with a note on stderr.
+
 .EXAMPLE
     .\Helper\Format-Ahk.ps1                  # format all tracked .ahk files
     .\Helper\Format-Ahk.ps1 Scripts\1.ahk    # format one file
@@ -49,7 +55,8 @@ param(
     [string[]]$Path,
     [switch]$Check,
     [switch]$Staged,
-    [switch]$Test
+    [switch]$Test,
+    [switch]$Stdin
 )
 
 Set-StrictMode -Version 2
@@ -533,6 +540,28 @@ function Invoke-SelfTest {
 # ---------------------------------------------------------------- main
 
 if ($Test) { Invoke-SelfTest }
+
+if ($Stdin) {
+    # Raw bytes in and out, so the console code page never touches the text.
+    $buffer = New-Object System.IO.MemoryStream
+    [Console]::OpenStandardInput().CopyTo($buffer)
+    $bytes = $buffer.ToArray()
+    $result = $bytes
+    $excluded = $Path -and (Test-Excluded (Get-RelativePath $Path[0]) (Get-Excludes))
+    if (-not $excluded -and $bytes.Length -gt 0) {
+        try {
+            $file = Read-AhkText $bytes
+            $result = Get-AhkBytes $file (Format-AhkLines $file.Lines).Lines
+        }
+        catch {
+            [Console]::Error.WriteLine("Format-Ahk: left unchanged: $($_.Exception.Message)")
+        }
+    }
+    $stdout = [Console]::OpenStandardOutput()
+    $stdout.Write($result, 0, $result.Length)
+    $stdout.Flush()
+    exit 0
+}
 
 $needsFormat = 0
 $errors = 0

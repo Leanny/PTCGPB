@@ -339,7 +339,7 @@ RecGoTo() {
     global rec_SuspendCapture, rec_LastScreenGrab, rec_ReviewIndex, rec_GrabDone, rec_ReviewAbort, rec_BuildScript, rec_JumpToOutput
     global rec_ReturnToReview, rec_OutputDone, rec_ReviewHwnd
 
-StartStopRecording:
+    StartStopRecording:
     guiSuffix := session.get("winTitle")
     if (!rec_Active) {
         rec_Active      := true
@@ -353,9 +353,9 @@ StartStopRecording:
         CreateStatusMessage("Recording: Done")
         ReviewRecording()
     }
-return
+    return
 
-RecReviewBack:
+    RecReviewBack:
     LogDebug("[Label] RecReviewBack fired rec_ReviewDone=" rec_ReviewDone, "recorder.txt")
     rec_ReviewBack := true
     Gui, RecReview:Submit, NoHide
@@ -375,9 +375,9 @@ RecReviewBack:
 
     rec_ReviewDone := true
     LogDebug("[Label] RecReviewBack done rec_ReviewDone=" rec_ReviewDone " rec_ReviewBack=" rec_ReviewBack " comment=" rec_ReviewComment, "recorder.txt")
-return
+    return
 
-RecReviewNext:
+    RecReviewNext:
     LogDebug("[Label] RecReviewNext fired rec_ReviewDone=" rec_ReviewDone, "recorder.txt")
     rec_ReviewBack := false
     Gui, RecReview:Submit, NoHide
@@ -397,10 +397,10 @@ RecReviewNext:
 
     rec_ReviewDone := true
     LogDebug("[Label] RecReviewNext done rec_ReviewDone=" rec_ReviewDone " rec_ReviewBack=" rec_ReviewBack " comment=" rec_ReviewComment, "recorder.txt")
-return
+    return
 
 
-RecGrabScreenshot:
+    RecGrabScreenshot:
     rec_SuspendCapture := true
     rec_LastScreenGrab := ""
     Screenshot_dev("Dev", "", rec_Actions[rec_ReviewIndex].screenshot)
@@ -416,9 +416,9 @@ RecGrabScreenshot:
             , delay: 3, comment: "", code: "", choice: ""})
         rec_GrabDone := true
     }
-return
+    return
 
-RecReviewGuiClose:
+    RecReviewGuiClose:
     LogDebug("[Label] RecReviewGuiClose fired rec_ReviewDone=" rec_ReviewDone " rec_ReviewAbort=" rec_ReviewAbort, "recorder.txt")
     if (!rec_ReviewDone) {
         rec_ReviewAbort := true
@@ -426,24 +426,24 @@ RecReviewGuiClose:
     }
     LogDebug("[Label] RecReviewGuiClose done rec_ReviewDone=" rec_ReviewDone " rec_ReviewAbort=" rec_ReviewAbort, "recorder.txt")
     Gui, RecReview:Destroy
-return
+    return
 
-RecOutputCopy:
+    RecOutputCopy:
     Clipboard := rec_BuildScript
     ToolTip, Copied to clipboard!
     Delay(1)
     ToolTip
-return
+    return
 
-RecOutputSave:
+    RecOutputSave:
     FileSelectFile, savePath, S16,, Save Recording Script, AHK Script (*.ahk)
     if (savePath != "") {
         FileDelete, %savePath%
         FileAppend, %rec_BuildScript%, %savePath%
     }
-return
+    return
 
-RecReviewDone:
+    RecReviewDone:
     LogDebug("[Label] RecReviewDone fired rec_ReviewDone=" rec_ReviewDone, "recorder.txt")
     Gui, RecReview:Submit, NoHide
     rec_ReviewComment := RecComment
@@ -462,17 +462,17 @@ RecReviewDone:
     rec_JumpToOutput := true
     rec_ReviewDone   := true
     LogDebug("[Label] RecReviewDone done rec_ReviewDone=" rec_ReviewDone " rec_JumpToOutput=" rec_JumpToOutput, "recorder.txt")
-return
+    return
 
-RecOutputBack:
+    RecOutputBack:
     rec_ReturnToReview := true
     rec_OutputDone     := true
     Gui, RecOutput:Destroy
-return
+    return
 
-RecOutputGuiClose:
-RecOutputEscape:
+    RecOutputGuiClose:
+    RecOutputEscape:
     rec_OutputDone := true
     Gui, RecOutput:Destroy
-return
+    return
 }
