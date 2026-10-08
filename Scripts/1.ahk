@@ -213,6 +213,11 @@ session.set("setSpeed", 3) ;always 1x/3x
 if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account")
     session.set("injectMethod", true)
 
+startPackList := ""
+for idx, packName in session.get("packList")
+    startPackList .= (idx > 1 ? "," : "") . packName
+LogInfo("Instance started | mode=" . botConfig.get("deleteMethod") . " | packs=" . startPackList . " | runsSoFar=" . session.get("rerolls") . " | stuckRecovery=" . DeadCheck . " | stopAfterRun=" . (session.get("stopToggle") ? 1 : 0) . " | groupReroll=" . (botConfig.get("groupRerollEnabled") ? 1 : 0))
+
 initializeAdbShell()
 RemoveOldFiles()
 adbGrantOverlayPermission()
@@ -327,6 +332,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         while (StartCurrentTimeDiff > 0 && EndCurrentTimeDiff < 0) {
             FormatTime, formattedEndTime, %EndTime%, HH:mm:ss
+            if (!session.get("dateChange"))
+                LogInfo("Waiting for daily server reset until " . formattedEndTime)
             CreateStatusMessage("Waiting for daily server reset until " . formattedEndTime ,,,, false)
             session.set("dateChange", true)
             writeLastActivityEpoch(session.get("scriptName"), 4000)
@@ -406,6 +413,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
 
+        LogInfo("Run started | run=" . (session.get("rerolls") + 1) . " | pack=" . session.get("openPack") . (session.get("injectMethod") ? " | account=" . session.get("accountFileName") : ""))
+
         waitForAppBootScreen()
         SetConfiguredGameSpeed()
         Delay(1)
@@ -443,6 +452,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
                 if(botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" && new_packcount < botConfig.get("injectWonderpickMinPacks")) {
                     ; we now have a proper pack count and can evaluate if this is valid or if this is a waste of time
+                    LogInfo("Skipping account below minimum pack count | account=" . session.get("accountFileName") . " | packs=" . new_packcount . " | minimum=" . botConfig.get("injectWonderpickMinPacks"))
                     MarkAccountAsUsed()
                     session.set("loadedAccount", false)
                     restartGameInstance("New Run", false)
@@ -451,6 +461,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
         if(!session.get("injectMethod") || !session.get("loadedAccount")) {
+            LogInfo("Creating new account (tutorial)")
             DoTutorial()
             session.set("accountOpenPacks", 0) ;tutorial packs don't count
         }
@@ -460,10 +471,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         if(botConfig.get("deleteMethod") = "Rename Account") {
             if (!AccountRename_CanRenameCurrentAccount()) {
+                LogInfo("Rename skipped (account age or rename cooldown) | account=" . session.get("accountFileName"))
                 CreateStatusMessage("Rename Account`nSkipped (age/rename cooldown)",,,, false)
                 if (session.get("injectMethod") && session.get("loadedAccount")) {
                     MarkAccountAsClaimed()
-                    LogDebug("Marked non-renameable account as claimed: " . session.get("accountFileName"))
+                    LogInfo("Marked non-renameable account as claimed: " . session.get("accountFileName"))
                     session.set("loadedAccount", false)
                 }
                 continue
@@ -482,7 +494,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
             if (session.get("injectMethod") && session.get("loadedAccount")) {
                 MarkAccountAsClaimed()
-                LogDebug("Marked renamed account as claimed (reusable): " . session.get("accountFileName"))
+                LogInfo("Marked renamed account as claimed (reusable): " . session.get("accountFileName"))
                 session.set("loadedAccount", false)
             }
             continue
@@ -492,9 +504,12 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             EnterGameFromWelcomeIfNeeded() ; 1.7.0 forces restart onto Welcome; tap before GoToMain ESC
             GoToMain()
             wonderPicked := DoWonderPick()
+            LogInfo("Wonder Pick done | picked=" . (wonderPicked ? 1 : 0))
         }
 
         session.set("friendsAdded", AddFriends())
+        if (botConfig.get("deleteMethod") = "Inject Wonderpick 96P+")
+            LogInfo("Friends added | result=" . session.get("friendsAdded"))
 
         if(botConfig.get("deleteMethod") = "Inject Wonderpick 96P+"){
             if(session.get("friendsAdded") == false){
@@ -620,6 +635,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             Goto, EndOfRun
 
         if (checkShouldDoMissions()) {
+            LogInfo("Doing beginner missions")
             GoToMain()
             HomeAndMission()
             if(session.get("missionDoneList")["beginnerMissionsDone"])
@@ -684,6 +700,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         if(botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
+            LogInfo("Doing Wonder Pick for event missions")
             GoToMain()
             FindImageAndClick("WonderPick_WonderPickButtonInHome", 59, 429) ;click until in wonderpick Screen
             DoWonderPickOnly()
@@ -705,7 +722,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 InitPackOpening(true)
             }
             session.set("openedGiftPack", false)
+            LogInfo("Receiving gifts")
             giftClaimed := ReceiveGiftExtended()
+            LogInfo("Receive gifts done | claimed=" . (giftClaimed ? 1 : 0))
             if(giftClaimed) {
                 HandleGiftedPacksAfterReceiveGift()
             }
@@ -742,6 +761,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             botConfig.set("showcaseLikes", showcaseNumber, "Extra")
             botConfig.saveConfigToSettings("Extra")
 
+            LogInfo("Liking showcases | remaining today=" . showcaseNumber)
             FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 500)
             showcaseLikes()
         }
@@ -776,7 +796,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
 
         ; Log to file
-        LogInfo("Packs: " . session.get("packsThisRun") . " | Total time: " . session.get("mminutes") . "m " . session.get("sseconds") . "s | Avg: " . session.get("aminutes") . "m " . session.get("aseconds") . "s | Runs: " . session.get("rerolls"))
+        LogInfo("Run finished | Packs: " . session.get("packsThisRun") . " | Total time: " . session.get("mminutes") . "m " . session.get("sseconds") . "s | Avg: " . session.get("aminutes") . "m " . session.get("aseconds") . "s | Runs: " . session.get("rerolls"))
 
         SendMetadataToPTCGPB(session.get("packsThisRun"))
 
@@ -784,6 +804,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if (botConfig.get("deleteMethod") = "Inject 13P+" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")) {
             if (session.get("injectMethod") && session.get("loadedAccount")) {
                 if (!session.get("keepAccount") || session.get("s4tFoundTradeable")) {
+                    LogInfo("Account reached max pack count; marking as used: " . session.get("accountFileName") . " | packs=" . session.get("accountOpenPacks"))
                     MarkAccountAsUsed()
                 }
                 session.set("loadedAccount", false)
@@ -796,13 +817,13 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             if (!session.get("keepAccount") || session.get("s4tFoundTradeable")) {
                 if ((botConfig.get("deleteMethod") = "Inject Rewards" || botConfig.get("deleteMethod") = "Rename Account") && !session.get("s4tFoundTradeable")) {
                     MarkAccountAsClaimed()  ; No 24h lock — account stays available for pack-opening
-                    LogDebug("Marked injected account as claimed: " . session.get("accountFileName"))
+                    LogInfo("Marked injected account as claimed: " . session.get("accountFileName"))
                 } else {
                     MarkAccountAsUsed()  ; Remove account from queue
-                    LogDebug("Marked injected account as used: " . session.get("accountFileName"))
+                    LogInfo("Marked injected account as used: " . session.get("accountFileName"))
                 }
             } else {
-                LogDebug("Keeping injected account: " . session.get("accountFileName"))
+                LogInfo("Keeping injected account: " . session.get("accountFileName"))
             }
 
             ; Reset loadedAccount so it will be loaded fresh next iteration
@@ -855,6 +876,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 }
 
                 EnsureAccountLanguageMetadata()
+                LogInfo("Saved account: " . session.get("accountFileName") . " | packs=" . session.get("accountOpenPacks"))
 
                 if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo"))
                     EnsureAccountFriendInfo("Create Bots (13P)", false, true)
@@ -1138,6 +1160,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 92, 299, 115, 317, 0)
             if(vRet = 1) {
                 session.set("cantOpenMorePacks", 1)
+                LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
                 return 0
             }
         }
@@ -1324,6 +1347,7 @@ ControlClick(X, Y) {
 
 ; Pause Script
 PauseScript:
+    LogUserAction("Pause")
     CreateStatusMessage("Pausing...",,,, false)
     g_scriptPaused := true
     Pause, On, 1
@@ -1331,6 +1355,7 @@ return
 
 ; Resume Script
 ResumeScript:
+    LogUserAction("Resume")
     CreateStatusMessage("Resuming...",,,, false)
     session.set("StartSkipTime", A_TickCount) ;reset stuck timers
     session.set("failSafe", A_TickCount)
@@ -1339,6 +1364,7 @@ ResumeScript:
 return
 
 TogglePauseScript:
+    LogUserAction(g_scriptPaused ? "Resume" : "Pause")
     if (g_scriptPaused) {
         CreateStatusMessage("Resuming...",,,, false)
         session.set("StartSkipTime", A_TickCount) ;reset stuck timers
@@ -1354,14 +1380,17 @@ return
 
 ; Stop Script
 StopScript:
+    LogUserAction("Stop button")
     ToggleStop()
 return
 
 DevMode:
+    LogUserAction("Dev mode toggled")
     ToggleDevMode()
 return
 
 ReloadScript:
+    LogUserAction("Reload")
     CleanupBeforeExit()
     SafeReload("Toolbar reload")
 return
@@ -1372,6 +1401,7 @@ return
 
 ; === Single instance stop handlers (GUI button) ===
 StopImmediatelySingle:
+    LogUserAction("Stop this instance immediately")
     targetHwnd := session.get("RememberStopPreferenceSingleHwnd")
     GuiControlGet, RememberStopPreferenceSingle, , %targetHwnd%
     if (RememberStopPreferenceSingle) {
@@ -1384,6 +1414,7 @@ StopImmediatelySingle:
 return
 
 StopWaitEndSingle:
+    LogUserAction("Stop this instance after run")
     Gui, StopConfirm:Submit, NoHide
     GuiControlGet, RememberStopPreferenceSingle, , ui_RememberStopPreferenceSingle
     if (RememberStopPreferenceSingle) {
@@ -1402,6 +1433,7 @@ return
 
 ; === All instances stop handlers (Shift+F7 from instance 1) ===
 StopImmediatelyAll:
+    LogUserAction("Stop all instances immediately")
     targetHwnd := session.get("RememberStopPreferenceHwnd")
     GuiControlGet, RememberStopPreference, , %targetHwnd%
     if (RememberStopPreference) {
@@ -1413,6 +1445,7 @@ StopImmediatelyAll:
 return
 
 StopWaitEndAll:
+    LogUserAction("Stop all instances after run")
     targetHwnd := session.get("RememberStopPreferenceHwnd")
     GuiControlGet, RememberStopPreference, , %targetHwnd%
     if (RememberStopPreference) {
@@ -1427,6 +1460,7 @@ StopWaitEndAll:
 return
 
 StopAndKillMuMuAll:
+    LogUserAction("Stop all instances and close MuMu")
     GuiControlGet, RememberStopPreference, , ui_RememberStopPreference
     Gui, StopConfirmAll:Submit, NoHide
     if (RememberStopPreference) {

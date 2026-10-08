@@ -182,6 +182,8 @@ SpendAllHourglassInject13P() {
 SpendAllHourglass() {
     global botConfig, session
 
+    LogInfo("Spending hourglasses | packs=" . (botConfig.get("spendHourglassPackCount") > 0 ? botConfig.get("spendHourglassPackCount") : "all"))
+
     if (botConfig.get("deleteMethod") = "Inject 13P+") {
         SpendAllHourglassInject13P()
         return
@@ -191,22 +193,22 @@ SpendAllHourglass() {
     GoToMain()
 
     SelectPack("HGPack")
-    if(session.get("cantOpenMorePacks"))
+    if (session.get("cantOpenMorePacks"))
         return
 
     PackOpening()
     RecordHourglassPacksOpened()
-    if(session.get("cantOpenMorePacks") || !CanContinueHourglassSpendWonderpick())
+    if (session.get("cantOpenMorePacks") || !CanContinueHourglassSpendWonderpick())
         return
 
     while (CanContinueHourglassSpendWonderpick()) {
-        if(session.get("packMethod")) {
+        if (session.get("packMethod")) {
             session.set("friendsAdded", PackMethod_RenewFriends())
             if (!PackMethod_ConsumeStayOnPackScreen()) {
                 GoToMain()
                 SelectPack("HGPack")
             }
-            if(session.get("cantOpenMorePacks"))
+            if (session.get("cantOpenMorePacks"))
                 break
             PackOpening()
             RecordHourglassPacksOpened()
@@ -215,7 +217,7 @@ SpendAllHourglass() {
             RecordHourglassPacksOpened()
         }
 
-        if(session.get("cantOpenMorePacks") || !CanContinueHourglassSpendWonderpick())
+        if (session.get("cantOpenMorePacks") || !CanContinueHourglassSpendWonderpick())
             break
     }
 }

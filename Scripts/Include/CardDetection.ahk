@@ -363,6 +363,7 @@ FoundStars(star, cards := "") {
     logMessage .= "File name: " . accountFile . "\nBacking up to the Accounts\\SpecificCards folder and continuing..."
     LogToDiscord(logMessage, screenShot, true, (DiscordShouldSendAccountXml() ? accountFullPath : ""), fcScreenshot)
     LogInfo(StrReplace(logMessage, "\n", " "), "GPlog.txt")
+    LogInfo(statusPrefix . " | pack=" . session.get("openPack") . " | packsInPool=" . session.get("packsInPool") . " | saved=" . accountFile)
 }
 
 ;-------------------------------------------------------------------------------
@@ -457,6 +458,7 @@ GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreensho
     logMessage .= invalid . " God Pack found in instance: " . session.get("scriptName") . "\nFile name: " . accountFile . "\nBacking up to the Accounts\\GodPacks folder and continuing..."
 
     LogInfo(StrReplace(logMessage, "\n", " "), "GPlog.txt")
+    LogInfo(validity . " God Pack | stars=" . starCount . "/5 | pack=" . packDisplayName . " | packsInPool=" . session.get("packsInPool") . " | saved=" . accountFile)
 
     if (validity = "Valid") {
         LogToDiscord(logMessage, screenShot, true, (DiscordShouldSendAccountXml() ? accountFullPath : ""), fcScreenshot)
@@ -698,6 +700,7 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
 
     logMessage := statusMessage . " in instance: " . session.get("scriptName") . " (" . session.get("packsInPool") . " packs, " . dictionaryData[botConfig.get("defaultBotLanguage")][session.get("openPack")] . ") Screenshot file: " . screenShotFileName
     LogInfo(logMessage, "S4T.txt")
+    LogInfo(logMessage)
 
     ; Legacy path has only count vars (no card IDs/rarity array). Reuse the shared
     ; builder via count-only fallback: Discord format stays consistent with the
@@ -858,6 +861,7 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
 
     logMessage := statusMessage . " in instance: " . scriptName . " (" . packsInPool . " packs, " . packName . ") Screenshot file: " . screenShotFileName
     LogInfo(logMessage, "S4T.txt")
+    LogInfo(logMessage)
 
     headerTitle := isTenPackOpening ? "10-Packs Opening results" : "Pack Opening results"
     CardDetection_SendS4TDiscord(headerTitle, Chr(0x1F4E6), packName, packDetailsMessage, wishlistMatches, accountFileName, screenShot, savedXmlPath)

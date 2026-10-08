@@ -386,6 +386,7 @@ SelectPack(HG := false) {
                 break
             }else if(FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0)) {
                 session.set("cantOpenMorePacks", 1)
+                LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
             }
             if(session.get("cantOpenMorePacks"))
                 return
@@ -426,6 +427,7 @@ SelectPack(HG := false) {
                 break
             } else if(FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0)) {
                 session.set("cantOpenMorePacks", 1)
+                LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
             } else if(FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, 1) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, 1)) {
                 adbClick_wbb(205, 458)  ; Handle unexpected HG pack confirmation
             } else if(FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0)) {
@@ -484,6 +486,7 @@ PackOpening(tenPackOpening := false) {
             break ;wait for pack to be ready to Trace and click skip
         } else if(FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0)) {
             session.set("cantOpenMorePacks", 1)
+            LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
         } else if(FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, 1) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, 1)) {
             adbClick_wbb(205, 453) ; handle unexpected no packs available
         } else if(FindOrLoseImage("Pack_GetItemDialogAfterOpenPack", 0)){
@@ -641,6 +644,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
                 break
             }else if(FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0)) {
                 session.set("cantOpenMorePacks", 1)
+                LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
             }
             if(session.get("cantOpenMorePacks"))
                 return

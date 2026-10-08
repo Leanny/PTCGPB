@@ -129,6 +129,7 @@ initializeAdbShell()
 RemoveOldFiles()
 
 CreateStatusMessage("Initializing bot...",,,, false)
+LogInfo("Main started | groupReroll=" . (botConfig.get("groupRerollEnabled") ? 1 : 0) . " | autoGPTest=" . (session.get("autoUseGPTest") ? 1 : 0) . " | recovering=" . (session.get("isDead") ? 1 : 0))
 if(session.get("isDead")){
     closePTCGPApp()
     session.set("isDead", false)
@@ -197,12 +198,14 @@ if(firstRun) {
         if(DismissExpiredFriendRequestInApprove()) {
             continue
         } else if(FindOrLoseImage("Friend_AcceptButtonInApproveSubmenu", 0)) {
+            LogThrottled("info", "acceptingFriends", "Accepting friend requests", 300)
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
             Loop {
                 Delay(1)
                 clickButton := FindOrLoseImage("Common_ColorChangeButton", 0, failSafeTime, 80)
                 if(FindOrLoseImage("FriendLimit", 0, failSafeTime)) {
+                    LogThrottled("warn", "friendLimit", "Friend limit reached; cannot accept more friend requests", 300)
                     done := true
                     break
                 } else if(DismissExpiredFriendRequestInApprove()) {
@@ -674,6 +677,7 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
 
 ; Pause Script
 PauseScript:
+    LogUserAction("Pause")
     CreateStatusMessage("Pausing...",,,, false)
     g_scriptPaused := true
     Pause, On, 1
@@ -681,6 +685,7 @@ return
 
 ; Resume Script
 ResumeScript:
+    LogUserAction("Resume")
     CreateStatusMessage("Resuming...",,,, false)
     g_scriptPaused := false
     Pause, Off
@@ -689,6 +694,7 @@ ResumeScript:
 return
 
 TogglePauseScript:
+    LogUserAction(g_scriptPaused ? "Resume" : "Pause")
     if (g_scriptPaused) {
         CreateStatusMessage("Resuming...",,,, false)
         session.set("StartSkipTime", A_TickCount) ;reset stuck timers
@@ -704,6 +710,7 @@ return
 
 ; Stop Script - Main.ahk always exits immediately (no "end of run" concept)
 StopScript:
+    LogUserAction("Stop button")
     if (!botConfig.get("groupRerollEnabled")) {
         CreateStatusMessage("Stopping script...",,,, false)
         ExitApp
@@ -727,6 +734,7 @@ StopScript:
 return
 
 StopMainImmediately:
+    LogUserAction("Stop Main immediately")
     Gui, StopMain:Submit, NoHide
     GuiControlGet, RememberStopPreferenceMain, , ui_RememberStopPreferenceMain
     if (RememberStopPreferenceMain) {
@@ -748,6 +756,7 @@ StopMainAfterGPTestButton:
     }
 
 StopMainAfterGPTest:
+    LogUserAction("Stop Main after GP Test")
     session.set("stopAfterGPTest", true)
     if (!session.get("GPTest")) {
         session.set("GPTest", true)
@@ -765,6 +774,7 @@ StopMainGuiEscape:
 return
 
 RateLimitSleep:
+    LogUserAction("Rate limit: sleep")
     session.set("rateLimitAction", "sleep")
     Gui, RateLimit:Destroy
 return
@@ -785,6 +795,7 @@ VipTrimModeChanged:
 return
 
 VipTrimStart:
+    LogUserAction("Trim VIP list")
     Gui, VipTrim:Submit, NoHide
 
     GuiControlGet, VipTrimTopValue, , ui_VipTrimTop
@@ -823,10 +834,12 @@ VipTrimGuiEscape:
 return
 
 ImportCollectionScript:
+    LogUserAction("Import collection")
     ImportMainCollection(session.get("scriptName"))
 return
 
 ReloadScript:
+    LogUserAction("Reload")
     SafeReload("Main toolbar reload")
 return
 
@@ -902,6 +915,7 @@ ToggleTestScript(triggerSource := "auto", selectedMode := "__unset__") {
         UpdateGPTestButtonLabel()
         session.set("triggerTestNeeded", true)
         session.set("testStartTime", A_TickCount)
+        LogInfo("Entering GP Test mode | trigger=" . triggerSource . " | unopenedPack=" . session.get("hasUnopenedPack"))
         CreateStatusMessage("In GP Test Mode",,,, false)
         session.set("StartSkipTime", A_TickCount) ;reset stuck timers
         session.set("failSafe", A_TickCount)
@@ -920,6 +934,7 @@ ToggleTestScript(triggerSource := "auto", selectedMode := "__unset__") {
             session.set("firstRun", True)
             session.set("testStartTime", "")
         }
+        LogInfo("Exiting GP Test mode | trigger=" . triggerSource . " | duration=" . totalTestTime . "s")
         CreateStatusMessage("Exiting GP Test Mode",,,, false)
     }
 }
@@ -1049,6 +1064,7 @@ GPTestScript() {
     session.set("triggerTestNeeded", false)
     session.set("rateLimitAction", "")
     session.set("vipListTrimApplied", false)
+    LogInfo("GP Test: favouriting VIP friends")
     FavoriteVipFriends()
     if (!session.get("GPTest") || session.get("rateLimitAction") = "sleep")
         return
@@ -1067,7 +1083,9 @@ GPTestScript() {
             Sleep, 1000
         }
     }
+    LogInfo("GP Test: removing non-VIP friends")
     RemoveNonVipFriends()
+    LogInfo("GP Test: done")
 }
 
 ; Returns true if a friend add/remove op can proceed (and increments the counter).

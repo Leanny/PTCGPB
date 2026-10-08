@@ -100,6 +100,8 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
     if (!claimDaily && !claimSpecial)
         return {daily: false, special: false, eliteDeckRestart: false}
 
+    LogInfo("Claiming mission rewards | daily=" . (claimDaily ? 1 : 0) . " | special=" . (claimSpecial ? 1 : 0))
+
     method := botConfig.get("deleteMethod")
 
     ; --- Special-mission eligibility & advance ---

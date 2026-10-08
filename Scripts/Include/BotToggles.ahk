@@ -9,6 +9,7 @@ ToggleStop() {
     savedStopPreferenceSingle := (botConfig.get("stopPreferenceSingle") = "") ? "none" : botConfig.get("stopPreferenceSingle")
 
     if (savedStopPreferenceSingle != "none" && savedStopPreferenceSingle != "ERROR" && savedStopPreferenceSingle != "") {
+        LogUserAction("Stop this instance", "saved preference=" . savedStopPreferenceSingle)
         ; Execute the saved preference directly without showing popup
         if (savedStopPreferenceSingle = "immediate") {
             CleanupBeforeExit()
@@ -48,6 +49,7 @@ ToggleStopAll() {
     savedStopPreference := (botConfig.get("stopPreference") = "") ? "none" : botConfig.get("stopPreference")
 
     if (savedStopPreference != "none" && savedStopPreference != "ERROR" && savedStopPreference != "") {
+        LogUserAction("Stop all instances", "saved preference=" . savedStopPreference)
         ; Execute the saved preference directly without showing popup
         if (savedStopPreference = "immediate") {
             StopAllInstances()
@@ -90,10 +92,12 @@ ToggleTestScript() {
     global session
 
     if(!session.get("GPTest")) {
+        LogUserAction("Enter GP Test mode")
         CreateStatusMessage("In GP Test Mode",,,, false)
         session.set("GPTest", true)
     }
     else {
+        LogUserAction("Exit GP Test mode")
         CreateStatusMessage("Exiting GP Test Mode",,,, false)
         session.set("GPTest", false)
     }
