@@ -134,7 +134,7 @@ LogToFile(message, logFile := "") {
         logFile := LogsDir . "\Log_" . StrReplace(A_ScriptName, ".ahk") . ".txt"
     else
         logFile := LogsDir . "\" . logFile
-    FormatTime, readableTime, %A_Now%, MMMM dd, yyyy HH:mm:ss
+    FormatTime, readableTime, %A_Now%, yyyy-MM-dd HH:mm:ss
     try {
         FileAppend, % "[" readableTime "] " message "`n", %logFile%
         return !ErrorLevel
@@ -160,6 +160,13 @@ LogTrace(message, logFile := "") {
     global botConfig
     if (IsObject(botConfig) && botConfig.get("logLevel") = "trace")
         LogToFile("[trace] " . message, logFile)
+}
+LogThrottled(level, key, message, intervalSec := 60, logFile := "") {
+    static lastLogged := {}
+    if (lastLogged.HasKey(key) && A_TickCount - lastLogged[key] < intervalSec * 1000)
+        return
+    lastLogged[key] := A_TickCount
+    LogToFile("[" . level . "] " . message, logFile)
 }
 LogToDiscord(message, screenshotFile := "", ping := false, xmlFile := "", screenshotFile2 := "", altWebhookURL := "", altUserId := "") {
 }

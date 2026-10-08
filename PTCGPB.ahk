@@ -319,6 +319,8 @@ NextStep:
     }
 
     KillADBProcesses()
+    CleanupLogs()
+    LogInfo("PTCGPB started | version=" . localVersion . " | AHK=" . A_AhkVersion . " | OS=" . A_OSVersion . (A_Is64bitOS ? " x64" : " x86") . " | DPI=" . A_ScreenDPI . " | language=" . botConfig.get("BotLanguage") . " | dir=" . A_ScriptDir)
     if (botConfig.get("automaticUpdateChecks"))
         CheckForUpdate(false)
     PTCGPB_CheckHelperPrograms()
@@ -1831,6 +1833,7 @@ CancelToolsAndSystemSettings:
 return
 
 OpenSpecialEventExtractor:
+    LogUserAction("Open special event extractor")
     extractorPath := A_ScriptDir . "\SpecialEvents\SpecialEventExtractor.ahk"
     if (FileExist(extractorPath)) {
         Run, %extractorPath%
@@ -1939,6 +1942,7 @@ CancelBackupSettings:
 return
 
 BackupNow:
+    LogUserAction("Backup now")
     Gui, BackupSettings:Submit, NoHide
     if (!ValidateAndSaveBackupSettings(true))
         return
@@ -2025,6 +2029,7 @@ ClearSpecialMissionHistory:
     {
         changed := AccountMetadata_ClearFlagEverywhere("X")
         changed := changed = "" ? 0 : changed + 0
+        LogUserAction("Clear account flag", "flag=X | accounts changed=" . changed)
 
         MsgBox, 64, Clear Special Mission History Complete, % "Done`nAccounts changed: " . changed
     }
@@ -2036,6 +2041,7 @@ ClearReceiveGiftHistory:
     {
         changed := AccountMetadata_ClearFlagEverywhere("R")
         changed := changed = "" ? 0 : changed + 0
+        LogUserAction("Clear account flag", "flag=R | accounts changed=" . changed)
 
         MsgBox, 64, Clear Receive Gift History Complete, % "Done`nAccounts changed: " . changed
     }
@@ -2062,6 +2068,7 @@ PullHistoryConfirmClearAll:
     Gui, ToolsAndSystemSelect:-Disabled
     changed := AccountMetadata_ClearPullHistoryEverywhere()
     changed := changed = "" ? 0 : changed + 0
+    LogUserAction("Clear pull history", "accounts changed=" . changed)
 
     MsgBox, 64, Clear Pull History Complete, % "Done`nAccounts changed: " . changed
 return
@@ -2071,6 +2078,7 @@ PullHistoryConfirmFlagOnly:
     Gui, ToolsAndSystemSelect:-Disabled
     changed := AccountMetadata_ClearFlagEverywhere("H")
     changed := changed = "" ? 0 : changed + 0
+    LogUserAction("Clear account flag", "flag=H | accounts changed=" . changed)
 
     MsgBox, 64, Clear History Flag Complete, % "Done`nAccounts changed: " . changed
 return
@@ -2089,6 +2097,7 @@ ClearForceInjectFlags:
     {
         changed := AccountMetadata_ClearFlagEverywhere("FI")
         changed := changed = "" ? 0 : changed + 0
+        LogUserAction("Clear account flag", "flag=FI | accounts changed=" . changed)
 
         MsgBox, 64, Clear Force Inject Flags Complete, % "Done`nAccounts changed: " . changed
     }
@@ -2278,6 +2287,7 @@ return
 
 ; =================== Logic - Balance XMLs Button Action ===================
 BalanceXMLs:
+    LogUserAction("Balance XMLs")
     Gui, Submit, NoHide
     if (!SaveAllSettings())
         return
@@ -2569,6 +2579,7 @@ BalanceXMLs_RunWithProgress(command) {
 
 ; =================== Logic - Launch All Mumu Button Action ===================
 LaunchAllMumu:
+    LogUserAction("Launch all MuMu")
     Gui, Submit, NoHide
     if (!SaveAllSettings())
         return
@@ -2593,6 +2604,7 @@ return
 
 ; =================== Logic - Arrange Button Action ===================
 ArrangeWindows:
+    LogUserAction("Arrange windows")
     Gui, Submit, NoHide
 
     if (!SaveAllSettings())
@@ -2708,6 +2720,7 @@ PTCGPB_RebuildTrayMenu() {
 
 OpenCockpit:
     global g_botStarted
+    LogUserAction("Open Cockpit")
     if (!g_botStarted) {
         MsgBox, 48,, Start the bot first, then open Cockpit from tray.
         return
@@ -2721,6 +2734,7 @@ OpenCockpit:
 return
 
 OpenCardDatabase:
+    LogUserAction("Open card database")
     cardDbVbs := A_ScriptDir . "\Accounts\Cards\start_card_dashboard.vbs"
     cardDbHtml := A_ScriptDir . "\Accounts\Cards\card_database.html"
 
@@ -2734,11 +2748,13 @@ OpenCardDatabase:
 return
 
 RunXMLDuplicateTool:
+    LogUserAction("Open XML duplicate finder")
     Tool := A_ScriptDir . "\Accounts\xml_duplicate_finder.ahk"
     RunWait, %Tool%
 Return
 
 RunXMLManagerTool:
+    LogUserAction("Open XML manager")
     Tool := A_ScriptDir . "\Accounts\xmlManager.ahk"
     RunWait, %Tool%
 Return
@@ -2763,6 +2779,7 @@ InjectReqDlgGuiClose:
 return
 
 GuiClose:
+    LogUserAction("Close PTCGPB")
     Gui, Submit, NoHide
     if (!SaveAllSettings())
         return
@@ -2773,14 +2790,17 @@ GuiClose:
 return
 
 CheckForUpdates:
+    LogUserAction("Check for updates")
     CheckForUpdate(true)
 return
 
 ShowVersionManager:
+    LogUserAction("Open version manager")
     ShowVersionManager()
 return
 
 RunInstanceManager:
+    LogUserAction("Open instance manager")
     instanceManagerFile := A_ScriptDir . "\Scripts\Include\UpdateInstance.ahk"
     if (FileExist(instanceManagerFile))
         Run, "%instanceManagerFile%"
@@ -3198,7 +3218,10 @@ StartBot() {
     if (!ConfirmDiagnosticLogLevelForRun())
         return
 
+    CleanupLogs()
+    LogUserAction("Start Bot", "mode=" . botConfig.get("deleteMethod") . " | instances=" . botConfig.get("Instances") . " | mains=" . (botConfig.get("runMain") ? botConfig.get("Mains") : 0) . " | groupReroll=" . (botConfig.get("groupRerollEnabled") ? 1 : 0) . " | logLevel=" . LogConfiguredLevel())
     LogSettingsSnapshotForRun(botConfig.settingsFile)
+    LogSettingsChangesSinceLastStart(botConfig.settingsFile)
 
     ResetAccountLists()
 
@@ -3738,6 +3761,7 @@ PopulateVersionManager(channel) {
 
 InstallSelectedRelease(release) {
     global localVersion
+    LogInfo("Install version requested | installed=" . localVersion . " | selected=" . release.version)
     comparison := VersionCompare(release.version, localVersion)
     if (comparison < 0) {
         warning := "You selected " . release.version . ", which is older than the installed version " . localVersion . "."
