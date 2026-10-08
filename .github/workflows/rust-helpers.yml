@@ -1,0 +1,51 @@
+name: Rust helpers
+
+on:
+  pull_request:
+    paths:
+      - "Helper/carddb_src/**"
+      - "Helper/cardimage_src/**"
+      - ".github/workflows/rust-helpers.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.crate }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [carddb, cardimage]
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable
+        id: toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Restore Cargo cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ env.CARGO_TARGET_DIR }}
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-pr-${{ matrix.crate }}-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles(format('Helper/{0}_src/Cargo.toml', matrix.crate)) }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-rust-pr-${{ matrix.crate }}-${{ steps.toolchain.outputs.cachekey }}-
+
+      - name: Build ${{ matrix.crate }}
+        working-directory: Helper/${{ matrix.crate }}_src
+        run: cargo build --target x86_64-pc-windows-msvc

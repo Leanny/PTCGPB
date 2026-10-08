@@ -30,6 +30,10 @@
     Use the .ahk files staged for commit. With -Check, the staged content is
     checked (used by Helper\hooks\pre-commit).
 
+.PARAMETER Base
+    Use the .ahk files changed since the branch left this git ref, for example
+    origin/main (used by .github/workflows/ahk-format.yml).
+
 .PARAMETER Test
     Run the formatter's own tests in Helper\ahkfmt-tests.
 
@@ -44,6 +48,7 @@
     .\Helper\Format-Ahk.ps1 Scripts\1.ahk    # format one file
     .\Helper\Format-Ahk.ps1 -Check           # report files that need formatting
     .\Helper\Format-Ahk.ps1 -Staged          # format the files staged for commit
+    .\Helper\Format-Ahk.ps1 -Check -Base origin/main   # check the files this branch changed
 
 .NOTES
     Exit codes: 0 = ok, 1 = files need formatting (-Check) or tests failed,
@@ -55,6 +60,7 @@ param(
     [string[]]$Path,
     [switch]$Check,
     [switch]$Staged,
+    [string]$Base,
     [switch]$Test,
     [switch]$Stdin
 )
@@ -65,6 +71,7 @@ $ErrorActionPreference = 'Stop'
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $ExcludeFile = Join-Path $PSScriptRoot 'ahkfmt-exclude.list'
 $TestDir = Join-Path $PSScriptRoot 'ahkfmt-tests'
+$GitHubActions = $env:GITHUB_ACTIONS -eq 'true'
 $IndentUnit = '    '
 
 # Analysis only works on the code part of a line: strings emptied, comment removed.
@@ -483,6 +490,10 @@ function Get-TargetFiles {
         $names = Invoke-Git @('diff', '--cached', '--name-only', '--diff-filter=ACMR', '--', '*.ahk')
         return @($names | Where-Object { $_ -and -not (Test-Excluded $_ $excludes) })
     }
+    if ($Base) {
+        $names = Invoke-Git @('diff', '--name-only', '--diff-filter=ACMR', "$Base...HEAD", '--', '*.ahk')
+        return @($names | Where-Object { $_ -and -not (Test-Excluded $_ $excludes) })
+    }
     if (-not $Path) {
         $names = Invoke-Git @('ls-files', '--', '*.ahk')
         return @($names | Where-Object { $_ -and -not (Test-Excluded $_ $excludes) })
@@ -590,6 +601,7 @@ foreach ($relative in Get-TargetFiles) {
         if ($Check) {
             $needsFormat++
             Write-Host "Needs formatting: $relative (line $line)"
+            if ($GitHubActions) { Write-Host "::error file=$relative,line=$line::Not formatted. Run .\Helper\Format-Ahk.ps1 $relative" }
         }
         else {
             [IO.File]::WriteAllBytes($fullPath, (Get-AhkBytes $file $lines))
@@ -600,12 +612,14 @@ foreach ($relative in Get-TargetFiles) {
     catch {
         $errors++
         Write-Host "Skipped: ${relative}: $($_.Exception.Message)"
+        if ($GitHubActions) { Write-Host "::error file=$relative::Could not be formatted: $($_.Exception.Message)" }
     }
 }
 
 if ($Check -and $needsFormat) {
     $hint = '.\Helper\Format-Ahk.ps1'
     if ($Staged) { $hint += ' -Staged' }
+    if ($Base) { $hint += " -Base $Base" }
     Write-Host "$needsFormat file(s) need formatting. Run $hint and add the changes."
 }
 elseif (-not $Check) {
