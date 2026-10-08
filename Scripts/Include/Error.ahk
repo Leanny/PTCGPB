@@ -30,6 +30,7 @@ ErrorCheckInScreen(pBitmap, searchVariation := 20){
             , needleObj.coords.endY
             , searchVariation)
         if (vRet = 1 && !interceptProc) {
+            LogThrottled("warn", "errorPopup_" . value, "Game error popup detected | popup=" . value)
             errorFuncList[value].Call()
         }
     }

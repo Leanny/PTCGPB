@@ -1,4 +1,9 @@
 {
+    // The bot is AutoHotkey v1 only. AHK++ also registers .ahk for v2 ("ahk2"),
+    // whose formatter wraps long lines in ways v1 cannot parse.
+    "files.associations": {
+        "*.ahk": "ahk"
+    },
     // Format AutoHotkey files on save with Helper/Format-Ahk.ps1 (same rules as the pre-commit hook).
     // Needs the "Custom Local Formatters" extension (jkillian.custom-local-formatters).
     "customLocalFormatters.formatters": [
