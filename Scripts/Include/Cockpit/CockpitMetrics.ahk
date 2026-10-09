@@ -231,7 +231,7 @@ Metrics_Sparkline(values) {
     ; Use Chr() so that this source file is pure ASCII and AHK 1.1 reads it
     ; correctly regardless of file encoding (default is Windows-1252).
     chars := [Chr(0x2581), Chr(0x2582), Chr(0x2583), Chr(0x2584)
-            , Chr(0x2585), Chr(0x2586), Chr(0x2587), Chr(0x2588)]
+        , Chr(0x2585), Chr(0x2586), Chr(0x2587), Chr(0x2588)]
     n := values.Length()
     if (n = 0)
         return ""

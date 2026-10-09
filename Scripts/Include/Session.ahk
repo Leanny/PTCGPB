@@ -1,6 +1,6 @@
 ﻿class Session {
     sessionItems := {}
-    
+
     __New(){
         this.sessionItems := {}
     }

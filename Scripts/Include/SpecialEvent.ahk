@@ -68,7 +68,7 @@
     isExpiredSpecialEvent(){
         if(this.expiryDate = "" || this.expiryTime = "")
             return true
-        
+
         waitTime := -5
         currentDateTime := A_Now
         offset := SpecialEvent_GetLocalUtcOffsetHours()
@@ -113,14 +113,14 @@
 
             tempNeedleObj.needle := needleBitmap
             vRet := Gdip_ImageSearch(pBitmap, needleBitmap, vPosXY, currentNeedleCoords.startX, currentNeedleCoords.startY
-                                    , currentNeedleCoords.endX, currentNeedleCoords.endY, 20)
+                , currentNeedleCoords.endX, currentNeedleCoords.endY, 20)
 
             existResult += vRet
         }
 
         if (pBitmap)
             Gdip_DisposeImage(pBitmap)
-        
+
         if(existResult = 2)
             return 2
         else if(existResult < 0)
@@ -132,7 +132,7 @@
     getValidate(){
         if(!this.isValidateComplete)
             this.isValidate()
-        
+
         return this.validate
     }
 
@@ -199,7 +199,7 @@ MoveSevtToPastEvents(FilePath){
 
         If ErrorLevel
             continue
-        
+
         return
     }
 }
@@ -241,8 +241,8 @@ LoadSevtFileCore(FilePath, addToSession){
     bArr := StrSplit(bCoords, ",")
 
     tempSpecialEventObj := new SpecialEvent(vName, vDate, vTime, new Coordinate(Trim(rArr[1]), Trim(rArr[2]), Trim(rArr[3]), Trim(rArr[4]))
-                                                , new Coordinate(Trim(bArr[1]), Trim(bArr[2]), Trim(bArr[3]), Trim(bArr[4]))
-                                                , rImage, bImage, vClaimSteps, vClaimDays, vGiftDays, vIsEliteDeck)
+        , new Coordinate(Trim(bArr[1]), Trim(bArr[2]), Trim(bArr[3]), Trim(bArr[4]))
+        , rImage, bImage, vClaimSteps, vClaimDays, vGiftDays, vIsEliteDeck)
     tempSpecialEventObj.isValidate()
 
     if (!tempSpecialEventObj.getValidate()) {
@@ -252,8 +252,8 @@ LoadSevtFileCore(FilePath, addToSession){
 
     if (tempSpecialEventObj.isExpiredSpecialEvent()){
         if (session.get("specialEventList").HasKey(vName)) {
-             session.get("specialEventList")[vName].disposeBitmapObject()
-             session.get("specialEventList").Delete(vName)
+            session.get("specialEventList")[vName].disposeBitmapObject()
+            session.get("specialEventList").Delete(vName)
         }
         MoveSevtToPastEvents(FilePath)
         tempSpecialEventObj.disposeBitmapObject()
@@ -317,7 +317,7 @@ syncSpecialEvents() {
     purgeExpiredSpecialEventFiles()
 
     TargetPath := getScriptBaseFolder() . "\SpecialEvents\Events"
-    
+
     CurrentFileNames := {}
 
     Loop, Files, %TargetPath%\*.sevt, F
@@ -326,7 +326,7 @@ syncSpecialEvents() {
         IniRead, vName, %FilePath%, TargetInfo, EventName
         if (vName = "ERROR" || vName = "")
             continue
-            
+
         CurrentFileNames[vName] := true
 
         if (!session.get("specialEventList").HasKey(vName)) {
@@ -337,7 +337,7 @@ syncSpecialEvents() {
         }
     }
 
-    For vName, oMission in session.get("specialEventList") 
+    For vName, oMission in session.get("specialEventList")
     {
         if (!CurrentFileNames.HasKey(vName)) {
             oMission.disposeBitmapObject()
@@ -349,33 +349,33 @@ syncSpecialEvents() {
 Base64ToBitmap(sBase64) {
     if !DllCall("Crypt32.dll\CryptStringToBinary", "ptr", &sBase64, "uint", 0, "uint", 0x01, "ptr", 0, "uint*", nSize, "ptr", 0, "ptr", 0)
         return 0
-    
+
     hData := DllCall("GlobalAlloc", "uint", 0x2, "ptr", nSize, "ptr")
     pData := DllCall("GlobalLock", "ptr", hData, "ptr")
-    
+
     if !DllCall("Crypt32.dll\CryptStringToBinary", "ptr", &sBase64, "uint", 0, "uint", 0x01, "ptr", pData, "uint*", nSize, "ptr", 0, "ptr", 0) {
         DllCall("GlobalUnlock", "ptr", hData)
         DllCall("GlobalFree", "ptr", hData)
         return 0
     }
-    
+
     DllCall("GlobalUnlock", "ptr", hData)
-    
+
     DllCall("ole32\CreateStreamOnHGlobal", "ptr", hData, "int", 1, "ptr*", pStream)
-    
+
     DllCall("gdiplus\GdipCreateBitmapFromStream", "ptr", pStream, "ptr*", pTempBitmap)
-    
+
     if (pTempBitmap) {
         hBitmap := Gdip_CreateHBITMAPFromBitmap(pTempBitmap)
         pCleanBitmap := Gdip_CreateBitmapFromHBITMAP(hBitmap)
-        
+
         DeleteObject(hBitmap)
         Gdip_DisposeImage(pTempBitmap)
     } else {
         pCleanBitmap := 0
     }
-    
-    ObjRelease(pStream) 
-    
+
+    ObjRelease(pStream)
+
     return pCleanBitmap
 }

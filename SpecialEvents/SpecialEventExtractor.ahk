@@ -205,10 +205,10 @@ GuiClose:
     if (pDisplayBitmap)
         Gdip_DisposeImage(pDisplayBitmap)
     Gdip_Shutdown(pToken)
-ExitApp
+    ExitApp
 
-; Convert in-game "expires in N days" + UTC cutoff time into ExpiryDate (YYYYMMDD).
-; Uses the next UTC ExpiryTime as day 0 boundary, then adds remainingDays.
+    ; Convert in-game "expires in N days" + UTC cutoff time into ExpiryDate (YYYYMMDD).
+    ; Uses the next UTC ExpiryTime as day 0 boundary, then adds remainingDays.
 CalcExpiryDateFromRemainingDays(remainingDays, expiryTimeCompact := "055959") {
     if (remainingDays = "" || (remainingDays + 0) < 1)
         remainingDays := 1

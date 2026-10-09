@@ -654,7 +654,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             HourglassOpening(true) ;9
             if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
                 Goto, EndOfRun
-             HourglassOpening(true) ;10
+            HourglassOpening(true) ;10
             if(session.get("cantOpenMorePacks") || (!session.get("friendIDs") && botConfig.get("FriendID") = "" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")))
                 Goto, EndOfRun
 
@@ -1387,7 +1387,7 @@ StopImmediatelySingle:
     }
     Gui, StopConfirm:Destroy
     CleanupBeforeExit()
-ExitApp
+    ExitApp
 return
 
 StopWaitEndSingle:

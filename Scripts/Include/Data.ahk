@@ -6,7 +6,7 @@ parsePackData(){
     mainScreenPackList := {}
     pokemonPackObj := {}
     pokemonPackOrder := []
-    
+
     packDataPath := getScriptBaseFolder() . "\Data\packdata.dat"
     FileRead, packRawData, %packDataPath%
     if (ErrorLevel)
@@ -28,18 +28,18 @@ parsePackData(){
 
         if (InStr(line, "Home:") = 1) {
             homeValue := Trim(SubStr(line, 6))
-            Loop, Parse, homeValue, `, 
+            Loop, Parse, homeValue, `,
             {
                 item := Trim(A_LoopField)
-                
+
                 if (item = "")
                     continue
-                
+
                 splitData := StrSplit(item, "|")
-                
+
                 key := Trim(splitData[1])
                 value := Trim(splitData[2])
-                
+
                 if (key != "")
                     mainScreenPackList[key] := value
             }
@@ -71,7 +71,7 @@ parsePackData(){
 
 parseDictionaryData(langCode){
     global dictionaryData
-    
+
     dictionaryData[langCode] := {}
     dictFileName := "dictionary_" . langCode . ".dat"
     dictionaryDataPath := getScriptBaseFolder() . "\Data\" . dictFileName
@@ -86,19 +86,19 @@ parseDictionaryData(langCode){
     Loop, Parse, rawData, `n, `r
     {
         line := Trim(A_LoopField)
-        
+
         if (line = "" || SubStr(line, 1, 1) = ";")
             continue
-            
+
         colonPos := InStr(line, ":")
-        
+
         if (colonPos > 0) {
             key := Trim(SubStr(line, 1, colonPos - 1))
             val := Trim(SubStr(line, colonPos + 1))
-            
+
             dictionaryData[langCode][key] := val
             lastKey := key
-        } 
+        }
         else {
             if (lastKey != "")
                 dictionaryData[langCode][lastKey] .= " " . line

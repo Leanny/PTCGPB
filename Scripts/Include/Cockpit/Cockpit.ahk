@@ -3600,7 +3600,7 @@ CockpitGuiEscape:
     Cockpit_SaveWindowPosition("Main", WinExist())
     SetTimer, Agg_Tick, Off
     SetTimer, Cockpit_RefreshTicker, Off
-ExitApp
+    ExitApp
 
 CockpitGuiSize:
     global g_cockpitHwnd
@@ -3730,4 +3730,4 @@ Cockpit_UpdateEventFilterDdl(instN) {
 ~+F9::
     SetTimer, Agg_Tick, Off
     SetTimer, Cockpit_RefreshTicker, Off
-ExitApp
+    ExitApp

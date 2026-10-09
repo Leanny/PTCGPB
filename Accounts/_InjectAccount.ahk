@@ -232,10 +232,10 @@ ApplyInjectFriendEditPlaceholders() {
 }
 
 OnGuiClose:
-ExitApp
+    ExitApp
 
 GuiClose:
-ExitApp
+    ExitApp
 
 BrowseFile:
     FileSelectFile, selectedFile, 3, , Select XML File, XML Files (*.xml)
@@ -268,7 +268,7 @@ SaveSettings:
     SetInjectUiBusy(true)
     UpdateInjectUi("Saving settings...", 5)
     SaveInjectFriendIniSettings()
-; fall through into RunInjectFlow
+    ; fall through into RunInjectFlow
 
 RunInjectFlow:
     UpdateInjectUi("Resolving MuMu folder...", 10)

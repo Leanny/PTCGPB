@@ -380,18 +380,14 @@ LogToDiscord(message, screenshotFile := "", ping := false, xmlFile := "", screen
         MaxRetries := 3
         RetryCount := 0
         discordTraceId := CreateDiscordTraceId()
-        try {
-            RegRead, proxyEnabled, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyEnable
-            RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
-        } catch {
-            ProxyEnable := false
-            ProxyServer := ""
+
+        if (!IsDiscordWebhookURLWellFormed(webhookURL)) {
+            LogToFile("Discord send skipped | trace=" . discordTraceId . " | reason=webhook is not a URL (expected https://discord.com/api/webhooks/...) | webhook=" . RedactDiscordWebhookURL(webhookURL), "Discord.txt")
+            CreateStatusMessage("Discord webhook URL is invalid.",,,, false)
+            return
         }
-        if (proxyEnabled && proxyServer != "") {
-            curlChar := "curl.exe -k -sS --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 60 -o NUL -w ""HTTP_STATUS:%{http_code}"" -x """ . proxyServer . """ "
-        } else {
-            curlChar := "curl.exe -k -sS --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 60 -o NUL -w ""HTTP_STATUS:%{http_code}"" "
-        }
+
+        curlChar := GetDiscordCurlBaseCommand()
 
         payloadFile := CreateDiscordPayloadFile(discordPing . message)
         if (payloadFile = "") {
@@ -470,6 +466,83 @@ LogToDiscord(message, screenshotFile := "", ping := false, xmlFile := "", screen
 
         FileDelete, %payloadFile%
     }
+}
+
+GetDiscordCurlBaseCommand() {
+    proxyEnabled := false
+    proxyServer := ""
+    try {
+        RegRead, proxyEnabled, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyEnable
+        RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
+    } catch {
+        proxyEnabled := false
+        proxyServer := ""
+    }
+
+    curlChar := "curl.exe -k -sS --retry 2 --retry-delay 2 --connect-timeout 10 --max-time 60 -o NUL -w ""HTTP_STATUS:%{http_code}"" "
+    if (proxyEnabled && proxyServer != "")
+        curlChar .= "-x """ . proxyServer . """ "
+    return curlChar
+}
+
+; Anything that is not an http(s) URL is handed to curl as a host name and fails with a confusing DNS error.
+IsDiscordWebhookURLWellFormed(webhookURL) {
+    return RegExMatch(Trim(webhookURL), "i)^https?://[^\s/]+/\S+")
+}
+
+IsDiscordWebhookURL(webhookURL) {
+    return RegExMatch(Trim(webhookURL), "i)^https://((canary|ptb)\.)?discord(app)?\.com/api/(v\d+/)?webhooks/\d+/[\w-]+")
+}
+
+; Posts a test message and returns {ok: bool, status: int, message: string} describing the outcome.
+TestDiscordWebhook(webhookURL, label := "") {
+    webhookURL := Trim(webhookURL)
+    result := {"ok": false, "status": 0, "message": ""}
+
+    if (!IsDiscordWebhookURLWellFormed(webhookURL)) {
+        result.message := "Not a URL. Paste the full webhook URL (https://discord.com/api/webhooks/...), not an ID."
+        return result
+    }
+
+    payloadFile := CreateDiscordPayloadFile("PTCGPB webhook test" . (label != "" ? " (" . label . ")" : "") . " - if you can read this, the webhook works.")
+    if (payloadFile = "") {
+        result.message := "Could not create the test payload file."
+        return result
+    }
+
+    curlCommand := GetDiscordCurlBaseCommand() . "-F ""payload_json=<" . payloadFile . ";type=application/json;charset=UTF-8"" """ . webhookURL . """"
+    ; Not every script that includes Logging.ahk also includes Utils.ahk, so resolve CmdRet dynamically.
+    if (IsFunc("CmdRet")) {
+        cmdFn := Func("CmdRet")
+        curlResult := cmdFn.Call(curlCommand)
+    } else {
+        RunWait, %curlCommand%,, Hide
+        curlResult := "HTTP_STATUS:" . ErrorLevel
+    }
+    FileDelete, %payloadFile%
+
+    status := GetDiscordCurlHttpStatus(curlResult)
+    result.status := status
+    result.ok := (status >= 200 && status < 300)
+
+    if (result.ok)
+        result.message := "OK"
+    else if (status = 401 || status = 403 || status = 404)
+        result.message := "Discord rejected the webhook (HTTP " . status . "). It was deleted or the URL is incomplete - copy it again from Discord."
+    else if (status = 429)
+        result.message := "Rate limited by Discord (HTTP 429). Wait a moment and try again."
+    else if (status = 0 && InStr(curlResult, "Could not resolve host"))
+        result.message := "Could not resolve the host name. Check the URL and your internet/DNS connection."
+    else if (status = 0)
+        result.message := "No response: " . TrimDiscordCurlResult(StrReplace(curlResult, "HTTP_STATUS:000"))
+    else
+        result.message := "Unexpected response (HTTP " . status . ")."
+
+    if (result.ok && !IsDiscordWebhookURL(webhookURL))
+        result.message .= " (note: this does not look like a discord.com webhook URL)"
+
+    LogToFile("Discord webhook test | label=" . label . " | status=" . status . " | webhook=" . RedactDiscordWebhookURL(webhookURL) . " | result=" . TrimDiscordCurlResult(curlResult), "Discord.txt")
+    return result
 }
 
 CreateDiscordTraceId() {

@@ -384,7 +384,7 @@ return
 
 CloseGui:
 GuiClose:
-ExitApp
+    ExitApp
 return
 
 XM_ChipSeqToTemplate() {

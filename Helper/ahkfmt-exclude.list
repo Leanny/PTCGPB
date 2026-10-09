@@ -1,0 +1,6 @@
+# Files Format-Ahk.ps1 leaves alone: third-party libraries kept in their
+# original style. Paths are relative to the repository root; wildcards work.
+Scripts/Include/Gdip_All.ahk
+Scripts/Include/Gdip_Imagesearch.ahk
+Scripts/Include/ChooseColors.ahk
+Scripts/Include/DropDownColor.ahk

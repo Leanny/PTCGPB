@@ -1,0 +1,18 @@
+#!/bin/sh
+# Blocks commits whose staged .ahk files are not formatted.
+# Enable once per clone:  git config core.hooksPath Helper/hooks
+# Fix with:               powershell -File Helper/Format-Ahk.ps1 -Staged   (then git add)
+# Skip once:              git commit --no-verify
+
+root=$(git rev-parse --show-toplevel) || exit 1
+
+if command -v powershell.exe >/dev/null 2>&1; then
+    ps=powershell.exe
+elif command -v pwsh >/dev/null 2>&1; then
+    ps=pwsh
+else
+    echo "pre-commit: PowerShell not found, skipping the AHK format check." >&2
+    exit 0
+fi
+
+exec "$ps" -NoProfile -ExecutionPolicy Bypass -File "$root/Helper/Format-Ahk.ps1" -Staged -Check

@@ -111,9 +111,9 @@ Agg_TickBody() {
         isFirstObservation := !g_aggState.instances.HasKey(N)
         prev := isFirstObservation
             ? { "ring": [], "lastSeenEnd": 0, "stuckCount": 0, "lastStatus": ""
-                , "accountFileName": "", "lastEvent": "", "lastEventEpoch": 0
-                , "lastLogSize": -1, "stuckActive": false, "stuckSinceEpoch": 0
-                , "livePacks": -1, "totalRunSecCompleted": 0, "gpFoundCount": 0 }
+            , "accountFileName": "", "lastEvent": "", "lastEventEpoch": 0
+            , "lastLogSize": -1, "stuckActive": false, "stuckSinceEpoch": 0
+            , "livePacks": -1, "totalRunSecCompleted": 0, "gpFoundCount": 0 }
             : g_aggState.instances[N]
         if (!prev.HasKey("totalRunSecCompleted"))
             prev.totalRunSecCompleted := 0

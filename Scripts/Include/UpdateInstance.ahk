@@ -58,7 +58,7 @@ BuildMainGui() {
 
 MainGuiClose:
 MainGuiEscape:
-ExitApp
+    ExitApp
 return
 
 OnRefresh:

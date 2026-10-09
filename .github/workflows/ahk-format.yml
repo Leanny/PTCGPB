@@ -1,0 +1,48 @@
+name: AHK format
+
+on:
+  pull_request:
+    paths:
+      - "**.ahk"
+      - "Helper/Format-Ahk.ps1"
+      - "Helper/ahkfmt-exclude.list"
+      - "Helper/ahkfmt-tests/**"
+      - ".github/workflows/ahk-format.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: Check AHK formatting
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run formatter tests
+        shell: powershell
+        run: ./Helper/Format-Ahk.ps1 -Test
+
+      - name: Check changed AHK files
+        shell: powershell
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # A changed formatter or exclude list can affect every file, so check them all.
+          $toolChanged = git diff --name-only "$env:BASE_SHA...HEAD" -- Helper/Format-Ahk.ps1 Helper/ahkfmt-exclude.list
+          if ($toolChanged) {
+            Write-Host 'Formatter changed: checking all tracked .ahk files.'
+            ./Helper/Format-Ahk.ps1 -Check
+          }
+          else {
+            ./Helper/Format-Ahk.ps1 -Check -Base $env:BASE_SHA
+          }
+          exit $LASTEXITCODE

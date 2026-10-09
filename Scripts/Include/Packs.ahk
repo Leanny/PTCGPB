@@ -33,7 +33,7 @@
     expansionScreenDrag(){
         if(this.dragType = 0)
             return
-        
+
         loopCnt := 1
         X := 266
         Y1 := 430

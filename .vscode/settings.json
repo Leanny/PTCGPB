@@ -1,0 +1,18 @@
+{
+    // Format AutoHotkey files on save with Helper/Format-Ahk.ps1 (same rules as the pre-commit hook).
+    // Needs the "Custom Local Formatters" extension (jkillian.custom-local-formatters).
+    "customLocalFormatters.formatters": [
+        {
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File Helper/Format-Ahk.ps1 -Stdin \"${file}\"",
+            "languages": ["ahk"]
+        }
+    ],
+    "[ahk]": {
+        "editor.defaultFormatter": "jkillian.custom-local-formatters",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.detectIndentation": false
+    }
+}
