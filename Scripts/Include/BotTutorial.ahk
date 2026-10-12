@@ -194,8 +194,7 @@ DoTutorial() {
     }
 
     if(session.get("setSpeed") = 3){
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
+        SetGameSpeed(1)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -204,8 +203,7 @@ DoTutorial() {
     FindImageAndClick("Create_WelcomePopup", 253, 506, , 110) ;click through cutscene until welcome page
 
     if(session.get("setSpeed") = 3){
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
+        SetGameSpeed(3)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -257,8 +255,7 @@ DoTutorial() {
 
     FindImageAndClick("Pack_ReadyForOpenPack", 140, 424) ;wait for pack to be ready  to trace
     if(session.get("setSpeed") > 1) {
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
+        SetGameSpeed(1)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -271,8 +268,7 @@ DoTutorial() {
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
-                    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3)) ; click 3x
+                    SetGameSpeed(3) ; click 3x
                 }
             }
             adbClick_wbb(51, 297)
@@ -284,8 +280,7 @@ DoTutorial() {
 
     FindImageAndClick("Create_SwipeForRegisterDexIcon", 140, 375) ;click through cards until needing to swipe up
     if(session.get("setSpeed") > 1) {
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
+        SetGameSpeed(1)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -297,11 +292,7 @@ DoTutorial() {
         Sleep, 100
         if(FindOrLoseImage("Create_ConfirmRegisteredCard", 0, failSafeTime)){
             if(session.get("setSpeed") > 1) {
-                FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                if(session.get("setSpeed") = 3)
-                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-                else
-                    FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+                SetConfiguredGameSpeed()
             }
             adbClick_wbb(51, 297)
             break
@@ -328,12 +319,12 @@ DoTutorial() {
         }
     }
 
-    Delay(1)
-    adbClick_wbb(247, 472)
-
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        Delay(1)
+        adbClick_wbb(247, 472)
+        Delay(1)
         if(FindOrLoseImage("Create_TutorialPackOpenNotifyIcon", 0, failSafeTime)) {
             break
         }
@@ -358,8 +349,7 @@ DoTutorial() {
 
     FindImageAndClick("Pack_ReadyForOpenPack", 239, 497) ;wait for pack to be ready  to Trace
     if(session.get("setSpeed") > 1) {
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
+        SetGameSpeed(1)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -372,8 +362,7 @@ DoTutorial() {
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
-                    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
+                    SetGameSpeed(3)
                 }
             }
             adbClick_wbb(51, 297)

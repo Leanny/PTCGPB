@@ -88,11 +88,7 @@ menuDeleteStart() {
         return session.get("keepAccount")
     }
     if(session.get("friended")) {
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        if(session.get("setSpeed") = 3)
-            FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-        else
-            FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+        SetConfiguredGameSpeed()
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)

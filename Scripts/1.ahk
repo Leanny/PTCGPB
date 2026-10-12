@@ -247,11 +247,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     session.set("friended", true)
     CreateStatusMessage("Stuck account still has friends. Unfriending accounts...")
     waitForAppBootScreen()
-    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-    if(session.get("setSpeed") = 3)
-        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-    else
-        FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+    SetConfiguredGameSpeed()
     adbClick_wbb(51, 297)
     Delay(1)
     startPreProcess(botConfig.get("deleteMethod"))
@@ -411,11 +407,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         waitForAppBootScreen()
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        if(session.get("setSpeed") = 3)
-            FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-        else
-            FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+        SetConfiguredGameSpeed()
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)

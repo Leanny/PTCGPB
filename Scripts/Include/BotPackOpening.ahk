@@ -519,8 +519,7 @@ PackOpening(tenPackOpening := false) {
     }
 
     if(session.get("setSpeed") > 1) {
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
+        SetGameSpeed(1)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -533,8 +532,7 @@ PackOpening(tenPackOpening := false) {
         if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
-                    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
+                    SetGameSpeed(3)
                 }
             }
             adbClick_wbb(51, 292)
@@ -728,8 +726,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     }
 
     if(session.get("setSpeed") > 1) {
-        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
+        SetGameSpeed(1)
         Delay(1)
         adbClick_wbb(51, 297)
         Delay(1)
@@ -742,8 +739,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
             if(session.get("setSpeed") > 1) {
                 if(session.get("setSpeed") = 3) {
-                    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-                    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
+                    SetGameSpeed(3)
                 }
             }
             adbClick_wbb(51, 297)
@@ -936,13 +932,7 @@ SetOpenGiftSpeed(targetSpeed) {
 }
 
 SetOpenGiftSpeedByButtons(targetSpeed) {
-    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-    if(targetSpeed = 1)
-        FindImageAndClick(GetSpeedModNeedle(1), GetSpeedModClickX(1), GetSpeedModClickY(1))
-    else if(targetSpeed = 3)
-        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-    else
-        FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+    SetGameSpeed(targetSpeed = 1 || targetSpeed = 3 ? targetSpeed : 2)
 
     Delay(1)
     adbClick_wbb(51, 297)

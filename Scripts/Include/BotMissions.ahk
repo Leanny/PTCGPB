@@ -400,11 +400,7 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     ; loading an injected account (SpeedMod menu), then run the normal
     ; startPreProcess so the game reaches the expected main screen.
     waitForAppBootScreen()
-    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-    if(session.get("setSpeed") = 3)
-        FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-    else
-        FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
+    SetConfiguredGameSpeed()
     Delay(1)
     adbClick_wbb(51, 297)
     Delay(1)
