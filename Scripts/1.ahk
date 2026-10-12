@@ -215,6 +215,7 @@ if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod
 
 initializeAdbShell()
 RemoveOldFiles()
+adbGrantOverlayPermission()
 
 if(session.get("injectMethod"))
     createAccountList(session.get("scriptName"))

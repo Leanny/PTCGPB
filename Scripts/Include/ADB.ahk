@@ -519,6 +519,24 @@ closePTCGPApp(){
     DelayH(100)
 }
 
+; Allows the game (Mod Menu apk) to draw over other apps, like the Instance Manager does
+; after installing the apk. Returns true if the permission is enabled afterwards.
+adbGrantOverlayPermission(package := "jp.pokemon.pokemontcgp") {
+    prof := Prof_Scope(A_ThisFunc)
+    check := "cmd appops get " . package . " SYSTEM_ALERT_WINDOW"
+    if (InStr(adbWriteRaw(check, true), "SYSTEM_ALERT_WINDOW: allow"))
+        return true
+
+    adbWriteRaw("cmd appops set " . package . " SYSTEM_ALERT_WINDOW allow")
+    output := adbWriteRaw(check, true)
+    if (!InStr(output, "SYSTEM_ALERT_WINDOW: allow")) {
+        LogWarn("Could not enable the overlay permission for " . package . ": " . Trim(output, "`r`n`t "), "ADB.txt")
+        return false
+    }
+    LogInfo("Enabled the overlay permission for " . package, "ADB.txt")
+    return true
+}
+
 isPTCGPAppInFocus() {
     prof := Prof_Scope(A_ThisFunc)
     global session
