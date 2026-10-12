@@ -313,14 +313,7 @@ FoundStars(star, cards := "") {
         synthGPPath := ""
         highlightIds := isWishlist ? Wishlist_MatchIds(wishlistMatches) : ""
         if (GenerateSyntheticPackImage(cards, synthGPPath, highlightIds)) {
-            persistedGPPath := PersistSyntheticScreenshot(synthGPPath, star)
-            if (persistedGPPath != "") {
-                screenShot := persistedGPPath
-                if (FileExist(synthGPPath))
-                    FileDelete, %synthGPPath%
-            } else {
-                screenShot := synthGPPath
-            }
+            screenShot := CardDetection_PersistSynthetic(synthGPPath, star)
             isSyntheticGP := true
         }
     }
@@ -409,14 +402,7 @@ GodPackFound(validity, cards := "", alreadyAtHome := false, preCapturedScreensho
     if (IsObject(cards) && cards.MaxIndex() > 0 && (botConfig.get("s4tUseSyntheticScreenshots") = "1" || cards.MaxIndex() > 6)) {
         synthGPPath := ""
         if (GenerateSyntheticPackImage(cards, synthGPPath)) {
-            persistedGPPath := PersistSyntheticScreenshot(synthGPPath, validity)
-            if (persistedGPPath != "") {
-                screenShot := persistedGPPath
-                if (FileExist(synthGPPath))
-                    FileDelete, %synthGPPath%
-            } else {
-                screenShot := synthGPPath
-            }
+            screenShot := CardDetection_PersistSynthetic(synthGPPath, validity)
             isSyntheticGP := true
         }
     }
@@ -559,6 +545,118 @@ CardDetection_ResolveSavedXml(saveDir, ByRef accountFileName, expectedDeviceAcco
 ;-------------------------------------------------------------------------------
 ; FoundTradeable - Process found tradeable cards
 ;-------------------------------------------------------------------------------
+; Saves the account XML for a tradeable find (or locates the injected one). Updates
+; accountFileName and returns the XML path, or "" when there is no file to attach.
+CardDetection_SaveTradeableAccount(deviceAccount, ByRef accountFileName) {
+    global session
+
+    savedXmlPath := ""
+    if (!session.get("loadDir")) {
+        ; Create Bots mode: reuse the XML of this device account if one exists to prevent duplicates
+        xmlMap := session.get("deviceAccountXmlMap")
+        if (xmlMap.HasKey(deviceAccount) && FileExist(xmlMap[deviceAccount])) {
+            savedXmlPath := xmlMap[deviceAccount]
+            UpdateSavedXml(savedXmlPath)
+
+            SplitPath, savedXmlPath, xmlFileName
+            accountFileName := xmlFileName
+            session.set("accountFileName", accountFileName)
+        } else {
+            saveAccount("All", savedXmlPath)
+
+            if (savedXmlPath) {
+                SplitPath, savedXmlPath, xmlFileName
+                accountFileName := xmlFileName
+                session.set("accountFileName", accountFileName)
+                xmlMap[deviceAccount] := savedXmlPath
+            }
+        }
+
+        tradeableData := {}
+        tradeableData.xmlPath := savedXmlPath
+        tradeableData.deviceAccount := deviceAccount
+        session.get("s4tPendingTradeables").Push(tradeableData)
+    } else {
+        ; Inject mode: use the current accountFileName (it may have a new name due to the pack count)
+        saveDir := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName")
+        savedXmlPath := CardDetection_ResolveSavedXml(saveDir, accountFileName, deviceAccount)
+        if (savedXmlPath != "")
+            session.set("accountFileName", accountFileName)
+
+        if (!FileExist(savedXmlPath)) {
+            CreateStatusMessage("Warning: Could not find account XML file for attachment", "", 0, 0, false)
+            LogWarn("FoundTradeable: Could not find XML file. accountFileName=" . accountFileName . ", savedXmlPath=" . savedXmlPath, "S4T.txt")
+            savedXmlPath := ""  ; Clear it so we don't try to attach a non-existent file
+        }
+    }
+    return savedXmlPath
+}
+
+; Fills cardTypes/cardCounts from the found card counts and returns the total.
+CardDetection_BuildTypeLists(foundCards, ByRef cardTypes, ByRef cardCounts) {
+    cardTypes := []
+    cardCounts := []
+    total := 0
+    for _, type in ["1Diamond", "2Diamond", "3Diamond", "4Diamond", "1Star", "FullArt", "Rainbow", "Trainer", "Immersive", "Crown", "Shiny1Star", "Shiny2Star", "Wishlist"] {
+        count := foundCards.HasKey(type) ? foundCards[type] : 0
+        total += count
+
+        if (count > 0) {
+            cardTypes.Push(type)
+            cardCounts.Push(count)
+        }
+    }
+    return total
+}
+
+; Moves a generated synthetic image into the screenshots folder. Returns the new path,
+; or the original temp path if it could not be moved.
+CardDetection_PersistSynthetic(synthPath, fileType, subDir := "") {
+    persistedPath := PersistSyntheticScreenshot(synthPath, fileType, subDir)
+    if (persistedPath = "")
+        return synthPath
+    if (FileExist(synthPath))
+        FileDelete, %synthPath%
+    return persistedPath
+}
+
+; Generates a synthetic pack image for tradeable cards, honoring the keep setting.
+; Returns the image path, or "" if no image could be generated.
+CardDetection_CreateSyntheticImage(cards, highlightIds, maxCols) {
+    global botConfig
+
+    synthPath := ""
+    if (!GenerateSyntheticPackImage(cards, synthPath, highlightIds, maxCols))
+        return ""
+    if (botConfig.get("s4tKeepSyntheticScreenshots"))
+        synthPath := CardDetection_PersistSynthetic(synthPath, "Tradeable", "Trades")
+    return synthPath
+}
+
+; Posts a pack result to the S4T webhook unless silent mode is on or no webhook is set.
+; wishlistMatches may be "" when wishlist matches are not part of the message.
+CardDetection_SendS4TDiscord(title, emoji, packName, packDetailsMessage, wishlistMatches, accountFileName, screenShot, savedXmlPath, footer := "") {
+    global botConfig, session
+
+    if (botConfig.get("s4tSilent") || !botConfig.get("s4tDiscordWebhookURL"))
+        return
+
+    discordMessage := S4T_BuildDiscordHeader(title, session.get("scriptName"), session.get("packsInPool"), packName, emoji) . "\n"
+    if (packDetailsMessage != "")
+        discordMessage .= "\n" . packDetailsMessage . "\n\n"
+    if (botConfig.get("s4tWishlist") && IsObject(wishlistMatches) && wishlistMatches.MaxIndex() > 0) {
+        sparkle := Chr(0x2728)
+        discordMessage .= sparkle . " WISHLIST: " . Wishlist_FormatNames(wishlistMatches) . " " . sparkle . "\n"
+    }
+    discordMessage .= "File name: " . accountFileName . footer
+
+    xmlFileToSend := ""
+    if (botConfig.get("s4tSendAccountXml") && savedXmlPath && FileExist(savedXmlPath))
+        xmlFileToSend := savedXmlPath
+
+    LogToDiscord(discordMessage, screenShot, true, xmlFileToSend,, botConfig.get("s4tDiscordWebhookURL"), botConfig.get("s4tDiscordUserId"))
+}
+
 FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighoul := 0, foundCrown := 0, foundImmersive := 0, foundShiny1Star := 0, foundShiny2Star := 0, foundTrainer := 0, foundRainbow := 0, foundFullArt := 0) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, dictionaryData
@@ -579,98 +677,16 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
 
     cardTypes := []
     cardCounts := []
-
-    if (found3Dmnd > 0) {
-        cardTypes.Push("3Diamond")
-        cardCounts.Push(found3Dmnd)
-    }
-    if (found4Dmnd > 0) {
-        cardTypes.Push("4Diamond")
-        cardCounts.Push(found4Dmnd)
-    }
-    if (found1Star > 0) {
-        cardTypes.Push("1Star")
-        cardCounts.Push(found1Star)
-    }
-    if (foundGimmighoul > 0) {
-        cardTypes.Push("Gimmighoul")
-        cardCounts.Push(foundGimmighoul)
-    }
-    if (foundCrown > 0) {
-        cardTypes.Push("Crown")
-        cardCounts.Push(foundCrown)
-    }
-    if (foundImmersive > 0) {
-        cardTypes.Push("Immersive")
-        cardCounts.Push(foundImmersive)
-    }
-    if (foundShiny1Star > 0) {
-        cardTypes.Push("Shiny1Star")
-        cardCounts.Push(foundShiny1Star)
-    }
-    if (foundShiny2Star > 0) {
-        cardTypes.Push("Shiny2Star")
-        cardCounts.Push(foundShiny2Star)
-    }
-    if (foundTrainer > 0) {
-        cardTypes.Push("Trainer")
-        cardCounts.Push(foundTrainer)
-    }
-    if (foundRainbow > 0) {
-        cardTypes.Push("Rainbow")
-        cardCounts.Push(foundRainbow)
-    }
-    if (foundFullArt > 0) {
-        cardTypes.Push("FullArt")
-        cardCounts.Push(foundFullArt)
+    for _, entry in [["3Diamond", found3Dmnd], ["4Diamond", found4Dmnd], ["1Star", found1Star], ["Gimmighoul", foundGimmighoul], ["Crown", foundCrown], ["Immersive", foundImmersive], ["Shiny1Star", foundShiny1Star], ["Shiny2Star", foundShiny2Star], ["Trainer", foundTrainer], ["Rainbow", foundRainbow], ["FullArt", foundFullArt]] {
+        if (entry[2] > 0) {
+            cardTypes.Push(entry[1])
+            cardCounts.Push(entry[2])
+        }
     }
 
     deviceAccount := GetDeviceAccountFromXML()
-    savedXmlPath := ""
-
-    if (!session.get("loadDir")) {
-        ; Create Bots mode: Check if XML already exists for this deviceAccount to prevent duplicates
-        if (session.get("deviceAccountXmlMap").HasKey(deviceAccount) && FileExist(session.get("deviceAccountXmlMap")[deviceAccount])) {
-            savedXmlPath := session.get("deviceAccountXmlMap")[deviceAccount]
-            UpdateSavedXml(savedXmlPath)
-
-            ; Update accountFileName from saved path
-            SplitPath, savedXmlPath, xmlFileName
-            session.set("accountFileName", xmlFileName)
-        } else {
-            ; Create new XML only if one doesn't exist
-            saveAccount("All", savedXmlPath)
-
-            ; Extract filename and update accountFileName
-            if (savedXmlPath) {
-                SplitPath, savedXmlPath, xmlFileName
-                session.set("accountFileName", xmlFileName)
-
-                ; Store mapping for future reference
-                session.get("deviceAccountXmlMap")[deviceAccount] := savedXmlPath
-            }
-        }
-
-        tradeableData := {}
-        tradeableData.xmlPath := savedXmlPath
-        tradeableData.deviceAccount := deviceAccount
-        session.get("s4tPendingTradeables").Push(tradeableData)
-    } else {
-        ; Inject mode: Use the current accountFileName (which may have new name due to pack count)
-        ; and construct the full path from it
-        saveDir := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName")
-        accountFileName := session.get("accountFileName")
-        savedXmlPath := CardDetection_ResolveSavedXml(saveDir, accountFileName, deviceAccount)
-        if (savedXmlPath != "")
-            session.set("accountFileName", accountFileName)
-
-        ; verification
-        if (!FileExist(savedXmlPath)) {
-            CreateStatusMessage("Warning: Could not find account XML file for attachment", "", 0, 0, false)
-            LogWarn("FoundTradeable: Could not find XML file. accountFileName=" . session.get("accountFileName") . ", savedXmlPath=" . savedXmlPath, "S4T.txt")
-            savedXmlPath := ""  ; Clear it so we don't try to attach a non-existent file
-        }
-    }
+    accountFileName := session.get("accountFileName")
+    savedXmlPath := CardDetection_SaveTradeableAccount(deviceAccount, accountFileName)
 
     screenShot := Screenshot("Tradeable", "Trades", screenShotFileName)
 
@@ -683,30 +699,15 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
     logMessage := statusMessage . " in instance: " . session.get("scriptName") . " (" . session.get("packsInPool") . " packs, " . dictionaryData[botConfig.get("defaultBotLanguage")][session.get("openPack")] . ") Screenshot file: " . screenShotFileName
     LogInfo(logMessage, "S4T.txt")
 
-    if (!botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL")) {
-        ; Legacy path has only count vars (no card IDs/rarity array). Reuse the
-        ; shared builder via count-only fallback: Discord format stays consistent
-        ; with the modern paths, just without per-card names.
-        foundCards := { "3Diamond": found3Dmnd, "4Diamond": found4Dmnd, "1Star": found1Star
-            , "Crown": foundCrown, "Immersive": foundImmersive
-            , "Shiny1Star": foundShiny1Star, "Shiny2Star": foundShiny2Star
-            , "Trainer": foundTrainer, "Rainbow": foundRainbow, "FullArt": foundFullArt }
-        packDetailsMessage := CardName_BuildFoundBlock("", "", foundCards)
-
-        discordMessage := S4T_BuildDiscordHeader("Pack Opening results", session.get("scriptName"), session.get("packsInPool"), session.get("openPack"), Chr(0x1F4E6)) . "\n"
-        if (packDetailsMessage != "")
-            discordMessage .= "\n" . packDetailsMessage . "\n\n"
-        discordMessage .= "File name: " . session.get("accountFileName")
-
-        ; Prepare XML file path for attachment
-        xmlFileToSend := ""
-        ; NOW savedXmlPath will have the correct path with the updated filename!
-        if (botConfig.get("s4tSendAccountXml") && savedXmlPath && FileExist(savedXmlPath)) {
-            xmlFileToSend := savedXmlPath
-        }
-
-        LogToDiscord(discordMessage, screenShot, true, xmlFileToSend,, botConfig.get("s4tDiscordWebhookURL"), botConfig.get("s4tDiscordUserId"))
-    }
+    ; Legacy path has only count vars (no card IDs/rarity array). Reuse the shared
+    ; builder via count-only fallback: Discord format stays consistent with the
+    ; modern paths, just without per-card names.
+    foundCards := { "3Diamond": found3Dmnd, "4Diamond": found4Dmnd, "1Star": found1Star
+        , "Crown": foundCrown, "Immersive": foundImmersive
+        , "Shiny1Star": foundShiny1Star, "Shiny2Star": foundShiny2Star
+        , "Trainer": foundTrainer, "Rainbow": foundRainbow, "FullArt": foundFullArt }
+    packDetailsMessage := CardName_BuildFoundBlock("", "", foundCards)
+    CardDetection_SendS4TDiscord("Pack Opening results", Chr(0x1F4E6), session.get("openPack"), packDetailsMessage, "", accountFileName, screenShot, savedXmlPath)
     return
 }
 
@@ -763,90 +764,13 @@ CheckCardsSimple(result) {
         session.set("keepAccount", true)
         session.set("s4tFoundTradeable", true)
 
-        scriptName := session.get("scriptName")
-        winTitle := session.get("winTitle")
-        packsInPool := session.get("packsInPool")
-        openPack := session.get("openPack")
-        loadDir := session.get("loadDir")
-        accountFileName := session.get("accountFileName")
-
-        order := ["1Diamond", "2Diamond", "3Diamond", "4Diamond", "1Star", "FullArt", "Rainbow", "Trainer", "Immersive", "Crown", "Shiny1Star", "Shiny2Star", "Wishlist"]
-        out := ""
-        for key, value in foundCards
-            out .= key ": " value "`n"
-
-        displayNames := {}
-        displayNames["1Diamond"]   := "One Diamond"
-        displayNames["2Diamond"]   := "Two Diamond"
-        displayNames["3Diamond"]   := "Three Diamond"
-        displayNames["4Diamond"]   := "Four Diamond EX"
-        displayNames["1Star"]      := "One Star"
-        displayNames["Crown"]      := "Crown"
-        displayNames["Immersive"]  := "Immersive"
-        displayNames["Shiny1Star"] := "Shiny 1-Star"
-        displayNames["Shiny2Star"] := "Shiny 2-Star"
-        displayNames["Trainer"]    := "Trainer"
-        displayNames["Rainbow"]    := "Rainbow"
-        displayNames["FullArt"]    := "Full Art"
-        displayNames["Wishlist"]   := "Wishlist"
-
-        foundTradeable := 0
-        cardTypes := []
-        cardCounts := []
-
-        for _, type in order {
-            count := foundCards.HasKey(type) ? foundCards[type] : 0
-            foundTradeable += count
-
-            if (count > 0) {
-                cardTypes.Push(type)
-                cardCounts.Push(count)
-            }
-        }
-
         ; Build the Discord rarity summary with per-rarity emoji + card names.
         ; CardName_BuildFoundBlock handles the cards/rarity-missing case gracefully.
         packDetailsMessage := CardName_BuildFoundBlock(cards, rarity, foundCards)
         deviceAccount := GetDeviceAccountFromXML()
-        savedXmlPath := ""
+        accountFileName := session.get("accountFileName")
+        savedXmlPath := CardDetection_SaveTradeableAccount(deviceAccount, accountFileName)
 
-        if (!loadDir) {
-            if (session.get("deviceAccountXmlMap").HasKey(deviceAccount) && FileExist(session.get("deviceAccountXmlMap")[deviceAccount])) {
-                savedXmlPath := session.get("deviceAccountXmlMap")[deviceAccount]
-                UpdateSavedXml(savedXmlPath)
-
-                SplitPath, savedXmlPath, xmlFileName
-                accountFileName := xmlFileName
-                session.set("accountFileName", accountFileName)
-            } else {
-                saveAccount("All", savedXmlPath)
-
-                if (savedXmlPath) {
-                    SplitPath, savedXmlPath, xmlFileName
-                    accountFileName := xmlFileName
-                    session.set("accountFileName", accountFileName)
-                    session.get("deviceAccountXmlMap")[deviceAccount] := savedXmlPath
-                }
-            }
-
-            tradeableData := {}
-            tradeableData.xmlPath := savedXmlPath
-            tradeableData.deviceAccount := deviceAccount
-            session.get("s4tPendingTradeables").Push(tradeableData)
-        } else {
-            saveDir := A_ScriptDir "\..\Accounts\Saved\" . scriptName
-            savedXmlPath := CardDetection_ResolveSavedXml(saveDir, accountFileName, deviceAccount)
-            if (savedXmlPath != "")
-                session.set("accountFileName", accountFileName)
-
-            if (!FileExist(savedXmlPath)) {
-                CreateStatusMessage("Warning: Could not find account XML file for attachment", "", 0, 0, false)
-                LogWarn("FoundTradeable: Could not find XML file. accountFileName=" . accountFileName . ", savedXmlPath=" . savedXmlPath, "S4T.txt")
-                savedXmlPath := ""
-            }
-        }
-
-        statusMessage := "Giftpack cards found"
         wishlistMatches := session.get("wishlistMatches")
         if (!IsObject(wishlistMatches))
             wishlistMatches := []
@@ -855,35 +779,13 @@ CheckCardsSimple(result) {
         filteredCards := FilterCardsByS4T(cards, rarity)
         ; Try to generate a synthetic image from card IDs
         synthScreenShot := ""
-        if (filteredCards.MaxIndex() > 0) {
-            highlightIds := hasWishlist ? Wishlist_MatchIds(wishlistMatches) : ""
-            if (GenerateSyntheticPackImage(filteredCards, synthScreenShot, highlightIds, 6) && botConfig.get("s4tKeepSyntheticScreenshots")) {
-                persistedGiftPath := PersistSyntheticScreenshot(synthScreenShot, "Tradeable", "Trades")
-                if (persistedGiftPath != "") {
-                    if (FileExist(synthScreenShot))
-                        FileDelete, %synthScreenShot%
-                    synthScreenShot := persistedGiftPath
-                }
-            }
-        }
+        if (filteredCards.MaxIndex() > 0)
+            synthScreenShot := CardDetection_CreateSyntheticImage(filteredCards, hasWishlist ? Wishlist_MatchIds(wishlistMatches) : "", 6)
 
-        if (!botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL")) {
-            packName := (openPack != "") ? openPack : pack
-            discordMessage := S4T_BuildDiscordHeader("Gift Pack Opening results", scriptName, packsInPool, packName, Chr(0x1F381)) . "\n"
-            if (packDetailsMessage != "")
-                discordMessage .= "\n" . packDetailsMessage . "\n\n"
-            if (hasWishlist) {
-                sparkle := Chr(0x2728)
-                discordMessage .= sparkle . " WISHLIST: " . Wishlist_FormatNames(wishlistMatches) . " " . sparkle . "\n"
-            }
-            discordMessage .= "File name: " . accountFileName . "\n"
+        openPack := session.get("openPack")
+        packName := (openPack != "") ? openPack : pack
+        CardDetection_SendS4TDiscord("Gift Pack Opening results", Chr(0x1F381), packName, packDetailsMessage, wishlistMatches, accountFileName, synthScreenShot, savedXmlPath, "\n")
 
-            xmlFileToSend := ""
-            if (botConfig.get("s4tSendAccountXml") && savedXmlPath && FileExist(savedXmlPath))
-                xmlFileToSend := savedXmlPath
-
-            LogToDiscord(discordMessage, synthScreenShot, true, xmlFileToSend,, botConfig.get("s4tDiscordWebhookURL"), botConfig.get("s4tDiscordUserId"))
-        }
         ; Delete synthetic image after sending
         if (synthScreenShot && !botConfig.get("s4tKeepSyntheticScreenshots") && FileExist(synthScreenShot))
             FileDelete, %synthScreenShot%
@@ -899,45 +801,13 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     session.set("keepAccount", true)
 
     scriptName := session.get("scriptName")
-    winTitle := session.get("winTitle")
     packsInPool := session.get("packsInPool")
     openPack := session.get("openPack")
-    loadDir := session.get("loadDir")
     accountFileName := session.get("accountFileName")
 
-    order := ["1Diamond", "2Diamond", "3Diamond", "4Diamond", "1Star", "FullArt", "Rainbow", "Trainer", "Immersive", "Crown", "Shiny1Star", "Shiny2Star", "Wishlist"]
-    out := ""
-    for key, value in foundCards
-        out .= key ": " value "`n"
-
-    displayNames := {}
-    displayNames["1Diamond"]   := "One Diamond"
-    displayNames["2Diamond"]   := "Two Diamond"
-    displayNames["3Diamond"]   := "Three Diamond"
-    displayNames["4Diamond"]   := "Four Diamond EX"
-    displayNames["1Star"]      := "One Star"
-    displayNames["Crown"]      := "Crown"
-    displayNames["Immersive"]  := "Immersive"
-    displayNames["Shiny1Star"] := "Shiny 1-Star"
-    displayNames["Shiny2Star"] := "Shiny 2-Star"
-    displayNames["Trainer"]    := "Trainer"
-    displayNames["Rainbow"]    := "Rainbow"
-    displayNames["FullArt"]    := "Full Art"
-    displayNames["Wishlist"]   := "Wishlist"
-
-    foundTradeable := 0
     cardTypes := []
     cardCounts := []
-
-    for _, type in order {
-        count := foundCards.HasKey(type) ? foundCards[type] : 0
-        foundTradeable += count
-
-        if (count > 0) {
-            cardTypes.Push(type)
-            cardCounts.Push(count)
-        }
-    }
+    foundTradeable := CardDetection_BuildTypeLists(foundCards, cardTypes, cardCounts)
 
     ; Build the Discord rarity summary with per-rarity emoji + card names.
     ; CardName_BuildFoundBlock handles the cards/rarity-missing case gracefully.
@@ -951,43 +821,7 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     session.set("s4tFoundTradeable", true)
 
     deviceAccount := GetDeviceAccountFromXML()
-    savedXmlPath := ""
-
-    if (!loadDir) {
-        if (session.get("deviceAccountXmlMap").HasKey(deviceAccount) && FileExist(session.get("deviceAccountXmlMap")[deviceAccount])) {
-            savedXmlPath := session.get("deviceAccountXmlMap")[deviceAccount]
-            UpdateSavedXml(savedXmlPath)
-
-            SplitPath, savedXmlPath, xmlFileName
-            accountFileName := xmlFileName
-            session.set("accountFileName", accountFileName)
-        } else {
-            saveAccount("All", savedXmlPath)
-
-            if (savedXmlPath) {
-                SplitPath, savedXmlPath, xmlFileName
-                accountFileName := xmlFileName
-                session.set("accountFileName", accountFileName)
-                session.get("deviceAccountXmlMap")[deviceAccount] := savedXmlPath
-            }
-        }
-
-        tradeableData := {}
-        tradeableData.xmlPath := savedXmlPath
-        tradeableData.deviceAccount := deviceAccount
-        session.get("s4tPendingTradeables").Push(tradeableData)
-    } else {
-        saveDir := A_ScriptDir "\..\Accounts\Saved\" . scriptName
-        savedXmlPath := CardDetection_ResolveSavedXml(saveDir, accountFileName, deviceAccount)
-        if (savedXmlPath != "")
-            session.set("accountFileName", accountFileName)
-
-        if (!FileExist(savedXmlPath)) {
-            CreateStatusMessage("Warning: Could not find account XML file for attachment", "", 0, 0, false)
-            LogWarn("FoundTradeable: Could not find XML file. accountFileName=" . accountFileName . ", savedXmlPath=" . savedXmlPath, "S4T.txt")
-            savedXmlPath := ""
-        }
-    }
+    savedXmlPath := CardDetection_SaveTradeableAccount(deviceAccount, accountFileName)
 
     wishlistMatches := session.get("wishlistMatches")
     if (!IsObject(wishlistMatches))
@@ -997,26 +831,15 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     screenShotFileName := ""
     isSyntheticImage := false
     ; Try to generate a synthetic image from card IDs (avoids storing real screenshots on disk).
-    ; Only multi-pull (10-pack) needs s4t filtering on the synth image â€” single-pull packs
+    ; Only multi-pull (10-pack) needs s4t filtering on the synth image - single-pull packs
     ; show all 5 cards regardless of rarity. The rarity array itself is always honored for
     ; the webhook name lookup (CardName_BuildFoundBlock).
     syntheticCards := (isTenPackOpening && IsObject(rarity)) ? FilterCardsByS4T(cards, rarity) : cards
     if (isTenPackOpening && IsObject(rarity) && (!IsObject(syntheticCards) || syntheticCards.MaxIndex() = "") && hasWishlist)
         syntheticCards := FilterCardsByWishlistMatches(cards, wishlistMatches)
     if (IsObject(syntheticCards) && syntheticCards.MaxIndex() > 0 && (botConfig.get("s4tUseSyntheticScreenshots") = "1" || cards.MaxIndex() > 6)) {
-        synthPath := ""
-        highlightIds := hasWishlist ? Wishlist_MatchIds(wishlistMatches) : ""
-        synthCols := isTenPackOpening ? 6 : 3
-        if (GenerateSyntheticPackImage(syntheticCards, synthPath, highlightIds, synthCols)) {
-            if (botConfig.get("s4tKeepSyntheticScreenshots")) {
-                persistedTradePath := PersistSyntheticScreenshot(synthPath, "Tradeable", "Trades")
-                if (persistedTradePath != "") {
-                    if (FileExist(synthPath))
-                        FileDelete, %synthPath%
-                    synthPath := persistedTradePath
-                }
-            }
-
+        synthPath := CardDetection_CreateSyntheticImage(syntheticCards, hasWishlist ? Wishlist_MatchIds(wishlistMatches) : "", isTenPackOpening ? 6 : 3)
+        if (synthPath != "") {
             screenShot := synthPath
             SplitPath, synthPath, screenShotFileName
             isSyntheticImage := true
@@ -1036,24 +859,8 @@ FoundTradeableNew(foundCards, pack := "", cards := "", rarity := "", isTenPackOp
     logMessage := statusMessage . " in instance: " . scriptName . " (" . packsInPool . " packs, " . packName . ") Screenshot file: " . screenShotFileName
     LogInfo(logMessage, "S4T.txt")
 
-    if (!botConfig.get("s4tSilent") && botConfig.get("s4tDiscordWebhookURL")) {
-        headerTitle := isTenPackOpening ? "10-Packs Opening results" : "Pack Opening results"
-        headerEmoji := Chr(0x1F4E6)
-        discordMessage := S4T_BuildDiscordHeader(headerTitle, scriptName, packsInPool, packName, headerEmoji) . "\n"
-        if (packDetailsMessage != "")
-            discordMessage .= "\n" . packDetailsMessage . "\n\n"
-        if (hasWishlist) {
-            sparkle := Chr(0x2728)
-            discordMessage .= sparkle . " WISHLIST: " . Wishlist_FormatNames(wishlistMatches) . " " . sparkle . "\n"
-        }
-        discordMessage .= "File name: " . accountFileName
-
-        xmlFileToSend := ""
-        if (botConfig.get("s4tSendAccountXml") && savedXmlPath && FileExist(savedXmlPath))
-            xmlFileToSend := savedXmlPath
-
-        LogToDiscord(discordMessage, screenShot, true, xmlFileToSend,, botConfig.get("s4tDiscordWebhookURL"), botConfig.get("s4tDiscordUserId"))
-    }
+    headerTitle := isTenPackOpening ? "10-Packs Opening results" : "Pack Opening results"
+    CardDetection_SendS4TDiscord(headerTitle, Chr(0x1F4E6), packName, packDetailsMessage, wishlistMatches, accountFileName, screenShot, savedXmlPath)
 
     ; Delete synthetic image after sending (avoids accumulating screenshots on disk)
     if (isSyntheticImage && !botConfig.get("s4tKeepSyntheticScreenshots") && screenShot && FileExist(screenShot))
