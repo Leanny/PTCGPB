@@ -237,6 +237,24 @@ RepairPtcgpbRarityCache() {
     return true
 }
 
+; Let the helper recover its card rarity data after a rarity lookup failed.
+RecoverPtcgpbCardRarity() {
+    if (!EnsurePTCGPBHelperInstalled()) {
+        LogWarn("RecoverPtcgpbCardRarity skipped because the ptcgpb helper could not be installed")
+        return false
+    }
+
+    LogTrace("Running ptcgpb cardrarity", "ADB.txt")
+    output := Trim(StrReplace(adbWriteRaw("/data/ptcgp/ptcgpb cardrarity; echo exit=$?", true), "`r"), "`n`t ")
+    if (!RegExMatch(output, "exit=0$")) {
+        LogWarn("RecoverPtcgpbCardRarity failed to run ptcgpb cardrarity: " . output, "ADB.txt")
+        return false
+    }
+
+    LogDebug("RecoverPtcgpbCardRarity result=" . output, "ADB.txt")
+    return true
+}
+
 DownloadPTCGPBHelperToFile(url, localPath) {
     RegRead, proxyEnabled, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyEnable
     RegRead, proxyServer, HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings, ProxyServer
@@ -279,7 +297,7 @@ RemoveOldFiles() {
         return
     }
 
-    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 11, 4)) {
+    if (IsPtcgpbVersionLessThan(versionMatch1, versionMatch2, versionMatch3, 0, 12, 0)) {
         LogInfo("RemoveOldFiles deleting old ptcgpb helper version " . versionMatch1 . "." . versionMatch2 . "." . versionMatch3, "ADB.txt")
         adbWriteRaw("rm -f " . remotePath)
     } else {

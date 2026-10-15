@@ -4,7 +4,8 @@
 ; Resolves cardId -> English name using Helper\cardmaster.json + Helper\en_US.json
 ; (same data the dashboard uses). The full cardId -> name map is parsed once on
 ; first lookup and cached in session under "cardNameMap" for the rest of the run.
-; Also owns the bot-rarity emoji table used in Discord messages.
+; Also resolves cardId -> bot rarity from cardmaster.json (cached under
+; "cardRarityMap") and owns the bot-rarity emoji table used in Discord messages.
 ;===============================================================================
 
 CardName_CardmasterUrl() {
@@ -187,6 +188,73 @@ CardName_ParseCardmaster(ByRef jsonText, locale, ByRef out) {
         out[cardId] := locale.HasKey(nameKey) ? locale[nameKey] : nameKey
         pos := foundPos + m.Len(0)
     }
+}
+
+;--- cardId -> bot rarity ---
+
+; Maps cardmaster.json Rarity values to the bot's rarity ids.
+CardRarity_FromCardmaster(value) {
+    static map := {100: 1, 200: 2, 300: 3, 400: 4, 500: 7, 600: 8, 700: 5, 800: 9, 830: 11, 860: 12, 900: 10}
+    value := value + 0
+    return map.HasKey(value) ? map[value] : 0
+}
+
+CardRarity_EnsureLoaded(forceReload := false) {
+    global session
+    if (!forceReload && IsObject(session.get("cardRarityMap")))
+        return
+    rarityMap := {}
+    cardmasterPath := CardName_CardmasterPath()
+
+    CardName_DownloadIfMissing(cardmasterPath, CardName_CardmasterUrl())
+    if (FileExist(cardmasterPath)) {
+        FileRead, cardmasterJson, %cardmasterPath%
+        CardRarity_ParseCardmaster(cardmasterJson, rarityMap)
+    }
+
+    session.set("cardRarityMap", rarityMap)
+}
+
+; Same flat-entry assumption as CardName_ParseCardmaster.
+CardRarity_ParseCardmaster(ByRef jsonText, ByRef out) {
+    pos := 1
+    pattern := "sO)""([A-Za-z0-9_]+)""\s*:\s*\{[^}]*?""Rarity""\s*:\s*(\d+)"
+    while (foundPos := RegExMatch(jsonText, pattern, m, pos)) {
+        out[m.Value(1)] := CardRarity_FromCardmaster(m.Value(2))
+        pos := foundPos + m.Len(0)
+    }
+}
+
+; Returns the bot rarity for cardId, or 0 when it cannot be resolved.
+CardRarity_Get(cardId) {
+    global session
+    CardRarity_EnsureLoaded()
+    rarityMap := session.get("cardRarityMap")
+    if (rarityMap.HasKey(cardId))
+        return rarityMap[cardId]
+
+    ; Unknown card: cardmaster may be outdated, refresh once per hour at most.
+    if (CardName_RefreshIfStale(CardName_CardmasterPath(), CardName_CardmasterUrl())) {
+        CardRarity_EnsureLoaded(true)
+        rarityMap := session.get("cardRarityMap")
+        if (rarityMap.HasKey(cardId))
+            return rarityMap[cardId]
+    }
+    return 0
+}
+
+; Fills every missing (0) rarity entry from cardmaster.json, in place.
+; Returns the number of entries that are still unresolved.
+CardRarity_RestoreMissing(cards, rarity) {
+    unresolved := 0
+    for idx, cardId in cards {
+        if (rarity[idx])
+            continue
+        rarity[idx] := CardRarity_Get(cardId)
+        if (rarity[idx] = 0)
+            unresolved++
+    }
+    return unresolved
 }
 
 CardName_Unescape(s) {

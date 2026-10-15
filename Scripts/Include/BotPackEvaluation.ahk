@@ -427,8 +427,10 @@ CheckPack(stopEarly := false) {
     result := EvaluatePack()
     if (!result) {
         LogWarn("Failed at 1", "debug_cards.txt")
+        RecoverPtcgpbCardRarity()
         result := RecoverPack()
     }
+
     if (!result) {
         LogWarn("Failed at 2", "debug_cards.txt")
         ReportPackRecognitionFailure()
@@ -445,7 +447,32 @@ CheckPack(stopEarly := false) {
     rarity := result.rarity
     shinedust := result.shinedust
     raw_msg := result.raw
-    if(rarity[1] = 0) {
+
+    ; store result as soon as the cards are known, even if rarity is incomplete
+    if (cards.Length() > 0) {
+        LogToCardDatabase(result)
+
+        logMessage := "Instance: " . session.get("scriptName") " | Stored to card database"
+        LogDebug(logMessage, "debug_cards.txt")
+
+        ; Helper could not resolve some rarities, restore them from cardmaster.json
+        hasMissingRarity := rarity.Length() < cards.Length()
+        for _, rare in rarity {
+            if (!rare)
+                hasMissingRarity := true
+        }
+
+
+        if (hasMissingRarity) {
+            RecoverPtcgpbCardRarity()
+            unresolved := CardRarity_RestoreMissing(cards, rarity)
+            LogWarn("Restored missing rarity from cardmaster.json | unresolved=" . unresolved . "`n" . raw_msg, "debug_cards.txt")
+            hasMissingRarity := unresolved > 0
+        }
+    }
+
+    ; any rarity still unknown, fall back to manual checks
+    if (cards.Length() = 0 || hasMissingRarity) {
         LogWarn(raw_msg, "debug_cards.txt")
         ; Fallback in case recognition failed
         ReportPackRecognitionFailure()
@@ -453,16 +480,11 @@ CheckPack(stopEarly := false) {
             UpdatePackCountAfterOpening()
         }
         if (!stopEarly && expectedOpenedPacks <= 1) {
-            CheckPackFallback()
+            CheckPackFallback(cards.Length())
         }
         return
     }
 
-    ; store result
-    LogToCardDatabase(result)
-
-    logMessage := "Instance: " . session.get("scriptName") " | Stored to card database"
-    LogDebug(logMessage, "debug_cards.txt")
     UpdatePackCountAfterOpening()
     AddShinedustToDatabase(shinedust)
 
@@ -674,7 +696,8 @@ CheckPack(stopEarly := false) {
 
 }
 
-CheckPackFallback() {
+; detectedCardCount: number of cards the Helper recognized, 0 if none
+CheckPackFallback(detectedCardCount := 0) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session
 
@@ -691,13 +714,16 @@ CheckPackFallback() {
     if(skipCardDetection && !session.get("friendIDs") && botConfig.get("FriendID") = "" && !botConfig.get("s4tEnabled"))
         return false
 
-    currentPackIs4Card := DetectFourCardPack()
-    if (!currentPackIs4Card) {
-        currentPackIs6Card := DetectSixCardPack()
-    }
-
     ; Determine total cards in pack for 4-diamond s4t calculations
-    totalCardsInPack := currentPackIs6Card ? 6 : (currentPackIs4Card ? 4 : 5)
+    if (detectedCardCount > 0) {
+        totalCardsInPack := detectedCardCount
+    } else {
+        currentPackIs4Card := DetectFourCardPack()
+        if (!currentPackIs4Card) {
+            currentPackIs6Card := DetectSixCardPack()
+        }
+        totalCardsInPack := currentPackIs6Card ? 6 : (currentPackIs4Card ? 4 : 5)
+    }
 
     ; Wait for cards to render before checking.
     Loop {
