@@ -1699,65 +1699,26 @@ AccountMetadata_TryClaimForceInject(instance, fileName, filePath) {
     return saved
 }
 
-AccountMetadata_SetShinedust(deviceAccount, shinedustValue, instance := "", fileName := "") {
-    if (deviceAccount = "")
-        return false
+; Sets fields on the account of a device account, creating it if needed. The caller
+; passes the values (fields). fillFromFileName names the field that is derived from the
+; file name ("createdAt" or "packCount"); onlyIfUnset skips the update when that field
+; already has a value.
+AccountMetadata_SetDeviceFields(deviceAccount, fields, instance := "", fileName := "", fillFromFileName := "createdAt", onlyIfUnset := "") {
     if (AccountMetadata_UseTempWrites()) {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-        if (instance != "")
-            account["instance"] := instance
-        if (fileName != "")
-            account["fileName"] := fileName
-        account["shinedust"] := AccountMetadata_NewShinedust(shinedustValue, AccountMetadata_Now())
-        return AccountMetadata_SaveTempAccount(instance, fileName, account)
-    }
-
-    hMutex := AccountMetadata_AcquireLock()
-    if (!hMutex)
-        return false
-    store := AccountMetadata_ReadStoreUnlocked()
-    key := AccountMetadata_FindKey(store, instance, fileName, "", deviceAccount)
-    if (store["accounts"].HasKey(key)) {
-        account := store["accounts"][key]
-    } else {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-    }
-    account["deviceAccount"] := deviceAccount
-    if (instance != "") {
-        account["instance"] := instance
-    }
-    if (fileName != "") {
-        account["fileName"] := fileName
-        if (account["packCount"] = "") {
-            account["packCount"] := AccountMetadata_ExtractPackCount(fileName)
+        if (onlyIfUnset != "") {
+            existing := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
+            if (existing[onlyIfUnset] != "")
+                return true
         }
-    }
-    account["shinedust"] := AccountMetadata_NewShinedust(shinedustValue, AccountMetadata_Now())
 
-    newKey := AccountMetadata_DeviceKey(deviceAccount)
-    if (key != newKey && store["accounts"].HasKey(key)) {
-        store["accounts"].Delete(key)
-    }
-
-    store["accounts"][newKey] := account
-    AccountMetadata_WriteStoreUnlocked(store)
-    AccountMetadata_ReleaseLock(hMutex)
-    return true
-}
-
-AccountMetadata_SetLastPackPulledNow(deviceAccount, instance := "", fileName := "") {
-    if (deviceAccount = "")
-        return false
-    if (AccountMetadata_UseTempWrites()) {
         account := AccountMetadata_NewAccount(instance, fileName)
         account["deviceAccount"] := deviceAccount
         if (instance != "")
             account["instance"] := instance
         if (fileName != "")
             account["fileName"] := fileName
-        account["lastPackPulled"] := AccountMetadata_Now()
+        for field, value in fields
+            account[field] := value
         return AccountMetadata_SaveTempAccount(instance, fileName, account)
     }
 
@@ -1774,110 +1735,7 @@ AccountMetadata_SetLastPackPulledNow(deviceAccount, instance := "", fileName := 
         account["deviceAccount"] := deviceAccount
     }
 
-    account["deviceAccount"] := deviceAccount
-    if (instance != "")
-        account["instance"] := instance
-    if (fileName != "") {
-        account["fileName"] := fileName
-        if (account["createdAt"] = "" || account["createdAt"] = "0")
-            account["createdAt"] := AccountMetadata_ExtractCreatedAt(fileName)
-    }
-
-    account["lastPackPulled"] := AccountMetadata_Now()
-
-    newKey := AccountMetadata_DeviceKey(deviceAccount)
-    if (key != newKey && store["accounts"].HasKey(key))
-        store["accounts"].Delete(key)
-    store["accounts"][newKey] := account
-    AccountMetadata_WriteStoreUnlocked(store)
-    AccountMetadata_ReleaseLock(hMutex)
-    return true
-}
-
-AccountMetadata_SetLastLoggedInNow(deviceAccount, instance := "", fileName := "") {
-    if (deviceAccount = "")
-        return false
-    if (AccountMetadata_UseTempWrites()) {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-        if (instance != "")
-            account["instance"] := instance
-        if (fileName != "")
-            account["fileName"] := fileName
-        account["lastLoggedIn"] := AccountMetadata_Now()
-        return AccountMetadata_SaveTempAccount(instance, fileName, account)
-    }
-
-    hMutex := AccountMetadata_AcquireLock()
-    if (!hMutex)
-        return false
-
-    store := AccountMetadata_ReadStoreUnlocked()
-    key := AccountMetadata_FindKey(store, instance, fileName, "", deviceAccount)
-    if (store["accounts"].HasKey(key)) {
-        account := store["accounts"][key]
-    } else {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-    }
-
-    account["deviceAccount"] := deviceAccount
-    if (instance != "")
-        account["instance"] := instance
-    if (fileName != "") {
-        account["fileName"] := fileName
-        if (account["createdAt"] = "" || account["createdAt"] = "0")
-            account["createdAt"] := AccountMetadata_ExtractCreatedAt(fileName)
-    }
-
-    account["lastLoggedIn"] := AccountMetadata_Now()
-
-    newKey := AccountMetadata_DeviceKey(deviceAccount)
-    if (key != newKey && store["accounts"].HasKey(key))
-        store["accounts"].Delete(key)
-    store["accounts"][newKey] := account
-    AccountMetadata_WriteStoreUnlocked(store)
-    AccountMetadata_ReleaseLock(hMutex)
-    return true
-}
-
-AccountMetadata_SetLanguageIfUnset(deviceAccount, language, instance := "", fileName := "") {
-    if (deviceAccount = "" || language = "")
-        return false
-
-    language := Trim(language)
-    if (language = "")
-        return false
-
-    if (AccountMetadata_UseTempWrites()) {
-        existing := AccountMetadata_ReadAccountUnlocked(deviceAccount, instance, fileName)
-        if (existing["language"] != "")
-            return true
-
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-        if (instance != "")
-            account["instance"] := instance
-        if (fileName != "")
-            account["fileName"] := fileName
-        account["language"] := language
-        return AccountMetadata_SaveTempAccount(instance, fileName, account)
-    }
-
-    hMutex := AccountMetadata_AcquireLock()
-    if (!hMutex)
-        return false
-
-    store := AccountMetadata_ReadStoreUnlocked()
-    key := AccountMetadata_FindKey(store, instance, fileName, "", deviceAccount)
-    if (store["accounts"].HasKey(key)) {
-        account := store["accounts"][key]
-    } else {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-    }
-
-    if (account["language"] != "") {
+    if (onlyIfUnset != "" && account[onlyIfUnset] != "") {
         AccountMetadata_ReleaseLock(hMutex)
         return true
     }
@@ -1887,10 +1745,15 @@ AccountMetadata_SetLanguageIfUnset(deviceAccount, language, instance := "", file
         account["instance"] := instance
     if (fileName != "") {
         account["fileName"] := fileName
-        if (account["createdAt"] = "" || account["createdAt"] = "0")
+        if (fillFromFileName = "packCount") {
+            if (account["packCount"] = "")
+                account["packCount"] := AccountMetadata_ExtractPackCount(fileName)
+        } else if (account["createdAt"] = "" || account["createdAt"] = "0") {
             account["createdAt"] := AccountMetadata_ExtractCreatedAt(fileName)
+        }
     }
-    account["language"] := language
+    for field, value in fields
+        account[field] := value
 
     newKey := AccountMetadata_DeviceKey(deviceAccount)
     if (key != newKey && store["accounts"].HasKey(key))
@@ -1901,55 +1764,36 @@ AccountMetadata_SetLanguageIfUnset(deviceAccount, language, instance := "", file
     return true
 }
 
-AccountMetadata_SetLanguage(deviceAccount, language, instance := "", fileName := "") {
+AccountMetadata_SetShinedust(deviceAccount, shinedustValue, instance := "", fileName := "") {
+    if (deviceAccount = "")
+        return false
+    return AccountMetadata_SetDeviceFields(deviceAccount, {"shinedust": AccountMetadata_NewShinedust(shinedustValue, AccountMetadata_Now())}, instance, fileName, "packCount")
+}
+
+AccountMetadata_SetLastPackPulledNow(deviceAccount, instance := "", fileName := "") {
+    if (deviceAccount = "")
+        return false
+    return AccountMetadata_SetDeviceFields(deviceAccount, {"lastPackPulled": AccountMetadata_Now()}, instance, fileName)
+}
+
+AccountMetadata_SetLastLoggedInNow(deviceAccount, instance := "", fileName := "") {
+    if (deviceAccount = "")
+        return false
+    return AccountMetadata_SetDeviceFields(deviceAccount, {"lastLoggedIn": AccountMetadata_Now()}, instance, fileName)
+}
+
+AccountMetadata_SetLanguageIfUnset(deviceAccount, language, instance := "", fileName := "") {
+    language := Trim(language)
     if (deviceAccount = "" || language = "")
         return false
+    return AccountMetadata_SetDeviceFields(deviceAccount, {"language": language}, instance, fileName, "createdAt", "language")
+}
 
+AccountMetadata_SetLanguage(deviceAccount, language, instance := "", fileName := "") {
     language := Trim(language)
-    if (language = "")
+    if (deviceAccount = "" || language = "")
         return false
-
-    if (AccountMetadata_UseTempWrites()) {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-        if (instance != "")
-            account["instance"] := instance
-        if (fileName != "")
-            account["fileName"] := fileName
-        account["language"] := language
-        return AccountMetadata_SaveTempAccount(instance, fileName, account)
-    }
-
-    hMutex := AccountMetadata_AcquireLock()
-    if (!hMutex)
-        return false
-
-    store := AccountMetadata_ReadStoreUnlocked()
-    key := AccountMetadata_FindKey(store, instance, fileName, "", deviceAccount)
-    if (store["accounts"].HasKey(key)) {
-        account := store["accounts"][key]
-    } else {
-        account := AccountMetadata_NewAccount(instance, fileName)
-        account["deviceAccount"] := deviceAccount
-    }
-
-    account["deviceAccount"] := deviceAccount
-    if (instance != "")
-        account["instance"] := instance
-    if (fileName != "") {
-        account["fileName"] := fileName
-        if (account["createdAt"] = "" || account["createdAt"] = "0")
-            account["createdAt"] := AccountMetadata_ExtractCreatedAt(fileName)
-    }
-    account["language"] := language
-
-    newKey := AccountMetadata_DeviceKey(deviceAccount)
-    if (key != newKey && store["accounts"].HasKey(key))
-        store["accounts"].Delete(key)
-    store["accounts"][newKey] := account
-    AccountMetadata_WriteStoreUnlocked(store)
-    AccountMetadata_ReleaseLock(hMutex)
-    return true
+    return AccountMetadata_SetDeviceFields(deviceAccount, {"language": language}, instance, fileName)
 }
 
 AccountMetadata_HasLanguage(deviceAccount, instance := "", fileName := "") {

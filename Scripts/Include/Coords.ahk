@@ -1,4 +1,4 @@
-class Coordinate{
+﻿class Coordinate{
     startX := 0
     startY := 0
     endX := 0
@@ -313,6 +313,18 @@ GetSpeedModClickX(speed) {
 GetSpeedModClickY(speed) {
     global session
     return session.get("muMuAndroid15") ? 166 : 172
+}
+
+; Opens the SpeedMod menu and selects the given speed (1, 2 or 3).
+SetGameSpeed(speed) {
+    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
+    FindImageAndClick(GetSpeedModNeedle(speed), GetSpeedModClickX(speed), GetSpeedModClickY(speed))
+}
+
+; Opens the SpeedMod menu and selects the configured speed (3x, otherwise 2x).
+SetConfiguredGameSpeed() {
+    global session
+    SetGameSpeed(session.get("setSpeed") = 3 ? 3 : 2)
 }
 
 IsSpeedModImageName(imageName) {
