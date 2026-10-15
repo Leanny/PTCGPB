@@ -38,6 +38,7 @@ OnMonitorWake(wParam, lParam, msg, hwnd) {
 ; Message handler for "stop after run" signal from instance 1
 OnStopAfterRunMessage(wParam, lParam, msg, hwnd) {
     global session
+    LogInfo("Received stop-after-run signal from instance 1")
     session.set("stopToggle", true)
     CreateStatusMessage("Stopping script at the end of the run...",,,, false)
     return 0

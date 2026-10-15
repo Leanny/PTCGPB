@@ -103,6 +103,7 @@ PullPackOpeningResultLog(failedDir, uniquePrefix) {
 ReportPackRecognitionFailure(reason := "Card Recognition Failed, use fallback mechanism") {
     global session, botConfig
 
+    LogWarn("Card recognition failed | pack=" . session.get("openPack") . " | reason=" . reason)
     root := getScriptBaseFolder()
     failedDir := root . "\Logs\failed"
     uniquePrefix := A_Now . "_" . session.get("scriptName") . "_pack" . session.get("packsInPool")
@@ -281,6 +282,8 @@ UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
 
     session.set("packsInPool", session.get("packsInPool") + openedPackCount)
     session.set("packsThisRun", session.get("packsThisRun") + openedPackCount)
+
+    LogInfo("Pack opened | pack=" . session.get("openPack") . " | opened=" . openedPackCount . " | accountPacks=" . session.get("accountOpenPacks") . " | thisRun=" . session.get("packsThisRun"))
 
     return openedPackCount
 }

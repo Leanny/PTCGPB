@@ -179,7 +179,7 @@ resetShowcaseLikesIfNewCycle() {
     SplitPath, showcaseLogPath,, showcaseLogDir
     if !FileExist(showcaseLogDir)
         FileCreateDir, %showcaseLogDir%
-    FormatTime, readableTime, %A_Now%, MMMM dd, yyyy HH:mm:ss
+    FormatTime, readableTime, %A_Now%, yyyy-MM-dd HH:mm:ss
     FileAppend, % "[" . readableTime . "] Showcase likes reset for daily cycle " . cycleKey . "`n", %showcaseLogPath%
     return true
 }
@@ -561,6 +561,8 @@ LogReloadMessage(message) {
     if (IsFunc("LogToFile")) {
         logFn := Func("LogToFile")
         logFn.Call(message, "Reload.txt")
+        ; Also in the script's own log, so its timeline shows why it restarted.
+        logFn.Call("[info] " . message)
         return
     }
 
@@ -1012,7 +1014,7 @@ AppendGPlog(message) {
     SplitPath, logPath,, logDir
     if !FileExist(logDir)
         FileCreateDir, %logDir%
-    FormatTime, readableTime, %A_Now%, MMMM dd, yyyy HH:mm:ss
+    FormatTime, readableTime, %A_Now%, yyyy-MM-dd HH:mm:ss
     Loop, {
         FileAppend, % "[" readableTime "] " message "`n", %logPath%
         if !ErrorLevel
