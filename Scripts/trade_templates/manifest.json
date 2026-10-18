@@ -1,0 +1,200 @@
+{
+  "preview": [
+    {
+      "box": [
+        210,
+        125,
+        170,
+        30
+      ],
+      "file": "preview-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        310,
+        795,
+        160,
+        48
+      ],
+      "file": "preview-1.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        454,
+        689,
+        62,
+        24
+      ],
+      "file": "preview-2.png",
+      "max_mae": 6.0
+    }
+  ],
+  "set_confirmation": [
+    {
+      "box": [
+        48,
+        318,
+        447,
+        32
+      ],
+      "file": "set_confirmation-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        310,
+        612,
+        160,
+        45
+      ],
+      "file": "set_confirmation-1.png",
+      "max_mae": 6.0
+    }
+  ],
+  "last_copy": [
+    {
+      "box": [
+        64,
+        453,
+        420,
+        58
+      ],
+      "file": "last_copy-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        310,
+        646,
+        160,
+        45
+      ],
+      "file": "last_copy-1.png",
+      "max_mae": 6.0
+    }
+  ],
+  "offered": [
+    {
+      "box": [
+        43,
+        478,
+        451,
+        85
+      ],
+      "file": "offered-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        181,
+        747,
+        177,
+        48
+      ],
+      "file": "offered-1.png",
+      "max_mae": 6.0
+    }
+  ],
+  "waiting": [
+    {
+      "box": [
+        99,
+        53,
+        343,
+        38
+      ],
+      "file": "waiting-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        388,
+        644,
+        89,
+        23
+      ],
+      "file": "waiting-1.png",
+      "max_mae": 6.0
+    }
+  ],
+  "response": [
+    {
+      "box": [
+        115,
+        52,
+        310,
+        42
+      ],
+      "file": "response-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        345,
+        800,
+        110,
+        42
+      ],
+      "file": "response-1.png",
+      "max_mae": 6.0
+    }
+  ],
+  "final_confirmation": [
+    {
+      "box": [
+        50,
+        357,
+        443,
+        61
+      ],
+      "file": "final_confirmation-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        310,
+        612,
+        160,
+        45
+      ],
+      "file": "final_confirmation-1.png",
+      "max_mae": 6.0
+    }
+  ],
+  "swipe": [
+    {
+      "box": [
+        103,
+        109,
+        346,
+        57
+      ],
+      "file": "swipe-0.png",
+      "max_mae": 6.0
+    }
+  ],
+  "received": [
+    {
+      "box": [
+        78,
+        42,
+        195,
+        116
+      ],
+      "file": "received-0.png",
+      "max_mae": 6.0
+    },
+    {
+      "box": [
+        173,
+        894,
+        208,
+        34
+      ],
+      "file": "received-1.png",
+      "max_mae": 6.0
+    }
+  ]
+}

@@ -81,3 +81,12 @@ banned/
 
 # Large apks used by the instance manager
 apks/
+
+# Assisted trade tools (other local Python scripts remain ignored)
+!/Accounts/plan_trade.py
+!/Scripts/trade_worker.py
+!/Scripts/trade-requirements.txt
+/Accounts/Trades/
+**/__pycache__/
+!/Accounts/tests/test_plan_trade.py
+!/Scripts/tests/test_trade_worker.py
