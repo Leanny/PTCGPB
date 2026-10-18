@@ -1,0 +1,112 @@
+{
+  "preview": [
+    {
+      "box": [
+        205,
+        80,
+        143,
+        28
+      ],
+      "file": "preview-0.png",
+      "max_mae": 6
+    },
+    {
+      "box": [
+        224,
+        804,
+        94,
+        35
+      ],
+      "file": "preview-1.png",
+      "max_mae": 6
+    },
+    {
+      "box": [
+        191,
+        702,
+        157,
+        32
+      ],
+      "file": "preview-2.png",
+      "max_mae": 6
+    }
+  ],
+  "confirmation": [
+    {
+      "box": [
+        45,
+        385,
+        412,
+        37
+      ],
+      "file": "confirmation-0.png",
+      "max_mae": 6
+    },
+    {
+      "box": [
+        46,
+        444,
+        450,
+        34
+      ],
+      "file": "confirmation-1.png",
+      "max_mae": 6
+    },
+    {
+      "box": [
+        320,
+        615,
+        144,
+        43
+      ],
+      "file": "confirmation-2.png",
+      "max_mae": 6
+    }
+  ],
+  "last_copy": [
+    {
+      "box": [
+        62,
+        453,
+        422,
+        57
+      ],
+      "file": "last_copy-0.png",
+      "max_mae": 6
+    },
+    {
+      "box": [
+        315,
+        645,
+        151,
+        45
+      ],
+      "file": "last_copy-1.png",
+      "max_mae": 6
+    }
+  ],
+  "swipe": [
+    {
+      "box": [
+        103,
+        109,
+        346,
+        57
+      ],
+      "file": "swipe-0.png",
+      "max_mae": 6
+    }
+  ],
+  "sent": [
+    {
+      "box": [
+        87,
+        464,
+        368,
+        36
+      ],
+      "file": "sent-0.png",
+      "max_mae": 6
+    }
+  ]
+}

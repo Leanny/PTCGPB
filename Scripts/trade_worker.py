@@ -44,11 +44,11 @@ VERIFICATION_REGIONS = {
 }
 
 
-def same_verified_content(reference, current, state):
+def same_verified_content(reference, current, state, regions=None):
     # Conservative: animation may stop a valid trade, but a changed card or name
     # must never inherit an earlier approval of the same screen type.
     reference, current = reference.convert('RGB'), current.convert('RGB')
-    for x, y, width, height in VERIFICATION_REGIONS[state]:
+    for x, y, width, height in (regions or VERIFICATION_REGIONS)[state]:
         box = (x, y, x+width, y+height)
         difference = ImageChops.difference(reference.crop(box), current.crop(box))
         # A whole-region average can hide a single changed name glyph or
@@ -106,11 +106,11 @@ def device_lock(serial, directory=None):
 
 
 class Matcher:
-    def __init__(self, manifest):
+    def __init__(self, manifest, states=STATES):
         path = Path(manifest)
         raw = json.loads(path.read_text(encoding='utf-8'))
         self.signatures = {}
-        for state in STATES:
+        for state in states:
             entries = raw.get(state)
             if not entries:
                 raise TradeError('Missing signatures for ' + state)
@@ -143,6 +143,8 @@ class Matcher:
 
 
 class Adb:
+    actions = ACTIONS
+
     def __init__(self, executable, serial, deadline):
         self.command = [executable, '-s', serial]
         self.deadline = deadline
@@ -168,10 +170,13 @@ class Adb:
             raise TradeError('ADB returned an invalid screenshot') from exc
 
     def act(self, state):
-        self.run('shell', 'input', *ACTIONS[state])
+        self.run('shell', 'input', *self.actions[state])
 
 
 class Worker:
+    transitions = NEXT
+    verification_regions = VERIFICATION_REGIONS
+
     def __init__(self, adb, matcher, run_dir, card, recipient, deadline, confirm=input, allow_last_copy=False, inspect=False):
         self.adb, self.matcher = adb, matcher
         self.directory = Path(run_dir)
@@ -210,7 +215,7 @@ class Worker:
         if current != phase:
             raise TradeError('Screen changed during operator confirmation')
         with Image.open(path) as reference, Image.open(fresh_path) as fresh:
-            if not same_verified_content(reference, fresh, phase):
+            if not same_verified_content(reference, fresh, phase, self.verification_regions):
                 raise TradeError('Card or recipient image changed during confirmation; reconcile manually')
             self.approved[phase] = fresh.copy()
 
@@ -220,7 +225,7 @@ class Worker:
             raise TradeError('Screen changed before action')
         if state in self.approved:
             with Image.open(fresh_path) as fresh:
-                if not same_verified_content(self.approved[state], fresh, state):
+                if not same_verified_content(self.approved[state], fresh, state, self.verification_regions):
                     raise TradeError('Approved card or recipient image changed before action')
         self.record.update(status='action_pending', state=state, time=time.time())
         atomic_json(self.journal, self.record)
@@ -230,7 +235,7 @@ class Worker:
         while time.monotonic() < end:
             time.sleep(1)
             observed, path = self.capture()
-            if observed in NEXT[state]:
+            if observed in self.transitions[state]:
                 self.record.update(status='observed', state=observed, capture=str(path))
                 atomic_json(self.journal, self.record)
                 return observed, path

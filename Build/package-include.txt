@@ -25,3 +25,5 @@ Accounts/plan_trade.py
 Scripts/trade_worker.py
 Scripts/trade-requirements.txt
 Scripts/trade_templates/**
+Scripts/share_worker.py
+Scripts/share_templates/**

@@ -1,5 +1,7 @@
 import importlib.util
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -86,6 +88,77 @@ class PlanTradeTests(unittest.TestCase):
             self.assertTrue(result["donors"][0]["candidate"])
             self.assertEqual(len(result["errors"]), 1)
             self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+
+class PlanShareTests(unittest.TestCase):
+    def inspect(self, doc):
+        return planner.inspect_account(doc, Path(ACCOUNT + ".json"),
+                                       {ACCOUNT: [Path("login.xml")]},
+                                       CARD, 0, NOW, 14, mode="share")
+
+    def test_share_does_not_require_known_or_positive_dust(self):
+        for dust in (None, 0, "unavailable"):
+            with self.subTest(dust=dust):
+                doc = document()
+                doc["metadata"]["shinedust"] = dust
+                self.assertTrue(self.inspect(doc)["candidate"])
+
+    def test_share_still_requires_age_and_unspent_inventory(self):
+        doc = document()
+        doc["metadata"]["createdAt"] = "20261004120001"
+        doc["tradedCards"] = {CARD: {"count": 1}}
+        doc["sharedCards"] = {CARD: {"count": 1}}
+        self.assertEqual(self.inspect(doc)["blockers"], ["no_remaining_copy", "too_young"])
+
+    def run_cli(self, rarity, *extra, card_id=CARD):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            accounts, saved = base / "accounts", base / "saved"
+            accounts.mkdir()
+            saved.mkdir()
+            doc = document()
+            doc["pulls"][0]["cards"] = [card_id, card_id]
+            del doc["metadata"]["shinedust"]
+            (accounts / (ACCOUNT + ".json")).write_text(json.dumps(doc), encoding="utf-8")
+            (saved / (ACCOUNT + ".xml")).write_text("never parse login contents", encoding="utf-8")
+            master = base / "cardmaster.json"
+            master.write_text(json.dumps({card_id: {"Rarity": rarity}}), encoding="utf-8")
+            args = ["--mode", "share", "--card-id", card_id, "--accounts", str(accounts),
+                    "--saved", str(saved), "--cardmaster", str(master),
+                    "--at", NOW.isoformat(), "--json", *extra]
+            output, errors = io.StringIO(), io.StringIO()
+            with redirect_stdout(output), redirect_stderr(errors):
+                try:
+                    status = planner.main(args)
+                except SystemExit as exc:
+                    return exc.code, None, errors.getvalue()
+            return status, json.loads(output.getvalue()), errors.getvalue()
+
+    def test_cli_accepts_each_diamond_rarity_without_dust(self):
+        for rarity in (100, 200, 300, 400):
+            with self.subTest(rarity=rarity):
+                status, result, errors = self.run_cli(rarity)
+                self.assertEqual(status, 0, errors)
+                self.assertEqual(result["mode"], "share")
+                self.assertEqual(result["required_shinedust"], 0)
+                self.assertIn("daily receive slot", result["notice"])
+
+    def test_cli_rejects_star_shiny_and_unknown_rarities(self):
+        for rarity in (500, 600, 700, 830, 860, 999):
+            with self.subTest(rarity=rarity):
+                status, _, errors = self.run_cli(rarity)
+                self.assertEqual(status, 2)
+                self.assertIn("only 1–4 diamond", errors)
+
+    def test_dust_override_cannot_bypass_share_rarity_validation(self):
+        status, _, errors = self.run_cli(500, "--dust-cost", "0")
+        self.assertEqual(status, 2)
+        self.assertIn("--dust-cost applies only to trading", errors)
+
+    def test_diamond_promo_is_not_shareable(self):
+        status, _, errors = self.run_cli(100, card_id="PK_90_000010_00")
+        self.assertEqual(status, 2)
+        self.assertIn("promo cards are not supported for sharing", errors)
 
 
 if __name__ == "__main__":

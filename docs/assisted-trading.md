@@ -2,7 +2,7 @@
 
 Find a saved donor for an exact card, then run the donor confirmation flow while the recipient responds on their phone. The worker supports the English game at **540 × 960** through ADB. It checks each screen against bundled UI templates and records screenshots and a journal locally.
 
-This is an assisted tool: account loading, adding the recipient as a friend and selecting the exact card remain manual. It does not run alongside the farmer, manage watchdogs, or update the inventory ledger automatically. Gifting is not implemented.
+This is an assisted tool: account loading, adding the recipient as a friend and selecting the exact card remain manual. It does not run alongside the farmer, manage watchdogs, or update the inventory ledger automatically. For gifting eligible diamond cards, see [Assisted card gifting](assisted-sharing.md).
 
 ## Install
 

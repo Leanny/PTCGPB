@@ -11,6 +11,7 @@ import sys
 
 DUST_COSTS = {100: 0, 200: 0, 300: 1200, 400: 5000, 500: 4000,
               600: 25000, 700: 25000, 830: 10000, 860: 30000}
+SHARE_RARITIES = {100, 200, 300, 400}
 ACCOUNT_ID = re.compile(r"[0-9a-fA-F]{16}\Z")
 
 
@@ -74,7 +75,7 @@ def available_copies(doc, card_id):
                mark_count(shared.get(card_id)))
 
 
-def inspect_account(doc, source, saved_files, card_id, cost, now, minimum_age_days):
+def inspect_account(doc, source, saved_files, card_id, cost, now, minimum_age_days, mode="trade"):
     account = str(doc.get("deviceAccount", ""))
     metadata = doc.get("metadata", {})
     if not isinstance(metadata, dict):
@@ -104,11 +105,12 @@ def inspect_account(doc, source, saved_files, card_id, cost, now, minimum_age_da
         dust = int(str(dust).replace(",", ""))
         if dust < 0:
             raise ValueError()
-        if dust < cost:
+        if mode == "trade" and dust < cost:
             blockers.append("insufficient_shinedust")
     except (ValueError, TypeError):
         dust = None
-        blockers.append("unknown_shinedust")
+        if mode == "trade":
+            blockers.append("unknown_shinedust")
     saved = saved_files.get(account.lower(), [])
     if not saved:
         blockers.append("missing_saved_login")
@@ -122,7 +124,11 @@ def inspect_account(doc, source, saved_files, card_id, cost, now, minimum_age_da
             "in_game_verified": False}
 
 
-def plan(accounts, saved, card_id, cost, now, minimum_age_days):
+def plan(accounts, saved, card_id, cost, now, minimum_age_days, mode="trade"):
+    if mode not in {"trade", "share"}:
+        raise ValueError("mode must be trade or share")
+    if mode == "share" and cost != 0:
+        raise ValueError("sharing does not require Shinedust")
     saved_files = {}
     # Only enumerate paths. Login XML contents are never opened.
     for path in saved.rglob("*.xml"):
@@ -132,7 +138,7 @@ def plan(accounts, saved, card_id, cost, now, minimum_age_days):
     for source in sorted(accounts.glob("*.json")):
         try:
             doc = read_json(source)
-            result = inspect_account(doc, source, saved_files, card_id, cost, now, minimum_age_days)
+            result = inspect_account(doc, source, saved_files, card_id, cost, now, minimum_age_days, mode)
             account = result["account_id"].lower()
             if account in seen:
                 raise ValueError("duplicate account ID")
@@ -142,15 +148,19 @@ def plan(accounts, saved, card_id, cost, now, minimum_age_days):
             errors.append({"source": str(source), "error": str(exc)})
     # Eligible first, then older accounts; deterministic tie-break by ID.
     results.sort(key=lambda r: (not r["candidate"], -(r["age_days"] or 0), r["account_id"]))
-    return {"card_id": card_id, "required_shinedust": cost, "as_of": now.isoformat(),
+    notice = ("Saved estimates only. Confirm sharing unlock, card/version, recipient and the recipient's daily receive slot in-game. Sharing does not require Shinedust."
+              if mode == "share" else
+              "Saved estimates only. Confirm trading unlock, card/version, stamina, dust and recipient in-game.")
+    return {"mode": mode, "card_id": card_id, "required_shinedust": cost, "as_of": now.isoformat(),
             "minimum_age_days": minimum_age_days,
-            "notice": "Saved estimates only. Confirm trading unlock, card/version, stamina, dust and recipient in-game.",
+            "notice": notice,
             "donors": results, "errors": errors}
 
 
 def main(argv=None):
     root = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("trade", "share"), default="trade")
     parser.add_argument("--card-id", required=True, help="Exact internal card ID, including version suffix")
     parser.add_argument("--accounts", type=Path, default=root / "Cards" / "accounts")
     parser.add_argument("--saved", type=Path, default=root / "Saved")
@@ -160,6 +170,8 @@ def main(argv=None):
     parser.add_argument("--at", help="ISO timestamp or local YYYYMMDDHHMMSS (default: now). Naive saved timestamps use this offset.")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    if args.mode == "share" and args.dust_cost is not None:
+        parser.error("--dust-cost applies only to trading; sharing requires cardmaster rarity validation")
     if (not math.isfinite(args.minimum_age_days) or args.minimum_age_days < 0 or
             (args.dust_cost is not None and args.dust_cost < 0)):
         parser.error("age and cost must be non-negative")
@@ -169,20 +181,28 @@ def main(argv=None):
         now = datetime.now().astimezone()
         now = parse_time(args.at, now.tzinfo) if args.at else now
         cost = args.dust_cost
-        if cost is None:
+        if args.mode == "share":
+            if args.card_id.startswith("PK_90_"):
+                parser.error("promo cards are not supported for sharing")
+            master = read_json(args.cardmaster)
+            rarity = master[args.card_id]["Rarity"]
+            if rarity not in SHARE_RARITIES:
+                parser.error("sharing supports only 1–4 diamond cards")
+            cost = 0
+        elif cost is None:
             master = read_json(args.cardmaster)
             rarity = master[args.card_id]["Rarity"]
             if rarity not in DUST_COSTS:
                 parser.error("no supported trade cost for this rarity")
             cost = DUST_COSTS[rarity]
-        result = plan(args.accounts, args.saved, args.card_id, cost, now, args.minimum_age_days)
+        result = plan(args.accounts, args.saved, args.card_id, cost, now, args.minimum_age_days, args.mode)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         parser.error(str(exc))
     if args.json:
         print(json.dumps(result, indent=2))
     else:
         print(result["notice"])
-        print(f"{args.card_id}; required Shinedust: {cost}; minimum age: {args.minimum_age_days:g} days")
+        print(f"{args.mode}: {args.card_id}; required Shinedust: {cost}; minimum age: {args.minimum_age_days:g} days")
         for donor in result["donors"]:
             status = "CANDIDATE" if donor["candidate"] else ", ".join(donor["blockers"])
             print(f"{donor['account_id']} ({donor['account_name']}): {status}; copies={donor['remaining_copies']}; age={donor['age_days']}; dust={donor['shinedust']}")
