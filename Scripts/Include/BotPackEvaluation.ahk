@@ -466,7 +466,10 @@ CheckPack(stopEarly := false) {
         if (hasMissingRarity) {
             RecoverPtcgpbCardRarity()
             unresolved := CardRarity_RestoreMissing(cards, rarity)
-            LogWarn("Restored missing rarity from cardmaster.json | unresolved=" . unresolved . "`n" . raw_msg, "debug_cards.txt")
+            restored := ""
+            for _, r in rarity
+                restored .= (restored != "" ? ", " : "") . r
+            LogWarn("Restored missing rarity from cardmaster.json | unresolved=" . unresolved . " | restored=" . restored . "`n" . raw_msg, "debug_cards.txt")
             hasMissingRarity := unresolved > 0
         }
     }

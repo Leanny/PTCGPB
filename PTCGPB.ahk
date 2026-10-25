@@ -59,16 +59,6 @@ global botMetadata := {}
 OnMessage(0x4A, "ReceiveData")
 OnMessage(0x0112, "PTCGPB_OnWmSysCommand")
 
-if not A_IsAdmin
-{
-    try {
-        Run *RunAs "%A_ScriptFullPath%"
-    } catch {
-        MsgBox, 48, PTCGPB, Administrator permission is required to run PTCGPB.`n`nPlease launch it again and approve the permission prompt.
-    }
-    ExitApp
-}
-
 global botConfig := new BotConfig()
 global session := new Session()
 global dict := ""

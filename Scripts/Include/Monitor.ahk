@@ -10,13 +10,6 @@
 CoordMode, Mouse, Screen
 SetTitleMatchMode, 3
 
-if not A_IsAdmin
-{
-    ; Relaunch script with admin rights
-    Run *RunAs "%A_ScriptFullPath%"
-    ExitApp
-}
-
 global botConfig := new BotConfig()
 botConfig.loadSettingsToConfig("ALL")
 
