@@ -37,13 +37,93 @@ setADBBaseInfo(){
     session.set("baseTime", 0)
 }
 
-KillADBProcesses() {
+; Kills persistent "adb -s 127.0.0.1:<port> shell" processes started from MuMu's
+; adb whose AutoHotkey parent is gone. These are left behind when a bot script is
+; terminated without cleanup. Shells of running scripts, the adb server, short
+; lived adb commands and adb.exe from other tools are left alone.
+KillOrphanedAdbShells() {
     prof := Prof_Scope(A_ThisFunc)
-    ADB_LogTrace("Killing adb.exe processes")
-    ; Use AHK's Process command to close adb.exe
-    Process, Close, adb.exe
-    ; Fallback to taskkill for robustness
-    RunWait, %ComSpec% /c taskkill /IM adb.exe /F /T,, Hide
+    global botConfig
+
+    mumuFolder := MuMuResolveFolder(botConfig.get("folderPath"))
+    if (mumuFolder = "") {
+        LogWarn("Orphaned adb shell cleanup skipped: MuMu folder could not be resolved", "ADB.txt")
+        return 0
+    }
+
+    killed := 0
+    try {
+        wmi := ComObjGet("winmgmts:")
+        processes := {}
+        for process in wmi.ExecQuery("Select ProcessId, Name, CreationDate from Win32_Process")
+            processes[process.ProcessId + 0] := {name: process.Name, created: process.CreationDate}
+
+        for process in wmi.ExecQuery("Select ProcessId, ParentProcessId, CommandLine, ExecutablePath, CreationDate from Win32_Process Where Name = 'adb.exe'") {
+            exePath := process.ExecutablePath
+            if (exePath = "" || SubStr(exePath, 1, StrLen(mumuFolder) + 1) != mumuFolder . "\")
+                continue
+            if (!RegExMatch(process.CommandLine, "i)\s-s\s+127\.0\.0\.1:\d+\s+shell\s*$"))
+                continue
+
+            ; The parent counts as alive only if it is an AutoHotkey process that
+            ; started before the shell, so a reused PID does not keep an orphan alive.
+            parent := processes[process.ParentProcessId + 0]
+            if (IsObject(parent) && RegExMatch(parent.name, "i)^AutoHotkey.*\.exe$") && parent.created <= process.CreationDate)
+                continue
+
+            pid := process.ProcessId + 0
+            Process, Close, %pid%
+            if (ErrorLevel) {
+                killed++
+                LogInfo("Killed orphaned adb shell PID " . pid . " (parent PID " . process.ParentProcessId . "): " . process.CommandLine, "ADB.txt")
+            } else {
+                LogWarn("Could not kill orphaned adb shell PID " . pid, "ADB.txt")
+            }
+        }
+    } catch e {
+        LogError("Orphaned adb shell cleanup failed: " . (IsObject(e) ? e.Message : e), "ADB.txt")
+    }
+    return killed
+}
+
+; Puts the persistent adb shell into a job object that Windows kills when this
+; script exits for any reason (ExitApp, Reload, Process Close, crash), so the
+; shell cannot outlive its bot script. SILENT_BREAKAWAY_OK keeps processes the
+; shell spawns, such as an adb server it starts, out of the job.
+ADB_AssignToShellJob(pid) {
+    static hJob := 0
+    static JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK := 0x1000, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE := 0x2000
+        , JobObjectExtendedLimitInformation := 9, PROCESS_TERMINATE := 0x0001, PROCESS_SET_QUOTA := 0x0100
+
+    if (!hJob) {
+        hJob := DllCall("CreateJobObject", "Ptr", 0, "Ptr", 0, "Ptr")
+        if (!hJob) {
+            LogWarn("[" . A_ScriptName . "] CreateJobObject failed; error=" . A_LastError, "ADB.txt")
+            return false
+        }
+        ; JOBOBJECT_EXTENDED_LIMIT_INFORMATION; LimitFlags is at offset 16 on both architectures.
+        infoSize := (A_PtrSize = 8) ? 144 : 112
+        VarSetCapacity(info, infoSize, 0)
+        NumPut(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK, info, 16, "UInt")
+        if (!DllCall("SetInformationJobObject", "Ptr", hJob, "Int", JobObjectExtendedLimitInformation, "Ptr", &info, "UInt", infoSize)) {
+            LogWarn("[" . A_ScriptName . "] SetInformationJobObject failed; error=" . A_LastError, "ADB.txt")
+            DllCall("CloseHandle", "Ptr", hJob)
+            hJob := 0
+            return false
+        }
+        ; The job handle is intentionally never closed; closing it happens on exit.
+    }
+
+    hProcess := DllCall("OpenProcess", "UInt", PROCESS_TERMINATE | PROCESS_SET_QUOTA, "Int", false, "UInt", pid, "Ptr")
+    if (!hProcess) {
+        LogWarn("[" . A_ScriptName . "] OpenProcess failed for adb shell PID " . pid . "; error=" . A_LastError, "ADB.txt")
+        return false
+    }
+    assigned := DllCall("AssignProcessToJobObject", "Ptr", hJob, "Ptr", hProcess)
+    if (!assigned)
+        LogWarn("[" . A_ScriptName . "] AssignProcessToJobObject failed for adb shell PID " . pid . "; error=" . A_LastError, "ADB.txt")
+    DllCall("CloseHandle", "Ptr", hProcess)
+    return assigned
 }
 
 findAdbPorts() {
@@ -259,6 +339,7 @@ initializeAdbShell() {
                 ; Attempt to start adb shell
                 ADB_LogTrace("initializeAdbShell exec adb shell port=" . session.get("adbPort"))
                 session.set("adbShell", ComObjCreate("WScript.Shell").Exec(session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " shell"))
+                ADB_AssignToShellJob(session.get("adbShell").ProcessID)
 
                 ; Ensure adbShell is running before sending 'su'
                 Sleep, 500

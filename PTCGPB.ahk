@@ -308,7 +308,6 @@ NextStep:
             MsgBox, 64,, % dict["Notice"]
     }
 
-    KillADBProcesses()
     CleanupLogs()
     LogInfo("PTCGPB started | version=" . localVersion . " | AHK=" . A_AhkVersion . " | OS=" . A_OSVersion . (A_Is64bitOS ? " x64" : " x86") . " | DPI=" . A_ScreenDPI . " | language=" . botConfig.get("BotLanguage") . " | dir=" . A_ScriptDir)
     if (botConfig.get("automaticUpdateChecks"))
@@ -3213,6 +3212,7 @@ StartBot() {
     LogSettingsSnapshotForRun(botConfig.settingsFile)
     LogSettingsChangesSinceLastStart(botConfig.settingsFile)
 
+    KillOrphanedAdbShells()
     ResetAccountLists()
 
     if (inStr(botConfig.get("FriendID"), "http")) {
