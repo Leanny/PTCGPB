@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.3.0-beta.2"
+    ,localVersion := "v10.3.0-beta.3"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -273,6 +273,7 @@ PTCGPB_OnWmSysCommand(wParam, lParam, msg, hwnd) {
 
 BotLanguage := botConfig.get("BotLanguage")
 if (!botConfig.get("IsLanguageSet")) {
+    Gosub, OpenToolTip
     Gui, Add, Text,, Select Language
     BotLanguagelist := "English|中文|日本語|Deutsch"
     defaultChooseLang := 1
