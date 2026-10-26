@@ -462,9 +462,10 @@ ClaimVisibleEventRewards(eventResult) {
             continue
         }
 
-        if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2){
+        if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2) {
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
+            changedWindow := 0
             Loop{
                 adbClick_wbb(175, 422)
                 Delay(1)
@@ -482,6 +483,17 @@ ClaimVisibleEventRewards(eventResult) {
                     }
                 }
                 if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                    eventResult[specialEventName] := true
+                    return specialEventName
+                }
+
+                if (specialEventObj.isExistNeedleInScreen(session.get("winTitle")) = 2) {
+                    changedWindow := 0
+                } else { ; windows disappeared after everything has been claimed
+                    changedWindow += 1
+                }
+
+                if (changedWindow > 3) { ; allow at most 3 checks with a different window
                     eventResult[specialEventName] := true
                     return specialEventName
                 }
