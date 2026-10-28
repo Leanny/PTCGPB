@@ -1,5 +1,5 @@
 # Pack list in Home screen
-Home:Left|RulerOfTheSkies,Middle|DeluxeB,Right|TeamRocketsAmbition
+Home:Left|TeamRocketsAmbition,Middle|MegaMewtwoX,Right|DualFusionPikachu
 
 # Pack data(Structure)
 # PackID, Series Type, Number of packs in the set, Location of extension window, y Pos, Scroll Type, Expansion ID
@@ -34,7 +34,11 @@ Pack:ParadoxDrive|B|1|Col-First|440|2|B3a
 Pack:EverydayWonders|B|1|Col-Second|434|0|B3b
 Pack:RulerOfTheSkies|B|1|Col-First|434|0|B4
 Pack:TeamRocketsAmbition|B|1|Col-Second|298|0|B4a
-Pack:DeluxeB|B|1|Col-First|298|0|B4b
+Pack:DeluxePackMega|B|1|Col-First|298|0|B4b
+
+# C Series
+Pack:MegaMewtwoX|C|2|Col-First-Left|298|0|C1
+Pack:DualFusionPikachu|C|2|Col-First-Right|298|0|C1
 
 # Special pack: ptcgpb resolves this to the newest available expansion.
 Pack:Latest|Special|1|Col-First|0|0|latest
