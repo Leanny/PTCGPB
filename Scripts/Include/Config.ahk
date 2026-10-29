@@ -100,6 +100,7 @@
     toolsAndSystemSettings := {}
     extraSettings := {}
     legacySettings := {}
+    validPackIDs := ""
 
     __New(){
         this.botConfigs["General"] := this.generalSettings
@@ -180,8 +181,35 @@
         this.loadIniSectionFromSettingsFile("UserSettings")
     }
 
+    ; Set the known pack IDs and drop pack settings that are not among them.
+    setValidPackIDs(packIDs){
+        this.validPackIDs := packIDs
+        this.removeUnknownPackSettings()
+    }
+
+    ; Object keys and ini keys are case-insensitive, so compare with == to
+    ; also drop entries that only differ in casing (e.g. a renamed pack ID).
+    removeUnknownPackSettings(){
+        if(!IsObject(this.validPackIDs))
+            return
+
+        For packKey in this.packSettings.Clone() {
+            isValid := false
+            For idx, packID in this.validPackIDs {
+                if(packKey == packID){
+                    isValid := true
+                    break
+                }
+            }
+
+            if(!isValid)
+                this.packSettings.Delete(packKey)
+        }
+    }
+
     saveConfigToSettings(configType := "ALL"){
         if(configType = "ALL"){
+            this.removeUnknownPackSettings()
             FileDelete, % this.settingsFile
 
             For configKey, configValue in this.botConfigs["UserSettings"].Clone() {

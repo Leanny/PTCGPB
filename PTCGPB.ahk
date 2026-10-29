@@ -78,6 +78,7 @@ parseDictionaryData("jp")
 parseDictionaryData("cn")
 
 botConfig.loadSettingsToConfig("ALL")
+botConfig.setValidPackIDs(session.get("pokemonPackOrder"))
 if (RegExMatch(localVersion, "i)^v?\d+\.\d+\.\d+-") && botConfig.get("updateChannel") != "beta") {
     ; Prerelease builds always follow the beta feed. Stable builds keep the
     ; user's saved channel so beta subscribers remain subscribed after promotion.
