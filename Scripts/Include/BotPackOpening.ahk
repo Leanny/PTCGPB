@@ -79,6 +79,27 @@ WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
 }
 
 ;-------------------------------------------------------------------------------
+; GetStableHomePosition - Home position (Left/Middle/Right) of a pack that is
+; always shown in Home without switching to favourites, or "" if there is none.
+; Latest is always the pack in the centre of Home.
+;-------------------------------------------------------------------------------
+GetStableHomePosition(packName) {
+    global session
+
+    if (packName = "Latest")
+        return "Middle"
+
+    mainScreenPacks := session.get("mainScreenPackList")
+    if (IsObject(mainScreenPacks)) {
+        for pos, mainScreenPack in mainScreenPacks {
+            if (mainScreenPack = packName)
+                return pos
+        }
+    }
+    return ""
+}
+
+;-------------------------------------------------------------------------------
 ; EnterFavouritePackFromHome - switch to favourites view in Home, click the
 ; pack once to enter the Points screen, then wait for Pack_PackPointButton.
 ;-------------------------------------------------------------------------------
@@ -88,18 +109,8 @@ EnterFavouritePackFromHome() {
     session.set("favEnteredFromHome", true)
 
     ; Skip favourites switch for packs already stable in Home.
-    mainScreenPacks := session.get("mainScreenPackList")
-    isStableInHome := false
-    homePosition := ""
-    if (IsObject(mainScreenPacks)) {
-        for pos, packName in mainScreenPacks {
-            if (packName = session.get("openPack")) {
-                isStableInHome := true
-                homePosition := pos
-                break
-            }
-        }
-    }
+    homePosition := GetStableHomePosition(session.get("openPack"))
+    isStableInHome := (homePosition != "")
 
     if (!isStableInHome) {
         session.set("failSafe", A_TickCount)
@@ -225,20 +236,10 @@ SelectPack(HG := false) {
     ; When favourite pack is set and we are coming from Home (not First boot),
     ; switch to the favourites view in Home before clicking the pack.
     ; Skip the switch for packs that are already stable in the Home screen
-    ; (listed in mainScreenPackList).
+    ; (listed in mainScreenPackList, or Latest).
     if (session.get("packFavoriteSet") && HG != "First") {
-        mainScreenPacks := session.get("mainScreenPackList")
-        isStableInHome := false
-        homePosition := ""
-        if (IsObject(mainScreenPacks)) {
-            for pos, packName in mainScreenPacks {
-                if (packName = session.get("openPack")) {
-                    isStableInHome := true
-                    homePosition := pos
-                    break
-                }
-            }
-        }
+        homePosition := GetStableHomePosition(session.get("openPack"))
+        isStableInHome := (homePosition != "")
         if (!isStableInHome) {
             session.set("failSafe", A_TickCount)
             failSafeTime := 0
