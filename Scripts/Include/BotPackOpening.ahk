@@ -573,6 +573,9 @@ PackOpening(tenPackOpening := false) {
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
             adbClick_wbb(146, 489) ;146, 494
             Delay(1)
+        } else if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+            adbClick_wbb(37, 378)
+            Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {

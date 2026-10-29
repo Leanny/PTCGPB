@@ -652,7 +652,7 @@ RemoveFriends() {
         if(accepted){
             accepted := false
 
-            FindImageAndClick("Friend_RemoveConfirmButtonInFriendDetails", 145, 407)
+            FindImageAndClick("Friend_RemoveConfirmButtonInFriendDetails", 145, 423)
 
             interceptProc := true
             isContinue := false

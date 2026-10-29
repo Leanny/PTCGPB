@@ -63,16 +63,16 @@ needlesDict.Add(new Needle("Friend_SearchFriendButton", "FriendSearchButton", ne
 needlesDict.Add(new Needle("Friend_SearchFriendWindowCancelButtonCorner", "CloseAlertWindow", new Coordinate(6, 375, 41, 400)))
 needlesDict.Add(new Needle("Friend_FriendIDInputReady", "OK2", new Coordinate(0, 466, 35, 500)))
 needlesDict.Add(new Needle("Friend_InputFormBlank", "Erase", new Coordinate(15, 495, 68, 515)))
-needlesDict.Add(new Needle("Friend_RequestButtonInSearchResult", "Send", new Coordinate(170, 252, 184, 258)))
-needlesDict.Add(new Needle("Friend_WithdrawButton", "Withdraw", new Coordinate(169, 247, 249, 253)))
-needlesDict.Add(new Needle("Friend_AcceptedButtonInSearchResult", "Accepted", new Coordinate(171, 253, 183, 257)))
+needlesDict.Add(new Needle("Friend_RequestButtonInSearchResult", "Send", new Coordinate(170, 255, 184, 261)))
+needlesDict.Add(new Needle("Friend_WithdrawButton", "Withdraw", new Coordinate(169, 250, 249, 256)))
+needlesDict.Add(new Needle("Friend_AcceptedButtonInSearchResult", "Accepted", new Coordinate(171, 256, 183, 260)))
 needlesDict.Add(new Needle("Friend_RemoveConfirmButtonInSearchResult", "Remove",new Coordinate(143, 357, 152, 374)))
 needlesDict.Add(new Needle("Friend_CannotFriendRequest", "CannotFriendRequest", new Coordinate(14, 295, 39, 311)))
 
 ; Friend - Details
 needlesDict.Add(new Needle("Friend_RemoveConfirmButtonInFriendDetails", "Remove", new Coordinate(143, 357, 152, 374)))
-needlesDict.Add(new Needle("Friend_AcceptedButtonInFriendDetails", "Accepted2", new Coordinate(87, 396, 99, 407)))
-needlesDict.Add(new Needle("Friend_ReqeustButtonInFriendDetails", "Send2", new Coordinate(80, 395, 94, 409)))
+needlesDict.Add(new Needle("Friend_AcceptedButtonInFriendDetails", "Accepted2", new Coordinate(87, 420, 99, 431)))
+needlesDict.Add(new Needle("Friend_ReqeustButtonInFriendDetails", "Send2", new Coordinate(80, 418, 94, 432)))
 needlesDict.Add(new Needle("Friend_ReqeustButtonInFriendDetails2", "Send3", new Coordinate(80, 422, 94, 435)))
 
 ; Friend - Showcase
@@ -82,7 +82,7 @@ needlesDict.Add(new Needle("Friend_CompleteClickShowcaseLike", "ShowcaseLiked", 
 needlesDict.Add(new Needle("Friend_CommunityShowcaseMain", "CommunityShowcase", new Coordinate(174, 459, 189, 474)))
 
 ; Friend - Approve
-needlesDict.Add(new Needle("Friend_AcceptButtonInApproveSubmenu", "Pending", new Coordinate(230, 198, 245, 208)))
+needlesDict.Add(new Needle("Friend_AcceptButtonInApproveSubmenu", "Pending", new Coordinate(230, 201, 245, 211)))
 needlesDict.Add(new Needle("Friend_DenyButtonInApproveSubmenu", "DeleteFriend", new Coordinate(196, 196, 210, 209)))
 needlesDict.Add(new Needle("Friend_RequestAlreadyClosedInApproveSubmenu", "RequestAlreadyClosed", new Coordinate(3, 330, 70, 345)))
 needlesDict.Add(new Needle("Friend_DisabledDenyAllRequestButtonInApproveSubmenu", "Accept", new Coordinate(190, 495, 202, 507)))
@@ -176,8 +176,9 @@ needlesDict.Add(new Needle("Menu_MiscMenuLeftTop", "InSubMenu", new Coordinate(0
 ; Pack
 needlesDict.Add(new Needle("Pack_PackPointButton", "Points", new Coordinate(238, 406, 247, 416)))
 needlesDict.Add(new Needle("Pack_ScrollInSelectExpansion", "SelectExpansion", new Coordinate(119, 138, 157, 146)))
-needlesDict.Add(new Needle("Pack_ActivatedBSeriesTab", "ExpansionSeries", new Coordinate(96, 447, 112, 467)))
+needlesDict.Add(new Needle("Pack_ASeries", "ExpansionSeries", new Coordinate(248, 447, 264, 467)))
 needlesDict.Add(new Needle("Pack_SkipButtonAfterOpenPack", "Skip", new Coordinate(245, 495, 256, 507)))
+needlesDict.Add(new Needle("Pack_SpecialPackNotification", "Confirm", new Coordinate(118, 360, 135, 397)))
 needlesDict.Add(new Needle("Pack_ResultAfterOpenPack", "Opening", new Coordinate(54, 96, 73, 115)))
 needlesDict.Add(new Needle("Pack_ReadyForOpenPack", "Pack", new Coordinate(198, 271, 202, 282)))
 needlesDict.Add(new Needle("Pack_NextButtonAfterOpenPack", "Next", new Coordinate(131, 74, 140, 84)))
@@ -198,7 +199,7 @@ needlesDict.Add(new Needle("Pack_GetItemDialogAfterOpenPack", "GetItemDialogAfte
 
 ; Missions
 needlesDict.Add(new Needle("Mission_PremiumLockImage", "PremiumLock", new Coordinate(250, 452, 258, 459)))
-needlesDict.Add(new Needle("Mission_FirstWonderpickMissionIconInDetails", "FirstMission", new Coordinate(130, 188, 145, 206)))
+needlesDict.Add(new Needle("Mission_FirstWonderpickMissionIconInDetails", "FirstMission", new Coordinate(130, 169, 145, 187)))
 needlesDict.Add(new Needle("Mission_ActivatedBeginnerMissionTabButton", "List", new Coordinate(22, 492, 40, 499)))
 needlesDict.Add(new Needle("Mission_ActivatedListTabButton", "ListActivated", new Coordinate(22, 491, 38, 501)))
 needlesDict.Add(new Needle("Mission_WelcomeBackMissions", "WelcomeBackMissions", new Coordinate(1, 453, 7, 466)))

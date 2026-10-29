@@ -13,6 +13,7 @@ Scripts/*.ini
 *.ini
 *.bak
 *.xml
+*.exe
 !.gitkeep
 Accounts/Saved/**/*.xml
 Accounts/Saved/metadata.json

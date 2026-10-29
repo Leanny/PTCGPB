@@ -329,8 +329,12 @@ DoTutorial() {
             break
         }
         adbClick_wbb(90, 260)
-        adbClick_wbb(140, 400)
-        adbClick_wbb(137, 340)
+        if(FindOrLoseImage("Create_TutorialPackOpenNotifyIcon", 0, failSafeTime)) {
+            break
+        }
+        ;adbClick_wbb(140, 400)
+        ;adbClick_wbb(137, 340)
+        adbClick_wbb(137, 434)
         Delay(3)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for pack notification " . failSafeTime . "/45 seconds")

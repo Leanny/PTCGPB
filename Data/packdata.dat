@@ -3,6 +3,9 @@ Home:Left|TeamRocketsAmbition,Middle|MegaMewtwoX,Right|DualFusionPikachu
 
 # Pack data(Structure)
 # PackID, Series Type, Number of packs in the set, Location of extension window, y Pos, Scroll Type, Expansion ID
+# Special pack: ptcgpb resolves this to the newest available expansion.
+Pack:Latest|Special|1|Col-First|0|0|latest
+
 # A Series
 Pack:Mewtwo|A|3|Col-First-Middle|405|1|A1
 Pack:Charizard|A|3|Col-First-Left|405|1|A1
@@ -40,7 +43,8 @@ Pack:DeluxePackMega|B|1|Col-First|298|0|B4b
 Pack:MegaMewtwoX|C|2|Col-First-Left|298|0|C1
 Pack:DualFusionPikachu|C|2|Col-First-Right|298|0|C1
 
-# Special pack: ptcgpb resolves this to the newest available expansion.
-Pack:Latest|Special|1|Col-First|0|0|latest
+# SP Series
+# Pack:SpecialPackFirstPartners|SP|1|Col-First|298|0|SP1
+
 # DO NOT Delete End
 ---END---

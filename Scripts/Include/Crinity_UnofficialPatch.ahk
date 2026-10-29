@@ -77,7 +77,7 @@ TryAdvanceWelcomeBackWhileFinding(logContext, ByRef advancing, ByRef useSecondCl
         advancing := true
         CreateStatusMessage("Dismissing Welcome Back`n(Finding mode target) " . failSafeTime . "/90s",,,, false)
     } else if (advancing && IsFindingMainUiVisible()) {
-        ; Needle gone and main UI up — WB finished; release sticky so Social/pack clicks run.
+        ; Needle gone and main UI up - WB finished; release sticky so Social/pack clicks run.
         LogInfo(logContext . ": Welcome Back done (main UI visible) — resume mode click", "ADB.txt")
         advancing := false
         useSecondClick := false

@@ -19,15 +19,37 @@
         return this.expansionYPos
     }
 
-    getDragType(){
+    getDragType() {
         return this.dragType
     }
 
-    moveSeriesScreen(){
-        if(this.seriesType = "B"){
-            FindImageAndClick("Pack_ActivatedBSeriesTab", 63, 464, , 250)
+    moveSeriesScreen() {
+        global session
+
+        ; Number of tab steps away from the A series tab.
+        seriesSteps := {"A":0, "B":1, "C":2}
+        if (!seriesSteps.HasKey(this.seriesType))
+            return
+
+        ; Move to the right until the A series tab is reached.
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop {
+            if (FindOrLoseImage("Pack_ASeries", 0, failSafeTime))
+                break
+            adbClick_wbb(266, 458)
+            Delay(1)
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            if (failSafeTime >= 45) {
+                LogWarn("moveSeriesScreen: timed out waiting for Pack_ASeries", "ADB.txt")
+                return
+            }
         }
-        Delay(1)
+
+        Loop, % seriesSteps[this.seriesType] {
+            adbClick_wbb(256, 457)
+            Delay(1)
+        }
     }
 
     expansionScreenDrag(){
