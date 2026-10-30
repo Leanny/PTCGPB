@@ -155,10 +155,17 @@ if(botConfig.get("heartBeat"))
 FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 150)
 
 Loop {
-    if (MainDailyResetStopDue()) {
-        LogInfo("Stopping before daily reset | " . botConfig.get("stopBeforeDailyResetMin") . " min before reset")
-        CreateStatusMessage("Stopping before daily reset...",,,, false)
-        ExitApp
+    if (MainDailyResetStopDue() && !session.get("stopAfterGPTest")) {
+        settingsPath := A_ScriptDir . "\..\Settings.ini"
+        IniRead, savedStopPreferenceMain, %settingsPath%, Extra, stopPreferenceMain, none
+        if (savedStopPreferenceMain = "gp_test") {
+            LogInfo("Daily reset window reached: running GP test then stopping | " . botConfig.get("stopBeforeDailyResetMin") . " min before reset")
+            Gosub, StopMainAfterGPTest
+        } else {
+            LogInfo("Stopping before daily reset | " . botConfig.get("stopBeforeDailyResetMin") . " min before reset")
+            CreateStatusMessage("Stopping before daily reset...",,,, false)
+            ExitApp
+        }
     }
 
     if (session.get("autoUseGPTest") && botConfig.get("groupRerollEnabled")) {
