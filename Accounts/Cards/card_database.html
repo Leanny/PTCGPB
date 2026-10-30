@@ -699,8 +699,10 @@
                     box-shadow 0.15s ease;
             }
 
-            .local-images-switch[aria-pressed="false"] .local-images-switch-opt.is-off,
-            .local-images-switch[aria-pressed="true"] .local-images-switch-opt.is-on {
+            .local-images-switch[aria-pressed="false"]
+                .local-images-switch-opt.is-off,
+            .local-images-switch[aria-pressed="true"]
+                .local-images-switch-opt.is-on {
                 background: var(--panel-2);
                 color: var(--text);
                 box-shadow: 0 0 0 1px rgba(142, 180, 255, 0.35);
@@ -1215,12 +1217,14 @@
                 background: rgba(255, 255, 255, 0.045);
             }
 
-            [data-theme="light"] .dashboard-boot-check-item[data-status="running"] {
+            [data-theme="light"]
+                .dashboard-boot-check-item[data-status="running"] {
                 border-color: rgba(26, 79, 184, 0.22);
                 background: rgba(255, 255, 255, 0.92);
             }
 
-            [data-theme="light"] .dashboard-boot-check-item[data-status="done"] {
+            [data-theme="light"]
+                .dashboard-boot-check-item[data-status="done"] {
                 border-color: rgba(19, 122, 85, 0.28);
                 background: rgba(255, 255, 255, 0.94);
             }
@@ -1304,7 +1308,8 @@
                 color: #2f4568;
             }
 
-            .dashboard-boot-check-item[data-status="running"] .dashboard-boot-check-meta {
+            .dashboard-boot-check-item[data-status="running"]
+                .dashboard-boot-check-meta {
                 color: rgba(237, 242, 255, 0.9);
             }
 
@@ -1314,7 +1319,8 @@
                 color: #243a5f;
             }
 
-            .dashboard-boot-check-item[data-status="done"] .dashboard-boot-check-meta {
+            .dashboard-boot-check-item[data-status="done"]
+                .dashboard-boot-check-meta {
                 color: rgba(237, 242, 255, 0.8);
             }
 
@@ -1324,7 +1330,8 @@
                 color: #3a4d6c;
             }
 
-            .dashboard-boot-check-item[data-status="error"] .dashboard-boot-check-meta {
+            .dashboard-boot-check-item[data-status="error"]
+                .dashboard-boot-check-meta {
                 color: #ffb4b4;
             }
 
@@ -2768,7 +2775,9 @@
             }
 
             .db-row--expandable .row-body.is-expanded .cards-grid,
-            .db-row--expandable .row-body.is-expanded .account-overview-grid-wrap {
+            .db-row--expandable
+                .row-body.is-expanded
+                .account-overview-grid-wrap {
                 animation: account-grid-in 260ms cubic-bezier(0.16, 1, 0.3, 1)
                     both;
                 animation-delay: 72ms;
@@ -4548,7 +4557,8 @@
                 align-self: start;
             }
 
-            .multi-search-picker-column > .multi-search-filter-backdrop::before {
+            .multi-search-picker-column
+                > .multi-search-filter-backdrop::before {
                 content: "";
                 position: absolute;
                 left: 0;
@@ -4607,9 +4617,8 @@
                 .catalog-library-main,
                 .collection-library-main,
                 .multi-search-picker-main {
-                    transition:
-                        opacity var(--expansion-picker-fade-duration)
-                            var(--expansion-picker-fade-ease);
+                    transition: opacity var(--expansion-picker-fade-duration)
+                        var(--expansion-picker-fade-ease);
                 }
 
                 .catalog-library-main.expansion-picker-out,
@@ -4665,7 +4674,9 @@
             }
 
             .catalog-library-picker .catalog-controls > .catalog-controls-panel,
-            .multi-search-picker-column > .catalog-controls > .catalog-controls-panel {
+            .multi-search-picker-column
+                > .catalog-controls
+                > .catalog-controls-panel {
                 background: var(--panel);
                 box-shadow:
                     0 10px 24px rgba(0, 0, 0, 0.28),
@@ -7049,7 +7060,9 @@
                 margin-bottom: 2px;
             }
 
-            #instancePickerFriendGrid .instance-picker-friend-headers .hdr-name {
+            #instancePickerFriendGrid
+                .instance-picker-friend-headers
+                .hdr-name {
                 grid-column: 2;
                 text-align: center;
                 font-size: 0.72rem;
@@ -7114,14 +7127,20 @@
                 color: var(--text);
             }
 
-            #instancePickerFriendGrid .instance-picker-friend-row .fav-label::placeholder,
-            #instancePickerFriendGrid .instance-picker-friend-row .fav-id::placeholder {
+            #instancePickerFriendGrid
+                .instance-picker-friend-row
+                .fav-label::placeholder,
+            #instancePickerFriendGrid
+                .instance-picker-friend-row
+                .fav-id::placeholder {
                 color: var(--muted);
                 opacity: 0.9;
                 font-size: 0.72rem;
             }
 
-            #instancePickerFriendGrid .instance-picker-friend-row .fav-id::placeholder {
+            #instancePickerFriendGrid
+                .instance-picker-friend-row
+                .fav-id::placeholder {
                 font-family: inherit;
                 font-size: 0.7rem;
             }
@@ -8045,10 +8064,13 @@
                 860: 30000,
             };
             const DEFAULT_ACCOUNTS_DATA_PATH = "/__dashboard/accounts-data";
-            const DEFAULT_ACCOUNTS_SUMMARY_PATH = "/__dashboard/accounts-summary";
+            const DEFAULT_ACCOUNTS_SUMMARY_PATH =
+                "/__dashboard/accounts-summary";
             const DEFAULT_DASHBOARD_ROWS_PATH = "/__dashboard/dashboard-rows";
-            const DASHBOARD_DB_STATUS_PATH = "/__dashboard/database-index/status";
-            const DASHBOARD_DB_ENSURE_PATH = "/__dashboard/database-index/ensure";
+            const DASHBOARD_DB_STATUS_PATH =
+                "/__dashboard/database-index/status";
+            const DASHBOARD_DB_ENSURE_PATH =
+                "/__dashboard/database-index/ensure";
 
             function getSupportedLanguage(code) {
                 return LOCALISATION_LANGUAGES.some(([value]) => value === code)
@@ -8161,6 +8183,7 @@
                 830: ["★ Shiny", "S", "S.png"],
                 860: ["★★ Shiny", "SSR", "SSR.png"],
                 900: ["👑 Crown Rare", "UR", "UR.png"],
+                1000: ["Anomaly Rare", "AN", "AN.png"],
             };
             const SPECIAL_RARITY_TWO_STAR = "__two_star__";
             const SPECIAL_RARITY_TRAINER = "__trainer__";
@@ -8501,7 +8524,8 @@
                 cardSize: document.getElementById("cardSize"),
                 status: document.getElementById("status"),
                 loadRemoteBtn: document.getElementById("loadRemoteBtn"),
-                forceUpdateDataBtn: document.getElementById("forceUpdateDataBtn"),
+                forceUpdateDataBtn:
+                    document.getElementById("forceUpdateDataBtn"),
                 clearCacheBtn: document.getElementById("clearCacheBtn"),
                 useLocalCardImagesCell: document.getElementById(
                     "useLocalCardImagesCell",
@@ -8553,8 +8577,7 @@
                 rarityFilters: document.getElementById("rarityFilters"),
                 rowsWishlistOnlyBtn:
                     document.getElementById("rowsWishlistOnly"),
-                rowsGodPackOnlyBtn:
-                    document.getElementById("rowsGodPackOnly"),
+                rowsGodPackOnlyBtn: document.getElementById("rowsGodPackOnly"),
                 cardTypeFilters: document.getElementById("cardTypeFilters"),
                 packFilters: document.getElementById("packFilters"),
                 expandAllBtn: document.getElementById("expandAllBtn"),
@@ -8728,7 +8751,8 @@
             function shouldSkipAccountOverviewWarmup() {
                 return (
                     state.filteredRows === state.rows &&
-                    state.filteredRows.length > ACCOUNT_OVERVIEW_WARMUP_ROW_LIMIT
+                    state.filteredRows.length >
+                        ACCOUNT_OVERVIEW_WARMUP_ROW_LIMIT
                 );
             }
             function isCatalogViewCacheEntryValid(entry) {
@@ -8763,14 +8787,20 @@
                     !isCatalogViewCacheEntryValid(cached)
                 )
                     return false;
-                if (view === "allcards" && !isAllCardsViewCacheEntryValid(cached))
+                if (
+                    view === "allcards" &&
+                    !isAllCardsViewCacheEntryValid(cached)
+                )
                     return false;
                 return true;
             }
             function captureViewDom(view) {
                 if (!view || !CACHEABLE_VIEWS.includes(view)) return;
                 if (el.rows.dataset.viewState === "skeleton") return;
-                if (CATALOG_VIEWS.includes(view) && shouldSkipCatalogViewCache()) {
+                if (
+                    CATALOG_VIEWS.includes(view) &&
+                    shouldSkipCatalogViewCache()
+                ) {
                     cancelCatalogAsyncFills();
                     return;
                 }
@@ -8820,13 +8850,18 @@
                     _viewDomCache.delete(view);
                     return false;
                 }
-                if (view === "allcards" && !isAllCardsViewCacheEntryValid(cached)) {
+                if (
+                    view === "allcards" &&
+                    !isAllCardsViewCacheEntryValid(cached)
+                ) {
                     _viewDomCache.delete(view);
                     return false;
                 }
                 if (
                     view === "multisearch" &&
-                    !cached.fragment.querySelector(".multi-search-picker-column")
+                    !cached.fragment.querySelector(
+                        ".multi-search-picker-column",
+                    )
                 ) {
                     _viewDomCache.delete(view);
                     return false;
@@ -9181,7 +9216,8 @@
             }
 
             const FAVORITE_FRIEND_SLOT_COUNT = 10;
-            const LS_FRIEND_PICKER_STATE = "ptcgp-card-db-friend-picker-state-v1";
+            const LS_FRIEND_PICKER_STATE =
+                "ptcgp-card-db-friend-picker-state-v1";
             function parseExtraFriendIdsCsvToSlots(text) {
                 const parts = String(text || "")
                     .split(/[\s,;|]+/)
@@ -9204,7 +9240,9 @@
                     .slice(0, 16);
             }
             function ensureInstancePickerFriendGrid() {
-                const grid = document.getElementById("instancePickerFriendGrid");
+                const grid = document.getElementById(
+                    "instancePickerFriendGrid",
+                );
                 if (!grid || grid.dataset.friendGridLayout === "3") return grid;
                 grid.innerHTML = "";
 
@@ -9218,7 +9256,9 @@
                         `<input type="text" class="fav-id" placeholder="16-digit ID" inputmode="numeric" spellcheck="false" autocomplete="off" maxlength="16" />`;
                     const idEl = row.querySelector(".fav-id");
                     idEl.addEventListener("input", () => {
-                        const clean = sanitizeDashboardFriendSlotValue(idEl.value);
+                        const clean = sanitizeDashboardFriendSlotValue(
+                            idEl.value,
+                        );
                         if (idEl.value !== clean) idEl.value = clean;
                     });
                     return row;
@@ -9229,8 +9269,7 @@
                     col.className = "instance-picker-friend-col";
                     const headers = document.createElement("div");
                     headers.className = "instance-picker-friend-headers";
-                    headers.innerHTML =
-                        `<span class="hdr-name">Name</span><span class="hdr-id">Friend ID</span>`;
+                    headers.innerHTML = `<span class="hdr-name">Name</span><span class="hdr-id">Friend ID</span>`;
                     col.appendChild(headers);
                     const rowsWrap = document.createElement("div");
                     rowsWrap.className = "instance-picker-friend-rows";
@@ -9281,9 +9320,13 @@
             }
             function applyInstancePickerFriendSettings(settings) {
                 ensureInstancePickerFriendGrid();
-                const grid = document.getElementById("instancePickerFriendGrid");
+                const grid = document.getElementById(
+                    "instancePickerFriendGrid",
+                );
                 if (!grid) return;
-                const rowEls = grid.querySelectorAll(".instance-picker-friend-row");
+                const rowEls = grid.querySelectorAll(
+                    ".instance-picker-friend-row",
+                );
                 settings.rows.forEach((row, idx) => {
                     const el = rowEls[idx];
                     if (!el) return;
@@ -9292,7 +9335,10 @@
                     const id = el.querySelector(".fav-id");
                     if (pick) pick.checked = !!row.picked;
                     if (label) label.value = row.label || "";
-                    if (id) id.value = sanitizeDashboardFriendSlotValue(row.id || "");
+                    if (id)
+                        id.value = sanitizeDashboardFriendSlotValue(
+                            row.id || "",
+                        );
                 });
             }
             function loadSavedInstancePickerFriendState() {
@@ -9304,7 +9350,10 @@
                     return null;
                 }
             }
-            function mergeInstancePickerFriendSettings(apiSettings, savedState) {
+            function mergeInstancePickerFriendSettings(
+                apiSettings,
+                savedState,
+            ) {
                 if (!savedState) return apiSettings;
                 const merged = {
                     ...apiSettings,
@@ -9315,9 +9364,8 @@
                         const saved = savedState.rows[i];
                         if (!saved) continue;
                         if (saved.id != null) {
-                            merged.rows[i].id = sanitizeDashboardFriendSlotValue(
-                                saved.id,
-                            );
+                            merged.rows[i].id =
+                                sanitizeDashboardFriendSlotValue(saved.id);
                         }
                         if (saved.label != null) {
                             merged.rows[i].label = String(saved.label);
@@ -9334,7 +9382,9 @@
                 const favoriteIds = [];
                 const favoriteLabels = [];
                 const selectedIds = [];
-                const grid = document.getElementById("instancePickerFriendGrid");
+                const grid = document.getElementById(
+                    "instancePickerFriendGrid",
+                );
                 const rowEls = grid
                     ? grid.querySelectorAll(".instance-picker-friend-row")
                     : [];
@@ -9369,7 +9419,9 @@
             }
             function validateInstancePickerFriendSelection(sendFR) {
                 const sel = collectInstancePickerFriendSelection();
-                const grid = document.getElementById("instancePickerFriendGrid");
+                const grid = document.getElementById(
+                    "instancePickerFriendGrid",
+                );
                 const rowEls = grid
                     ? grid.querySelectorAll(".instance-picker-friend-row")
                     : [];
@@ -9386,8 +9438,7 @@
                 if (sendFR && sel.resolvedCount < 1) {
                     return {
                         ok: false,
-                        message:
-                            "Check at least one friend to send.",
+                        message: "Check at least one friend to send.",
                     };
                 }
                 if (sendFR && sel.resolvedCount > 10) {
@@ -9429,7 +9480,9 @@
                 let apiPayload = extraPayload || null;
                 if (!apiPayload) {
                     try {
-                        const res = await fetch("/__dashboard/settings-friend-id");
+                        const res = await fetch(
+                            "/__dashboard/settings-friend-id",
+                        );
                         apiPayload = await res.json();
                     } catch (_) {
                         apiPayload = null;
@@ -9543,9 +9596,8 @@
                             injectExtraFriendIds: "",
                         };
                         if (friendGrid) {
-                            const check = validateInstancePickerFriendSelection(
-                                sendFR,
-                            );
+                            const check =
+                                validateInstancePickerFriendSelection(sendFR);
                             if (!check.ok) {
                                 showToast(
                                     check.message ||
@@ -9568,8 +9620,10 @@
                             sendFriendRequest: sendFR,
                             selectedFriendIds: friendPick.selectedFriendIds,
                             favoriteFriendIds: friendPick.favoriteFriendIds,
-                            favoriteFriendLabels: friendPick.favoriteFriendLabels,
-                            injectExtraFriendIds: friendPick.injectExtraFriendIds,
+                            favoriteFriendLabels:
+                                friendPick.favoriteFriendLabels,
+                            injectExtraFriendIds:
+                                friendPick.injectExtraFriendIds,
                         });
                     }
                     function onCancel() {
@@ -9674,20 +9728,29 @@
                                         data && data.favoriteFriendIds != null
                                             ? String(data.favoriteFriendIds)
                                             : data &&
-                                                data.injectExtraFriendIds != null
-                                              ? String(data.injectExtraFriendIds)
+                                                data.injectExtraFriendIds !=
+                                                    null
+                                              ? String(
+                                                    data.injectExtraFriendIds,
+                                                )
                                               : "",
                                     favoriteFriendLabels:
-                                        data && data.favoriteFriendLabels != null
+                                        data &&
+                                        data.favoriteFriendLabels != null
                                             ? String(data.favoriteFriendLabels)
                                             : "",
                                     injectSelectedFriendIds:
                                         data &&
                                         data.injectSelectedFriendIds != null
-                                            ? String(data.injectSelectedFriendIds)
+                                            ? String(
+                                                  data.injectSelectedFriendIds,
+                                              )
                                             : data &&
-                                                data.injectExtraFriendIds != null
-                                              ? String(data.injectExtraFriendIds)
+                                                data.injectExtraFriendIds !=
+                                                    null
+                                              ? String(
+                                                    data.injectExtraFriendIds,
+                                                )
                                               : "",
                                 };
                                 loadInstancePickerFriendSettings(mergedPayload)
@@ -9851,10 +9914,8 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             deviceAccount: account,
-                            tradedCards:
-                                collectTradedCardsForAccount(account),
-                            sharedCards:
-                                collectSharedCardsForAccount(account),
+                            tradedCards: collectTradedCardsForAccount(account),
+                            sharedCards: collectSharedCardsForAccount(account),
                         }),
                     });
                     let data = {};
@@ -9864,8 +9925,7 @@
                     return {
                         ok: !!(res.ok && data.ok),
                         error:
-                            data.error ||
-                            (!res.ok ? `HTTP ${res.status}` : ""),
+                            data.error || (!res.ok ? `HTTP ${res.status}` : ""),
                     };
                 } catch (err) {
                     return {
@@ -9879,12 +9939,9 @@
                 if (!account || !canPersistCardMarksToDisk()) return;
                 let saver = _persistCardMarksSavers.get(account);
                 if (!saver) {
-                    saver = makeDebouncedSaver(
-                        () => {
-                            void persistAccountCardMarks(account);
-                        },
-                        450,
-                    );
+                    saver = makeDebouncedSaver(() => {
+                        void persistAccountCardMarks(account);
+                    }, 450);
                     _persistCardMarksSavers.set(account, saver);
                 }
                 saver();
@@ -9892,7 +9949,9 @@
 
             function metadataHasCardMarksField(metadata, fieldNames) {
                 if (!metadata || typeof metadata !== "object") return false;
-                const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+                const names = Array.isArray(fieldNames)
+                    ? fieldNames
+                    : [fieldNames];
                 for (const name of names) {
                     if (Object.prototype.hasOwnProperty.call(metadata, name))
                         return true;
@@ -9901,7 +9960,9 @@
             }
 
             function readAccountCardMarksObject(doc, fieldNames) {
-                const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+                const names = Array.isArray(fieldNames)
+                    ? fieldNames
+                    : [fieldNames];
                 const pickNonEmptyMarks = (node) => {
                     if (
                         !node ||
@@ -9913,7 +9974,9 @@
                     return Object.keys(node).length ? node : null;
                 };
                 for (const name of names) {
-                    const root = pickNonEmptyMarks(readObjectValue(doc, [name]));
+                    const root = pickNonEmptyMarks(
+                        readObjectValue(doc, [name]),
+                    );
                     if (root) return root;
                 }
                 const metadata =
@@ -9982,9 +10045,7 @@
                                 state.tradedMeta.set(
                                     key,
                                     serializeTradeMeta(
-                                        normalizeTradeMeta(
-                                            tradedCards[cardId],
-                                        ),
+                                        normalizeTradeMeta(tradedCards[cardId]),
                                     ),
                                 );
                                 imported++;
@@ -10025,7 +10086,10 @@
                 return imported;
             }
 
-            async function migrateLegacyCardMarksOnce(validAccounts, options = {}) {
+            async function migrateLegacyCardMarksOnce(
+                validAccounts,
+                options = {},
+            ) {
                 const onProgress =
                     typeof options.onProgress === "function"
                         ? options.onProgress
@@ -10075,11 +10139,7 @@
 
                 const concurrency = 10;
                 let migrated = 0;
-                for (
-                    let i = 0;
-                    i < accountsToPost.length;
-                    i += concurrency
-                ) {
+                for (let i = 0; i < accountsToPost.length; i += concurrency) {
                     const batch = accountsToPost.slice(i, i + concurrency);
                     const results = await Promise.all(
                         batch.map((account) =>
@@ -10124,9 +10184,7 @@
                     if (rawTradedMeta) {
                         const obj = JSON.parse(rawTradedMeta);
                         if (obj && typeof obj === "object") {
-                            snapshot.tradedMeta = new Map(
-                                Object.entries(obj),
-                            );
+                            snapshot.tradedMeta = new Map(Object.entries(obj));
                         }
                     }
                 } catch (_) {}
@@ -10146,9 +10204,7 @@
                     if (rawSharedMeta) {
                         const obj = JSON.parse(rawSharedMeta);
                         if (obj && typeof obj === "object") {
-                            snapshot.sharedMeta = new Map(
-                                Object.entries(obj),
-                            );
+                            snapshot.sharedMeta = new Map(Object.entries(obj));
                         }
                     }
                 } catch (_) {}
@@ -10188,7 +10244,10 @@
                 return touched;
             }
 
-            function mergeLegacyCardMarksForAccountIntoState(account, snapshot) {
+            function mergeLegacyCardMarksForAccountIntoState(
+                account,
+                snapshot,
+            ) {
                 const prefix = account + "::";
                 let changed = false;
 
@@ -10344,9 +10403,7 @@
                 } else if (build?.cacheHit) {
                     parts.push("Cached");
                 } else if (Number(build?.rebuildMs) >= 1500) {
-                    parts.push(
-                        `Took ${formatBootDuration(build.rebuildMs)}`,
-                    );
+                    parts.push(`Took ${formatBootDuration(build.rebuildMs)}`);
                 }
                 return parts.join(" · ");
             }
@@ -10422,9 +10479,7 @@
                         ? data.build
                         : null;
                 if (build && onProgress) {
-                    const marksFound = Number.isFinite(
-                        Number(build.marksFound),
-                    )
+                    const marksFound = Number.isFinite(Number(build.marksFound))
                         ? Number(build.marksFound)
                         : accounts.length;
                     onProgress(
@@ -10472,9 +10527,12 @@
                 return withMarks;
             }
 
-            async function loadAccountCardMarkDocumentsWithFallback(onProgress) {
+            async function loadAccountCardMarkDocumentsWithFallback(
+                onProgress,
+            ) {
                 try {
-                    const result = await fetchAccountCardMarkDocuments(onProgress);
+                    const result =
+                        await fetchAccountCardMarkDocuments(onProgress);
                     return {
                         documents: result.documents,
                         source: "account-card-marks",
@@ -10506,12 +10564,14 @@
                 const tradeAccounts =
                     buildTradeAccountIdSetFromDocuments(documents);
                 const legacySnapshot = readLegacyCardMarksSnapshot();
-                const hadLegacy = legacyCardMarksSnapshotHasData(legacySnapshot);
+                const hadLegacy =
+                    legacyCardMarksSnapshotHasData(legacySnapshot);
                 bootBeginStep(
                     "card_marks",
                     `${formatNumber(tradeAccounts.size)} Accounts${describeLegacyCardMarksBootHint(legacySnapshot)}`,
                 );
-                const report = (message) => bootUpdateStep("card_marks", message);
+                const report = (message) =>
+                    bootUpdateStep("card_marks", message);
                 try {
                     report("Reading Marks…");
                     hydrateCardMarksFromAccountDocuments(documents);
@@ -10545,12 +10605,14 @@
                 if (!canPersistCardMarksToDisk()) return;
                 const tradeAccounts = buildTradeAccountIdSet(summary);
                 const legacySnapshot = readLegacyCardMarksSnapshot();
-                const hadLegacy = legacyCardMarksSnapshotHasData(legacySnapshot);
+                const hadLegacy =
+                    legacyCardMarksSnapshotHasData(legacySnapshot);
                 bootBeginStep(
                     "card_marks",
                     `${formatNumber(tradeAccounts.size)} Accounts${describeLegacyCardMarksBootHint(legacySnapshot)}`,
                 );
-                const report = (message) => bootUpdateStep("card_marks", message);
+                const report = (message) =>
+                    bootUpdateStep("card_marks", message);
                 try {
                     const markLoad =
                         await loadAccountCardMarkDocumentsWithFallback(report);
@@ -10906,11 +10968,7 @@
                 if (!accountName || !cardsMap) return 0;
                 let total = 0;
                 for (const [cardId, count] of cardsMap) {
-                    total += getRemainingCopyCount(
-                        accountName,
-                        cardId,
-                        count,
-                    );
+                    total += getRemainingCopyCount(accountName, cardId, count);
                 }
                 return total;
             }
@@ -11039,10 +11097,7 @@
                             });
                         }
                     }
-                } else if (
-                    raw.pairings &&
-                    typeof raw.pairings === "object"
-                ) {
+                } else if (raw.pairings && typeof raw.pairings === "object") {
                     const p = raw.pairings;
                     if (
                         p.receivedCardId != null &&
@@ -11239,7 +11294,11 @@
             }
 
             function formatShinedustDeductionSuffix(dustResult) {
-                if (!dustResult || dustResult.skipped || !(dustResult.deducted > 0))
+                if (
+                    !dustResult ||
+                    dustResult.skipped ||
+                    !(dustResult.deducted > 0)
+                )
                     return "";
                 let text = ` Deducted ${formatNumber(dustResult.deducted)} Shinedust`;
                 if (
@@ -11266,7 +11325,11 @@
             }
 
             function formatShinedustRefundSuffix(dustResult) {
-                if (!dustResult || dustResult.skipped || !(dustResult.credited > 0))
+                if (
+                    !dustResult ||
+                    dustResult.skipped ||
+                    !(dustResult.credited > 0)
+                )
                     return "";
                 let text = ` Refunded ${formatNumber(dustResult.credited)} Shinedust`;
                 if (
@@ -11304,7 +11367,8 @@
             const formatTradePersistWarning = formatCardMarksPersistWarning;
 
             function notifySharedMarkResult(cardId, persistResult) {
-                const persistWarn = formatCardMarksPersistWarning(persistResult);
+                const persistWarn =
+                    formatCardMarksPersistWarning(persistResult);
                 showToast(
                     `Marked ${formatCardLabel(cardId)} as shared.${persistWarn}`,
                     "success",
@@ -11316,10 +11380,7 @@
             async function adjustShinedustForTrade(account, cardId, mode) {
                 const isRefund = mode === "credit";
                 const amountField = isRefund ? "credited" : "deducted";
-                const cost = getTradeShinedustCost(
-                    cardId,
-                    getCardInfo(cardId),
-                );
+                const cost = getTradeShinedustCost(cardId, getCardInfo(cardId));
                 if (!(cost > 0) || !account) {
                     return {
                         ok: true,
@@ -11393,7 +11454,10 @@
 
             async function finalizeUndoTradedCopy(account, cardId) {
                 const persistResult = await persistAccountCardMarks(account);
-                const dustResult = await refundShinedustForTrade(account, cardId);
+                const dustResult = await refundShinedustForTrade(
+                    account,
+                    cardId,
+                );
                 return { persistResult, dustResult };
             }
 
@@ -11802,7 +11866,10 @@
                 );
             }
 
-            function renderAccountFileLabelTitleHtml(rawFileLabel, accountFallback = "") {
+            function renderAccountFileLabelTitleHtml(
+                rawFileLabel,
+                accountFallback = "",
+            ) {
                 const raw = String(rawFileLabel || "").trim();
                 if (!raw) return escapeHtml(accountFallback);
                 const displayLabel = buildFileLabelMeta(raw);
@@ -12347,14 +12414,17 @@
                         return false;
                     }
                     if (status !== "pending") return true;
-                    if (legacyPath) return !DASHBOARD_BOOT_COMPACT_ONLY.includes(id);
+                    if (legacyPath)
+                        return !DASHBOARD_BOOT_COMPACT_ONLY.includes(id);
                     return !DASHBOARD_BOOT_LEGACY_ONLY.includes(id);
                 });
             }
 
             function renderDashboardBootProgress() {
                 const list = document.getElementById("dashboardBootChecklist");
-                const elapsedEl = document.getElementById("dashboardBootElapsed");
+                const elapsedEl = document.getElementById(
+                    "dashboardBootElapsed",
+                );
                 const pathEl = document.getElementById("dashboardBootPath");
                 const fillEl = document.getElementById(
                     "dashboardBootProgressFill",
@@ -12444,7 +12514,9 @@
             }
 
             function updateDashboardBootClocks(now = performance.now()) {
-                const elapsedEl = document.getElementById("dashboardBootElapsed");
+                const elapsedEl = document.getElementById(
+                    "dashboardBootElapsed",
+                );
                 if (elapsedEl && dashboardBootState.startedAt) {
                     elapsedEl.textContent = `Elapsed: ${formatBootDuration(
                         now - dashboardBootState.startedAt,
@@ -12456,9 +12528,7 @@
                         '.dashboard-boot-check-item[data-status="running"]',
                     ).forEach((item) => {
                         const id = item.getAttribute("data-boot-step");
-                        const entry = id
-                            ? dashboardBootState.steps[id]
-                            : null;
+                        const entry = id ? dashboardBootState.steps[id] : null;
                         const timeEl = item.querySelector(
                             ".dashboard-boot-check-time",
                         );
@@ -12482,10 +12552,7 @@
                 const entry = dashboardBootState.steps[id] || {
                     status: "pending",
                 };
-                item.setAttribute(
-                    "data-status",
-                    entry.status || "pending",
-                );
+                item.setAttribute("data-status", entry.status || "pending");
                 const iconEl = item.querySelector(".dashboard-boot-check-icon");
                 if (iconEl) iconEl.textContent = bootStepIcon(entry.status);
                 const meta = bootChecklistMeta(id, entry);
@@ -13225,7 +13292,8 @@
                 const languageChanged = merged.language !== state.language;
                 if (languageChanged) {
                     state.language = merged.language;
-                    if (el.cardLanguage) el.cardLanguage.value = merged.language;
+                    if (el.cardLanguage)
+                        el.cardLanguage.value = merged.language;
                 }
                 try {
                     localStorage.setItem(LS_SELECTED_LANGUAGE, merged.language);
@@ -13378,7 +13446,9 @@
                     .querySelectorAll(
                         "[data-toggle-catalog-pull-history].is-open",
                     )
-                    .forEach((btn) => setPullHistoryToggleVisualState(btn, false));
+                    .forEach((btn) =>
+                        setPullHistoryToggleVisualState(btn, false),
+                    );
             }
 
             function resetCatalogPullHistoryState() {
@@ -13668,12 +13738,12 @@
                     force
                 ) {
                     if (!dashboardBootDismissed)
-                            bootUpdateStep(
-                                "card_definitions",
-                                force
-                                    ? "Refreshing Definitions…"
-                                    : "Downloading Definitions…",
-                            );
+                        bootUpdateStep(
+                            "card_definitions",
+                            force
+                                ? "Refreshing Definitions…"
+                                : "Downloading Definitions…",
+                        );
                     setStatus(
                         force
                             ? "Refreshing card definitions..."
@@ -14770,7 +14840,9 @@
                             ).trim(),
                             displayName:
                                 String(
-                                    entry.displayName ?? entry.accountName ?? "",
+                                    entry.displayName ??
+                                        entry.accountName ??
+                                        "",
                                 ).trim() || account,
                             isCollection: true,
                             instance: String(
@@ -14804,7 +14876,9 @@
                             ).trim(),
                             displayName:
                                 String(
-                                    entry.displayName ?? entry.accountName ?? "",
+                                    entry.displayName ??
+                                        entry.accountName ??
+                                        "",
                                 ).trim() || account,
                             registryImportedAt: String(
                                 metadata.registryImportedAt ?? "",
@@ -14890,7 +14964,10 @@
                 parseState.totalCards += cardIds.length;
                 for (const id of cardIds) parseState.uniqueCards.add(id);
 
-                const blocks = splitCardsIntoExpansionBlocks(sourcePack, cardIds);
+                const blocks = splitCardsIntoExpansionBlocks(
+                    sourcePack,
+                    cardIds,
+                );
                 for (const block of blocks) {
                     const derived = buildRowDerived(block.cardIds);
                     const packLabel = getPackLabel(block.pack);
@@ -14955,7 +15032,10 @@
                 for (let i = 0; i <= len; i++) {
                     if (i < len && text.charCodeAt(i) !== 10) continue;
                     let lineEnd = i;
-                    if (lineEnd > lineStart && text.charCodeAt(lineEnd - 1) === 13)
+                    if (
+                        lineEnd > lineStart &&
+                        text.charCodeAt(lineEnd - 1) === 13
+                    )
                         lineEnd--;
                     if (lineEnd > lineStart) {
                         const line = text.slice(lineStart, lineEnd).trim();
@@ -15046,7 +15126,10 @@
                     summaryBuilt.collectionAccounts.length > 0;
                 if (!hasAnyData) {
                     bootFailStep("parse_rows", `No data in ${sourceLabel}`);
-                    setStatus(`No account data was found in ${sourceLabel}.`, "warn");
+                    setStatus(
+                        `No account data was found in ${sourceLabel}.`,
+                        "warn",
+                    );
                     hideDashboardBootLoader(900);
                     return false;
                 }
@@ -15522,8 +15605,7 @@
                     cardTypeSet.add(getCardType(id));
                     if (info.rarityValue != null)
                         raritySet.add(getCardRarityFilterKey(id, info));
-                    else if (isGodPack)
-                        isGodPack = false;
+                    else if (isGodPack) isGodPack = false;
                     if (
                         isGodPack &&
                         GOD_PACK_DIAMOND_RARITIES.has(Number(info.rarityValue))
@@ -16084,7 +16166,9 @@
                     cache: "no-store",
                 });
                 if (!response.ok) {
-                    throw new Error(`${response.status} ${response.statusText}`);
+                    throw new Error(
+                        `${response.status} ${response.statusText}`,
+                    );
                 }
                 return response.json();
             }
@@ -16152,8 +16236,8 @@
                             if (
                                 !live ||
                                 dashboardBootDismissed ||
-                                dashboardBootState.steps.database_index?.status !==
-                                    "running"
+                                dashboardBootState.steps.database_index
+                                    ?.status !== "running"
                             ) {
                                 return;
                             }
@@ -16242,7 +16326,9 @@
                                 const { done, value } = await reader.read();
                                 if (done) break;
                                 bytesReceived += value?.length || 0;
-                                pending += decoder.decode(value, { stream: true });
+                                pending += decoder.decode(value, {
+                                    stream: true,
+                                });
                                 let newlineIdx = pending.indexOf("\n");
                                 while (newlineIdx >= 0) {
                                     let line = pending.slice(0, newlineIdx);
@@ -16255,7 +16341,10 @@
                                     }
                                     consumeLine(line);
                                     newlineIdx = pending.indexOf("\n");
-                                    if (lineIndex > 0 && lineIndex % 4000 === 0) {
+                                    if (
+                                        lineIndex > 0 &&
+                                        lineIndex % 4000 === 0
+                                    ) {
                                         bootUpdateStep(
                                             "fetch_rows",
                                             `${formatBootDataSize(bytesReceived)} · ${formatNumber(lineIndex)} Pulls`,
@@ -16883,7 +16972,10 @@
                         performance.now() - startedAt > 16
                     ) {
                         if (token !== state.filterApplyToken) return;
-                        if (state.view === "rows" || state.view === "accounts") {
+                        if (
+                            state.view === "rows" ||
+                            state.view === "accounts"
+                        ) {
                             el.resultNote.textContent = `Filtering… ${formatNumber(i)} / ${formatNumber(rows.length)}`;
                         }
                         await waitMs(0);
@@ -17282,7 +17374,8 @@
                         { html: true },
                     );
                     if (!ok) return;
-                    if (!removeTradedPairingAt(accountUnpair, gave, idx)) return;
+                    if (!removeTradedPairingAt(accountUnpair, gave, idx))
+                        return;
                     const undoResult = await finalizeUndoTradedCopy(
                         accountUnpair,
                         gave,
@@ -17426,10 +17519,7 @@
                 invalidateMarkedViewsDomCache();
                 for (const view of CATALOG_VIEWS) {
                     const cached = _viewDomCache.get(view);
-                    if (
-                        cached &&
-                        !isCatalogViewCacheEntryValid(cached)
-                    ) {
+                    if (cached && !isCatalogViewCacheEntryValid(cached)) {
                         _viewDomCache.delete(view);
                     }
                 }
@@ -17499,13 +17589,8 @@
                 return keys;
             }
 
-            function getAvailableCopyCount(
-                cardId,
-                accountCounts,
-                tradeIndex,
-            ) {
-                const marksIndex =
-                    tradeIndex || ensureCatalogTradeShareIndex();
+            function getAvailableCopyCount(cardId, accountCounts, tradeIndex) {
+                const marksIndex = tradeIndex || ensureCatalogTradeShareIndex();
                 let totalCopies = 0;
                 for (const [account, count] of accountCounts) {
                     const marks = marksIndex.get(tradedKey(account, cardId));
@@ -17618,8 +17703,7 @@
                 accountFirstSeenMs,
                 tradeIndex,
             ) {
-                const marksIndex =
-                    tradeIndex || ensureCatalogTradeShareIndex();
+                const marksIndex = tradeIndex || ensureCatalogTradeShareIndex();
                 const accountRows = [];
                 const pullHistory = getCatalogPullHistorySummary(cardId);
                 const accountPullStats =
@@ -17885,8 +17969,7 @@
                 accountFirstSeenMs,
                 tradeIndex,
             ) {
-                const marksIndex =
-                    tradeIndex || ensureCatalogTradeShareIndex();
+                const marksIndex = tradeIndex || ensureCatalogTradeShareIndex();
                 const rowsByAccount = new Map();
                 for (const card of selectedCards) {
                     const accountCounts =
@@ -17994,10 +18077,11 @@
                     .map((row) => {
                         const rawFileLabel =
                             state.accountFileLabelMap.get(row.account) || "";
-                        const accountNameLabel = renderAccountFileLabelWithCopyHtml(
-                            row.account,
-                            rawFileLabel,
-                        );
+                        const accountNameLabel =
+                            renderAccountFileLabelWithCopyHtml(
+                                row.account,
+                                rawFileLabel,
+                            );
                         const isSelectedAccount = isMultiAccountPinned(
                             row.account,
                         );
@@ -18338,7 +18422,12 @@
                 refreshDashboardAfterTradeMarks(cardId, partnerReceivedId);
             }
 
-            async function runInjectForAccount(btn, account, fileName, options = {}) {
+            async function runInjectForAccount(
+                btn,
+                account,
+                fileName,
+                options = {},
+            ) {
                 const actionLabel = options.actionLabel || "inject account";
                 const extraSummaryHtml = options.extraSummaryHtml || "";
                 if (btn.disabled) return;
@@ -18449,7 +18538,12 @@
                 });
             }
 
-            function startTradeForMultiAccount(btn, account, fileName, cardIds) {
+            function startTradeForMultiAccount(
+                btn,
+                account,
+                fileName,
+                cardIds,
+            ) {
                 ensureAccountPinned(account);
                 const matchedCardIds = Array.isArray(cardIds)
                     ? cardIds
@@ -18541,27 +18635,20 @@
                 attachAccountPinToggleListeners(el.rows, (account) => {
                     applyMultiAccountPinToggle(account);
                 });
-                el.rows
-                    .querySelectorAll("[data-copy-file]")
-                    .forEach((btn) => {
-                        if (__catalogSideAttachedElements.has(btn)) return;
-                        __catalogSideAttachedElements.add(btn);
-                        btn.addEventListener("click", async (event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            const rawName =
-                                btn.getAttribute("data-copy-file") || "";
-                            const account =
-                                btn.getAttribute("data-account-label-for") ||
-                                "";
-                            if (!rawName) return;
-                            await runCopyFileButtonFeedback(
-                                btn,
-                                rawName,
-                                account,
-                            );
-                        });
+                el.rows.querySelectorAll("[data-copy-file]").forEach((btn) => {
+                    if (__catalogSideAttachedElements.has(btn)) return;
+                    __catalogSideAttachedElements.add(btn);
+                    btn.addEventListener("click", async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const rawName =
+                            btn.getAttribute("data-copy-file") || "";
+                        const account =
+                            btn.getAttribute("data-account-label-for") || "";
+                        if (!rawName) return;
+                        await runCopyFileButtonFeedback(btn, rawName, account);
                     });
+                });
                 el.rows
                     .querySelectorAll("[data-open-account-metadata]")
                     .forEach((btn) => {
@@ -18804,7 +18891,9 @@
                     }
                     sectionSwitcherStickyResizeObserver = new ResizeObserver(
                         () => {
-                            syncSectionSwitcherStackHeightSoon({ instant: true });
+                            syncSectionSwitcherStackHeightSoon({
+                                instant: true,
+                            });
                         },
                     );
                     sectionSwitcherStickyResizeObserver.observe(sw);
@@ -19821,14 +19910,9 @@
                         const rawName =
                             btn.getAttribute("data-copy-file") || "";
                         const account =
-                            btn.getAttribute("data-account-label-for") ||
-                            "";
+                            btn.getAttribute("data-account-label-for") || "";
                         if (!rawName) return;
-                        await runCopyFileButtonFeedback(
-                            btn,
-                            rawName,
-                            account,
-                        );
+                        await runCopyFileButtonFeedback(btn, rawName, account);
                     });
                 });
 
@@ -20207,8 +20291,7 @@
                     : selected.totalCopies;
                 const copyWord = copyCount === 1 ? "copy" : "copies";
                 const accountCount = accountRows.length;
-                const accountWord =
-                    accountCount === 1 ? "account" : "accounts";
+                const accountWord = accountCount === 1 ? "account" : "accounts";
                 const rarityHtml = getMultiPickerRarityBadgeHtml(
                     getCardRarityFilterKey(selected.id, selected.info),
                 );
@@ -20296,13 +20379,16 @@
                 syncCatalogAccountPin(accountRows);
                 if (!selected) clearPinnedCatalogAccounts();
 
-                const { accountItemsHtml, accountListFillAttr, accountListNoteHtml } =
-                    buildCatalogAccountListParts(
-                        selected,
-                        accountRows,
-                        allAccountRows,
-                        requiredShinedust,
-                    );
+                const {
+                    accountItemsHtml,
+                    accountListFillAttr,
+                    accountListNoteHtml,
+                } = buildCatalogAccountListParts(
+                    selected,
+                    accountRows,
+                    allAccountRows,
+                    requiredShinedust,
+                );
                 const selectedMeta = buildCatalogSelectedMetaHtml(
                     selected,
                     accountRows,
@@ -22196,7 +22282,8 @@
             }
 
             function ensureAccountOverviewGridObserver() {
-                if (accountOverviewGridObserver) return accountOverviewGridObserver;
+                if (accountOverviewGridObserver)
+                    return accountOverviewGridObserver;
                 accountOverviewGridObserver = new IntersectionObserver(
                     (entries) => {
                         for (const entry of entries) {
@@ -22277,11 +22364,14 @@
             }
 
             async function mountExpandableRowGrid(body, renderGrid) {
-                if (!body || body.dataset.rendered || typeof renderGrid !== "function")
+                if (
+                    !body ||
+                    body.dataset.rendered ||
+                    typeof renderGrid !== "function"
+                )
                     return;
                 let grid = renderGrid();
-                if (grid && typeof grid.then === "function")
-                    grid = await grid;
+                if (grid && typeof grid.then === "function") grid = await grid;
                 if (
                     !grid ||
                     body.dataset.rendered ||
@@ -22330,7 +22420,11 @@
 
                 const clearBody = () => {
                     cancelLazyAccountGridMount(body);
-                    body.classList.remove("is-expanded", "is-opening", "is-closing");
+                    body.classList.remove(
+                        "is-expanded",
+                        "is-opening",
+                        "is-closing",
+                    );
                     body.textContent = "";
                     delete body.dataset.rendered;
                     body.dataset.animating = "0";
@@ -22349,11 +22443,18 @@
                     body.classList.add("is-expanded");
                     article?.classList.remove("is-row-expanded");
 
-                    if (!body.dataset.rendered && typeof renderGrid === "function") {
-                        await scheduleAccountOverviewGridMount(body, renderGrid, {
-                            directMount: true,
-                            ...expandOptions,
-                        });
+                    if (
+                        !body.dataset.rendered &&
+                        typeof renderGrid === "function"
+                    ) {
+                        await scheduleAccountOverviewGridMount(
+                            body,
+                            renderGrid,
+                            {
+                                directMount: true,
+                                ...expandOptions,
+                            },
+                        );
                     }
 
                     if (!body.dataset.rendered) {
@@ -22430,10 +22531,7 @@
             ) {
                 const entries = sortCardEntriesByRarity(
                     filterAccountOverviewVisibleEntries(
-                        getAccountVisibleCardEntries(
-                            account,
-                            cardFilterConfig,
-                        ),
+                        getAccountVisibleCardEntries(account, cardFilterConfig),
                     ),
                 );
                 const gridOptions = {
@@ -22446,7 +22544,11 @@
             }
 
             async function mountExpandableRowCollapsed(body, renderGrid) {
-                if (!body || body.dataset.rendered || typeof renderGrid !== "function")
+                if (
+                    !body ||
+                    body.dataset.rendered ||
+                    typeof renderGrid !== "function"
+                )
                     return false;
                 const article = body.closest(".db-row--expandable");
                 body.classList.add("is-expanded");
@@ -23307,8 +23409,7 @@
                 const articleClass = options.articleClass || "catalog-section";
                 const backAttr = options.backAttr || "data-catalog-back";
                 const showBack = options.showBack !== false;
-                const backTitle =
-                    options.backTitle || "Back to All Expansions";
+                const backTitle = options.backTitle || "Back to All Expansions";
                 const sectionIconUrl = getPackIconUrl(sectionCode);
                 const sectionLogoHtml = sectionIconUrl
                     ? `<img class="catalog-section-logo" src="${escapeHtml(sectionIconUrl)}" alt="${escapeHtml(sectionLabel)}" title="${escapeHtml(sectionLabel)}" loading="lazy" onerror="this.outerHTML='<div class=\\'catalog-section-title\\'>${escapeHtml(sectionLabel).replace(/'/g, "\\'")}</div>'">`
@@ -24028,8 +24129,7 @@
                 cardFilterConfig = getActiveCardFilterConfig(),
             ) {
                 const expanded = accountIsExpanded(account.key);
-                const domExpanded =
-                    expanded && !state.deferAccountGridRender;
+                const domExpanded = expanded && !state.deferAccountGridRender;
                 const article = document.createElement("article");
                 article.className =
                     "db-row db-row--account db-row--expandable panel";
@@ -24083,7 +24183,9 @@
                 const metadataBtn = rowHead.querySelector(
                     "[data-open-account-metadata]",
                 );
-                const injectBtn = rowHead.querySelector("[data-inject-account]");
+                const injectBtn = rowHead.querySelector(
+                    "[data-inject-account]",
+                );
                 const getVisibleEntriesForGrid = () =>
                     sortCardEntriesByRarity(
                         filterAccountOverviewVisibleEntries(
@@ -24096,15 +24198,12 @@
                 if (domExpanded) {
                     article.classList.add("is-row-expanded");
                     body.appendChild(
-                        renderAccountOverviewGrid(
-                            getVisibleEntriesForGrid(),
-                            {
-                                showQuantity: true,
-                                entries: true,
-                                account: account.account,
-                                disableTrade: true,
-                            },
-                        ),
+                        renderAccountOverviewGrid(getVisibleEntriesForGrid(), {
+                            showQuantity: true,
+                            entries: true,
+                            account: account.account,
+                            disableTrade: true,
+                        }),
                     );
                     body.dataset.rendered = "1";
                 }
@@ -24334,36 +24433,34 @@
                         "[data-shared-remove-account]",
                     );
                     if (sharedBtn && account) {
-                            const acc =
-                                sharedBtn.getAttribute(
-                                    "data-shared-remove-account",
-                                ) || "";
-                            const cid =
-                                sharedBtn.getAttribute(
-                                    "data-shared-remove-card",
-                                ) || "";
-                            if (!acc || !cid) return;
-                            const sharedTotal = getSharedCount(acc, cid);
-                            const sharedMsg =
-                                sharedTotal > 1
-                                    ? `Remove one shared copy of ${formatCardLabel(cid)}? (${formatNumber(sharedTotal)} marked; ${formatNumber(sharedTotal - 1)} will remain.)`
-                                    : `Remove ${formatCardLabel(cid)} from shared cards?`;
-                            showConfirm(sharedMsg, { html: true }).then(
-                                (confirmed) => {
-                                    if (!confirmed) return;
-                                    removeOneSharedCopy(acc, cid);
-                                    if (state.view === "shared")
-                                        renderSharedView();
-                                    else if (state.view === "allcards")
-                                        deferRender(() =>
-                                            refreshCatalogLibraryTradeShareLight(
-                                                cid,
-                                                "",
-                                            ),
-                                        );
-                                    else refreshCatalogLibraryMainOnly();
-                                },
-                            );
+                        const acc =
+                            sharedBtn.getAttribute(
+                                "data-shared-remove-account",
+                            ) || "";
+                        const cid =
+                            sharedBtn.getAttribute("data-shared-remove-card") ||
+                            "";
+                        if (!acc || !cid) return;
+                        const sharedTotal = getSharedCount(acc, cid);
+                        const sharedMsg =
+                            sharedTotal > 1
+                                ? `Remove one shared copy of ${formatCardLabel(cid)}? (${formatNumber(sharedTotal)} marked; ${formatNumber(sharedTotal - 1)} will remain.)`
+                                : `Remove ${formatCardLabel(cid)} from shared cards?`;
+                        showConfirm(sharedMsg, { html: true }).then(
+                            (confirmed) => {
+                                if (!confirmed) return;
+                                removeOneSharedCopy(acc, cid);
+                                if (state.view === "shared") renderSharedView();
+                                else if (state.view === "allcards")
+                                    deferRender(() =>
+                                        refreshCatalogLibraryTradeShareLight(
+                                            cid,
+                                            "",
+                                        ),
+                                    );
+                                else refreshCatalogLibraryMainOnly();
+                            },
+                        );
                         return;
                     }
                     const btn = e.target.closest(".traded-btn");
@@ -24373,118 +24470,110 @@
                         );
                         if (!navTile) return;
                         const navCardId =
-                            navTile.getAttribute("data-catalog-navigate-card") ||
-                            "";
-                        if (navCardId) navigateCatalogFromWishlistCard(navCardId);
+                            navTile.getAttribute(
+                                "data-catalog-navigate-card",
+                            ) || "";
+                        if (navCardId)
+                            navigateCatalogFromWishlistCard(navCardId);
                         return;
                     }
                     const acc = btn.dataset.account;
                     const cid = btn.dataset.cardId;
-                        if (!acc || !cid) return;
-                        const tile = btn.closest(".card-tile");
-                        const alreadyTraded = isTraded(acc, cid);
-                        if (alreadyTraded) {
-                            const tradedTotal = getTradedCount(acc, cid);
-                            const tradedMsg =
-                                tradedTotal > 1
-                                    ? `Remove one traded copy of ${formatCardLabel(cid)}? (${formatNumber(tradedTotal)} marked; ${formatNumber(tradedTotal - 1)} will remain.)`
-                                    : `Remove ${formatCardLabel(cid)} from traded cards?`;
-                            showConfirm(tradedMsg, { html: true }).then(
-                                async (confirmed) => {
-                                    if (!confirmed) return;
-                                    const undoResult = await undoOneTradedCopy(
-                                        acc,
-                                        cid,
+                    if (!acc || !cid) return;
+                    const tile = btn.closest(".card-tile");
+                    const alreadyTraded = isTraded(acc, cid);
+                    if (alreadyTraded) {
+                        const tradedTotal = getTradedCount(acc, cid);
+                        const tradedMsg =
+                            tradedTotal > 1
+                                ? `Remove one traded copy of ${formatCardLabel(cid)}? (${formatNumber(tradedTotal)} marked; ${formatNumber(tradedTotal - 1)} will remain.)`
+                                : `Remove ${formatCardLabel(cid)} from traded cards?`;
+                        showConfirm(tradedMsg, { html: true }).then(
+                            async (confirmed) => {
+                                if (!confirmed) return;
+                                const undoResult = await undoOneTradedCopy(
+                                    acc,
+                                    cid,
+                                );
+                                if (!undoResult) return;
+                                const undoFeedback =
+                                    formatUndoTradedCopyFeedback(
+                                        undoResult.dustResult,
+                                        undoResult.persistResult,
                                     );
-                                    if (!undoResult) return;
-                                    const undoFeedback =
-                                        formatUndoTradedCopyFeedback(
-                                            undoResult.dustResult,
-                                            undoResult.persistResult,
-                                        );
-                                    if (undoFeedback) {
-                                        showToast(
-                                            `Removed from traded.${undoFeedback}`,
-                                            undoFeedback.includes(
-                                                "Could not",
-                                            )
-                                                ? "warn"
-                                                : "success",
-                                            3000,
-                                        );
-                                    }
-                                    tile.classList.toggle(
-                                        "traded",
-                                        isTraded(acc, cid),
+                                if (undoFeedback) {
+                                    showToast(
+                                        `Removed from traded.${undoFeedback}`,
+                                        undoFeedback.includes("Could not")
+                                            ? "warn"
+                                            : "success",
+                                        3000,
                                     );
-                                    if (state.view === "traded")
-                                        renderTradedView();
-                                    else if (state.view === "allcards")
-                                        deferRender(() =>
-                                            refreshCatalogLibraryTradeShareLight(
-                                                cid,
-                                                "",
-                                            ),
-                                        );
-                                    else refreshCatalogLibraryMainOnly();
-                                },
-                            );
-                            return;
-                        }
-                        const result = await pickReceivedCard(acc, cid);
-                        if (!result) {
-                            return;
-                        }
-                        if (result.receivedCardId) {
-                            const accLabel =
-                                state.accountFileLabelMap.get(acc) || acc;
-                            const ok = await showConfirm(
-                                `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cid)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(accLabel)}.`,
-                                { html: true },
-                            );
-                            if (!ok) {
-                                return;
-                            }
-                        }
-                        const nowTraded = toggleTraded(acc, cid);
-                        if (!nowTraded) {
-                            return;
-                        }
-                        tile.classList.toggle("traded", isTraded(acc, cid));
-                        let partnerReceivedId = "";
-                        if (result.receivedCardId) {
-                            setTradeMeta(acc, cid, {
-                                receivedCardId: result.receivedCardId,
-                                timestampMs: Date.now(),
-                            });
-                            partnerReceivedId = result.receivedCardId;
-                        }
-                        const persistResult =
-                            await persistAccountCardMarks(acc);
-                        const dustResult = await deductShinedustForTrade(
-                            acc,
-                            cid,
+                                }
+                                tile.classList.toggle(
+                                    "traded",
+                                    isTraded(acc, cid),
+                                );
+                                if (state.view === "traded") renderTradedView();
+                                else if (state.view === "allcards")
+                                    deferRender(() =>
+                                        refreshCatalogLibraryTradeShareLight(
+                                            cid,
+                                            "",
+                                        ),
+                                    );
+                                else refreshCatalogLibraryMainOnly();
+                            },
                         );
-                        const persistWarn =
-                            formatTradePersistWarning(persistResult);
-                        if (result.receivedCardId) {
-                            showToast(
-                                `Recorded trade: ${formatCardLabel(cid)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                                "success",
-                                4000,
-                                { html: true },
-                            );
-                        } else if (dustResult || persistWarn) {
-                            showToast(
-                                `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
-                                "success",
-                                2500,
-                            );
-                        }
-                        refreshDashboardAfterTradeMarks(
-                            cid,
-                            partnerReceivedId,
+                        return;
+                    }
+                    const result = await pickReceivedCard(acc, cid);
+                    if (!result) {
+                        return;
+                    }
+                    if (result.receivedCardId) {
+                        const accLabel =
+                            state.accountFileLabelMap.get(acc) || acc;
+                        const ok = await showConfirm(
+                            `Confirm trade pairing:\n\nGave:     ${formatCardLabel(cid)}\nReceived: ${formatCardLabel(result.receivedCardId)}\n\nFor ${escapeHtml(accLabel)}.`,
+                            { html: true },
                         );
+                        if (!ok) {
+                            return;
+                        }
+                    }
+                    const nowTraded = toggleTraded(acc, cid);
+                    if (!nowTraded) {
+                        return;
+                    }
+                    tile.classList.toggle("traded", isTraded(acc, cid));
+                    let partnerReceivedId = "";
+                    if (result.receivedCardId) {
+                        setTradeMeta(acc, cid, {
+                            receivedCardId: result.receivedCardId,
+                            timestampMs: Date.now(),
+                        });
+                        partnerReceivedId = result.receivedCardId;
+                    }
+                    const persistResult = await persistAccountCardMarks(acc);
+                    const dustResult = await deductShinedustForTrade(acc, cid);
+                    const persistWarn =
+                        formatTradePersistWarning(persistResult);
+                    if (result.receivedCardId) {
+                        showToast(
+                            `Recorded trade: ${formatCardLabel(cid)} → ${formatCardLabel(result.receivedCardId)}${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                            "success",
+                            4000,
+                            { html: true },
+                        );
+                    } else if (dustResult || persistWarn) {
+                        showToast(
+                            `Marked as traded.${formatShinedustDeductionSuffix(dustResult)}${formatShinedustDeductionWarning(dustResult)}${persistWarn}`,
+                            "success",
+                            2500,
+                        );
+                    }
+                    refreshDashboardAfterTradeMarks(cid, partnerReceivedId);
                 });
             }
 
@@ -24497,7 +24586,9 @@
                 }
                 const wrap = document.createElement("div");
                 wrap.className = "account-overview-grid-wrap";
-                wrap.appendChild(renderCardGrid(entries.slice(0, cap), options));
+                wrap.appendChild(
+                    renderCardGrid(entries.slice(0, cap), options),
+                );
                 const moreBtn = document.createElement("button");
                 moreBtn.type = "button";
                 moreBtn.className = "ghost account-overview-show-all-btn";
@@ -24533,11 +24624,7 @@
                     appendCardGridHtml(grid, items, options);
                     return grid;
                 }
-                for (
-                    let i = 0;
-                    i < items.length;
-                    i += CARD_GRID_HTML_CHUNK
-                ) {
+                for (let i = 0; i < items.length; i += CARD_GRID_HTML_CHUNK) {
                     appendCardGridHtml(
                         grid,
                         items,
@@ -24736,14 +24823,16 @@
                     );
                 }
                 if (el.rows) {
-                    el.rows.querySelectorAll(
-                        ".view-switch-fade-target, .view-switch-fade-out-target",
-                    ).forEach((node) =>
-                        node.classList.remove(
-                            "view-switch-out",
-                            "view-switch-in",
-                        ),
-                    );
+                    el.rows
+                        .querySelectorAll(
+                            ".view-switch-fade-target, .view-switch-fade-out-target",
+                        )
+                        .forEach((node) =>
+                            node.classList.remove(
+                                "view-switch-out",
+                                "view-switch-in",
+                            ),
+                        );
                 }
                 eachViewSwitchShell((node) =>
                     node.classList.remove("view-switch-out", "view-switch-in"),
@@ -24984,7 +25073,11 @@
                         inStandaloneTool,
                     );
                 const inCatalog = inLibrary || inMultiSearch;
-                if (inCatalog && previousView !== view && !peekViewDomCache(view)) {
+                if (
+                    inCatalog &&
+                    previousView !== view &&
+                    !peekViewDomCache(view)
+                ) {
                     scheduleCatalogWarmup();
                     if (!isCatalogModelWarm()) renderCatalogPlaceholder();
                 } else if (inWishlist && previousView !== view) {
