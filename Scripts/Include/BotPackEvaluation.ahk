@@ -374,6 +374,27 @@ CardDetection_CheckGodPackDeferred(invalidPack := false, cards := "", finalizeAc
 
     session.set("keepAccount", true)
 
+    ; A god pack always consists of all its cards: 5 in standard packs, 4 in
+    ; Deluxe/DeluxePackMega packs. A different count means it cannot be verified.
+    if (IsObject(cards)) {
+        expectedCardCount := DetectFourCardPack() ? 4 : 5
+        if (cards.Length() != expectedCardCount) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (recognized=" . cards.Length() . ", expected=" . expectedCardCount . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            invalidPack := true
+        }
+    } else {
+        totalCardsInPack := currentPackInfo["totalCardsInPack"]
+        classifiedCards := 0
+        For rarityName, rarityCount in currentPackInfo["TypeCount"]
+            classifiedCards += rarityCount
+        if (totalCardsInPack != "" && (classifiedCards != totalCardsInPack || (totalCardsInPack != 4 && totalCardsInPack != 5))) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (classified=" . classifiedCards . ", expected=" . totalCardsInPack . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            invalidPack := true
+        }
+    }
+
     if (!invalidPack) {
         tempStarCount := currentPackInfo["TypeCount"]["fullart"] + currentPackInfo["TypeCount"]["rainbow"] + currentPackInfo["TypeCount"]["trainer"]
 
