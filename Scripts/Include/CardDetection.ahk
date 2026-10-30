@@ -1,4 +1,4 @@
-﻿;===============================================================================
+;===============================================================================
 ; CardDetection.ahk - Card Detection Functions
 ;===============================================================================
 ; This file contains functions for detecting and processing cards in packs.
@@ -160,6 +160,7 @@ AnalysisBorder(totalCardsInPack) {
 
     Gdip_DisposeImage(pBitmap)
     currentPackInfo["isVerified"] := true
+    currentPackInfo["totalCardsInPack"] := totalCardsInPack
     return currentPackInfo
 }
 
@@ -210,6 +211,7 @@ FindGodPack(invalidPack := false, cards := "") {
         CreateStatusMessage("Not a God Pack...",,,, false)
         return false
     }
+
 
     ; A god pack (although possibly invalid) has been found.
     session.set("keepAccount", true)
