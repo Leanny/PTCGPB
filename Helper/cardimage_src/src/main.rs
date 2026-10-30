@@ -40,8 +40,9 @@ struct CardMapEntry {
     illustration_id: Option<String>,
     #[serde(rename = "ExpansionID")]
     expansion_id: Option<String>,
+    // The upstream catalog uses negative numbers for some SP1 variants.
     #[serde(rename = "CollectionNumber")]
-    collection_number: Option<u32>,
+    collection_number: Option<i64>,
 }
 
 type CardMap = HashMap<String, CardMapEntry>;
@@ -207,18 +208,21 @@ async fn load_cardmaster_with_refresh(
     Ok(cardmap)
 }
 
-fn card_sort_key(card_id: &str, cm: &CardMap) -> (String, u32) {
+fn card_sort_key(card_id: &str, cm: &CardMap) -> (String, i64) {
     if let Some(entry) = cm.get(card_id) {
         let exp = entry.expansion_id.clone().unwrap_or_default();
-        let num = entry.collection_number.unwrap_or(u32::MAX);
+        let num = entry.collection_number.unwrap_or(i64::MAX);
         return (exp, num);
     }
     // Fallback: derive from card ID segments (PK_NN_XXXXXX_YY)
     let parts: Vec<&str> = card_id.split('_').collect();
     let num = if parts.len() >= 3 {
-        parts[2].parse::<u32>().map(|n| n / 10).unwrap_or(u32::MAX)
+        parts[2]
+            .parse::<u32>()
+            .map(|n| i64::from(n / 10))
+            .unwrap_or(i64::MAX)
     } else {
-        u32::MAX
+        i64::MAX
     };
     (String::new(), num)
 }
@@ -522,6 +526,65 @@ mod tests {
     #[test]
     fn nine_cards_still_prefer_three_large_columns() {
         assert_eq!(pick_dynamic_cols(9), 3);
+    }
+
+    #[test]
+    fn negative_collection_numbers_are_preserved_and_sorted() {
+        let data = r#"{
+            "PK_20_024100_00": {"ExpansionID": "SP1", "CollectionNumber": -2},
+            "PK_20_024100_01": {"ExpansionID": "SP1", "CollectionNumber": -1},
+            "PK_20_024100_02": {"ExpansionID": "SP1", "CollectionNumber": -3},
+            "zero": {"ExpansionID": "SP1", "CollectionNumber": 0},
+            "positive": {"ExpansionID": "SP1", "CollectionNumber": 27},
+            "unnumbered": {"ExpansionID": "SP1", "CollectionNumber": null}
+        }"#;
+        let cardmap = parse_cardmaster(Path::new("cardmap.json"), data).unwrap();
+        assert_eq!(cardmap["PK_20_024100_00"].collection_number, Some(-2));
+        assert_eq!(cardmap["PK_20_024100_01"].collection_number, Some(-1));
+        assert_eq!(cardmap["PK_20_024100_02"].collection_number, Some(-3));
+
+        let mut cards = [
+            "unnumbered",
+            "positive",
+            "PK_20_024100_01",
+            "zero",
+            "PK_20_024100_00",
+            "PK_20_024100_02",
+        ];
+        cards.sort_by_key(|card| card_sort_key(card, &cardmap));
+        assert_eq!(
+            cards,
+            [
+                "PK_20_024100_02",
+                "PK_20_024100_00",
+                "PK_20_024100_01",
+                "zero",
+                "positive",
+                "unnumbered",
+            ]
+        );
+    }
+
+    #[test]
+    fn unsigned_numbers_and_missing_card_fallback_remain_supported() {
+        let data = r#"{
+            "large": {"ExpansionID": "SP1", "CollectionNumber": 4294967295},
+            "unnumbered": {"ExpansionID": "SP1"}
+        }"#;
+        let cardmap = parse_cardmaster(Path::new("cardmap.json"), data).unwrap();
+        assert_eq!(
+            card_sort_key("large", &cardmap),
+            ("SP1".to_owned(), i64::from(u32::MAX))
+        );
+        assert!(card_sort_key("large", &cardmap) < card_sort_key("unnumbered", &cardmap));
+        assert_eq!(
+            card_sort_key("PK_10_022160_00", &cardmap),
+            (String::new(), 2216)
+        );
+        assert_eq!(
+            card_sort_key("unknown", &cardmap),
+            (String::new(), i64::MAX)
+        );
     }
 }
 
