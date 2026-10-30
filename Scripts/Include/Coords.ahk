@@ -1,4 +1,4 @@
-﻿class Coordinate{
+class Coordinate{
     startX := 0
     startY := 0
     endX := 0
@@ -65,7 +65,7 @@ needlesDict.Add(new Needle("Friend_FriendIDInputReady", "OK2", new Coordinate(0,
 needlesDict.Add(new Needle("Friend_InputFormBlank", "Erase", new Coordinate(15, 495, 68, 515)))
 needlesDict.Add(new Needle("Friend_RequestButtonInSearchResult", "Send", new Coordinate(170, 255, 184, 261)))
 needlesDict.Add(new Needle("Friend_WithdrawButton", "Withdraw", new Coordinate(169, 250, 249, 256)))
-needlesDict.Add(new Needle("Friend_AcceptedButtonInSearchResult", "Accepted", new Coordinate(171, 256, 183, 260)))
+needlesDict.Add(new Needle("Friend_AcceptedButtonInSearchResult", "Accepted", new Coordinate(170, 255, 183, 267)))
 needlesDict.Add(new Needle("Friend_RemoveConfirmButtonInSearchResult", "Remove",new Coordinate(143, 357, 152, 374)))
 needlesDict.Add(new Needle("Friend_CannotFriendRequest", "CannotFriendRequest", new Coordinate(14, 295, 39, 311)))
 
@@ -258,12 +258,12 @@ needlesDict.Add(new Needle("Create_SignupsDataSharing", "SignupsDataSharing", ne
 ;==============================================================================================================================
 
 ; GP Test
-needlesDict.Add(new Needle("GPTest_FriendedInSearcResult", "Accepted", new Coordinate(171, 253, 183, 257)))
+needlesDict.Add(new Needle("GPTest_FriendedInSearcResult", "Accepted", new Coordinate(170, 255, 183, 267)))
 needlesDict.Add(new Needle("GPTest_NotFavouriteInDetails", "FavouriteN", new Coordinate(245, 68, 260, 84)))
 needlesDict.Add(new Needle("GPTest_FavouritedInDetails", "FavouriteY", new Coordinate(244, 68, 262, 83)))
 needlesDict.Add(new Needle("GPTest_AccountNotFound", "GPTest_NotFound", new Coordinate(211, 320, 245, 344)))
-needlesDict.Add(new Needle("GPTest_ReqeustCancelButtonInSearchResult", "PendingFriendRequest", new Coordinate(188, 238, 221, 269)))
-needlesDict.Add(new Needle("GPTest_FriendRequestButtonInUserDetails", "FavouriteFriend2", new Coordinate(84, 392, 98, 405)))
+needlesDict.Add(new Needle("GPTest_ReqeustCancelButtonInSearchResult", "PendingFriendRequest", new Coordinate(189, 244, 217, 274)))
+needlesDict.Add(new Needle("GPTest_FriendRequestButtonInUserDetails", "FavouriteFriend", new Coordinate(79, 418, 95, 433)))
 
 ; privacy popup
 needlesDict.Add(new Needle("Privacy_Box", "Privacy1", new Coordinate(11, 140, 28, 167)))

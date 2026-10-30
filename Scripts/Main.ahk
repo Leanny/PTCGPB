@@ -1146,15 +1146,17 @@ CheckFriendOpsRateLimit() {
     return true
 }
 
-; Click the remove-friend button, alternating ~30px lower in case UI layout shifts.
+; Click the remove-friend button at the same position used by the normal
+; friend removal flow (RemoveFriends in FriendManager.ahk), alternating
+; ~30px lower in case UI layout shifts (e.g. banned accounts).
 ; Returns true once the Remove confirmation dialog is visible.
 ClickFriendRemoveConfirmButton() {
     maxAttempts := 6
     Loop, %maxAttempts% {
         if (Mod(A_Index, 2) = 1)
-            adbClick(145, 407)
+            adbClick(145, 423)
         else
-            adbClick(145, 437)
+            adbClick(145, 453)
 
         Delay(1)
         Sleep, 350
