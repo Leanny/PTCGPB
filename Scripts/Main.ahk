@@ -155,6 +155,12 @@ if(botConfig.get("heartBeat"))
 FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 150)
 
 Loop {
+    if (MainDailyResetStopDue()) {
+        LogInfo("Stopping before daily reset | " . botConfig.get("stopBeforeDailyResetMin") . " min before reset")
+        CreateStatusMessage("Stopping before daily reset...",,,, false)
+        ExitApp
+    }
+
     if (session.get("autoUseGPTest") && botConfig.get("groupRerollEnabled")) {
         session.set("autotest_time", (A_TickCount - session.get("autotest")) // 1000)
         CreateStatusMessage("Auto GP Test Timer : " . session.get("autotest_time") .  "/ " . session.get("TestTime") . " seconds", "AutoGPTest", 0, 605, false, true)
@@ -513,6 +519,22 @@ DismissCreateDownloadScreens(notShowFinding := true) {
         return true
     }
     return false
+}
+
+; Returns true while inside the configured stop window before the daily reset.
+; Daily reset is 06:00 UTC (see AccountEligibility_CurrentDailyResetUTC).
+MainDailyResetStopDue() {
+    minutes := botConfig.get("stopBeforeDailyResetMin") + 0
+    if (minutes <= 0)
+        return false
+
+    nextResetUTC := AccountEligibility_CurrentDailyResetUTC()
+    if (nextResetUTC <= A_NowUTC)
+        nextResetUTC += 1, Days
+
+    secondsUntilReset := nextResetUTC
+    secondsUntilReset -= %A_NowUTC%, Seconds
+    return (secondsUntilReset <= minutes * 60)
 }
 
 resetWindows(){

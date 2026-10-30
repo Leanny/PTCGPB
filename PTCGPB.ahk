@@ -1698,6 +1698,10 @@ ShowToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Add, Edit, vui_instanceLaunchDelay_Popup w30 x355 y%yPos2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("instanceLaunchDelay")
     yPos2 += 30
 
+    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, Stop Main before reset
+    Gui, ToolsAndSystemSelect:Add, Edit, vui_stopBeforeDailyResetMin_Popup w30 x365 y%yPos2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("stopBeforeDailyResetMin")
+    yPos2 += 30
+
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("autoLaunchMonitor") ? "Checked" : "") " vui_autoLaunchMonitor_Popup x" . col2X . " y" . yPos2 . " " . sectionColor, % dict["Txt_autoLaunchMonitor"]
     yPos2 += 26
     if (currentDeleteMethod != "Create Bots (13P)") {
@@ -1803,6 +1807,7 @@ saveToolsAndSystemSettings:
     botConfig.set("ocrLanguage", ui_ocrLanguage_Popup, "ToolsAndSystem")
     botConfig.set("clientLanguage", ui_clientLanguage_Popup, "ToolsAndSystem")
     botConfig.set("instanceLaunchDelay", ui_instanceLaunchDelay_Popup, "ToolsAndSystem")
+    botConfig.set("stopBeforeDailyResetMin", ui_stopBeforeDailyResetMin_Popup, "ToolsAndSystem")
     botConfig.set("autoLaunchMonitor", ui_autoLaunchMonitor_Popup, "ToolsAndSystem")
     botConfig.set("logLevel", ui_logLevel_Popup, "ToolsAndSystem")
     currentDeleteMethod := botConfig.get("deleteMethod")
@@ -2955,6 +2960,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
     HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")
     HelpTT_Add("ui_instanceLaunchDelay_Popup", "instanceLaunchDelay", "Seconds to wait between launching one MuMu instance and the next.")
+    HelpTT_Add("ui_stopBeforeDailyResetMin_Popup", "stopBeforeDailyResetMin", "Minutes before the daily reset (06:00 UTC) at which Main.ahk stops itself.`n0 or empty = disabled. Applies when Main is running; it checks continuously, no restart needed.")
     HelpTT_Add("ui_autoLaunchMonitor_Popup", "autoLaunchMonitor", "When enabled, opens the Monitor when the bot starts.`nThe Monitor watches all instances and restarts any that get stuck.")
     HelpTT_Add("ui_startCockpitWithBot_Popup", "startCockpitWithBot", "When enabled, opens the Cockpit when the bot starts.`nThe Cockpit is a live dashboard with the status and metrics of all running instances.")
     HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits the selected backup categories to git on the shared backup interval (configured in Backup settings).")
