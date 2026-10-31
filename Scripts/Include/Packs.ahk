@@ -47,8 +47,8 @@
         }
 
         Loop, % seriesSteps[this.seriesType] {
-            adbClick_wbb(256, 457)
-            Delay(1)
+            adbClick_wbb(74, 458)
+            Delay(3)
         }
     }
 

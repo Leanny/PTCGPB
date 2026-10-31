@@ -71,6 +71,7 @@ TryHandleTradeTutorial(failSafeTime := 0, clickFriendlist := True) {
     } else {
         adbClick_wbb(138, 480)
     }
+    adbInputEvent("111") ;send ESC
     Delay(0.3)
 
     return true

@@ -319,9 +319,10 @@ SelectPack(HG := false) {
     if(!session.get("isSkipSelectExpansion")) {
         FindImageAndClick("Pack_ScrollInSelectExpansion", 248, 459, , 300)
 
-        ; packs that can be opened after clicking A series
-        session.get("packCoordinates")[session.get("openPack")].moveSeriesScreen()
-        session.get("packCoordinates")[session.get("openPack")].expansionScreenDrag()
+        ; navigate to the pack's series tab and drag to its position in the expansion list
+        selectedPack := session.get("packCoordinates")[session.get("openPack")]
+        selectedPack.moveSeriesScreen()
+        selectedPack.expansionScreenDrag()
 
         packx := session.get("packCoordinates")[session.get("openPack")].getXPos()
         packy := session.get("packCoordinates")[session.get("openPack")].getYPos()
@@ -631,6 +632,10 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         failsafeClickExecuted := false
         recoveredPackOpening := false
         Loop {
+            if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+                adbClick_wbb(37, 378)
+                Delay(1)
+            }
             if (RecoverPackOpeningToMainIfNeeded("HourglassOpeningConfirmation")) {
                 SelectPack(recoveryPack)
                 if(session.get("cantOpenMorePacks"))
@@ -776,19 +781,23 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     failSafeTime := 0
     Loop {
         Delay(4)
+        if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+            adbClick_wbb(37, 378)
+            Delay(1)
+        }
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
             Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
-            adbClick_wbb(146, 494) ;146, 494
+            adbClick_wbb(146, 494)
             Delay(1)
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
-            adbClick_wbb(146, 494) ;146, 494
+            adbClick_wbb(146, 494)
             Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else {
-            adbClick_wbb(146, 494) ;146, 494
+            adbClick_wbb(146, 494)
             Delay(1)
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000

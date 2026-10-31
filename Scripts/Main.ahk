@@ -30,6 +30,7 @@ global gpTestDropdownListHwnd := 0
 global gpTestDropdownReady := false
 global gpTestDropdownDestroying := false
 botConfig.loadSettingsToConfig("ALL")
+session.set("disableFailsafe", botConfig.get("disableFailsafe")) ; Debug aid: freezes failsafe timers
 
 session.set("scriptName", StrReplace(A_ScriptName, ".ahk"))
 session.set("winTitle", StrReplace(A_ScriptName, ".ahk"))
