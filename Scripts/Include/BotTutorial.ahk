@@ -322,6 +322,12 @@ DoTutorial() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        if(FindOrLoseImage("Create_TutorialPackOpenNotifyIcon", 0, failSafeTime)) {
+            break
+        }
+        ; if(FindOrLoseImage("Create_TutorialPackOpenButton", 0, failSafeTime)) {
+        ;     break
+        ; }
         Delay(1)
         adbClick_wbb(247, 472)
         Delay(1)
@@ -329,6 +335,7 @@ DoTutorial() {
             break
         }
         adbClick_wbb(90, 260)
+        Delay(1)
         if(FindOrLoseImage("Create_TutorialPackOpenNotifyIcon", 0, failSafeTime)) {
             break
         }

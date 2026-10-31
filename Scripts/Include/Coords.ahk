@@ -242,6 +242,7 @@ needlesDict.Add(new Needle("Create_TutorialDexMission", "Pokeball", new Coordina
 needlesDict.Add(new Needle("Create_TutorialDexMissionComplete", "Register", new Coordinate(124, 167, 151, 201)))
 needlesDict.Add(new Needle("Create_ConfirmDexMissionComplete", "Mission", new Coordinate(117, 260, 151, 284)))
 needlesDict.Add(new Needle("Create_TutorialPackOpenNotifyIcon", "Notifications", new Coordinate(187, 162, 210, 181)))
+needlesDict.Add(new Needle("Create_TutorialPackOpenButton", "OpenPackTutorial", new Coordinate(174, 388, 200, 403)))
 needlesDict.Add(new Needle("Create_UnlockedWonerPickIconInLevelUp", "Wonder", new Coordinate(55, 278, 71, 296)))
 needlesDict.Add(new Needle("Create_CardImageInTutorialWPFirstScreen", "Wonder2", new Coordinate(75, 151, 83, 162)))
 needlesDict.Add(new Needle("Create_WPItemBottomBorder", "Wonder3", new Coordinate(120, 428, 156, 434)))

@@ -185,6 +185,7 @@ global session   := new Session()
 global botConfig := new BotConfig()
 
 botConfig.loadSettingsToConfig("ALL")
+session.set("disableFailsafe", botConfig.get("disableFailsafe")) ; Debug aid: freezes failsafe timers
 
 runtimeFolder := botConfig.get("folderPath")
 if (runtimeFolder = "" || !InStr(FileExist(runtimeFolder), "D"))
