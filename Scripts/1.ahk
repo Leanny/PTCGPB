@@ -22,6 +22,7 @@ pToken := Gdip_Startup()
 #Include BotPackOpening.ahk
 #Include BotMissions.ahk
 #Include BotWonderPick.ahk
+#Include BotShopPackPurchase.ahk
 #Include BotTutorial.ahk
 #Include BotAccountMenu.ahk
 #Include BotDebugTools.ahk

@@ -272,6 +272,12 @@ needlesDict.Add(new Needle("Privacy_Box2", "Privacy2", new Coordinate(30, 355, 4
 needlesDict.Add(new Needle("Privacy_Cross", "Privacy", new Coordinate(130, 473, 145, 488)))
 needlesDict.Add(new Needle("Privacy_Green", "Privacy3", new Coordinate(31, 353, 44, 377)))
 
+; Shop
+needlesDict.Add(new Needle("Shop_TicketIcon", "ShopTicketIcon", new Coordinate(150, 60, 180, 90)))
+needlesDict.Add(new Needle("Shop_DailyGiftDot", "ShopDailyGiftDot", new Coordinate(250, 178, 274, 202)))
+needlesDict.Add(new Needle("Shop_PurchaseOKButton", "ShopPurchaseOK", new Coordinate(83, 349, 193, 380)))
+
+
 ; Do not use
 ;needlesDict.Add(new Needle("CountrySelect", )
 ;needlesDict.Add(new Needle("CountrySelect2", )
