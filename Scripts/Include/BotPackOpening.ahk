@@ -188,10 +188,10 @@ RecoverPackOpeningToMainIfNeeded(caller := "") {
             adbClick_wbb(139, 371)
         } else if (FindOrLoseImage("StartupErrorX", 0, 0, , true)) {
             adbClick_wbb(140, 439)
-        } else if (FindOrLoseImage("Create_DownloadAlertWindow", 0, 0, , true)) {
-            adbClick_wbb(203, 364)
-        } else if (FindOrLoseImage("Create_DownloadComplete", 0, 0, , true)) {
-            adbClick_wbb(140, 370)
+        } else if (DownloadUpdate(true)) {
+            ; update downloaded: restart the failsafe timer
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
         } else if (FindOrLoseImage("Create_NintendoLink", 0, 0, , true)) {
             adbClick_wbb(140, 460)
         } else if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)) {

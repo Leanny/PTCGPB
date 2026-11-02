@@ -144,7 +144,7 @@ session.set("failSafe", A_TickCount)
 Loop {
     if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, , , true))
         break
-    if (!DismissCreateDownloadScreens())
+    if (!DownloadUpdate(true))
         break
     Delay(1)
     if ((A_TickCount - session.get("failSafe")) // 1000 >= 90)
@@ -179,7 +179,7 @@ Loop {
 
     if(botConfig.get("heartBeat"))
         IniWrite, 1, %A_ScriptDir%\..\HeartBeat.ini, HeartBeat, Main
-    DismissCreateDownloadScreens()
+    DownloadUpdate(true)
     Delay(1)
     FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30, 0, true)
     FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500, false, 0, true)
@@ -229,8 +229,10 @@ if(firstRun) {
                     adbClick(139, 440)  ; Click X to close error
                     Sleep, 4000
                     SafeReload("Main startup error")
-                } else if(DismissCreateDownloadScreens()) {
-                    ; In-game data download dialog dismissed
+                } else if(DownloadUpdate(true)) {
+                    ; update downloaded: restart the failsafe timer
+                    session.set("failSafe", A_TickCount)
+                    failSafeTime := 0
                 } else if(clickButton) {
                     okClickSpacing := botConfig.get("Delay") * 2
                     if (okClickSpacing < 700)
@@ -500,20 +502,6 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
 
     }
     return confirmed
-}
-
-; Dismiss Pokémon TCG Pocket setup/download dialogs during account sync.
-; Returns true when a download screen was detected and clicked through.
-DismissCreateDownloadScreens(notShowFinding := true) {
-    if (FindOrLoseImage("Create_DownloadAlertWindow", 0, 0, 20, notShowFinding)) {
-        adbClick_wbb(203, 364)
-        return true
-    }
-    if (FindOrLoseImage("Create_DownloadComplete", 0, 0, 20, notShowFinding)) {
-        adbClick_wbb(140, 370)
-        return true
-    }
-    return false
 }
 
 resetWindows(){

@@ -429,7 +429,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("s4tFoundTradeable", false)
 
         startPreProcess(botConfig.get("deleteMethod"))
-
+        ExitApp
         methodType := botConfig.get("deleteMethod")
         if ((methodType = "Inject 13P+" || methodType = "Inject Rewards") && IsFunc("EnsureAccountFriendInfo")) {
             session.set("accountFriendInfoReturnedHome", false)

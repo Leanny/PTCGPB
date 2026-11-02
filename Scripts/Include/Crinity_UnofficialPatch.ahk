@@ -363,6 +363,13 @@ startPreProcess(methodType){
         if (TryDismissPackOpeningRecoveryFinding(failSafeTime))
             continue
 
+        ; Update data download: wait for it to finish, then restart the failsafe timer.
+        if (DownloadUpdate(true)) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
+        }
+
         adbClick_wbb(clickX, clickY)
         Delay(0.5)
 

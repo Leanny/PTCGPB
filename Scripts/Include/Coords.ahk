@@ -227,6 +227,7 @@ needlesDict.Add(new Needle("Create_NintendoLink", "Link", new Coordinate(65, 340
 needlesDict.Add(new Needle("Create_NintendoLink2", "Link2", new Coordinate(64, 320, 92, 326)))
 needlesDict.Add(new Needle("Create_DownloadAlertWindow", "Confirm", new Coordinate(118, 347, 135, 384)))
 needlesDict.Add(new Needle("Create_DownloadComplete", "Complete", new Coordinate(215, 369, 233, 397)))
+needlesDict.Add(new Needle("Create_DownloadingData", "DownloadingData", new Coordinate(240, 478, 260, 496)))
 needlesDict.Add(new Needle("Create_CinematicBackground", "Cinematic", new Coordinate(0, 40, 7, 47)))
 needlesDict.Add(new Needle("Create_WelcomePopup", "Welcome", new Coordinate(72, 234, 125, 239)))
 needlesDict.Add(new Needle("Boot_Welcome", "Welcome", new Coordinate(70, 278, 140, 295)))
