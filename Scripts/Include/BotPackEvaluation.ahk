@@ -372,6 +372,28 @@ CardDetection_CheckGodPackDeferred(invalidPack := false, cards := "", finalizeAc
         return false
     }
 
+    ; A god pack always consists of all its cards: 5 in standard packs, 4 in
+    ; Deluxe/DeluxePackMega packs. An incomplete pack is not a GP notification,
+    ; including an "Invalid" one.
+    expectedCardCount := DetectFourCardPack() ? 4 : 5
+    if (IsObject(cards)) {
+        if (cards.Length() != expectedCardCount) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (recognized=" . cards.Length() . ", expected=" . expectedCardCount . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            return false
+        }
+    } else {
+        totalCardsInPack := currentPackInfo["totalCardsInPack"]
+        classifiedCards := 0
+        For rarityName, rarityCount in currentPackInfo["TypeCount"]
+            classifiedCards += rarityCount
+        if (totalCardsInPack = "" || totalCardsInPack != expectedCardCount || classifiedCards != expectedCardCount) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (classified=" . classifiedCards . ", slots=" . totalCardsInPack . ", expected=" . expectedCardCount . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            return false
+        }
+    }
+
     session.set("keepAccount", true)
 
     ; A god pack always consists of all its cards: 5 in standard packs, 4 in
