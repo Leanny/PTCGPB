@@ -150,6 +150,7 @@ DoWonderPick() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        ; todo: x check
         adbClick(261, 478)
         Sleep, 1000
         if FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, failSafeTime)

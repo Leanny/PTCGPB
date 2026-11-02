@@ -41,6 +41,7 @@ OnExit("CleanupBeforeExit")
 global session := new Session()
 global botConfig := new BotConfig()
 botConfig.loadSettingsToConfig("ALL")
+session.set("disableFailsafe", botConfig.get("disableFailsafe")) ; Debug aid: freezes failsafe timers
 LogSettingsSnapshotForRun(botConfig.settingsFile)
 
 parsePackData()
