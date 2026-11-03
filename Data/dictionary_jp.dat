@@ -70,6 +70,7 @@ Txt_slowMotion:互換モード
 Txt_Monitor:モニター：
 Txt_Scale:スケール：
 Txt_RowGap:行間隔：
+Txt_RowGap:"行間隔：
 Txt_FolderPath:フォルダパス：
 Txt_OcrLanguage:OCR言語：
 Txt_ClientLanguage:クライアント

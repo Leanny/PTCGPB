@@ -1238,7 +1238,7 @@ DirectlyPositionWindow() {
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)
-    x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+    x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
     WinSet, Style, -0xC00000, % "ahk_id " . getMuMuHwnd(session.get("winTitle"))
     WinMove, % "ahk_id " . getMuMuHwnd(session.get("winTitle")), , %x%, %y%, %scaleParam%, %rowHeight%

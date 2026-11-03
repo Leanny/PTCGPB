@@ -1646,6 +1646,11 @@ ShowToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Add, Edit, vui_RowGap_Popup w25 x300 y%rowGapY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("RowGap")
     yPos2 += 30
 
+    startOffsetY := yPos2 + 2
+    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%startOffsetY% %sectionColor%, % dict["Txt_StartOffset"]
+    Gui, ToolsAndSystemSelect:Add, Edit, vui_StartOffset_Popup w25 x300 y%startOffsetY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("StartOffset")
+    yPos2 += 30
+
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_FolderPath"]
     yPos2 += 20
     mumuFolderPath := botConfig.get("folderPath")
@@ -1799,6 +1804,7 @@ saveToolsAndSystemSettings:
 
     botConfig.set("SelectedMonitorIndex", ui_SelectedMonitorIndex_Popup, "ToolsAndSystem")
     botConfig.set("RowGap", ui_RowGap_Popup, "ToolsAndSystem")
+    botConfig.set("StartOffset", ui_StartOffset_Popup, "ToolsAndSystem")
     botConfig.set("folderPath", ui_folderPath_Popup, "ToolsAndSystem")
     botConfig.set("ocrLanguage", ui_ocrLanguage_Popup, "ToolsAndSystem")
     botConfig.set("clientLanguage", ui_clientLanguage_Popup, "ToolsAndSystem")
@@ -2624,7 +2630,7 @@ ArrangeWindows:
                 rowHeight := titleHeight + 492
                 currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
                 y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
-                x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+                x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
                 WinMove, %mainInstanceName%,, %x%, %y%, %scaleParam%, %rowHeight%
                 WinSet, Redraw, , %mainInstanceName%
@@ -2655,7 +2661,7 @@ ArrangeWindows:
                 rowHeight := titleHeight + 492
                 currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
                 y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
-                x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+                x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
                 if(x < 0)
                     x := 0
 
@@ -2951,6 +2957,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_wonderpickForEventMissions_Popup", "wonderpickForEventMissions", "When enabled, performs wonderpicks when an event mission requires them.")
     HelpTT_Add("ui_SelectedMonitorIndex_Popup", "SelectedMonitorIndex", "Monitor on which instance windows are arranged.")
     HelpTT_Add("ui_RowGap_Popup", "RowGap", "Vertical gap in pixels between rows of instance windows.")
+    HelpTT_Add("ui_StartOffset_Popup", "StartOffset", "Horizontal offset in pixels applied to the start of every instance window (default 5).")
     HelpTT_Add("ui_folderPath_Popup", "folderPath", "MuMuPlayer installation folder. It is normally detected automatically from the current MuMuPlayer configuration.`nCommon location: C:\Program Files\Netease")
     HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
     HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")

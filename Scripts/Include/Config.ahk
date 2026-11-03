@@ -63,6 +63,7 @@
         , "instanceLaunchDelay": 5
         , "folderPath": "C:\Program Files\Netease"
         , "RowGap": 105
+        , "StartOffset": 5
         , "debugMode": 0
         , "disableFailsafe": 0
         , "logLevel": "info"
