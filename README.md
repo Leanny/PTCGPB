@@ -25,6 +25,8 @@ Creates bots and looks for desirable cards to save and trade to your main accoun
 
 **[Open the PTCGPB User Guide](docs/index.html)** for first-time setup, bot modes, main settings, account management, Discord configuration, updates, troubleshooting, and frequently asked questions.
 
+**[Assisted donor trading](docs/assisted-trading.md)** and **[card gifting](docs/assisted-sharing.md)** provide a donor finder and separate confirmation workers for transfers to a phone recipient.
+
 Join the discord for an updated guide, latest links, and support: https://discord.gg/C9Nyf7P4sT
 
 ## License
