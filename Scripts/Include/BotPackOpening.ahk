@@ -215,7 +215,7 @@ RecoverPackOpeningToMainIfNeeded(caller := "") {
 SelectPack(HG := false) {
     global session
 
-    if(HG = "HGPack" || HG = "HGPack10")
+    if(HG = "HGPack" || HG = "HGPack10" || HG = "HGSpecial")
         session.set("packOpeningRecoveryPack", HG)
     else
         session.set("packOpeningRecoveryPack", "")
@@ -237,7 +237,7 @@ SelectPack(HG := false) {
     ; switch to the favourites view in Home before clicking the pack.
     ; Skip the switch for packs that are already stable in the Home screen
     ; (listed in mainScreenPackList, or Latest).
-    if (session.get("packFavoriteSet") && HG != "First") {
+    if (session.get("packFavoriteSet") && HG != "First" && HG != "HGSpecial") {
         homePosition := GetStableHomePosition(session.get("openPack"))
         isStableInHome := (homePosition != "")
         if (!isStableInHome) {
@@ -268,6 +268,7 @@ SelectPack(HG := false) {
 
     ensureMissionUserPrefsExist()
     InitPackOpening()
+    onSpecialPackScreen := 0
     if(HG = "First" && session.get("injectMethod") && session.get("loadedAccount") ){
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
@@ -283,6 +284,11 @@ SelectPack(HG := false) {
                 adbClick_wbb(packx, HomeScreenAllPackY)
             Delay(1)
             if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime)) {
+                break
+            }
+            else if (FindOrLoseImage("Pack_NewHG", 0)) {
+                ; we are in special pack screen, so we move back to a normal screen
+                onSpecialPackScreen := 1
                 break
             }
             else if(!renew && !getFC) {
@@ -306,17 +312,19 @@ SelectPack(HG := false) {
                 adbClick_wbb(203, 436)
                 FindImageAndClick("Create_InfoIconInStandByOpenPack", 180, 436, , 500) ;stop at hourglasses tutorial 2 180 to 203?
             }
-
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Waiting for Points`n(" . failSafeTime . "/90 seconds)")
         }
         enteredPackScreenFromHome := true
     }
 
+    if(HG = "HGSpecial" && session.get("injectMethod") && session.get("loadedAccount") ) {
+        ; todo special pack implementation
+    }
     if (!enteredPackScreenFromHome)
         FindImageAndClick("Pack_PackPointButton", packx, packy, , 1000)
 
-    if(!session.get("isSkipSelectExpansion")) {
+    if(!session.get("isSkipSelectExpansion") || (onSpecialPackScreen = 1)) {
         FindImageAndClick("Pack_ScrollInSelectExpansion", 248, 459, , 300)
 
         ; navigate to the pack's series tab and drag to its position in the expansion list
@@ -419,7 +427,6 @@ SelectPack(HG := false) {
         if (IsObject(openPackCoord))
             openPackCoord.tapPackPreviewUntilPointsGone()
         Delay(1)
-
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
         failsafeClickExecuted := false  ; Flag to track if failsafe click has been executed
@@ -453,6 +460,7 @@ SelectPack(HG := false) {
             CreateStatusMessage("Waiting for Skip2`n(" . failSafeTime . "/45 seconds)")
         }
     }
+    SetConfiguredGameSpeed()
 }
 
 PackOpening(tenPackOpening := false) {
@@ -525,9 +533,6 @@ PackOpening(tenPackOpening := false) {
 
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -740,9 +745,6 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
 
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -755,7 +757,6 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
                     SetGameSpeed(3)
                 }
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -950,10 +951,6 @@ SetOpenGiftSpeed(targetSpeed) {
 
 SetOpenGiftSpeedByButtons(targetSpeed) {
     SetGameSpeed(targetSpeed = 1 || targetSpeed = 3 ? targetSpeed : 2)
-
-    Delay(1)
-    adbClick_wbb(51, 297)
-    Delay(1)
     return true
 }
 

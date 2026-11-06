@@ -9,7 +9,7 @@ SetTitleMatchMode, 3
 
 #Include %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
 
-global adbShell, adbPath, adbPorts, winTitle, folderPath, mumuFolder, extractInProgress
+global adbShell, adbPath, adbPorts, adbHost, winTitle, folderPath, mumuFolder, extractInProgress
 
 IniRead, winTitle, ExtractAccount.ini, UserSettings, winTitle, 1
 IniRead, fileName, ExtractAccount.ini, UserSettings, fileName, name
@@ -52,7 +52,7 @@ Gui, Add, Text, x10 y+15 w450 h1 0x10 c3F3F3F
 Gui, Add, Text, x10 y+12 w450 vExtractStatusText c8FD18A, Ready.
 Gui, Add, Progress, x10 y+6 w450 h8 vExtractProgress c4AAE3A Background303030, 0
 Gui, Add, Button, x185 y+16 w100 h40 vExtractSubmitBtn gSaveSettings cBlue, Submit
-Gui, Show, w470 h420, Arturo's Account Extraction Tool ;'
+Gui, Show, w470 h420, Account Extraction Tool ;'
 Return
 
 SaveSettings:
@@ -97,8 +97,8 @@ SaveSettings:
     }
 
     UpdateExtractUi("Connecting to emulator...", 24)
-    RunWait, %adbPath% connect 127.0.0.1:%adbPorts%,, Hide
-    RunWait, %adbPath% -s 127.0.0.1:%adbPorts% root,, Hide
+    RunWait, %adbPath% connect %adbHost%:%adbPorts%,, Hide
+    RunWait, %adbPath% -s %adbHost%:%adbPorts% root,, Hide
 
     UpdateExtractUi("Preparing shell...", 35)
     if !RunAdbRootCommand("id") {
@@ -122,9 +122,11 @@ SaveSettings:
 return
 
 findAdbPorts(mumuFolderParam) {
-    global adbPorts, winTitle
+    global adbPorts, adbHost, winTitle
     ; Initialize variables
-    adbPorts := 0  ; Create an empty associative array for adbPorts
+    adbPorts := 0
+    adbHost := "127.0.0.1"
+    matchedFolder := ""
     mumuFolderPath = %mumuFolderParam%\vms\*
     if !FileExist(mumuFolderPath){
         MsgBox, 16, , Double check your folder path! It should be the one that contains the MuMuPlayer 12 folder! `nDefault is just C:\Program Files\Netease
@@ -161,17 +163,45 @@ findAdbPorts(mumuFolderParam) {
                 RegExMatch(extraConfigContent, """playerName"":\s*""(.*?)""", playerName)
                 if(playerName1 = winTitle || displayName = winTitle) {
                     adbPorts := adbPort
+                    matchedFolder := folder
                 }
             }
             else if (displayName = winTitle) {
                 adbPorts := adbPort
+                matchedFolder := folder
             }
+        }
+    }
+
+    ; Host-bridge mode: MuMu serves adb on the bridged IP (port 5555), reported by MuMuManager for a running VM.
+    if (matchedFolder != "" && RegExMatch(matchedFolder, "-(\d+)$", idx)) {
+        info := ExtractCaptureOutput(MuMuManagerCommandLine("info -v " . idx1))
+        if (RegExMatch(info, """adb_host_ip""\s*:\s*""([^""]+)""", ipM) && RegExMatch(info, """adb_port""\s*:\s*""?(\d+)""?", portM)) {
+            adbHost := ipM1
+            adbPorts := (adbHost = "127.0.0.1" || adbHost = "localhost") ? portM1 : 5555
         }
     }
 }
 
+MuMuManagerCommandLine(args) {
+    global mumuFolder
+    managerPath := mumuFolder . "\shell\MuMuManager.exe"
+    if (!FileExist(managerPath))
+        managerPath := mumuFolder . "\nx_main\MuMuManager.exe"
+    return """" . managerPath . """ " . args
+}
+
+ExtractCaptureOutput(command) {
+    try {
+        exec := ComObjCreate("WScript.Shell").Exec(A_ComSpec . " /c " . command)
+        return exec.StdOut.ReadAll()
+    } catch {
+        return ""
+    }
+}
+
 saveAccount() {
-    global adbPath, adbPorts, fileName
+    global adbPath, adbPorts, fileName, adbHost
 
     saveDir := A_ScriptDir "\" . fileName . ".xml"
 
@@ -226,10 +256,10 @@ saveAccount() {
 }
 
 RunAdbRootCommand(shellCommand) {
-    global adbPath, adbPorts
+    global adbPath, adbPorts, adbHost
     q := Chr(34)
     sq := Chr(39)
-    device := "127.0.0.1:" . adbPorts
+    device := adbHost . ":" . adbPorts
 
     ; Prefer adb root shell. Nested su/sh -c hangs on MuMu Android 15.
     rootShellCommand := q . adbPath . q . " -s " . device . " shell " . sq . shellCommand . sq
@@ -248,8 +278,8 @@ RunAdbRootCommand(shellCommand) {
 }
 
 RunAdbPull(remotePath, localPath) {
-    global adbPath, adbPorts
-    pullCommand := Chr(34) . adbPath . Chr(34) . " -s 127.0.0.1:" . adbPorts . " pull " . remotePath . " " . Chr(34) . localPath . Chr(34)
+    global adbPath, adbPorts, adbHost
+    pullCommand := Chr(34) . adbPath . Chr(34) . " -s " . adbHost . ":" . adbPorts . " pull " . remotePath . " " . Chr(34) . localPath . Chr(34)
     RunWait, %pullCommand%,, Hide
     return (ErrorLevel = 0)
 }

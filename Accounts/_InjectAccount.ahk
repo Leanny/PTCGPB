@@ -9,7 +9,7 @@ SetTitleMatchMode, 3
 
 #Include %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
 
-global adbShell, adbPath, adbPorts, winTitle, folderPath, selectedFilePath, mumuFolder, headless, injectInProgress
+global adbShell, adbPath, adbPorts, adbHost, winTitle, folderPath, selectedFilePath, mumuFolder, headless, injectInProgress
 
 IniRead, winTitle, InjectAccount.ini, UserSettings, winTitle, 1
 IniRead, fileName, InjectAccount.ini, UserSettings, fileName, name
@@ -195,7 +195,7 @@ Gui, Add, Progress, x10 y+4 w450 h8 vInjectProgress c4AAE3A Background303030, 0
 Gui, Add, Button, x130 y+8 w100 h40 vSubmitBtn gSaveSettings cBlue, Submit
 Gui, Add, Button, x+10 yp w100 h40 vRunInstanceBtn gRunInstance cGreen, Run Instance
 
-Gui, Show, w470 AutoSize, Arturo's Account Injection Tool ;'
+Gui, Show, w470 AutoSize, Account Injection Tool ;'
 ApplyInjectFriendEditPlaceholders()
 Return
 
@@ -336,7 +336,7 @@ RunInjectFlow:
         return
     }
     UpdateInjectUi("Connecting to emulator...", 30)
-    RunWait, %adbPath% connect 127.0.0.1:%adbPorts%,, Hide
+    RunWait, %adbPath% connect %adbHost%:%adbPorts%,, Hide
     if (ErrorLevel != 0) {
         MsgBox, 16, , Failed to connect ADB on port %adbPorts%.
         UpdateInjectUi("Connection failed.", 0)
@@ -344,7 +344,7 @@ RunInjectFlow:
         injectInProgress := 0
         return
     }
-    RunWait, %adbPath% -s 127.0.0.1:%adbPorts% root,, Hide
+    RunWait, %adbPath% -s %adbHost%:%adbPorts% root,, Hide
 
     UpdateInjectUi("Injecting account data...", 45)
     if !loadAccount() {
@@ -391,9 +391,11 @@ GetVmDisplayName(folder) {
 }
 
 findAdbPorts(mumuFolderParam) {
-    global adbPorts, winTitle
+    global adbPorts, adbHost, winTitle
     ; Initialize variables
-    adbPorts := 0  ; Create an empty associative array for adbPorts
+    adbPorts := 0
+    adbHost := "127.0.0.1"
+    matchedFolder := ""  ; Create an empty associative array for adbPorts
     mumuFolderPath = %mumuFolderParam%\vms\*
     if !FileExist(mumuFolderPath){
         MsgBox, 16, , Double check your folder path! It should be the one that contains the MuMuPlayer 12 folder! `nDefault is just C:\Program Files\Netease
@@ -430,20 +432,49 @@ findAdbPorts(mumuFolderParam) {
                 RegExMatch(extraConfigContent, """playerName"":\s*""(.*?)""", playerName)
                 if(playerName1 = winTitle || displayName = winTitle) {
                     adbPorts := adbPort
+                    matchedFolder := folder
                 }
             }
             else if (displayName = winTitle) {
                 adbPorts := adbPort
+                matchedFolder := folder
             }
+        }
+    }
+
+    ; Host-bridge mode: MuMu serves adb on the bridged IP/port, reported by MuMuManager for a running VM.
+    if (matchedFolder != "" && RegExMatch(matchedFolder, "-(\d+)$", idx)) {
+        info := InjectCaptureOutput(MuMuManagerCommandLine("info -v " . idx1))
+        if (RegExMatch(info, """adb_host_ip""\s*:\s*""([^""]+)""", ipM) && RegExMatch(info, """adb_port""\s*:\s*""?(\d+)""?", portM)) {
+            adbHost := ipM1
+            ; Bridge mode: MuMu still reports the NAT port, but adb listens on 5555 on the bridged IP.
+            adbPorts := (adbHost = "127.0.0.1" || adbHost = "localhost") ? portM1 : 5555
         }
     }
 }
 
+MuMuManagerCommandLine(args) {
+    global mumuFolder
+    managerPath := mumuFolder . "\shell\MuMuManager.exe"
+    if (!FileExist(managerPath))
+        managerPath := mumuFolder . "\nx_main\MuMuManager.exe"
+    return """" . managerPath . """ " . args
+}
+
+InjectCaptureOutput(command) {
+    try {
+        exec := ComObjCreate("WScript.Shell").Exec(A_ComSpec . " /c " . command)
+        return exec.StdOut.ReadAll()
+    } catch {
+        return ""
+    }
+}
+
 RunAdbRootCommand(shellCommand) {
-    global adbPath, adbPorts
+    global adbPath, adbPorts, adbHost
     q := Chr(34)
     sq := Chr(39)
-    device := "127.0.0.1:" . adbPorts
+    device := adbHost . ":" . adbPorts
 
     ; Prefer adb root shell. Nested su/sh -c hangs on MuMu Android 15.
     rootShellCommand := q . adbPath . q . " -s " . device . " shell " . sq . shellCommand . sq
@@ -462,8 +493,8 @@ RunAdbRootCommand(shellCommand) {
 }
 
 RunAdbPush(localPath, remotePath) {
-    global adbPath, adbPorts
-    pushCommand := Chr(34) . adbPath . Chr(34) . " -s 127.0.0.1:" . adbPorts . " push " . Chr(34) . localPath . Chr(34) . " " . remotePath
+    global adbPath, adbPorts, adbHost
+    pushCommand := Chr(34) . adbPath . Chr(34) . " -s " . adbHost . ":" . adbPorts . " push " . Chr(34) . localPath . Chr(34) . " " . remotePath
     RunWait, %pushCommand%,, Hide
     return (ErrorLevel = 0)
 }
@@ -622,7 +653,7 @@ StartInjectPtcgpbCleanup() {
 }
 
 EnsureInjectPtcgpbHelperInstalled() {
-    global adbPath, adbPorts
+    global adbPath, adbPorts, adbHost
 
     remotePath := "/data/ptcgp/ptcgpb"
     minHelperSize := 2500000
@@ -667,8 +698,8 @@ EnsureInjectPtcgpbHelperInstalled() {
 }
 
 RunAdbShellOutput(shellCommand) {
-    global adbPath, adbPorts
-    command := """" . adbPath . """ -s 127.0.0.1:" . adbPorts . " shell " . Chr(34) . shellCommand . Chr(34)
+    global adbPath, adbPorts, adbHost
+    command := """" . adbPath . """ -s " . adbHost . ":" . adbPorts . " shell " . Chr(34) . shellCommand . Chr(34)
     try {
         shell := ComObjCreate("WScript.Shell")
         process := shell.Exec(command)

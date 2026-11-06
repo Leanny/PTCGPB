@@ -222,7 +222,7 @@ GetHistoryOfAccount() {
     LogTrace("Ensuring MissionUserPrefs exists before history import", "ADB.txt")
     ensureMissionUserPrefsExist()
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     LogTrace("Ensuring ptcgpb helper exists before history import", "ADB.txt")
     if (!EnsurePTCGPBHelperInstalled())
         return false
@@ -234,7 +234,7 @@ GetHistoryOfAccount() {
     adbWriteRaw("cp -f " . remotePath . " " . sdcardPath)
 
     LogTrace("Pulling history file to " . localPath, "ADB.txt")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     adbWriteRaw("rm -f " . remotePath . " " . sdcardPath)
     if (!FileExist(localPath)) {
         LogWarn("GetHistoryOfAccount failed because pulled history file was not created: " . localPath)

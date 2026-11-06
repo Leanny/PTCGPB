@@ -195,18 +195,12 @@ DoTutorial() {
 
     if(session.get("setSpeed") = 3){
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
 
     FindImageAndClick("Create_WelcomePopup", 253, 506, , 110) ;click through cutscene until welcome page
 
     if(session.get("setSpeed") = 3){
         SetGameSpeed(3)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     FindImageAndClick("Create_NameInputIcon", 189, 438) ;wait for name input screen
     FindImageAndClick("Create_DeactivatedOKButton", 139, 257) ;wait for name input screen
@@ -256,9 +250,6 @@ DoTutorial() {
     FindImageAndClick("Pack_ReadyForOpenPack", 140, 424) ;wait for pack to be ready  to trace
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -271,7 +262,6 @@ DoTutorial() {
                     SetGameSpeed(3) ; click 3x
                 }
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -281,9 +271,6 @@ DoTutorial() {
     FindImageAndClick("Create_SwipeForRegisterDexIcon", 140, 375) ;click through cards until needing to swipe up
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -294,7 +281,6 @@ DoTutorial() {
             if(session.get("setSpeed") > 1) {
                 SetConfiguredGameSpeed()
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -363,9 +349,6 @@ DoTutorial() {
     FindImageAndClick("Pack_ReadyForOpenPack", 239, 497) ;wait for pack to be ready  to Trace
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -378,7 +361,6 @@ DoTutorial() {
                     SetGameSpeed(3)
                 }
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000

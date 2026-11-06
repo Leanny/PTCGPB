@@ -105,7 +105,7 @@ SetPackFavorite(packName) {
         return false
     }
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     output := Trim(CmdRet(adbCommand . " shell /data/ptcgp/ptcgpb --pack " . expansionId), "`r`n`t ")
     LogInfo("SetPackFavorite: pack=" . packName . " expansion=" . expansionId . " result=" . output, "ADB.txt")
 
@@ -118,7 +118,7 @@ SetPackFavorite(packName) {
 StartPtcgpbWatchCards(full := false) {
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     if (full)
         watchArgs := " watch-cards --full --duplicate"
     else
@@ -132,7 +132,7 @@ StartPtcgpbWatchCards(full := false) {
 HelperHasCardResult() {
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     ; Use test -s so we only consider the result valid when the file has actual content.
     RunWait, % adbCommand . " shell test -s /data/ptcgp/result.rc", , Hide
     return (ErrorLevel = 0)
@@ -141,7 +141,7 @@ HelperHasCardResult() {
 GetPtcgpbPackCount() {
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     output := Trim(CmdRet(adbCommand . " shell /data/ptcgp/ptcgpb packcount"), "`r`n`t ")
     output := StrReplace(output, "`r")
     output := Trim(output, "`n ")
@@ -190,7 +190,7 @@ EnsurePTCGPBHelperInstalled() {
         LogWarn("Downloaded ptcgpb helper is unexpectedly small: " . helperSize . " bytes")
         return false
     }
-    adbCommand := """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := """" . session.get("adbPath") . """ -s " . AdbAddress()
     LogTrace("Pushing ptcgpb helper to " . sdcardTmpPath, "ADB.txt")
     RunWait, % adbCommand . " push """ . localPath . """ " . sdcardTmpPath,, Hide
 

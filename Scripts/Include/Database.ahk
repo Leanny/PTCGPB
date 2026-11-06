@@ -64,7 +64,7 @@ GetDeviceAccountFromXML() {
     adbWriteRaw("cp -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml /sdcard/deviceAccount.xml")
     Sleep, 500
 
-    RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " pull /sdcard/deviceAccount.xml """ . tempPath . """",, Hide
+    RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " pull /sdcard/deviceAccount.xml """ . tempPath . """",, Hide
 
     Sleep, 500
 

@@ -168,7 +168,7 @@ loadAccount(favoritePackName := "") {
         session.set("packFavoriteSet", 1)
     }
 
-    RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
+    RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
     CreateStatusMessage("Injecting: " . session.get("accountFileName"),,,, false)
     adbWriteRaw("cp /sdcard/deviceAccount.xml /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
     adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
@@ -426,7 +426,7 @@ saveAccount(file := "Valid", ByRef filePath := "", packDetails := "", addWFlag :
         waitadb()
         Sleep, 500
 
-        RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " pull /sdcard/deviceAccount.xml """ . filePath,, Hide
+        RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " pull /sdcard/deviceAccount.xml """ . filePath,, Hide
 
         Sleep, 500
 
@@ -962,7 +962,7 @@ UpdateSavedXml(xmlPath) {
         waitadb()
         Sleep, 500
 
-        RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " pull /sdcard/deviceAccount.xml """ . xmlPath,, Hide
+        RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " pull /sdcard/deviceAccount.xml """ . xmlPath,, Hide
 
         Sleep, 500
 

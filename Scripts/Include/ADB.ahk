@@ -37,7 +37,7 @@ setADBBaseInfo(){
     session.set("baseTime", 0)
 }
 
-; Kills persistent "adb -s 127.0.0.1:<port> shell" processes started from MuMu's
+; Kills persistent "adb -s <host>:<port> shell" processes started from MuMu's
 ; adb whose AutoHotkey parent is gone. These are left behind when a bot script is
 ; terminated without cleanup. Shells of running scripts, the adb server, short
 ; lived adb commands and adb.exe from other tools are left alone.
@@ -62,7 +62,7 @@ KillOrphanedAdbShells() {
             exePath := process.ExecutablePath
             if (exePath = "" || SubStr(exePath, 1, StrLen(mumuFolder) + 1) != mumuFolder . "\")
                 continue
-            if (!RegExMatch(process.CommandLine, "i)\s-s\s+127\.0\.0\.1:\d+\s+shell\s*$"))
+            if (!RegExMatch(process.CommandLine, "i)\s-s\s+[\d.]+:\d+\s+shell\s*$"))
                 continue
 
             ; The parent counts as alive only if it is an AutoHotkey process that
@@ -126,6 +126,32 @@ ADB_AssignToShellJob(pid) {
     return assigned
 }
 
+; Returns the "host:port" adb serial of this instance (127.0.0.1 unless MuMu uses bridge mode).
+AdbAddress() {
+    global session
+    host := session.get("adbHost")
+    if (host = "")
+        host := "127.0.0.1"
+    return host . ":" . session.get("adbPort")
+}
+
+; In host-bridge mode MuMu exposes adb on the bridged IP instead of a forwarded localhost port.
+; MuMuManager reports the real endpoint for a running instance; returns true and sets host/port if found.
+ResolveMuMuAdbEndpoint(vmFolder, playerName, ByRef host, ByRef port) {
+    ; The VM folder ends with its MuMu index (e.g. MuMuPlayerGlobal-12.0-5); fall back to a name lookup.
+    index := RegExMatch(vmFolder, "-(\d+)$", folderMatch) ? folderMatch1 : MuMuGetInstanceIndex(playerName)
+    if (index = "")
+        return false
+    output := MuMuManagerCommand("info -v " . MuMuQuoteArg(index), true)
+    if (!RegExMatch(output, """adb_host_ip""\s*:\s*""([^""]+)""", ipMatch)
+        || !RegExMatch(output, """adb_port""\s*:\s*""?(\d+)""?", portMatch))
+        return false
+    host := ipMatch1
+    ; MuMu keeps reporting the NAT-forwarded port in bridge mode, but adb listens on the default 5555 there.
+    port := (host = "127.0.0.1" || host = "localhost") ? portMatch1 : 5555
+    return true
+}
+
 findAdbPorts() {
     prof := Prof_Scope(A_ThisFunc)
     global session
@@ -172,6 +198,13 @@ findAdbPorts() {
                 if(playerName1 = session.get("scriptName")) {
                     ADB_LogTrace("Matched MuMu playerName=" . playerName1 . " adbPort=" . adbPortValue . " android15=" . (InStr(folder, "MuMuPlayerGlobal-15.0") ? 1 : 0))
                     session.set("muMuAndroid15", InStr(folder, "MuMuPlayerGlobal-15.0") ? 1 : 0)
+                    adbHostValue := "127.0.0.1"
+                    if (ResolveMuMuAdbEndpoint(folder, playerName1, bridgeHost, bridgePort)) {
+                        adbHostValue := bridgeHost
+                        adbPortValue := bridgePort
+                        ADB_LogTrace("MuMu reports adb endpoint " . adbHostValue . ":" . adbPortValue)
+                    }
+                    session.set("adbHost", adbHostValue)
                     return adbPortValue
                 }
             }
@@ -186,6 +219,7 @@ RefreshAdbConnectionAfterInstanceRestart(timeoutMs = 30000) {
 
     startTick := A_TickCount
     oldPort := session.get("adbPort")
+    oldAddress := AdbAddress()
     lastPort := oldPort
 
     Loop {
@@ -197,9 +231,9 @@ RefreshAdbConnectionAfterInstanceRestart(timeoutMs = 30000) {
             }
 
             session.set("adbPort", newPort)
-            ip := "127.0.0.1:" . newPort
-            if (oldPort && oldPort != newPort)
-                CmdRet(session.get("adbPath") . " disconnect 127.0.0.1:" . oldPort)
+            ip := AdbAddress()
+            if (oldPort && oldAddress != ip)
+                CmdRet(session.get("adbPath") . " disconnect " . oldAddress)
 
             connectionResult := CmdRet(session.get("adbPath") . " connect " . ip)
             if (InStr(connectionResult, "connected to " . ip) || InStr(connectionResult, "already connected to " . ip)) {
@@ -233,7 +267,7 @@ ConnectAdb() {
     MaxRetries := 5
     RetryCount := 1
     connected := false
-    ip := "127.0.0.1:" . session.get("adbPort") ; Specify the connection IP:port
+    ip := AdbAddress() ; Specify the connection IP:port
 
     CreateStatusMessage("Connecting to ADB...",,,, false)
     ADB_LogTrace("ConnectAdb starting ip=" . ip . " maxRetries=" . MaxRetries)
@@ -258,8 +292,8 @@ ConnectAdb() {
 
         if !connected {
             ADB_LogTrace("ConnectAdb disconnect/reconnect cycle starting")
-            disconnectionResult := CmdRet(session.get("adbPath") . " disconnect 127.0.0.1:" . session.get("adbPort"))
-            connectionResult := CmdRet(session.get("adbPath") . " connect 127.0.0.1:" . session.get("adbPort"))
+            disconnectionResult := CmdRet(session.get("adbPath") . " disconnect " . AdbAddress())
+            connectionResult := CmdRet(session.get("adbPath") . " connect " . AdbAddress())
             LogWarn("[" . A_ScriptName . "] ADB connection failed in ConnectAdb. Bot is reconnecting to ADB.(" . RetryCount . "/" . MaxRetries . ") Connection result: " . connectionResult, "ADB.txt")
 
             if (RetryCount > MaxRetries) {
@@ -278,7 +312,7 @@ DisableBackgroundServices() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    deviceAddress := "127.0.0.1:" . session.get("adbPort")
+    deviceAddress := AdbAddress()
     ADB_LogTrace("DisableBackgroundServices started deviceAddress=" . deviceAddress)
     commands := []
     ;commands.Push("pm disable-user --user 0 ""com.google.android.gms/.chimera.PersistentIntentOperationService"" 2> /dev/null")
@@ -334,19 +368,19 @@ initializeAdbShell() {
                 ; disable root and restart as root shell
                 MuMuDisableRoot(session.get("scriptName"))
                 ADB_LogTrace("initializeAdbShell adb shell port=" . session.get("adbPort"))
-                RunWait, % session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " root", , Hide
+                RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " root", , Hide
 
                 ; Attempt to start adb shell
                 ADB_LogTrace("initializeAdbShell exec adb shell port=" . session.get("adbPort"))
-                session.set("adbShell", ComObjCreate("WScript.Shell").Exec(session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort") . " shell"))
+                session.set("adbShell", ComObjCreate("WScript.Shell").Exec(session.get("adbPath") . " -s " . AdbAddress() . " shell"))
                 ADB_AssignToShellJob(session.get("adbShell").ProcessID)
 
                 ; Ensure adbShell is running before sending 'su'
                 Sleep, 500
                 if (session.get("adbShell").Status != 0) {
                     RetryCount++
-                    disconnectionResult := CmdRet(session.get("adbPath") . " disconnect 127.0.0.1:" . session.get("adbPort"))
-                    connectionResult := CmdRet(session.get("adbPath") . " connect 127.0.0.1:" . session.get("adbPort"))
+                    disconnectionResult := CmdRet(session.get("adbPath") . " disconnect " . AdbAddress())
+                    connectionResult := CmdRet(session.get("adbPath") . " connect " . AdbAddress())
                     LogWarn("[" . A_ScriptName . "] ADB connection failed in initializeAdbShell. Bot is reconnecting to ADB.(" . RetryCount . "/" . MaxRetries . ") Connection result: " . connectionResult, "ADB.txt")
 
                     if (RetryCount > MaxRetries) {
@@ -387,7 +421,7 @@ waitUntilActivatePTCGPApp(){
     global session, Debug
 
     session.set("baseTime", A_TickCount)
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     ADB_LogTrace("waitUntilActivatePTCGPApp started")
     Loop, {
         result := CmdRet(adbCommand . " shell dumpsys window | grep -E 'mCurrentFocus'")
@@ -622,7 +656,7 @@ isPTCGPAppInFocus() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     result := CmdRet(adbCommand . " shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'")
     if (result = "")
         result := CmdRet(adbCommand . " shell dumpsys window | grep -E 'mCurrentFocus'")
@@ -716,7 +750,7 @@ isTerminatePTCGPAppByADBShell() {
         return cachedResult
     }
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     result := CmdRet(adbCommand . " shell pidof jp.pokemon.pokemontcgp")
     ADB_LogTrace("isTerminatePTCGPAppByADBShell pidResult=" . Trim(result))
     if (RegExMatch(result, "\d+")) {
@@ -737,7 +771,7 @@ isTerminatePTCGPHelperApp(){
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     result := CmdRet(adbCommand . " shell pidof ptcgpb")
     ADB_LogTrace("isTerminatePTCGPHelperApp pidResult=" . Trim(result))
     if (RegExMatch(result, "\d+")) {
@@ -751,7 +785,7 @@ isTerminatePTCGPApp() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     result := CmdRet(adbCommand . " shell pidof jp.pokemon.pokemontcgp")
     ADB_LogTrace("isTerminatePTCGPApp pidResult=" . Trim(result))
     if (RegExMatch(result, "\d+")) {
@@ -955,7 +989,7 @@ adbTakeScreenshot(outputFile) {
         pTokenLocal := Gdip_Startup()
     }
 
-    deviceAddress := "127.0.0.1:" . session.get("adbPort")
+    deviceAddress := AdbAddress()
     baseCommand := """" . session.get("adbPath") . """ -s " . deviceAddress
     ADB_LogTrace("adbTakeScreenshot outputFile=" . outputFile)
 
@@ -970,7 +1004,7 @@ adbTakeScreenshot(outputFile) {
     pBitmap := Gdip_BitmapFromHWND(hwnd)
 
     if (!pBitmap || pBitmap = "") {
-        deviceAddress := "127.0.0.1:" . session.get("adbPort")
+        deviceAddress := AdbAddress()
         command := baseCommand . " exec-out screencap -p > """ .  outputFile . """"
         ADB_LogTrace("adbTakeScreenshot using exec-out fallback because bitmap capture failed")
         RunWait, %ComSpec% /c "%command%", , Hide
@@ -988,7 +1022,7 @@ adbTakeScreenshot(outputFile) {
     Gdip_DisposeImage(pBitmap)
 
     if (!result || result = -1) {
-        deviceAddress := "127.0.0.1:" . session.get("adbPort")
+        deviceAddress := AdbAddress()
         command := baseCommand . " exec-out screencap -p > """ .  outputFile . """"
         ADB_LogTrace("adbTakeScreenshot using exec-out fallback because save failed")
         RunWait, %ComSpec% /c "%command%", , Hide

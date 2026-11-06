@@ -46,7 +46,7 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
 
     adbWriteRaw("rm -f " . sdcardPath)
     adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     adbWriteRaw("rm -f " . sdcardPath)
 
     exists := FileExist(localPath) ? true : false
@@ -75,7 +75,7 @@ PullPackOpeningResultLog(failedDir, uniquePrefix) {
 
     stagingCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
     stagingCopyStatus := Trim(StrReplace(adbWriteRaw("if [ ! -f " . remotePath . " ]; then echo remote-missing; elif cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     pullExitCode := ErrorLevel
     finalCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
 
@@ -231,7 +231,7 @@ ReadEliteDeckResult(timeoutSec := 45) {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     session.set("failSafe", A_TickCount)
     Loop {
         output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
@@ -291,7 +291,7 @@ UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
 EvaluatePack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     expectedOpenedPacks := session.get("expectedPackOpenCount") + 0
     maxAttempts := expectedOpenedPacks > 1 ? 100 : 10
     foundResult := false
@@ -327,7 +327,7 @@ EvaluatePackCount() {
 RecoverPack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
 
     pre := PackOpeningMissionUserPrefsSnapshotPath("pre")
     post := PackOpeningMissionUserPrefsSnapshotPath("post")
