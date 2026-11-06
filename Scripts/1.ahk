@@ -253,6 +253,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     session.set("friended", true)
     CreateStatusMessage("Stuck account still has friends. Unfriending accounts...")
     waitForAppBootScreen()
+    SetConfiguredGameSpeed()
     Delay(1)
     startPreProcess(botConfig.get("deleteMethod"))
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
@@ -416,6 +417,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         LogInfo("Run started | run=" . (session.get("rerolls") + 1) . " | pack=" . session.get("openPack") . (session.get("injectMethod") ? " | account=" . session.get("accountFileName") : ""))
 
         waitForAppBootScreen()
+        SetConfiguredGameSpeed()
 
         session.set("packsInPool", 0)
         session.set("packsThisRun", 0)
