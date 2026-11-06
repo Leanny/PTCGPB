@@ -27,7 +27,7 @@
         global session
 
         ; Number of tab steps away from the A series tab.
-        seriesSteps := {"A":0, "B":1, "C":2}
+        seriesSteps := {"A":0, "B":1, "C":2, "SP": 4}
         if (!seriesSteps.HasKey(this.seriesType))
             return
 
@@ -47,8 +47,8 @@
         }
 
         Loop, % seriesSteps[this.seriesType] {
-            adbClick_wbb(256, 457)
-            Delay(1)
+            adbClick_wbb(74, 458)
+            Delay(3)
         }
     }
 

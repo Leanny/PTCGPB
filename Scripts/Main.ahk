@@ -30,6 +30,7 @@ global gpTestDropdownListHwnd := 0
 global gpTestDropdownReady := false
 global gpTestDropdownDestroying := false
 botConfig.loadSettingsToConfig("ALL")
+session.set("disableFailsafe", botConfig.get("disableFailsafe")) ; Debug aid: freezes failsafe timers
 
 session.set("scriptName", StrReplace(A_ScriptName, ".ahk"))
 session.set("winTitle", StrReplace(A_ScriptName, ".ahk"))
@@ -143,7 +144,7 @@ session.set("failSafe", A_TickCount)
 Loop {
     if (FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, , , true))
         break
-    if (!DismissCreateDownloadScreens())
+    if (!DownloadUpdate(true))
         break
     Delay(1)
     if ((A_TickCount - session.get("failSafe")) // 1000 >= 90)
@@ -178,7 +179,7 @@ Loop {
 
     if(botConfig.get("heartBeat"))
         IniWrite, 1, %A_ScriptDir%\..\HeartBeat.ini, HeartBeat, Main
-    DismissCreateDownloadScreens()
+    DownloadUpdate(true)
     Delay(1)
     FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 30, 0, true)
     FindImageAndClick("Friend_AddButtonInFriendList", 38, 460, , 500, false, 0, true)
@@ -228,8 +229,10 @@ if(firstRun) {
                     adbClick(139, 440)  ; Click X to close error
                     Sleep, 4000
                     SafeReload("Main startup error")
-                } else if(DismissCreateDownloadScreens()) {
-                    ; In-game data download dialog dismissed
+                } else if(DownloadUpdate(true)) {
+                    ; update downloaded: restart the failsafe timer
+                    session.set("failSafe", A_TickCount)
+                    failSafeTime := 0
                 } else if(clickButton) {
                     okClickSpacing := botConfig.get("Delay") * 2
                     if (okClickSpacing < 700)
@@ -501,20 +504,6 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
     return confirmed
 }
 
-; Dismiss Pokémon TCG Pocket setup/download dialogs during account sync.
-; Returns true when a download screen was detected and clicked through.
-DismissCreateDownloadScreens(notShowFinding := true) {
-    if (FindOrLoseImage("Create_DownloadAlertWindow", 0, 0, 20, notShowFinding)) {
-        adbClick_wbb(203, 364)
-        return true
-    }
-    if (FindOrLoseImage("Create_DownloadComplete", 0, 0, 20, notShowFinding)) {
-        adbClick_wbb(140, 370)
-        return true
-    }
-    return false
-}
-
 resetWindows(){
     prof := Prof_Scope(A_ThisFunc)
     global botConfig
@@ -539,7 +528,7 @@ resetWindows(){
             currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
             y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
-            x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+            x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
             WinSet, Style, -0xC00000, %Title%
             WinMove, %Title%, , %x%, %y%, %scaleParam%, %rowHeight%
@@ -1146,15 +1135,17 @@ CheckFriendOpsRateLimit() {
     return true
 }
 
-; Click the remove-friend button, alternating ~30px lower in case UI layout shifts.
+; Click the remove-friend button at the same position used by the normal
+; friend removal flow (RemoveFriends in FriendManager.ahk), alternating
+; ~30px lower in case UI layout shifts (e.g. banned accounts).
 ; Returns true once the Remove confirmation dialog is visible.
 ClickFriendRemoveConfirmButton() {
     maxAttempts := 6
     Loop, %maxAttempts% {
         if (Mod(A_Index, 2) = 1)
-            adbClick(145, 407)
+            adbClick(145, 423)
         else
-            adbClick(145, 437)
+            adbClick(145, 453)
 
         Delay(1)
         Sleep, 350
@@ -2233,7 +2224,7 @@ DirectlyPositionWindow() {
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)
-    x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+    x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
     WinSet, Style, -0xC00000, %Title%
     WinMove, %Title%, , %x%, %y%, %scaleParam%, %rowHeight%

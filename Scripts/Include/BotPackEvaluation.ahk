@@ -46,7 +46,7 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
 
     adbWriteRaw("rm -f " . sdcardPath)
     adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     adbWriteRaw("rm -f " . sdcardPath)
 
     exists := FileExist(localPath) ? true : false
@@ -75,7 +75,7 @@ PullPackOpeningResultLog(failedDir, uniquePrefix) {
 
     stagingCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
     stagingCopyStatus := Trim(StrReplace(adbWriteRaw("if [ ! -f " . remotePath . " ]; then echo remote-missing; elif cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     pullExitCode := ErrorLevel
     finalCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
 
@@ -231,7 +231,7 @@ ReadEliteDeckResult(timeoutSec := 45) {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     session.set("failSafe", A_TickCount)
     Loop {
         output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
@@ -291,7 +291,7 @@ UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
 EvaluatePack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     expectedOpenedPacks := session.get("expectedPackOpenCount") + 0
     maxAttempts := expectedOpenedPacks > 1 ? 100 : 10
     foundResult := false
@@ -327,7 +327,7 @@ EvaluatePackCount() {
 RecoverPack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
 
     pre := PackOpeningMissionUserPrefsSnapshotPath("pre")
     post := PackOpeningMissionUserPrefsSnapshotPath("post")
@@ -372,7 +372,50 @@ CardDetection_CheckGodPackDeferred(invalidPack := false, cards := "", finalizeAc
         return false
     }
 
+    ; A god pack always consists of all its cards: 5 in standard packs, 4 in
+    ; Deluxe/DeluxePackMega packs. An incomplete pack is not a GP notification,
+    ; including an "Invalid" one.
+    expectedCardCount := DetectFourCardPack() ? 4 : 5
+    if (IsObject(cards)) {
+        if (cards.Length() != expectedCardCount) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (recognized=" . cards.Length() . ", expected=" . expectedCardCount . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            return false
+        }
+    } else {
+        totalCardsInPack := currentPackInfo["totalCardsInPack"]
+        classifiedCards := 0
+        For rarityName, rarityCount in currentPackInfo["TypeCount"]
+            classifiedCards += rarityCount
+        if (totalCardsInPack = "" || totalCardsInPack != expectedCardCount || classifiedCards != expectedCardCount) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (classified=" . classifiedCards . ", slots=" . totalCardsInPack . ", expected=" . expectedCardCount . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            return false
+        }
+    }
+
     session.set("keepAccount", true)
+
+    ; A god pack always consists of all its cards: 5 in standard packs, 4 in
+    ; Deluxe/DeluxePackMega packs. A different count means it cannot be verified.
+    if (IsObject(cards)) {
+        expectedCardCount := DetectFourCardPack() ? 4 : 5
+        if (cards.Length() != expectedCardCount) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (recognized=" . cards.Length() . ", expected=" . expectedCardCount . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            invalidPack := true
+        }
+    } else {
+        totalCardsInPack := currentPackInfo["totalCardsInPack"]
+        classifiedCards := 0
+        For rarityName, rarityCount in currentPackInfo["TypeCount"]
+            classifiedCards += rarityCount
+        if (totalCardsInPack != "" && (classifiedCards != totalCardsInPack || (totalCardsInPack != 4 && totalCardsInPack != 5))) {
+            LogDebug("Instance: " . session.get("scriptName") . " | card count check failed (classified=" . classifiedCards . ", expected=" . totalCardsInPack . ")", "debug_cards.txt")
+            CreateStatusMessage("Card count check failed...",,,, false)
+            invalidPack := true
+        }
+    }
 
     if (!invalidPack) {
         tempStarCount := currentPackInfo["TypeCount"]["fullart"] + currentPackInfo["TypeCount"]["rainbow"] + currentPackInfo["TypeCount"]["trainer"]
@@ -510,6 +553,7 @@ CheckPack(stopEarly := false) {
     if(skipCardDetection && !session.get("friendIDs") && botConfig.get("FriendID") = "" && !botConfig.get("s4tEnabled"))
         return false
 
+    currentPackIs1Card := cards.MaxIndex() = 1
     currentPackIs4Card := cards.MaxIndex() = 4
     currentPackIs6Card := cards.MaxIndex() = 6
 

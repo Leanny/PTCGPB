@@ -188,10 +188,10 @@ RecoverPackOpeningToMainIfNeeded(caller := "") {
             adbClick_wbb(139, 371)
         } else if (FindOrLoseImage("StartupErrorX", 0, 0, , true)) {
             adbClick_wbb(140, 439)
-        } else if (FindOrLoseImage("Create_DownloadAlertWindow", 0, 0, , true)) {
-            adbClick_wbb(203, 364)
-        } else if (FindOrLoseImage("Create_DownloadComplete", 0, 0, , true)) {
-            adbClick_wbb(140, 370)
+        } else if (DownloadUpdate(true)) {
+            ; update downloaded: restart the failsafe timer
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
         } else if (FindOrLoseImage("Create_NintendoLink", 0, 0, , true)) {
             adbClick_wbb(140, 460)
         } else if (FindOrLoseImage("Create_WelcomePopup", 0, 0, , true)) {
@@ -215,7 +215,7 @@ RecoverPackOpeningToMainIfNeeded(caller := "") {
 SelectPack(HG := false) {
     global session
 
-    if(HG = "HGPack" || HG = "HGPack10")
+    if(HG = "HGPack" || HG = "HGPack10" || HG = "HGSpecial")
         session.set("packOpeningRecoveryPack", HG)
     else
         session.set("packOpeningRecoveryPack", "")
@@ -237,7 +237,7 @@ SelectPack(HG := false) {
     ; switch to the favourites view in Home before clicking the pack.
     ; Skip the switch for packs that are already stable in the Home screen
     ; (listed in mainScreenPackList, or Latest).
-    if (session.get("packFavoriteSet") && HG != "First") {
+    if (session.get("packFavoriteSet") && HG != "First" && HG != "HGSpecial") {
         homePosition := GetStableHomePosition(session.get("openPack"))
         isStableInHome := (homePosition != "")
         if (!isStableInHome) {
@@ -268,6 +268,7 @@ SelectPack(HG := false) {
 
     ensureMissionUserPrefsExist()
     InitPackOpening()
+    onSpecialPackScreen := 0
     if(HG = "First" && session.get("injectMethod") && session.get("loadedAccount") ){
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
@@ -283,6 +284,11 @@ SelectPack(HG := false) {
                 adbClick_wbb(packx, HomeScreenAllPackY)
             Delay(1)
             if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime)) {
+                break
+            }
+            else if (FindOrLoseImage("Pack_NewHG", 0)) {
+                ; we are in special pack screen, so we move back to a normal screen
+                onSpecialPackScreen := 1
                 break
             }
             else if(!renew && !getFC) {
@@ -306,25 +312,22 @@ SelectPack(HG := false) {
                 adbClick_wbb(203, 436)
                 FindImageAndClick("Create_InfoIconInStandByOpenPack", 180, 436, , 500) ;stop at hourglasses tutorial 2 180 to 203?
             }
-
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Waiting for Points`n(" . failSafeTime . "/90 seconds)")
         }
         enteredPackScreenFromHome := true
     }
 
-    if (!enteredPackScreenFromHome)
-        FindImageAndClick("Pack_PackPointButton", packx, packy, , 1000)
-
-    if(!session.get("isSkipSelectExpansion")) {
+    if(HG = "HGSpecial" && session.get("injectMethod") && session.get("loadedAccount") ) {
         FindImageAndClick("Pack_ScrollInSelectExpansion", 248, 459, , 300)
 
-        ; packs that can be opened after clicking A series
-        session.get("packCoordinates")[session.get("openPack")].moveSeriesScreen()
-        session.get("packCoordinates")[session.get("openPack")].expansionScreenDrag()
+        ; navigate to the pack's series tab and drag to its position in the expansion list
+        selectedPack := session.get("packCoordinates")["SpecialPackFirstPartners"]
+        selectedPack.moveSeriesScreen()
+        selectedPack.expansionScreenDrag()
 
-        packx := session.get("packCoordinates")[session.get("openPack")].getXPos()
-        packy := session.get("packCoordinates")[session.get("openPack")].getYPos()
+        packx := selectedPack.getXPos()
+        packy := selectedPack.getYPos()
 
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
@@ -339,7 +342,40 @@ SelectPack(HG := false) {
             }
         }
         Delay(2)
-        session.get("packCoordinates")[session.get("openPack")].additionalAction()
+        selectedPack.additionalAction()
+    }
+    if (!enteredPackScreenFromHome) {
+        if(HG = "HGSpecial") {
+            FindImageAndClick("Pack_NewHG", packx, packy, , 1000)
+        } else {
+            FindImageAndClick("Pack_PackPointButton", packx, packy, , 1000)
+        }
+    }
+    if(!session.get("isSkipSelectExpansion") || (onSpecialPackScreen = 1)) {
+        FindImageAndClick("Pack_ScrollInSelectExpansion", 248, 459, , 300)
+
+        ; navigate to the pack's series tab and drag to its position in the expansion list
+        selectedPack := session.get("packCoordinates")[session.get("openPack")]
+        selectedPack.moveSeriesScreen()
+        selectedPack.expansionScreenDrag()
+
+        packx := selectedPack.getXPos()
+        packy := selectedPack.getYPos()
+
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop{
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Move pack:" . session.get("openPack") . "`n(" . failSafeTime . "/90 seconds)")
+
+            adbClick_wbb(packx, packy)
+            Delay(2)
+            if(FindOrLoseImage("Pack_ScrollInSelectExpansion", 1, , , 1)) {
+                break
+            }
+        }
+        Delay(2)
+        selectedPack.additionalAction()
     }
     else if (session.get("packFavoriteSet")) {
         ; Favourite pack: already on the correct expansion screen.
@@ -413,12 +449,29 @@ SelectPack(HG := false) {
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             CreateStatusMessage("Waiting for HourglassPack4`n(" . failSafeTime . "/45 seconds)")
         }
+    }
+    else if(HG = "HGSpecial") {
+        session.set("failSafe", A_TickCount)
+        failSafeTime := 0
+        Loop {
+            if(FindOrLoseImage("Pack_CannotOpenMoreFreePacks", 0, failSafeTime) ) {
+                break ; no pack to open
+            }
+            if(FindOrLoseImage("Pack_OpenButton", 0, failSafeTime) ) {
+                session.set("OpenSpecialPack", true)
+                adbClick(140, 419)
+                break
+            }
+            adbClick(133, 242)
+            Delay(1)
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Waiting for Pack Opening`n(" . failSafeTime . "/45 seconds)")
+        }
     } else {
         openPackCoord := session.get("packCoordinates")[session.get("openPack")]
         if (IsObject(openPackCoord))
             openPackCoord.tapPackPreviewUntilPointsGone()
         Delay(1)
-
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
         failsafeClickExecuted := false  ; Flag to track if failsafe click has been executed
@@ -452,6 +505,7 @@ SelectPack(HG := false) {
             CreateStatusMessage("Waiting for Skip2`n(" . failSafeTime . "/45 seconds)")
         }
     }
+    SetConfiguredGameSpeed()
 }
 
 PackOpening(tenPackOpening := false) {
@@ -524,9 +578,6 @@ PackOpening(tenPackOpening := false) {
 
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -534,11 +585,10 @@ PackOpening(tenPackOpening := false) {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                if(session.get("setSpeed") = 3) {
-                    SetGameSpeed(3)
-                }
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3)
             }
+
             adbClick_wbb(51, 292)
             break
         }
@@ -631,6 +681,10 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         failsafeClickExecuted := false
         recoveredPackOpening := false
         Loop {
+            if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+                adbClick_wbb(37, 378)
+                Delay(1)
+            }
             if (RecoverPackOpeningToMainIfNeeded("HourglassOpeningConfirmation")) {
                 SelectPack(recoveryPack)
                 if(session.get("cantOpenMorePacks"))
@@ -735,9 +789,6 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
 
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -745,12 +796,9 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                if(session.get("setSpeed") = 3) {
-                    SetGameSpeed(3)
-                }
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3)
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -776,19 +824,23 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     failSafeTime := 0
     Loop {
         Delay(4)
+        if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+            adbClick_wbb(37, 378)
+            Delay(1)
+        }
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(239, 497)
             Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
-            adbClick_wbb(146, 494) ;146, 494
+            adbClick_wbb(146, 494)
             Delay(1)
         } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
-            adbClick_wbb(146, 494) ;146, 494
+            adbClick_wbb(146, 494)
             Delay(1)
         } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
             break
         } else {
-            adbClick_wbb(146, 494) ;146, 494
+            adbClick_wbb(146, 494)
             Delay(1)
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -941,10 +993,6 @@ SetOpenGiftSpeed(targetSpeed) {
 
 SetOpenGiftSpeedByButtons(targetSpeed) {
     SetGameSpeed(targetSpeed = 1 || targetSpeed = 3 ? targetSpeed : 2)
-
-    Delay(1)
-    adbClick_wbb(51, 297)
-    Delay(1)
     return true
 }
 

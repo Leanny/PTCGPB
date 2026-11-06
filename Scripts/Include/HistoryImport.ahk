@@ -184,7 +184,7 @@ ExportGameHistoryToFile(ByRef localPath) {
     adbWriteRaw("cp -f " . remotePath . " " . sdcardPath)
 
     LogTrace("Pulling history file to " . localPath, "ADB.txt")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     adbWriteRaw("rm -f " . remotePath . " " . sdcardPath)
 
     if (!FileExist(localPath)) {

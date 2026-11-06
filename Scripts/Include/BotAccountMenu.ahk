@@ -89,9 +89,6 @@ menuDeleteStart() {
     }
     if(session.get("friended")) {
         SetConfiguredGameSpeed()
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0

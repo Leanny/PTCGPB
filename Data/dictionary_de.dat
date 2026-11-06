@@ -70,6 +70,7 @@ Txt_slowMotion:Kompatibilität mit Basisspiel
 Txt_Monitor:Überwachen:
 Txt_Scale:Skalierung:
 Txt_RowGap:Abstand zw. Instanzen:
+Txt_StartOffset:Start-Versatz:
 Txt_FolderPath:Ordnerpfad:
 Txt_OcrLanguage:OCR:
 Txt_ClientLanguage:Klient

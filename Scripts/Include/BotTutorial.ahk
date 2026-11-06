@@ -28,7 +28,7 @@ DoTutorial() {
     isYearInFront := (tutorialLanguage = "ja" || tutorialLanguage = "ko" || tutorialLanguage = "zh")
     if (isYearInFront) {
         ; JP/KR display the month picker in the opposite order.
-        Random, monthScrollCount, 4, 7
+        Random, monthScrollCount, 2, 3
         Loop, %monthScrollCount% {
             adbSwipe_wbb("100 707 100 903 150")
             Delay(3)
@@ -61,7 +61,7 @@ DoTutorial() {
 
     if (!isYearInFront) {
         ; Other languages display the year picker in the opposite order.
-        Random, yearScrollCount, 4, 7
+        Random, yearScrollCount, 2, 3
         Loop, %yearScrollCount% {
             adbSwipe_wbb("389 707 389 903 150")
             Delay(3)
@@ -182,10 +182,10 @@ DoTutorial() {
                 }
                 failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             }
-        } else if(FindOrLoseImage("Create_DownloadAlertWindow", 0, failSafeTime)){
-            adbClick_wbb(203, 364)
-        } else if(FindOrLoseImage("Create_DownloadComplete", 0, failSafeTime)){
-            adbClick_wbb(140, 370)
+        } else if(DownloadUpdate()){
+            ; update downloaded: restart the failsafe timer
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
         } else if(FindOrLoseImage("Create_CinematicBackground", 0, failSafeTime)){
             break
         }
@@ -195,18 +195,12 @@ DoTutorial() {
 
     if(session.get("setSpeed") = 3){
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
 
     FindImageAndClick("Create_WelcomePopup", 253, 506, , 110) ;click through cutscene until welcome page
 
     if(session.get("setSpeed") = 3){
         SetGameSpeed(3)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     FindImageAndClick("Create_NameInputIcon", 189, 438) ;wait for name input screen
     FindImageAndClick("Create_DeactivatedOKButton", 139, 257) ;wait for name input screen
@@ -256,9 +250,6 @@ DoTutorial() {
     FindImageAndClick("Pack_ReadyForOpenPack", 140, 424) ;wait for pack to be ready  to trace
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -266,12 +257,9 @@ DoTutorial() {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                if(session.get("setSpeed") = 3) {
-                    SetGameSpeed(3) ; click 3x
-                }
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3) ; click 3x
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -281,9 +269,6 @@ DoTutorial() {
     FindImageAndClick("Create_SwipeForRegisterDexIcon", 140, 375) ;click through cards until needing to swipe up
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -294,7 +279,6 @@ DoTutorial() {
             if(session.get("setSpeed") > 1) {
                 SetConfiguredGameSpeed()
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -314,14 +298,22 @@ DoTutorial() {
         Delay(1)
         if(FindOrLoseImage("Create_MustClickMissionBackground", 0, failSafeTime)){
             break
-        } else if(FindOrLoseImage("Create_DownloadAlertWindow", 0, failSafeTime)){
-            adbClick_wbb(203, 364)
+        } else if(DownloadUpdate()){
+            ; update downloaded: restart the failsafe timer
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
         }
     }
 
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
+        if(FindOrLoseImage("Create_TutorialPackOpenNotifyIcon", 0, failSafeTime)) {
+            break
+        }
+        ; if(FindOrLoseImage("Create_TutorialPackOpenButton", 0, failSafeTime)) {
+        ;     break
+        ; }
         Delay(1)
         adbClick_wbb(247, 472)
         Delay(1)
@@ -329,6 +321,7 @@ DoTutorial() {
             break
         }
         adbClick_wbb(90, 260)
+        Delay(1)
         if(FindOrLoseImage("Create_TutorialPackOpenNotifyIcon", 0, failSafeTime)) {
             break
         }
@@ -354,9 +347,6 @@ DoTutorial() {
     FindImageAndClick("Pack_ReadyForOpenPack", 239, 497) ;wait for pack to be ready  to Trace
     if(session.get("setSpeed") > 1) {
         SetGameSpeed(1)
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
     }
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
@@ -364,12 +354,9 @@ DoTutorial() {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                if(session.get("setSpeed") = 3) {
-                    SetGameSpeed(3)
-                }
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3)
             }
-            adbClick_wbb(51, 297)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -402,6 +389,11 @@ DoTutorial() {
     Delay(2)
 
     ; Bonus Pick confirm (No cost / OK). Wonder4 selection needle often never matches on current UI.
+
+    if(session.get("setSpeed") > 1) {
+        SetGameSpeed(1)
+    }
+
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
@@ -416,10 +408,7 @@ DoTutorial() {
         CreateStatusMessage("Confirming WonderPick`n(" . failSafeTime . "/45 seconds)")
     }
 
-    if(session.get("setSpeed") = 3) ;time the animation
-        Sleep, 1500
-    else
-        Sleep, 2500
+    Sleep, 2500
 
     Delay(1)
 
@@ -428,10 +417,7 @@ DoTutorial() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        if(session.get("setSpeed") = 3)
-            continueTime := 1
-        else
-            continueTime := 3
+        continueTime := 3
 
         if (TryWonderPickDexSwipeRegister()) {
             failSafeTime := 0

@@ -296,7 +296,7 @@ startPreProcess(methodType){
     }
     else if(methodType = "Inject 13p+"){
         findImageName := "Points"
-        needleName := "Pack_PackPointButton"
+        needleName := "Common_InactiveSocialInMainMenu"
         clickX := getPackCoordXInHome()
         clickY := 203
     }
@@ -308,15 +308,15 @@ startPreProcess(methodType){
     }
     else if(methodType = "Inject Rewards"){
         findImageName := "Home"
-        needleName := "Pack_PackPointButton"
-        clickX := getPackCoordXInHome()
-        clickY := 203
+        needleName := "Common_InactiveSocialInMainMenu"
+        clickX := 33
+        clickY := 511
     }
     else if(methodType = "Rename Account"){
         findImageName := "Home"
-        needleName := "Pack_PackPointButton"
-        clickX := getPackCoordXInHome()
-        clickY := 203
+        needleName := "Common_InactiveSocialInMainMenu"
+        clickX := 33
+        clickY := 511
     }
 
     findImageName .= "`n(Selected pack: " . session.get("openPack") . ")"
@@ -362,6 +362,13 @@ startPreProcess(methodType){
         ; Pack-crash recovery appears after both Welcome Back pages are dismissed.
         if (TryDismissPackOpeningRecoveryFinding(failSafeTime))
             continue
+
+        ; Update data download: wait for it to finish, then restart the failsafe timer.
+        if (DownloadUpdate(true)) {
+            session.set("failSafe", A_TickCount)
+            failSafeTime := 0
+            continue
+        }
 
         adbClick_wbb(clickX, clickY)
         Delay(0.5)

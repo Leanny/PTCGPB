@@ -20,6 +20,7 @@
 #Include %A_LineFile%\..\AccountManager.ahk
 #Include %A_LineFile%\..\FriendManager.ahk
 #Include %A_LineFile%\..\Error.ahk
+#Include %A_LineFile%\..\DownloadUpdate.ahk
 #Include %A_LineFile%\..\Coords.ahk
 #Include %A_LineFile%\..\Crinity_UnofficialPatch.ahk
 #Include %A_LineFile%\..\BoundingBox.ahk
