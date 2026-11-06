@@ -194,7 +194,7 @@ CardName_ParseCardmaster(ByRef jsonText, locale, ByRef out) {
 
 ; Maps cardmaster.json Rarity values to the bot's rarity ids.
 CardRarity_FromCardmaster(value) {
-    static map := {100: 1, 200: 2, 300: 3, 400: 4, 500: 7, 600: 8, 700: 5, 800: 9, 830: 11, 860: 12, 900: 10}
+    static map := {100: 1, 200: 2, 300: 3, 400: 4, 500: 7, 600: 8, 700: 5, 800: 9, 830: 11, 860: 12, 900: 10, 1000: 13}
     value := value + 0
     return map.HasKey(value) ? map[value] : 0
 }
@@ -318,6 +318,8 @@ CardName_TypeKeyFor(r, cardId) {
         return "Shiny1Star"
     if (r = 12)
         return "Shiny2Star"
+    if (r = 13)
+        return "RGB"
     return ""
 }
 
@@ -346,6 +348,8 @@ CardName_TypeLabel(typeKey) {
         return "Shiny 1-Star"
     if (typeKey = "Shiny2Star")
         return "Shiny 2-Star"
+    if (typeKey = "RGB")
+        return "RGB"
     return typeKey
 }
 
@@ -392,6 +396,8 @@ CardName_TypeEmoji(typeKey) {
         return sparkle
     if (typeKey = "Shiny2Star")
         return CardName_RepeatToken(sparkle, 2)
+    if (typeKey = "RGB")
+        return Chr(0x1F534) . Chr(0x1F7E2) . Chr(0x1F535)
     return ""
 }
 
@@ -400,7 +406,7 @@ CardName_TypeEmoji(typeKey) {
 ; cards/rarity aren't available (legacy callers) falls back to a count-only line
 ; such as `emoji Â· **3 Diamond**` followed by `(x2)`.
 CardName_BuildFoundBlock(cards, rarity, foundCards) {
-    static typeOrder := ["1Diamond","2Diamond","3Diamond","4Diamond","1Star","Trainer","FullArt","Rainbow","Immersive","Crown","Shiny1Star","Shiny2Star"]
+    static typeOrder := ["1Diamond","2Diamond","3Diamond","4Diamond","1Star","Trainer","FullArt","Rainbow","Immersive","Crown","Shiny1Star","Shiny2Star","RGB"]
 
     if (!IsObject(foundCards))
         return ""

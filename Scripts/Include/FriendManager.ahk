@@ -80,13 +80,13 @@ TryHandleTradeTutorial(failSafeTime := 0, clickFriendlist := True) {
 ;-------------------------------------------------------------------------------
 ; 1 Pack Method: skip friend renew after Immersive / Crown / Shiny pack
 ;-------------------------------------------------------------------------------
-PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star) {
+PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star, foundRGB := 0) {
     global session
 
     if (!session.get("packMethod"))
         return
 
-    if (foundImmersive || foundCrown || foundShiny1Star || foundShiny2Star)
+    if (foundImmersive || foundCrown || foundShiny1Star || foundShiny2Star || foundRGB)
         session.set("packMethodSkipFriendRenew", 1)
     else
         session.set("packMethodSkipFriendRenew", 0)
