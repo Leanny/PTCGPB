@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.3.0-beta.5"
+    ,localVersion := "v10.3.0-beta.6"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -1137,6 +1137,8 @@ return
 savePackSelection:
     For idx, packObj in session.get("pokemonPackObj") {
         packID := packObj.PackID
+        if (packObj.Series = "SP")
+            continue
 
         GuiControlGet, state,, ui_Select_%packID%
         botConfig.set(packID, (state == "") ? botConfig.get(packID) : state, "Pack")
@@ -1604,6 +1606,8 @@ ShowToolsAndSystemSettings:
     }
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . col1X . " y" . yPos . " w190 cWhite", In-Depth History import
     yPos += leftStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialPack") ? "Checked" : "") " vui_claimSpecialPack_Popup x" . col1X . " y" . yPos . " w190 cWhite", Claim Special Pack
+    yPos += leftStep
     yPos += 31
 
     sectionColor := "cWhite"
@@ -1794,6 +1798,7 @@ return
 saveToolsAndSystemSettings:
     botConfig.set("showcaseEnabled", ui_showcaseEnabled_Popup, "ToolsAndSystem")
     botConfig.set("inDepthHistoryImport", ui_inDepthHistoryImport_Popup, "ToolsAndSystem")
+    botConfig.set("claimSpecialPack", ui_claimSpecialPack_Popup, "ToolsAndSystem")
     botConfig.set("claimDailyMission", ui_claimDailyMission_Popup, "ToolsAndSystem")
     botConfig.set("slowMotion", ui_slowMotion_Popup, "ToolsAndSystem")
     botConfig.set("useSoloIdsFile", ui_UseSoloIdsFile_Popup, "ToolsAndSystem")
@@ -2246,6 +2251,7 @@ Save:
         irWPChecked := botConfig.get("wonderpickForEventMissions") ? "Checked" : ""
         irShinedustChecked := botConfig.get("ocrShinedust") ? "Checked" : ""
         irSaveFCChecked := botConfig.get("saveAccountFriendInfo") ? "Checked" : ""
+        irSpecialPackChecked := botConfig.get("claimSpecialPack") ? "Checked" : ""
 
         g_irDialogResult := "cancel"
         Gui, InjectReqDlg:New, +AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Inject Rewards Options
@@ -2257,10 +2263,11 @@ Save:
         Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irClaim %irClaimChecked%, Claim Special Missions
         Gui, InjectReqDlg:Add, Checkbox, x12 y148 vui_irGift %irGiftChecked%, Receive Gift
         Gui, InjectReqDlg:Add, Checkbox, x12 y170 vui_irShinedust %irShinedustChecked%, Track Shinedust
-        Gui, InjectReqDlg:Add, Button, x12 y204 w80 h26 gInjectReqDlgOK Default, OK
-        Gui, InjectReqDlg:Add, Button, x102 y204 w80 h26 gInjectReqDlgCancel, Cancel
+        Gui, InjectReqDlg:Add, Checkbox, x12 y192 vui_irSpecialPack %irSpecialPackChecked%, Claim Special Pack
+        Gui, InjectReqDlg:Add, Button, x12 y226 w80 h26 gInjectReqDlgOK Default, OK
+        Gui, InjectReqDlg:Add, Button, x102 y226 w80 h26 gInjectReqDlgCancel, Cancel
         PTCGPB_PopupRightOfCtl("ui_StartBotButton", 310, 12, dlgX, dlgY)
-        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h246
+        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h268
         irDlgHwnd := WinExist()
         WinWaitClose, ahk_id %irDlgHwnd%
         if (g_irDialogResult = "cancel")
@@ -2270,7 +2277,7 @@ Save:
     if (PromptClaimSpecialMissionsSevtMismatch())
         botConfig.saveConfigToSettings("ALL")
 
-    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimDailyMission") && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo")) {
+    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimDailyMission") && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo") && !botConfig.get("claimSpecialPack")) {
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
     }
 
@@ -2764,6 +2771,7 @@ InjectReqDlgOK:
     botConfig.set("wonderpickForEventMissions", ui_irWP, "ToolsAndSystem")
     botConfig.set("ocrShinedust", ui_irShinedust, "SaveForTrade")
     botConfig.set("saveAccountFriendInfo", ui_irSaveFC, "ToolsAndSystem")
+    botConfig.set("claimSpecialPack", ui_irSpecialPack, "ToolsAndSystem")
     botConfig.saveConfigToSettings("ALL")
     g_irDialogResult := "ok"
     Gui, InjectReqDlg:Destroy
@@ -2948,6 +2956,7 @@ HelpTT_Init() {
     ; --- Popup: Tools & System
     HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
     HelpTT_Add("ui_inDepthHistoryImport_Popup", "inDepthHistoryImport", "This will recover all entries and also check days that already have entries. It is a slightly more time consuming operation and will run independent of the History flag until disabled.")
+    HelpTT_Add("ui_claimSpecialPack_Popup", "claimSpecialPack", "When enabled, accounts become eligible for the weekly special pack. The pack becomes available again every Saturday at 01:00 UTC.")
     HelpTT_Add("ui_claimDailyMission_Popup", "claimDailyMission", "When enabled, claims the daily mission reward of 4 hourglasses on each account.")
     HelpTT_Add("ui_receiveGift_Popup", "receiveGift", "When enabled, opens received gifts on each account.")
     HelpTT_Add("ui_slowMotion_Popup", "slowMotion", "When enabled, skips ModMenu speed buttons (1x/2x/3x). Use only if you run the game without speedModMenu.`nLeave off when the game is sped up with the ModMenu.")

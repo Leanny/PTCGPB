@@ -26,6 +26,14 @@ SetLastPackPulledNow() {
         AccountMetadata_SetLastPackPulledNow(deviceAccount, session.get("scriptName"), session.get("accountFileName"))
 }
 
+SetLastSpecialPackPulledNow() {
+    global session
+
+    deviceAccount := GetCurrentDeviceAccountForMetadata()
+    if (deviceAccount != "")
+        AccountMetadata_SetLastSpecialPackPulledNow(deviceAccount, session.get("scriptName"), session.get("accountFileName"))
+}
+
 GetCurrentDeviceAccountForMetadata() {
     global session
 

@@ -28,7 +28,7 @@ DoTutorial() {
     isYearInFront := (tutorialLanguage = "ja" || tutorialLanguage = "ko" || tutorialLanguage = "zh")
     if (isYearInFront) {
         ; JP/KR display the month picker in the opposite order.
-        Random, monthScrollCount, 4, 7
+        Random, monthScrollCount, 2, 3
         Loop, %monthScrollCount% {
             adbSwipe_wbb("100 707 100 903 150")
             Delay(3)
@@ -61,7 +61,7 @@ DoTutorial() {
 
     if (!isYearInFront) {
         ; Other languages display the year picker in the opposite order.
-        Random, yearScrollCount, 4, 7
+        Random, yearScrollCount, 2, 3
         Loop, %yearScrollCount% {
             adbSwipe_wbb("389 707 389 903 150")
             Delay(3)
@@ -257,10 +257,8 @@ DoTutorial() {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                if(session.get("setSpeed") = 3) {
-                    SetGameSpeed(3) ; click 3x
-                }
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3) ; click 3x
             }
             break
         }
@@ -356,10 +354,8 @@ DoTutorial() {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                if(session.get("setSpeed") = 3) {
-                    SetGameSpeed(3)
-                }
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3)
             }
             break
         }
@@ -393,6 +389,11 @@ DoTutorial() {
     Delay(2)
 
     ; Bonus Pick confirm (No cost / OK). Wonder4 selection needle often never matches on current UI.
+
+    if(session.get("setSpeed") > 1) {
+        SetGameSpeed(1)
+    }
+
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
@@ -407,10 +408,7 @@ DoTutorial() {
         CreateStatusMessage("Confirming WonderPick`n(" . failSafeTime . "/45 seconds)")
     }
 
-    if(session.get("setSpeed") = 3) ;time the animation
-        Sleep, 1500
-    else
-        Sleep, 2500
+    Sleep, 2500
 
     Delay(1)
 
@@ -419,10 +417,7 @@ DoTutorial() {
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
-        if(session.get("setSpeed") = 3)
-            continueTime := 1
-        else
-            continueTime := 3
+        continueTime := 3
 
         if (TryWonderPickDexSwipeRegister()) {
             failSafeTime := 0

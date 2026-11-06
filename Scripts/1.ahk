@@ -295,6 +295,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         clearMissionCache()
         session.set("isReloadAfterAddFriends", false)
         session.set("favEnteredFromHome", false)
+        session.set("OpenedSpecialPack", false)
         Randmax := session.get("packList").Length()
         Random, rand, 1, Randmax
         session.set("openPack", session.get("packList")[rand])
@@ -582,6 +583,17 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
 
+        ; special pack
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") ) {
+            SelectPack("HGSpecial")
+            if(session.get("OpenSpecialPack")) {
+                PackOpening()
+            }
+            SetLastSpecialPackPulledNow()
+            session.set("OpenSpecialPack", false)
+            session.set("OpenedSpecialPack", true)
+        }
+
         ; Daily Mission 4hg collection and/or extra 3rd pack opening
         if((botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" || botConfig.get("deleteMethod") = "Inject 13P+") && (botConfig.get("claimDailyMission") || botConfig.get("openExtraPack"))) {
 
@@ -691,6 +703,17 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if (session.get("injectMethod") && session.get("loadedAccount") && session.get("accountFileName") != "") {
             accountMetaPath := A_ScriptDir "\..\Accounts\Saved\" . session.get("scriptName") . "\" . session.get("accountFileName")
             accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
+        }
+
+        ; claim special pack
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") ) {
+            SelectPack("HGSpecial")
+            if(session.get("OpenSpecialPack")) {
+                PackOpening()
+            }
+            SetLastSpecialPackPulledNow()
+            session.set("OpenSpecialPack", false)
+            session.set("OpenedSpecialPack", true)
         }
 
         if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
@@ -872,9 +895,12 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 EnsureAccountLanguageMetadata()
                 LogInfo("Saved account: " . session.get("accountFileName") . " | packs=" . session.get("accountOpenPacks"))
 
-                if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo"))
+                if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo")) {
+                    if(session.get("setSpeed") > 1) {
+                        SetGameSpeed(1)
+                    }
                     EnsureAccountFriendInfo("Create Bots (13P)", false, true)
-
+                }
                 ; if Create Bots + FoundTradeable, log to database and push discord webhook message(s)
                 if (!session.get("loadDir") && session.get("s4tPendingTradeables").Length() > 0) {
                     ProcessPendingTradeables()

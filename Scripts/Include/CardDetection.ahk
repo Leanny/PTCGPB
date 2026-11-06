@@ -60,13 +60,15 @@ CheckCardLoading(totalCardsInPack){
     global session
 
     count := 0
-    if (totalCardsInPack = 4) {
+    if (totalCardsInPack = 1) {
+        ; Single card (e.g. special pack): centered, bottom edge at y~338
+        borderCoords := [[128, 337, 148, 339]] ; Card 1
+    } else if (totalCardsInPack = 4) {
         borderCoords := [[96, 279, 116, 281]  ; Card 1
             ,[181, 279, 201, 281] ; Card 2
             ,[96, 394, 116, 396] ; Card 3
             ,[181, 394, 201, 396]] ; Card 4
     } else if (totalCardsInPack = 6) {
-        totalCardsInPack := 6
         borderCoords := [[56, 279, 76, 281]   ; Top row card 1
             ,[139, 279, 159, 281] ; Top row card 2
             ,[222, 279, 242, 281] ; Top row card 3

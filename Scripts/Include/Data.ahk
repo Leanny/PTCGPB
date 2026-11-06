@@ -53,6 +53,10 @@ parsePackData(){
             splitData := StrSplit(packValue, "|")
 
             pokemonPackObj[splitData[1]] := {"PackID":splitData[1], "Series":splitData[2], "NumOfPackInSet":splitData[3], "PositionInExtension":splitData[4], "YPosInExtension":splitData[5], "DragType":splitData[6], "ExpansionID":splitData[7]}
+            ; SP (special) packs stay in pokemonPackObj for coordinate lookups,
+            ; but are not selectable: no entry in the pack selection UI or ini.
+            if (splitData[2] = "SP")
+                continue
             pokemonPackOrder.Push(splitData[1])
             ; Latest is an alias, not a concrete pack to use as the initial
             ; default when no pack setting exists yet.

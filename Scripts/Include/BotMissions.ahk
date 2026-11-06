@@ -144,6 +144,10 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
     doSpecial := specialEligible && advance["needClaimUi"]
     eliteDeckClaim := advance["eliteDeckClaim"]
 
+    if(session.get("setSpeed") = 3) {
+        SetGameSpeed(3)
+    }
+
     ; --- Navigate to Missions page (single navigation for both Daily + Special) ---
     if (!NavigateToMissions())
         return {daily: false, special: false, eliteDeckRestart: false}

@@ -56,6 +56,7 @@
         , "gpTestWaitTime": 150
         , "showcaseEnabled": 0
         , "inDepthHistoryImport": 0
+        , "claimSpecialPack": 0
         , "claimDailyMission": 0
         , "slowMotion": 0
         , "claimSpecialMissions": 0

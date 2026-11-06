@@ -177,6 +177,8 @@ needlesDict.Add(new Needle("Menu_MiscMenuLeftTop", "InSubMenu", new Coordinate(0
 ; Pack
 needlesDict.Add(new Needle("Pack_PackPointButton", "Points", new Coordinate(238, 406, 247, 416)))
 needlesDict.Add(new Needle("Pack_NewHG", "NewHG", new Coordinate(222, 59, 242, 76)))
+needlesDict.Add(new Needle("Pack_CannotOpenMoreFreePacks", "CannotOpenMoreFreePacks", new Coordinate(110, 395, 162, 442)))
+needlesDict.Add(new Needle("Pack_OpenButton", "PackOpenButton", new Coordinate(75, 410, 82, 428)))
 needlesDict.Add(new Needle("Pack_ScrollInSelectExpansion", "SelectExpansion", new Coordinate(119, 138, 157, 146)))
 needlesDict.Add(new Needle("Pack_ASeries", "ExpansionSeries", new Coordinate(248, 447, 264, 467)))
 needlesDict.Add(new Needle("Pack_SkipButtonAfterOpenPack", "Skip", new Coordinate(245, 495, 256, 507)))

@@ -767,6 +767,25 @@ AccountEligibility_WasAfterDailyReset(timestamp) {
     return AccountEligibility_ToUTC(timestamp) >= AccountEligibility_CurrentDailyResetUTC()
 }
 
+; Most recent Saturday 01:00 UTC (weekly special pack availability).
+AccountEligibility_LastSpecialPackResetUTC() {
+    resetUTC := SubStr(A_NowUTC, 1, 8) . "010000"
+    ; FormatTime wday: 1=Sunday ... 7=Saturday
+    FormatTime, wday, %resetUTC%, WDay
+    resetUTC += -Mod(wday, 7), Days
+    if (resetUTC > A_NowUTC)
+        resetUTC += -7, Days
+    return resetUTC
+}
+
+; True when the special pack was not pulled since the last Saturday 01:00 UTC.
+AccountEligibility_SpecialPackAvailable(accountMeta) {
+    last := IsObject(accountMeta) ? accountMeta["lastSpecialPackPulled"] : ""
+    if (last = "" || last = "0")
+        return true
+    return AccountEligibility_ToUTC(last) < AccountEligibility_LastSpecialPackResetUTC()
+}
+
 AccountEligibility_GetFlag(accountMeta, flag) {
     if (!IsObject(accountMeta["flags"]))
         return AccountMetadata_NewFlag(0)
@@ -864,8 +883,9 @@ AccountEligibility_InjectRewardsEligible(accountMeta) {
     doSpecialMissions := botConfig.get("claimSpecialMissions")
     doGift := botConfig.get("receiveGift")
     doShinedust := botConfig.get("ocrShinedust")
+    doSpecialPack := botConfig.get("claimSpecialPack")
 
-    if (!doWonderpick && !doDailyMission && !doSpecialMissions && !doGift && !doShinedust)
+    if (!doWonderpick && !doDailyMission && !doSpecialMissions && !doGift && !doShinedust && !doSpecialPack)
         return !AccountEligibility_WasAfterDailyReset(accountMeta["lastLoggedIn"])
 
     if (doDailyMission && !AccountEligibility_WasAfterDailyReset(accountMeta["lastLoggedIn"]))
@@ -877,6 +897,8 @@ AccountEligibility_InjectRewardsEligible(accountMeta) {
     if (doGift && !AccountEligibility_FlagIsSet(accountMeta, "R"))
         return true
     if (doShinedust && AccountEligibility_HoursSince(AccountEligibility_GetShinedustLastUpdatedAt(accountMeta)) >= 24)
+        return true
+    if (doSpecialPack && AccountEligibility_SpecialPackAvailable(accountMeta))
         return true
 
     return false

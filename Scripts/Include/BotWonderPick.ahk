@@ -52,11 +52,10 @@ DoWonderPickOnly() {
             if(FindOrLoseImage("WonderPick_EnergyStatusAfterSelect", 0, failSafeTime)){
                 adbClick_wbb(198, 456)
                 Delay(3)
-                if(session.get("setSpeed") > 1) {
-                    if(session.get("setSpeed") = 3) {
-                        SetGameSpeed(3)
-                    }
+                if(session.get("setSpeed") = 3) {
+                    SetGameSpeed(3)
                 }
+
             }
             if(FindOrLoseImage("WonderPick_SelectCards", 0, failSafeTime))
                 break
@@ -64,6 +63,9 @@ DoWonderPickOnly() {
         Delay(1)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for WonderPick`n(" . failSafeTime . "/45 seconds)")
+    }
+    if(session.get("setSpeed") = 3) {
+        SetGameSpeed(3)
     }
     if (!pickAlreadyRevealed) {
         Sleep, 300

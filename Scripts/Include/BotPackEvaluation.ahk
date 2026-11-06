@@ -553,6 +553,7 @@ CheckPack(stopEarly := false) {
     if(skipCardDetection && !session.get("friendIDs") && botConfig.get("FriendID") = "" && !botConfig.get("s4tEnabled"))
         return false
 
+    currentPackIs1Card := cards.MaxIndex() = 1
     currentPackIs4Card := cards.MaxIndex() = 4
     currentPackIs6Card := cards.MaxIndex() = 6
 
