@@ -603,7 +603,7 @@ CardDetection_BuildTypeLists(foundCards, ByRef cardTypes, ByRef cardCounts) {
     cardTypes := []
     cardCounts := []
     total := 0
-    for _, type in ["1Diamond", "2Diamond", "3Diamond", "4Diamond", "1Star", "FullArt", "Rainbow", "Trainer", "Immersive", "Crown", "Shiny1Star", "Shiny2Star", "Wishlist"] {
+    for _, type in ["1Diamond", "2Diamond", "3Diamond", "4Diamond", "1Star", "FullArt", "Rainbow", "Trainer", "Immersive", "Crown", "Shiny1Star", "Shiny2Star", "RGB", "Wishlist"] {
         count := foundCards.HasKey(type) ? foundCards[type] : 0
         total += count
 
@@ -663,7 +663,7 @@ CardDetection_SendS4TDiscord(title, emoji, packName, packDetailsMessage, wishlis
     LogToDiscord(discordMessage, screenShot, true, xmlFileToSend,, botConfig.get("s4tDiscordWebhookURL"), botConfig.get("s4tDiscordUserId"))
 }
 
-FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighoul := 0, foundCrown := 0, foundImmersive := 0, foundShiny1Star := 0, foundShiny2Star := 0, foundTrainer := 0, foundRainbow := 0, foundFullArt := 0) {
+FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighoul := 0, foundCrown := 0, foundImmersive := 0, foundShiny1Star := 0, foundShiny2Star := 0, foundTrainer := 0, foundRainbow := 0, foundFullArt := 0, foundRGB := 0) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, dictionaryData
     global screenShotFileName
@@ -672,7 +672,7 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
 
     session.set("keepAccount", true)
 
-    foundTradeable := found3Dmnd + found4Dmnd + found1Star + foundGimmighoul + foundCrown + foundImmersive + foundShiny1Star + foundShiny2Star + foundTrainer + foundRainbow + foundFullArt
+    foundTradeable := found3Dmnd + found4Dmnd + found1Star + foundGimmighoul + foundCrown + foundImmersive + foundShiny1Star + foundShiny2Star + foundTrainer + foundRainbow + foundFullArt + foundRGB
 
     if (botConfig.get("s4tWP") && botConfig.get("s4tWPMinCards") = 2 && foundTradeable < 2) {
         CreateStatusMessage("s4t: insufficient cards (" . foundTradeable . "/2)",,,, false)
@@ -683,7 +683,7 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
 
     cardTypes := []
     cardCounts := []
-    for _, entry in [["3Diamond", found3Dmnd], ["4Diamond", found4Dmnd], ["1Star", found1Star], ["Gimmighoul", foundGimmighoul], ["Crown", foundCrown], ["Immersive", foundImmersive], ["Shiny1Star", foundShiny1Star], ["Shiny2Star", foundShiny2Star], ["Trainer", foundTrainer], ["Rainbow", foundRainbow], ["FullArt", foundFullArt]] {
+    for _, entry in [["3Diamond", found3Dmnd], ["4Diamond", found4Dmnd], ["1Star", found1Star], ["Gimmighoul", foundGimmighoul], ["Crown", foundCrown], ["Immersive", foundImmersive], ["Shiny1Star", foundShiny1Star], ["Shiny2Star", foundShiny2Star], ["Trainer", foundTrainer], ["Rainbow", foundRainbow], ["FullArt", foundFullArt], ["RGB", foundRGB]] {
         if (entry[2] > 0) {
             cardTypes.Push(entry[1])
             cardCounts.Push(entry[2])
@@ -712,7 +712,8 @@ FoundTradeable(found3Dmnd := 0, found4Dmnd := 0, found1Star := 0, foundGimmighou
     foundCards := { "3Diamond": found3Dmnd, "4Diamond": found4Dmnd, "1Star": found1Star
         , "Crown": foundCrown, "Immersive": foundImmersive
         , "Shiny1Star": foundShiny1Star, "Shiny2Star": foundShiny2Star
-        , "Trainer": foundTrainer, "Rainbow": foundRainbow, "FullArt": foundFullArt }
+        , "Trainer": foundTrainer, "Rainbow": foundRainbow, "FullArt": foundFullArt
+        , "RGB": foundRGB }
     packDetailsMessage := CardName_BuildFoundBlock("", "", foundCards)
     CardDetection_SendS4TDiscord("Pack Opening results", Chr(0x1F4E6), session.get("openPack"), packDetailsMessage, "", accountFileName, screenShot, savedXmlPath)
     return
@@ -738,6 +739,7 @@ CheckCardsSimple(result) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
+    foundRGB         := CountOccurances(cards, rarity, 13)
 
     Wishlist_EnsureFresh()
     wishlistMap      := session.get("wishlistMap")
@@ -755,6 +757,7 @@ CheckCardsSimple(result) {
     tradeableList.Push({key: "Crown",     flag: botConfig.get("s4tCrown"),      count: foundCrown})
     tradeableList.Push({key: "Shiny1Star",flag: botConfig.get("s4tShiny1Star"), count: foundShiny1Star})
     tradeableList.Push({key: "Shiny2Star",flag: botConfig.get("s4tShiny2Star"), count: foundShiny2Star})
+    tradeableList.Push({key: "RGB",       flag: botConfig.get("s4tRGB"),        count: foundRGB})
     tradeableList.Push({key: "Wishlist",  flag: botConfig.get("s4tWishlist"),   count: foundWishlist})
 
     foundCards := {}
@@ -971,6 +974,12 @@ FilterCardsByS4T(cards, rarity) {
 
         if (r = 12) {
             if (botConfig.get("s4tShiny2Star") = 1)
+                filteredCards.Push(c)
+            continue
+        }
+
+        if (r = 1000) {
+            if (botConfig.get("s4tRGB") = 1)
                 filteredCards.Push(c)
             continue
         }

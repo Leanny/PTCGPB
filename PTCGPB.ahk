@@ -1442,6 +1442,8 @@ UpdateS4TButtonText() {
         enabledOptions.Push("Shiny1★")
     if (botConfig.get("s4tShiny2Star"))
         enabledOptions.Push("Shiny2★")
+    if (botConfig.get("s4tRGB"))
+        enabledOptions.Push("RGB")
     if (botConfig.get("s4tWishlist"))
         enabledOptions.Push("Wishlist")
 
@@ -1493,6 +1495,8 @@ ShowS4TSettings:
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tImmersive") ? "Checked" : "") " vui_s4tImmersive_Popup x15 y" . yPos . " " . sectionColor, Immersive
     yPos += 18
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tCrown") ? "Checked" : "") " vui_s4tCrown_Popup x15 y" . yPos . " " . sectionColor, ♚ Crown Rare
+    yPos += 18
+    Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tRGB") ? "Checked" : "") " vui_s4tRGB_Popup x15 y" . yPos . " " . sectionColor, RGB
     yPos += 18
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tWishlist") ? "Checked" : "") " vui_s4tWishlist_Popup x15 y" . yPos . " " . sectionColor, Wishlist
     yPos += 25
@@ -1552,6 +1556,7 @@ saveS4T:
     botConfig.set("s4tImmersive", ui_s4tImmersive_Popup, "SaveForTrade")
     botConfig.set("s4tShiny1Star", ui_s4tShiny1Star_Popup, "SaveForTrade")
     botConfig.set("s4tShiny2Star", ui_s4tShiny2Star_Popup, "SaveForTrade")
+    botConfig.set("s4tRGB", ui_s4tRGB_Popup, "SaveForTrade")
     botConfig.set("s4tWishlist", ui_s4tWishlist_Popup, "SaveForTrade")
     botConfig.set("s4tWP", ui_s4tWP_Popup, "SaveForTrade")
     botConfig.set("s4tWPMinCards", ui_s4tWPMinCards_Popup, "SaveForTrade")
@@ -2225,6 +2230,8 @@ Save:
             s4tSettings .= "• Immersive`n"
         if (botConfig.get("s4tCrown"))
             s4tSettings .= "• Crown Rare`n"
+        if (botConfig.get("s4tRGB"))
+            s4tSettings .= "• RGB`n"
         if (botConfig.get("s4tWishlist"))
             s4tSettings .= "• Wishlist`n"
         if (botConfig.get("s4tWP"))
