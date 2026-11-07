@@ -424,6 +424,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("s4tFoundTradeable", false)
 
         startPreProcess(botConfig.get("deleteMethod"))
+        if(session.get("setSpeed") = 3) {
+            SetGameSpeed(3)
+        }
         methodType := botConfig.get("deleteMethod")
         if ((methodType = "Inject 13P+" || methodType = "Inject Rewards") && IsFunc("EnsureAccountFriendInfo")) {
             session.set("accountFriendInfoReturnedHome", false)
@@ -770,7 +773,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if (session.get("injectMethod") && session.get("friended") && !session.get("keepAccount")) {
             RemoveFriends()
         }
-
         ; Showcase likes
         botConfig.loadIniSectionFromSettingsFile("Extra")
         if (botConfig.get("showcaseLikes") > 0 && botConfig.get("showcaseEnabled") = 1) {
@@ -1281,6 +1283,7 @@ DirectlyPositionWindow() {
 restartGameInstance(reason, RL := true) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck
+    session.set("currentGameSpeed", 0)
     isStuck := InStr(reason, "Stuck")
 
     if (Debug)

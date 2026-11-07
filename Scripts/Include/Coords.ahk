@@ -329,12 +329,16 @@ SetGameSpeed(speed) {
     Delay(1)
     adbClick_wbb(51, 297)
     Delay(1)
+    session.set("currentGameSpeed", speed)
 }
 
 ; Opens the SpeedMod menu and selects the configured speed (3x, otherwise 2x).
 SetConfiguredGameSpeed() {
     global session
-    SetGameSpeed(session.get("setSpeed") = 3 ? 3 : 2)
+    target := session.get("setSpeed") = 3 ? 3 : 2
+    if (session.get("currentGameSpeed") = target)
+        return
+    SetGameSpeed(target)
 }
 
 IsSpeedModImageName(imageName) {
