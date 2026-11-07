@@ -144,13 +144,17 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
     doSpecial := specialEligible && advance["needClaimUi"]
     eliteDeckClaim := advance["eliteDeckClaim"]
 
+    if(session.get("setSpeed") = 3) {
+        SetGameSpeed(3)
+    }
+
     ; --- Navigate to Missions page (single navigation for both Daily + Special) ---
     if (!NavigateToMissions())
         return {daily: false, special: false, eliteDeckRestart: false}
 
     ; --- Elite Deck setup ---
     if (doSpecial && eliteDeckClaim) {
-        adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+        adbCommand := session.get("adbPath") . " -s " . AdbAddress()
         RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.rc", , Hide
         RunWait, % adbCommand . " shell rm -f /data/ptcgp/result.log", , Hide
         if (isTerminatePTCGPHelperApp())
@@ -385,6 +389,7 @@ NavigateToMissions() {
 ; helperResult may already contain the parsed Helper result; if not, we try to
 ; recover it with a pre/post restart diff.
 FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedPrefix := "elitedeck") {
+    return ; todo
     global session
 
     CreateStatusMessage("Registering " . contextName . " cards...",,,, false)
@@ -402,9 +407,6 @@ FinishEliteDeckClaim(helperResult := false, contextName := "Elite Deck", failedP
     ; loading an injected account (SpeedMod menu), then run the normal
     ; startPreProcess so the game reaches the expected main screen.
     waitForAppBootScreen()
-    SetConfiguredGameSpeed()
-    Delay(1)
-    adbClick_wbb(51, 297)
     Delay(1)
     ; Elite Deck restart must always land at Home, regardless of bot mode.
     startPreProcess("Inject Rewards")

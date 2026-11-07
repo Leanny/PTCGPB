@@ -253,8 +253,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     session.set("friended", true)
     CreateStatusMessage("Stuck account still has friends. Unfriending accounts...")
     waitForAppBootScreen()
-    SetConfiguredGameSpeed()
-    adbClick_wbb(51, 297)
     Delay(1)
     startPreProcess(botConfig.get("deleteMethod"))
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
@@ -297,6 +295,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         clearMissionCache()
         session.set("isReloadAfterAddFriends", false)
         session.set("favEnteredFromHome", false)
+        session.set("OpenedSpecialPack", false)
         Randmax := session.get("packList").Length()
         Random, rand, 1, Randmax
         session.set("openPack", session.get("packList")[rand])
@@ -417,10 +416,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         LogInfo("Run started | run=" . (session.get("rerolls") + 1) . " | pack=" . session.get("openPack") . (session.get("injectMethod") ? " | account=" . session.get("accountFileName") : ""))
 
         waitForAppBootScreen()
-        SetConfiguredGameSpeed()
-        Delay(1)
-        adbClick_wbb(51, 297)
-        Delay(1)
 
         session.set("packsInPool", 0)
         session.set("packsThisRun", 0)
@@ -429,7 +424,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("s4tFoundTradeable", false)
 
         startPreProcess(botConfig.get("deleteMethod"))
-        ExitApp
+        if(session.get("setSpeed") = 3) {
+            SetGameSpeed(3)
+        }
         methodType := botConfig.get("deleteMethod")
         if ((methodType = "Inject 13P+" || methodType = "Inject Rewards") && IsFunc("EnsureAccountFriendInfo")) {
             session.set("accountFriendInfoReturnedHome", false)
@@ -589,6 +586,17 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
 
+        ; special pack
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") ) {
+            SelectPack("HGSpecial")
+            if(session.get("OpenSpecialPack")) {
+                PackOpening()
+            }
+            SetLastSpecialPackPulledNow()
+            session.set("OpenSpecialPack", false)
+            session.set("OpenedSpecialPack", true)
+        }
+
         ; Daily Mission 4hg collection and/or extra 3rd pack opening
         if((botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" || botConfig.get("deleteMethod") = "Inject 13P+") && (botConfig.get("claimDailyMission") || botConfig.get("openExtraPack"))) {
 
@@ -700,6 +708,17 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), accountMetaPath)
         }
 
+        ; claim special pack
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") ) {
+            SelectPack("HGSpecial")
+            if(session.get("OpenSpecialPack")) {
+                PackOpening()
+            }
+            SetLastSpecialPackPulledNow()
+            session.set("OpenSpecialPack", false)
+            session.set("OpenedSpecialPack", true)
+        }
+
         if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
             LogInfo("Doing Wonder Pick for event missions")
             GoToMain()
@@ -754,7 +773,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if (session.get("injectMethod") && session.get("friended") && !session.get("keepAccount")) {
             RemoveFriends()
         }
-
         ; Showcase likes
         botConfig.loadIniSectionFromSettingsFile("Extra")
         if (botConfig.get("showcaseLikes") > 0 && botConfig.get("showcaseEnabled") = 1) {
@@ -879,9 +897,12 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 EnsureAccountLanguageMetadata()
                 LogInfo("Saved account: " . session.get("accountFileName") . " | packs=" . session.get("accountOpenPacks"))
 
-                if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo"))
+                if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo")) {
+                    if(session.get("setSpeed") > 1) {
+                        SetGameSpeed(1)
+                    }
                     EnsureAccountFriendInfo("Create Bots (13P)", false, true)
-
+                }
                 ; if Create Bots + FoundTradeable, log to database and push discord webhook message(s)
                 if (!session.get("loadDir") && session.get("s4tPendingTradeables").Length() > 0) {
                     ProcessPendingTradeables()
@@ -988,11 +1009,10 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
             Delay(1)
         }
     }
-/*
-if(imageName = "CommunityShowcase") {
-    TradeTutorialForShowcase()
-}
-*/
+
+    if(imageName = "CommunityShowcase") {
+        TryHandleTradeTutorialForShowcase()
+    }
 
     ErrorCheckInScreen(pBitmap)
 
@@ -1177,11 +1197,10 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         }
 
         Gdip_DisposeImage(pBitmap)
-/*
-if(imageName = "CommunityShowcase") {
-    TradeTutorialForShowcase()
-}
-*/
+
+        if(imageName = "CommunityShowcase") {
+            TryHandleTradeTutorialForShowcase()
+        }
 
         if(skip) {
             ElapsedTime := (A_TickCount - session.get("StartSkipTime")) // 1000
@@ -1202,6 +1221,15 @@ if(imageName = "CommunityShowcase") {
     }
     Gdip_DisposeImage(pBitmap)
     return confirmed
+}
+
+TryHandleTradeTutorialForShowcase() {
+    if (FindOrLoseImage("Friend_AddButtonInFriendList", 0, , , true))
+        return false
+
+    adbClick(182, 435)
+    Delay(0.2)
+    return true
 }
 
 resetWindows() {
@@ -1238,7 +1266,7 @@ DirectlyPositionWindow() {
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)
-    x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+    x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
     WinSet, Style, -0xC00000, % "ahk_id " . getMuMuHwnd(session.get("winTitle"))
     WinMove, % "ahk_id " . getMuMuHwnd(session.get("winTitle")), , %x%, %y%, %scaleParam%, %rowHeight%
@@ -1255,6 +1283,7 @@ DirectlyPositionWindow() {
 restartGameInstance(reason, RL := true) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck
+    session.set("currentGameSpeed", 0)
     isStuck := InStr(reason, "Stuck")
 
     if (Debug)

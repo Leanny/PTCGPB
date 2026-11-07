@@ -296,7 +296,7 @@ startPreProcess(methodType){
     }
     else if(methodType = "Inject 13p+"){
         findImageName := "Points"
-        needleName := "Pack_PackPointButton"
+        needleName := "Common_InactiveSocialInMainMenu"
         clickX := getPackCoordXInHome()
         clickY := 203
     }
@@ -308,15 +308,15 @@ startPreProcess(methodType){
     }
     else if(methodType = "Inject Rewards"){
         findImageName := "Home"
-        needleName := "Pack_PackPointButton"
-        clickX := getPackCoordXInHome()
-        clickY := 203
+        needleName := "Common_InactiveSocialInMainMenu"
+        clickX := 33
+        clickY := 511
     }
     else if(methodType = "Rename Account"){
         findImageName := "Home"
-        needleName := "Pack_PackPointButton"
-        clickX := getPackCoordXInHome()
-        clickY := 203
+        needleName := "Common_InactiveSocialInMainMenu"
+        clickX := 33
+        clickY := 511
     }
 
     findImageName .= "`n(Selected pack: " . session.get("openPack") . ")"

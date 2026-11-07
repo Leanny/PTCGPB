@@ -528,7 +528,7 @@ resetWindows(){
             currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
             y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
-            x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+            x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
             WinSet, Style, -0xC00000, %Title%
             WinMove, %Title%, , %x%, %y%, %scaleParam%, %rowHeight%
@@ -2224,7 +2224,7 @@ DirectlyPositionWindow() {
     currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
 
     y := MonitorTop + (currentRow * rowHeight) + (currentRow * rowGap)
-    x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+    x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
     WinSet, Style, -0xC00000, %Title%
     WinMove, %Title%, , %x%, %y%, %scaleParam%, %rowHeight%

@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.3.0-beta.5"
+    ,localVersion := "v10.3.0-beta.7"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -1137,6 +1137,8 @@ return
 savePackSelection:
     For idx, packObj in session.get("pokemonPackObj") {
         packID := packObj.PackID
+        if (packObj.Series = "SP")
+            continue
 
         GuiControlGet, state,, ui_Select_%packID%
         botConfig.set(packID, (state == "") ? botConfig.get(packID) : state, "Pack")
@@ -1440,6 +1442,8 @@ UpdateS4TButtonText() {
         enabledOptions.Push("Shiny1★")
     if (botConfig.get("s4tShiny2Star"))
         enabledOptions.Push("Shiny2★")
+    if (botConfig.get("s4tRGB"))
+        enabledOptions.Push("RGB")
     if (botConfig.get("s4tWishlist"))
         enabledOptions.Push("Wishlist")
 
@@ -1491,6 +1495,8 @@ ShowS4TSettings:
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tImmersive") ? "Checked" : "") " vui_s4tImmersive_Popup x15 y" . yPos . " " . sectionColor, Immersive
     yPos += 18
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tCrown") ? "Checked" : "") " vui_s4tCrown_Popup x15 y" . yPos . " " . sectionColor, ♚ Crown Rare
+    yPos += 18
+    Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tRGB") ? "Checked" : "") " vui_s4tRGB_Popup x15 y" . yPos . " " . sectionColor, RGB
     yPos += 18
     Gui, S4TSettingsSelect:Add, Checkbox, % (botConfig.get("s4tWishlist") ? "Checked" : "") " vui_s4tWishlist_Popup x15 y" . yPos . " " . sectionColor, Wishlist
     yPos += 25
@@ -1550,6 +1556,7 @@ saveS4T:
     botConfig.set("s4tImmersive", ui_s4tImmersive_Popup, "SaveForTrade")
     botConfig.set("s4tShiny1Star", ui_s4tShiny1Star_Popup, "SaveForTrade")
     botConfig.set("s4tShiny2Star", ui_s4tShiny2Star_Popup, "SaveForTrade")
+    botConfig.set("s4tRGB", ui_s4tRGB_Popup, "SaveForTrade")
     botConfig.set("s4tWishlist", ui_s4tWishlist_Popup, "SaveForTrade")
     botConfig.set("s4tWP", ui_s4tWP_Popup, "SaveForTrade")
     botConfig.set("s4tWPMinCards", ui_s4tWPMinCards_Popup, "SaveForTrade")
@@ -1604,6 +1611,8 @@ ShowToolsAndSystemSettings:
     }
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("inDepthHistoryImport") ? "Checked" : "") " vui_inDepthHistoryImport_Popup x" . col1X . " y" . yPos . " w190 cWhite", In-Depth History import
     yPos += leftStep
+    Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("claimSpecialPack") ? "Checked" : "") " vui_claimSpecialPack_Popup x" . col1X . " y" . yPos . " w190 cWhite", Claim Special Pack
+    yPos += leftStep
     yPos += 31
 
     sectionColor := "cWhite"
@@ -1644,6 +1653,11 @@ ShowToolsAndSystemSettings:
     rowGapY := yPos2 + 2
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%rowGapY% %sectionColor%, % dict["Txt_RowGap"]
     Gui, ToolsAndSystemSelect:Add, Edit, vui_RowGap_Popup w25 x300 y%rowGapY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("RowGap")
+    yPos2 += 30
+
+    startOffsetY := yPos2 + 2
+    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%startOffsetY% %sectionColor%, % dict["Txt_StartOffset"]
+    Gui, ToolsAndSystemSelect:Add, Edit, vui_StartOffset_Popup w25 x300 y%startOffsetY% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("StartOffset")
     yPos2 += 30
 
     Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, % dict["Txt_FolderPath"]
@@ -1789,6 +1803,7 @@ return
 saveToolsAndSystemSettings:
     botConfig.set("showcaseEnabled", ui_showcaseEnabled_Popup, "ToolsAndSystem")
     botConfig.set("inDepthHistoryImport", ui_inDepthHistoryImport_Popup, "ToolsAndSystem")
+    botConfig.set("claimSpecialPack", ui_claimSpecialPack_Popup, "ToolsAndSystem")
     botConfig.set("claimDailyMission", ui_claimDailyMission_Popup, "ToolsAndSystem")
     botConfig.set("slowMotion", ui_slowMotion_Popup, "ToolsAndSystem")
     botConfig.set("useSoloIdsFile", ui_UseSoloIdsFile_Popup, "ToolsAndSystem")
@@ -1799,6 +1814,7 @@ saveToolsAndSystemSettings:
 
     botConfig.set("SelectedMonitorIndex", ui_SelectedMonitorIndex_Popup, "ToolsAndSystem")
     botConfig.set("RowGap", ui_RowGap_Popup, "ToolsAndSystem")
+    botConfig.set("StartOffset", ui_StartOffset_Popup, "ToolsAndSystem")
     botConfig.set("folderPath", ui_folderPath_Popup, "ToolsAndSystem")
     botConfig.set("ocrLanguage", ui_ocrLanguage_Popup, "ToolsAndSystem")
     botConfig.set("clientLanguage", ui_clientLanguage_Popup, "ToolsAndSystem")
@@ -2214,6 +2230,8 @@ Save:
             s4tSettings .= "• Immersive`n"
         if (botConfig.get("s4tCrown"))
             s4tSettings .= "• Crown Rare`n"
+        if (botConfig.get("s4tRGB"))
+            s4tSettings .= "• RGB`n"
         if (botConfig.get("s4tWishlist"))
             s4tSettings .= "• Wishlist`n"
         if (botConfig.get("s4tWP"))
@@ -2240,6 +2258,7 @@ Save:
         irWPChecked := botConfig.get("wonderpickForEventMissions") ? "Checked" : ""
         irShinedustChecked := botConfig.get("ocrShinedust") ? "Checked" : ""
         irSaveFCChecked := botConfig.get("saveAccountFriendInfo") ? "Checked" : ""
+        irSpecialPackChecked := botConfig.get("claimSpecialPack") ? "Checked" : ""
 
         g_irDialogResult := "cancel"
         Gui, InjectReqDlg:New, +AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Inject Rewards Options
@@ -2251,10 +2270,11 @@ Save:
         Gui, InjectReqDlg:Add, Checkbox, x12 y126 vui_irClaim %irClaimChecked%, Claim Special Missions
         Gui, InjectReqDlg:Add, Checkbox, x12 y148 vui_irGift %irGiftChecked%, Receive Gift
         Gui, InjectReqDlg:Add, Checkbox, x12 y170 vui_irShinedust %irShinedustChecked%, Track Shinedust
-        Gui, InjectReqDlg:Add, Button, x12 y204 w80 h26 gInjectReqDlgOK Default, OK
-        Gui, InjectReqDlg:Add, Button, x102 y204 w80 h26 gInjectReqDlgCancel, Cancel
+        Gui, InjectReqDlg:Add, Checkbox, x12 y192 vui_irSpecialPack %irSpecialPackChecked%, Claim Special Pack
+        Gui, InjectReqDlg:Add, Button, x12 y226 w80 h26 gInjectReqDlgOK Default, OK
+        Gui, InjectReqDlg:Add, Button, x102 y226 w80 h26 gInjectReqDlgCancel, Cancel
         PTCGPB_PopupRightOfCtl("ui_StartBotButton", 310, 12, dlgX, dlgY)
-        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h246
+        Gui, InjectReqDlg:Show, x%dlgX% y%dlgY% w310 h268
         irDlgHwnd := WinExist()
         WinWaitClose, ahk_id %irDlgHwnd%
         if (g_irDialogResult = "cancel")
@@ -2264,7 +2284,7 @@ Save:
     if (PromptClaimSpecialMissionsSevtMismatch())
         botConfig.saveConfigToSettings("ALL")
 
-    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimDailyMission") && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo")) {
+    if (botConfig.get("deleteMethod") = "Inject Rewards" && !botConfig.get("claimDailyMission") && !botConfig.get("claimSpecialMissions") && !botConfig.get("receiveGift") && !botConfig.get("wonderpickForEventMissions") && !botConfig.get("ocrShinedust") && !botConfig.get("saveAccountFriendInfo") && !botConfig.get("claimSpecialPack")) {
         MsgBox, 48, Setting Warning, No actions are enabled for 'Inject Rewards'. The game will only log in and out for each account.
     }
 
@@ -2624,7 +2644,7 @@ ArrangeWindows:
                 rowHeight := titleHeight + 492
                 currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
                 y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
-                x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+                x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
 
                 WinMove, %mainInstanceName%,, %x%, %y%, %scaleParam%, %rowHeight%
                 WinSet, Redraw, , %mainInstanceName%
@@ -2655,7 +2675,7 @@ ArrangeWindows:
                 rowHeight := titleHeight + 492
                 currentRow := Floor((instanceIndex - 1) / botConfig.get("Columns"))
                 y := MonitorTop + (currentRow * rowHeight) + (currentRow * botConfig.get("rowGap"))
-                x := MonitorLeft + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
+                x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), botConfig.get("Columns")) * (scaleParam - borderWidth * 2))
                 if(x < 0)
                     x := 0
 
@@ -2758,6 +2778,7 @@ InjectReqDlgOK:
     botConfig.set("wonderpickForEventMissions", ui_irWP, "ToolsAndSystem")
     botConfig.set("ocrShinedust", ui_irShinedust, "SaveForTrade")
     botConfig.set("saveAccountFriendInfo", ui_irSaveFC, "ToolsAndSystem")
+    botConfig.set("claimSpecialPack", ui_irSpecialPack, "ToolsAndSystem")
     botConfig.saveConfigToSettings("ALL")
     g_irDialogResult := "ok"
     Gui, InjectReqDlg:Destroy
@@ -2942,6 +2963,7 @@ HelpTT_Init() {
     ; --- Popup: Tools & System
     HelpTT_Add("ui_showcaseEnabled_Popup", "showcaseEnabled", "When enabled, gives 5 showcase likes per day to players listed in showcase_ids.txt in the bot's folder`n(one Friend ID per line). The daily counter is shared across instances and resets at the server reset.")
     HelpTT_Add("ui_inDepthHistoryImport_Popup", "inDepthHistoryImport", "This will recover all entries and also check days that already have entries. It is a slightly more time consuming operation and will run independent of the History flag until disabled.")
+    HelpTT_Add("ui_claimSpecialPack_Popup", "claimSpecialPack", "When enabled, accounts become eligible for the weekly special pack. The pack becomes available again every Saturday at 01:00 UTC.")
     HelpTT_Add("ui_claimDailyMission_Popup", "claimDailyMission", "When enabled, claims the daily mission reward of 4 hourglasses on each account.")
     HelpTT_Add("ui_receiveGift_Popup", "receiveGift", "When enabled, opens received gifts on each account.")
     HelpTT_Add("ui_slowMotion_Popup", "slowMotion", "When enabled, skips ModMenu speed buttons (1x/2x/3x). Use only if you run the game without speedModMenu.`nLeave off when the game is sped up with the ModMenu.")
@@ -2951,6 +2973,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_wonderpickForEventMissions_Popup", "wonderpickForEventMissions", "When enabled, performs wonderpicks when an event mission requires them.")
     HelpTT_Add("ui_SelectedMonitorIndex_Popup", "SelectedMonitorIndex", "Monitor on which instance windows are arranged.")
     HelpTT_Add("ui_RowGap_Popup", "RowGap", "Vertical gap in pixels between rows of instance windows.")
+    HelpTT_Add("ui_StartOffset_Popup", "StartOffset", "Horizontal offset in pixels applied to the start of every instance window (default 5).")
     HelpTT_Add("ui_folderPath_Popup", "folderPath", "MuMuPlayer installation folder. It is normally detected automatically from the current MuMuPlayer configuration.`nCommon location: C:\Program Files\Netease")
     HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
     HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")

@@ -7,6 +7,9 @@
 *.ps1         text eol=lf
 *.bat         text eol=crlf
 
+# Stuff
+*.dat         text eol=lf
+
 # Project metadata and structured data
 *.md          text eol=lf
 *.txt         text eol=lf
@@ -33,5 +36,4 @@ LICENSE      text eol=lf
 *.woff2       binary
 *.exe         binary
 *.dll         binary
-*.dat         binary
 *.bak         binary
