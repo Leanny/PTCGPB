@@ -44,7 +44,7 @@ TryDismissSocialFirstTutorial(failSafeTime := 0) {
     Delay(0.2)
     adbClick_wbb(167, 447)
     Delay(0.2)
-    adbClick_wbb(38, 460)
+    adbClick_wbb(38, 470)
     Delay(0.2)
     adbClick_wbb(155, 425)
     Delay(0.2)
@@ -61,17 +61,16 @@ TryHandleTradeTutorial(failSafeTime := 0, clickFriendlist := True) {
     adbClick_wbb(167, 447)
     Delay(0.3)
     if(clickFriendlist) {
-        adbClick_wbb(38, 460)
+        adbClick_wbb(38, 470)
     } else {
         adbClick_wbb(138, 480)
     }
     Delay(1)
     if(clickFriendlist) {
-        adbClick_wbb(38, 460)
+        adbClick_wbb(38, 470)
     } else {
         adbClick_wbb(138, 480)
     }
-    adbInputEvent("111") ;send ESC
     Delay(0.3)
 
     return true
@@ -1146,7 +1145,7 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             }
 
             ; If main screen(social): Click friends button
-            adbClick_wbb(38, 460)
+            adbClick_wbb(38, 470)
         }
         else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime, , true)) {
             ; If friends list screen: Click Search button

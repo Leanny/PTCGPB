@@ -50,6 +50,7 @@ global pToken := Gdip_Startup()
 #Include %A_ScriptDir%\..\Scripts\Include\Coords.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Error.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\Crinity_UnofficialPatch.ahk
+#Include %A_ScriptDir%\..\Scripts\Include\DownloadUpdate.ahk
 #Include %A_ScriptDir%\..\Scripts\Include\FriendManager.ahk
 
 global g_injectIniPath := A_ScriptDir . "\InjectAccount.ini"
@@ -247,20 +248,10 @@ session.set("injectMethod", true)
 ; === Step 1: Wait for boot screen ===
 waitForAppBootScreen()
 
-; === Step 2: Set speed mod ===
-FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-if(session.get("setSpeed") = 3)
-    FindImageAndClick(GetSpeedModNeedle(3), GetSpeedModClickX(3), GetSpeedModClickY(3))
-else
-    FindImageAndClick(GetSpeedModNeedle(2), GetSpeedModClickX(2), GetSpeedModClickY(2))
-Delay(1)
-adbClick_wbb(51, 297)
-Delay(1)
-
-; === Step 3: startPreProcess - wait for Social tab ===
+; === Step 2: startPreProcess - wait for Social tab ===
 startPreProcess("Inject Wonderpick 96P+")
 
-; === Step 4: Send friend requests (AddFriends flow, using InjectAccount.ini IDs) ===
+; === Step 3: Send friend requests (AddFriends flow, using InjectAccount.ini IDs) ===
 g_friendIdTotal := g_friendIDList.MaxIndex()
 CreateStatusMessage("Sending " . g_friendIdTotal . " friend request" . (g_friendIdTotal > 1 ? "s" : "") . "...",,,, true)
 result := DoAddFriends(g_friendIDList)
