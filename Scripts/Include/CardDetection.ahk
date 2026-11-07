@@ -978,7 +978,7 @@ FilterCardsByS4T(cards, rarity) {
             continue
         }
 
-        if (r = 13) {
+        if (r = 1000) {
             if (botConfig.get("s4tRGB") = 1)
                 filteredCards.Push(c)
             continue

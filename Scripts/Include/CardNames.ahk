@@ -194,7 +194,7 @@ CardName_ParseCardmaster(ByRef jsonText, locale, ByRef out) {
 
 ; Maps cardmaster.json Rarity values to the bot's rarity ids.
 CardRarity_FromCardmaster(value) {
-    static map := {100: 1, 200: 2, 300: 3, 400: 4, 500: 7, 600: 8, 700: 5, 800: 9, 830: 11, 860: 12, 900: 10, 1000: 13}
+    static map := {100: 1, 200: 2, 300: 3, 400: 4, 500: 7, 600: 8, 700: 5, 800: 9, 830: 11, 860: 12, 900: 10, 1000: 1000}
     value := value + 0
     return map.HasKey(value) ? map[value] : 0
 }
@@ -318,7 +318,7 @@ CardName_TypeKeyFor(r, cardId) {
         return "Shiny1Star"
     if (r = 12)
         return "Shiny2Star"
-    if (r = 13)
+    if (r = 1000)
         return "RGB"
     return ""
 }
