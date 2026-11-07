@@ -1007,11 +1007,10 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
             Delay(1)
         }
     }
-/*
-if(imageName = "CommunityShowcase") {
-    TradeTutorialForShowcase()
-}
-*/
+
+    if(imageName = "CommunityShowcase") {
+        TryHandleTradeTutorialForShowcase()
+    }
 
     ErrorCheckInScreen(pBitmap)
 
@@ -1196,11 +1195,10 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         }
 
         Gdip_DisposeImage(pBitmap)
-/*
-if(imageName = "CommunityShowcase") {
-    TradeTutorialForShowcase()
-}
-*/
+
+        if(imageName = "CommunityShowcase") {
+            TryHandleTradeTutorialForShowcase()
+        }
 
         if(skip) {
             ElapsedTime := (A_TickCount - session.get("StartSkipTime")) // 1000
@@ -1221,6 +1219,15 @@ if(imageName = "CommunityShowcase") {
     }
     Gdip_DisposeImage(pBitmap)
     return confirmed
+}
+
+TryHandleTradeTutorialForShowcase() {
+    if (FindOrLoseImage("Friend_AddButtonInFriendList", 0, , , true))
+        return false
+
+    adbClick(182, 435)
+    Delay(0.2)
+    return true
 }
 
 resetWindows() {
