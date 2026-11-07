@@ -537,7 +537,7 @@ PackOpening(tenPackOpening := false) {
         adbClick_wbb(146, 434)
         Delay(0.2)
         adbClick_wbb(170, 455)
-        if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, failSafeTime)) {
+        if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, failSafeTime) || FindOrLoseImage("Pack_ReadyForOpenPack2", 0, failSafeTime)) {
             break ;wait for pack to be ready to Trace and click skip
         } else if(FindOrLoseImage("Pack_NotEnoughItemsForOpenPack", 0)) {
             session.set("cantOpenMorePacks", 1)
@@ -584,7 +584,7 @@ PackOpening(tenPackOpening := false) {
     Loop {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
-        if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
+        if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime) && FindOrLoseImage("Pack_ReadyForOpenPack2", 1, failSafeTime)){
             if(session.get("setSpeed") = 3) {
                 SetGameSpeed(3)
             }
@@ -763,7 +763,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
         adbClick_wbb(146, 434)
         Delay(1)
         adbClick_wbb(170, 455)
-        if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, failSafeTime))
+        if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, failSafeTime) || FindOrLoseImage("Pack_ReadyForOpenPack2", 0, failSafeTime))
             break ;wait for pack to be ready to Trace and click skip
         else
             adbClick_wbb(239, 497)
@@ -795,7 +795,7 @@ HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     Loop {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
-        if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
+        if (FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime) && FindOrLoseImage("Pack_ReadyForOpenPack2", 1, failSafeTime)){
             if(session.get("setSpeed") = 3) {
                 SetGameSpeed(3)
             }
@@ -903,7 +903,7 @@ ReceiveGiftExtended() {
             Delay(2)
             break
         }
-        if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, 0)){
+        if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, 0) && FindOrLoseImage("Pack_ReadyForOpenPack2", 1, 0)){
             claimConfirmed := true
             adbInputEvent("111")
             Delay(2)
@@ -950,7 +950,7 @@ HandleGiftedPacksAfterReceiveGift() {
             continue
         }
 
-        if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 1)) {
+        if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 1) || FindOrLoseImage("Pack_ReadyForOpenPack2", 0, 1)) {
             HandleSingleGiftPackOpening()
             handledGiftPacks++
             rewardSetHandled := true
@@ -1011,11 +1011,11 @@ HandleSingleGiftPackOpening() {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         ; Confirm swipe by requiring both ready markers to stay gone for a short window.
-        if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)) {
+        if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime) && FindOrLoseImage("Pack_ReadyForOpenPack2", 1, failSafeTime)) {
             swipeConfirmed := true
             Loop, 4 {
                 Sleep, 150
-                if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 0, 20, 1)) {
+                if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 0, 20, 1) || FindOrLoseImage("Pack_ReadyForOpenPack2", 0, 0, 20, 1)) {
                     swipeConfirmed := false
                     break
                 }
@@ -1048,6 +1048,8 @@ HandleSingleGiftPackOpening() {
         if(FindOrLoseImage("Gift_ReceivedWindowRightBorder", 0, 1)) {
             break
         } else if(FindOrLoseImage("Pack_ReadyForOpenPack", 0, 1)) {
+            break
+        } else if(FindOrLoseImage("Pack_ReadyForOpenPack2", 0, 1)) {
             break
         } else if(FindOrLoseImage("Create_SwipeForRegisterDexIcon", 0, 1)) {
             break

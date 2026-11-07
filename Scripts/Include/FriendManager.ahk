@@ -1064,6 +1064,8 @@ ShouldSkipGenericButtonInSocialWait() {
         reason := "pack select"
     else if (FindOrLoseImage("Pack_ReadyForOpenPack", 0, , , true))
         reason := "ready open pack"
+    else if (FindOrLoseImage("Pack_ReadyForOpenPack2", 0, , , true))
+        reason := "ready open pack"
     else if (FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, , , true))
         reason := "hourglass pack"
     else if (FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, , , true))

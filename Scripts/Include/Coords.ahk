@@ -185,6 +185,7 @@ needlesDict.Add(new Needle("Pack_SkipButtonAfterOpenPack", "Skip", new Coordinat
 needlesDict.Add(new Needle("Pack_SpecialPackNotification", "Confirm", new Coordinate(118, 360, 135, 397)))
 needlesDict.Add(new Needle("Pack_ResultAfterOpenPack", "Opening", new Coordinate(54, 96, 73, 115)))
 needlesDict.Add(new Needle("Pack_ReadyForOpenPack", "Pack", new Coordinate(198, 271, 202, 282)))
+needlesDict.Add(new Needle("Pack_ReadyForOpenPack2", "Trace", new Coordinate(110, 279, 120, 285)))
 needlesDict.Add(new Needle("Pack_NextButtonAfterOpenPack", "Next", new Coordinate(131, 74, 140, 84)))
 needlesDict.Add(new Needle("Next2", "Next2", new Coordinate(131, 74, 140, 84)))  ; ------------------------------ Finding
 needlesDict.Add(new Needle("Pack_BackButtonInSelectPackScreen", "ConfirmPack", new Coordinate(127, 462, 137, 475)))
