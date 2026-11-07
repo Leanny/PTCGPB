@@ -581,7 +581,7 @@ CheckPack(stopEarly := false) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
-    foundRGB         := CountOccurances(cards, rarity, 13)
+    foundRGB         := CountOccurances(cards, rarity, 1000)
 
     PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star, foundRGB)
 
