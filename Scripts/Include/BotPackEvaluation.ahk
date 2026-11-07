@@ -46,7 +46,7 @@ PullPackOpeningMissionUserPrefsSnapshot(kind, failedDir, uniquePrefix) {
 
     adbWriteRaw("rm -f " . sdcardPath)
     adbWriteRaw("if [ -f " . remotePath . " ]; then cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; fi")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     adbWriteRaw("rm -f " . sdcardPath)
 
     exists := FileExist(localPath) ? true : false
@@ -75,7 +75,7 @@ PullPackOpeningResultLog(failedDir, uniquePrefix) {
 
     stagingCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
     stagingCopyStatus := Trim(StrReplace(adbWriteRaw("if [ ! -f " . remotePath . " ]; then echo remote-missing; elif cp -f " . remotePath . " " . sdcardPath . " && chmod 666 " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
-    RunWait, % """" . session.get("adbPath") . """ -s 127.0.0.1:" . session.get("adbPort") . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
+    RunWait, % """" . session.get("adbPath") . """ -s " . AdbAddress() . " pull """ . sdcardPath . """ """ . localPath . """",, Hide
     pullExitCode := ErrorLevel
     finalCleanupStatus := Trim(StrReplace(adbWriteRaw("if rm -f " . sdcardPath . "; then echo ok; else echo failed; fi", true), "`r"), "`n`t ")
 
@@ -231,7 +231,7 @@ ReadEliteDeckResult(timeoutSec := 45) {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     session.set("failSafe", A_TickCount)
     Loop {
         output := GetStdout(adbCommand . " shell cat /data/ptcgp/result.rc")
@@ -291,7 +291,7 @@ UpdatePackCountAfterOpening(defaultOpenedPacks := 1) {
 EvaluatePack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
     expectedOpenedPacks := session.get("expectedPackOpenCount") + 0
     maxAttempts := expectedOpenedPacks > 1 ? 100 : 10
     foundResult := false
@@ -327,7 +327,7 @@ EvaluatePackCount() {
 RecoverPack() {
     prof := Prof_Scope(A_ThisFunc)
     global session
-    adbCommand := session.get("adbPath") . " -s 127.0.0.1:" . session.get("adbPort")
+    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
 
     pre := PackOpeningMissionUserPrefsSnapshotPath("pre")
     post := PackOpeningMissionUserPrefsSnapshotPath("post")
@@ -553,6 +553,7 @@ CheckPack(stopEarly := false) {
     if(skipCardDetection && !session.get("friendIDs") && botConfig.get("FriendID") = "" && !botConfig.get("s4tEnabled"))
         return false
 
+    currentPackIs1Card := cards.MaxIndex() = 1
     currentPackIs4Card := cards.MaxIndex() = 4
     currentPackIs6Card := cards.MaxIndex() = 6
 
@@ -580,8 +581,9 @@ CheckPack(stopEarly := false) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
+    foundRGB         := CountOccurances(cards, rarity, 1000)
 
-    PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star)
+    PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star, foundRGB)
 
     foundWishlist    := Wishlist_ProcessPack(cards, pack)
     foundWishlist2Star := Wishlist_CountTwoStarMatches(cards, rarity, session.get("wishlistMap"))
@@ -613,6 +615,7 @@ CheckPack(stopEarly := false) {
         tradeableList.Push({key: "Crown",     flag: botConfig.get("s4tCrown"),      count: foundCrown})
         tradeableList.Push({key: "Shiny1Star",flag: botConfig.get("s4tShiny1Star"), count: foundShiny1Star})
         tradeableList.Push({key: "Shiny2Star",flag: botConfig.get("s4tShiny2Star"), count: foundShiny2Star})
+        tradeableList.Push({key: "RGB",       flag: botConfig.get("s4tRGB"),        count: foundRGB})
         tradeableList.Push({key: "Wishlist",  flag: botConfig.get("s4tWishlist"),   count: foundWishlist})
 
         foundCards := {}
@@ -793,6 +796,7 @@ CheckPackFallback(detectedCardCount := 0) {
         foundImmersive := 0
         foundShiny1Star := 0
         foundShiny2Star := 0
+        foundRGB := 0
         foundTrainer := 0
         foundRainbow := 0
         foundFullArt := 0
@@ -855,11 +859,14 @@ CheckPackFallback(detectedCardCount := 0) {
         if (botConfig.get("s4tFullArt")) {
             foundFullArt := currentPackInfo["TypeCount"]["fullart"]
         }
+        if (botConfig.get("s4tRGB")) {
+            foundRGB := FindCard("rgb")
+        }
 
-        foundTradeable := found3Dmnd + found4Dmnd + found1Star + foundGimmighoul + foundCrown + foundImmersive + foundShiny1Star + foundShiny2Star + foundTrainer + foundRainbow + foundFullArt
+        foundTradeable := found3Dmnd + found4Dmnd + found1Star + foundGimmighoul + foundCrown + foundImmersive + foundShiny1Star + foundShiny2Star + foundTrainer + foundRainbow + foundFullArt + foundRGB
 
         if (foundTradeable > 0) {
-            FoundTradeable(found3Dmnd, found4Dmnd, found1Star, foundGimmighoul, foundCrown, foundImmersive, foundShiny1Star, foundShiny2Star, foundTrainer, foundRainbow, foundFullArt)
+            FoundTradeable(found3Dmnd, found4Dmnd, found1Star, foundGimmighoul, foundCrown, foundImmersive, foundShiny1Star, foundShiny2Star, foundTrainer, foundRainbow, foundFullArt, foundRGB)
             ; Continue with the rest of the run in s4t mode; don't return early.
         }
     }

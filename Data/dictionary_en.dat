@@ -70,6 +70,7 @@ Txt_slowMotion:Base Game Compatibility
 Txt_Monitor:Monitor:
 Txt_Scale:Scale:
 Txt_RowGap:Row Gap:
+Txt_StartOffset:Start Offset:
 Txt_FolderPath:MuMuPlayer12 Folder Path:
 Txt_OcrLanguage:OCR:
 Txt_ClientLanguage:Client

@@ -3,7 +3,7 @@
 ; Folder the game downloads its update data into (on the emulator).
 global DOWNLOAD_DATA_FOLDER := "/data/media/0/Android/data/jp.pokemon.pokemontcgp/"
 
-DownloadUpdate(notShowFinding := false, stallTimeoutSeconds := 45) {
+DownloadUpdate(notShowFinding := false, stallTimeoutSeconds := 10) {
     progressSeen := false
     if (FindOrLoseImage("Create_DownloadAlertWindow", 0, 0, 20, notShowFinding)) {
         LogInfo("DownloadUpdate: download alert found, starting download")
