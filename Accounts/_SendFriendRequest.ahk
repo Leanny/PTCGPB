@@ -258,9 +258,6 @@ result := DoAddFriends(g_friendIDList)
 
 ; Restore normal speed before handing the game back for manual trading.
 SetGameSpeed(1)
-Delay(1)
-adbClick_wbb(51, 297)
-Delay(1)
 
 CreateStatusMessage(result ? "All friend requests sent." : "Some requests failed.",,,, true)
 Sleep, 1000
