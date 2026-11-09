@@ -136,6 +136,14 @@ DoTutorial() {
             adbClick(141, 484)
             Delay(1)
         }
+        if(FindOrLoseImage("Create_SignupsDataSharing", 0, failSafeTime)) {
+            adbClick(82, 287)
+            Sleep, 1000
+            adbClick(90, 425)
+            Sleep, 100
+            adbClick(141, 484)
+            Delay(1)
+        }
         if(FindImageAndClick("Create_BeginNewAccountButton", 145, 484, , , 2, failSafeTime)) ;wait to be at create save data screen while clicking
             break
         Delay(1)
@@ -189,6 +197,7 @@ DoTutorial() {
         } else if(FindOrLoseImage("Create_CinematicBackground", 0, failSafeTime)){
             break
         }
+        adbClick_wbb(195, 384)
         Delay(1)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
     }

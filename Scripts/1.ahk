@@ -222,6 +222,7 @@ LogInfo("Instance started | mode=" . botConfig.get("deleteMethod") . " | packs="
 initializeAdbShell()
 RemoveOldFiles()
 adbGrantOverlayPermission()
+adbDenyCameraPermission()
 
 if(session.get("injectMethod"))
     createAccountList(session.get("scriptName"))
@@ -424,9 +425,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("s4tFoundTradeable", false)
 
         startPreProcess(botConfig.get("deleteMethod"))
-        if(session.get("setSpeed") = 3) {
-            SetGameSpeed(3)
-        }
         methodType := botConfig.get("deleteMethod")
         if ((methodType = "Inject 13P+" || methodType = "Inject Rewards") && IsFunc("EnsureAccountFriendInfo")) {
             session.set("accountFriendInfoReturnedHome", false)
@@ -435,6 +433,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 GoToMain()
         }
         if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
+            if(session.get("setSpeed") = 3) {
+                SetGameSpeed(3)
+            }
             AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
             SetSpendHourglassMetadataFlag()
             GetHistoryOfAccount()

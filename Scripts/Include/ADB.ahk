@@ -652,6 +652,30 @@ adbGrantOverlayPermission(package := "jp.pokemon.pokemontcgp") {
     return true
 }
 
+; Denies the camera permission of the game (user-fixed) so MuMu's "Scan" popup stops appearing.
+; Resulting state: granted=false, flags=USER_SET|USER_FIXED, appops CAMERA=ignore.
+adbDenyCameraPermission(package := "jp.pokemon.pokemontcgp") {
+    prof := Prof_Scope(A_ThisFunc)
+    check := "dumpsys package " . package . " | grep 'permission.CAMERA:'; cmd appops get " . package . " CAMERA | head -1"
+    if (adbCameraDenied(adbWriteRaw(check, true)))
+        return true
+
+    adbWriteRaw("pm revoke " . package . " android.permission.CAMERA")
+    adbWriteRaw("pm set-permission-flags " . package . " android.permission.CAMERA user-set user-fixed")
+    adbWriteRaw("cmd appops set --uid " . package . " CAMERA ignore")
+    output := adbWriteRaw(check, true)
+    if (!adbCameraDenied(output)) {
+        LogWarn("Could not deny the camera permission for " . package . ": " . Trim(output, "`r`n`t "), "ADB.txt")
+        return false
+    }
+    LogInfo("Denied the camera permission for " . package, "ADB.txt")
+    return true
+}
+
+adbCameraDenied(output) {
+    return InStr(output, "granted=false") && InStr(output, "USER_FIXED") && InStr(output, "Uid mode: CAMERA: ignore")
+}
+
 isPTCGPAppInFocus() {
     prof := Prof_Scope(A_ThisFunc)
     global session
