@@ -584,7 +584,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         ; special pack
-        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") ) {
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") && AccountEligibility_CanPullSpecialPack()) {
             SelectPack("HGSpecial")
             if(session.get("OpenSpecialPack")) {
                 PackOpening()
@@ -706,7 +706,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         ; claim special pack
-        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") ) {
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") && (!IsObject(accountMeta) || AccountEligibility_SpecialPackAvailable(accountMeta))) {
             SelectPack("HGSpecial")
             if(session.get("OpenSpecialPack")) {
                 PackOpening()
