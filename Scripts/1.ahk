@@ -211,7 +211,7 @@ Loop {
 
 if(botConfig.get("slowMotion")) {
     session.set("setSpeed", 1)
-} else() {
+} else {
     session.set("setSpeed", 3) ;always 1x/3x
 }
 if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account")
@@ -775,6 +775,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     Delay(1)
                     ; Elite Deck restart must always land at Home, regardless of bot mode.
                     startPreProcess("Inject Rewards")
+                    SetConfiguredGameSpeed()
 
                     ; After the restart, give the game time to sync the cards into
                     ; MissionUserPrefs before capturing the post-restart snapshot.
