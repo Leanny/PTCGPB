@@ -110,6 +110,8 @@ PackMethod_ConsumeStayOnPackScreen() {
 
     if (!session.get("packMethodStayOnPackScreen"))
         return false
+    if (session.get("OpenedSpecialPack"))
+        return false
     session.set("packMethodStayOnPackScreen", 0)
     LogInfo("1 Pack Method: already on pack screen, skipping GoToMain/SelectPack")
     return true

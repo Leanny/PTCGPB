@@ -144,9 +144,7 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
     doSpecial := specialEligible && advance["needClaimUi"]
     eliteDeckClaim := advance["eliteDeckClaim"]
 
-    if(session.get("setSpeed") = 3) {
-        SetGameSpeed(3)
-    }
+    SetGameSpeed(3)
 
     ; --- Navigate to Missions page (single navigation for both Daily + Special) ---
     if (!NavigateToMissions())
@@ -295,8 +293,10 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
         adbClick_wbb(197, 459)
         Delay(0.2)
         adbClick_wbb(175, 445)
-        Delay(3)
-
+        Delay(0.5)
+        adbClick_wbb(261, 517)
+        Delay(0.5)
+        adbClick_wbb(261, 517)
         if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
             break
     }
