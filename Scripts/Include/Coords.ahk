@@ -183,6 +183,7 @@ needlesDict.Add(new Needle("Pack_OpenButton", "PackOpenButton", new Coordinate(7
 needlesDict.Add(new Needle("Pack_ScrollInSelectExpansion", "SelectExpansion", new Coordinate(119, 138, 157, 146)))
 needlesDict.Add(new Needle("Pack_ASeries", "ExpansionSeries", new Coordinate(248, 447, 264, 467)))
 needlesDict.Add(new Needle("Pack_SkipButtonAfterOpenPack", "Skip", new Coordinate(245, 495, 256, 507)))
+needlesDict.Add(new Needle("Mission_SkipEventReveal", "SkipEvent", new Coordinate(243, 498, 263, 509)))
 needlesDict.Add(new Needle("Pack_SpecialPackNotification", "Confirm", new Coordinate(118, 360, 135, 397)))
 needlesDict.Add(new Needle("Pack_ResultAfterOpenPack", "Opening", new Coordinate(54, 96, 73, 115)))
 needlesDict.Add(new Needle("Pack_ReadyForOpenPack", "Pack", new Coordinate(198, 271, 202, 282)))
