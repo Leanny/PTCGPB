@@ -72,7 +72,10 @@ WaitForPackPointButtonFromHome(clickX, clickY, context := "") {
         Delay(0.5)
         if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime))
             return true
-
+        if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+            adbClick_wbb(37, 378)
+            Delay(1)
+        }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for Points`n(" . failSafeTime . "/90 seconds)")
     }
@@ -491,6 +494,9 @@ SelectPack(HG := false) {
                 LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
             } else if(FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, 1) || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, 1)) {
                 adbClick_wbb(205, 458)  ; Handle unexpected HG pack confirmation
+            } else if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+                adbClick_wbb(37, 378)
+                Delay(1)
             } else if(FindOrLoseImage("Common_AlertForAppCrachDuringOpenPack", 0)) {
                 ; Handle restart caused due to network error
                 adbClick_wbb(139, 371)
@@ -620,33 +626,36 @@ PackOpening(tenPackOpening := false) {
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
             Delay(1)
-        } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
-            adbClick_wbb(146, 489) ;146, 494
-            Delay(1)
-        } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
-            adbClick_wbb(146, 489) ;146, 494
-            Delay(1)
-        } else if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
-            adbClick_wbb(37, 378)
-            Delay(1)
-        } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
-            break
-        } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
-            break
-        } else {
-            adbClick_wbb(146, 489) ;146, 494
-            Delay(1)
+            if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack2", 0, failSafeTime)) {
+                adbClick_wbb(256, 505)
+                Delay(1)
+            } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
+                adbClick_wbb(146, 489) ;146, 494
+                Delay(1)
+            } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
+                adbClick_wbb(146, 489) ;146, 494
+                Delay(1)
+            } else if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+                adbClick_wbb(37, 378)
+                Delay(1)
+            } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
+                break
+            } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
+                break
+            } else {
+                adbClick_wbb(146, 489) ;146, 494
+                Delay(1)
+            }
+            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+            CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
+            if(failSafeTime > 45)
+                restartGameInstance("Stuck at Home")
         }
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
-        if(failSafeTime > 45)
-            restartGameInstance("Stuck at Home")
+
+        CardDetection_FlushPendingGodPack()
     }
 
-    CardDetection_FlushPendingGodPack()
-}
-
-HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
+    HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     global botConfig, session
     if (isTerminatePTCGPHelperApp()) {
         InitPackOpening()
