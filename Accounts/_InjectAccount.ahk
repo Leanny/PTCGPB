@@ -1,4 +1,4 @@
-﻿#SingleInstance on
+﻿#SingleInstance off
 ;SetKeyDelay, -1, -1
 SetMouseDelay, -1
 SetDefaultMouseSpeed, 0
@@ -9,22 +9,32 @@ SetTitleMatchMode, 3
 
 #Include %A_ScriptDir%\..\Scripts\Include\MumuHelper.ahk
 
-global adbShell, adbPath, adbPorts, adbHost, winTitle, folderPath, selectedFilePath, mumuFolder, headless, injectInProgress
+global adbShell, adbPath, adbPorts, adbHost, winTitle, folderPath, selectedFilePath, mumuFolder, headless, injectInProgress, injectMutex
 
-IniRead, winTitle, InjectAccount.ini, UserSettings, winTitle, 1
-IniRead, fileName, InjectAccount.ini, UserSettings, fileName, name
-IniRead, selectedFilePath, InjectAccount.ini, UserSettings, selectedFilePath, ""
-IniRead, sendFriendRequestAfterInject, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject, 0
-IniRead, favoriteFriendIDsIni, InjectAccount.ini, UserSettings, favoriteFriendIDs,
+; Dashboard runs own a settings snapshot until the friend worker has finished.
+global injectIniPath := A_ScriptDir . "\InjectAccount.ini"
+for argIndex, argValue in A_Args {
+    if (argValue = "/run-config" && A_Args.HasKey(argIndex + 1)) {
+        injectIniPath := A_Args[argIndex + 1]
+        OnExit("CleanupInjectRun")
+        break
+    }
+}
+
+IniRead, winTitle, %injectIniPath%, UserSettings, winTitle, 1
+IniRead, fileName, %injectIniPath%, UserSettings, fileName, name
+IniRead, selectedFilePath, %injectIniPath%, UserSettings, selectedFilePath, ""
+IniRead, sendFriendRequestAfterInject, %injectIniPath%, UserSettings, sendFriendRequestAfterInject, 0
+IniRead, favoriteFriendIDsIni, %injectIniPath%, UserSettings, favoriteFriendIDs,
 if (favoriteFriendIDsIni = "ERROR")
     favoriteFriendIDsIni := ""
-IniRead, favoriteFriendLabelsIni, InjectAccount.ini, UserSettings, favoriteFriendLabels,
+IniRead, favoriteFriendLabelsIni, %injectIniPath%, UserSettings, favoriteFriendLabels,
 if (favoriteFriendLabelsIni = "ERROR")
     favoriteFriendLabelsIni := ""
-IniRead, injectSelectedFriendIDsIni, InjectAccount.ini, UserSettings, injectSelectedFriendIDs,
+IniRead, injectSelectedFriendIDsIni, %injectIniPath%, UserSettings, injectSelectedFriendIDs,
 if (injectSelectedFriendIDsIni = "ERROR")
     injectSelectedFriendIDsIni := ""
-IniRead, injectExtraFriendIDsIni, InjectAccount.ini, UserSettings, injectExtraFriendIDs,
+IniRead, injectExtraFriendIDsIni, %injectIniPath%, UserSettings, injectExtraFriendIDs,
 if (injectExtraFriendIDsIni = "ERROR")
     injectExtraFriendIDsIni := ""
 if (favoriteFriendIDsIni = "" && injectExtraFriendIDsIni != "") {
@@ -271,6 +281,17 @@ SaveSettings:
     ; fall through into RunInjectFlow
 
 RunInjectFlow:
+    ; Both dashboard and interactive launches must hold this through friend requests.
+    instanceHwnd := WinExist(winTitle)
+    if (instanceHwnd) {
+        injectMutex := DllCall("CreateMutexW", "Ptr", 0, "Int", 0, "WStr", "Local\PTCGPB-Inject-" . instanceHwnd, "Ptr")
+        if (!injectMutex || A_LastError = 183) {
+            MsgBox, 48, Inject Account, An inject or friend-request flow is already running in instance %winTitle%.
+            SetInjectUiBusy(false)
+            injectInProgress := 0
+            return
+        }
+    }
     UpdateInjectUi("Resolving MuMu folder...", 10)
     mumuFolder := MuMuResolveFolder(folderPath)
 
@@ -286,7 +307,7 @@ RunInjectFlow:
         return
     }
 
-    ; Position the MuMu window at a fixed location before injecting.
+    ; Use the same instance ordering and grid as the normal run (1.ahk).
     UpdateInjectUi("Positioning emulator window...", 14)
     mumuBias := 0
     if (InStr(FileExist(mumuFolder . "\nx_main"), "D"))
@@ -294,10 +315,25 @@ RunInjectFlow:
     else
         mumuBias := -4
     rowHeight := 40 + mumuBias + 492
+    IniRead, columns, %settingsIniFriend%, General, Columns, 5
+    IniRead, runMain, %settingsIniFriend%, General, runMain, 0
+    IniRead, mains, %settingsIniFriend%, General, Mains, 0
+    IniRead, rowGap, %settingsIniFriend%, ToolsAndSystem, RowGap, 105
+    IniRead, startOffset, %settingsIniFriend%, ToolsAndSystem, StartOffset, 5
+    IniRead, selectedMonitor, %settingsIniFriend%, ToolsAndSystem, SelectedMonitorIndex, 1
+    selectedMonitor := RegExReplace(selectedMonitor, ":.*$")
+    SysGet, Monitor, Monitor, %selectedMonitor%
+    instanceIndex := RegExMatch(winTitle, "^\d+$") ? winTitle + 0 : 1
+    if (runMain)
+        instanceIndex += mains
+    columns := Max(1, columns)
+    currentRow := Floor((instanceIndex - 1) / columns)
+    x := MonitorLeft + startOffset + (Mod((instanceIndex - 1), columns) * (283 - 6))
+    y := MonitorTop + currentRow * (rowHeight + rowGap)
     hwnd := WinExist(winTitle . " ahk_class Qt5156QWindowIcon")
     if (hwnd) {
         WinSet, Style, -0xC00000, ahk_id %hwnd%
-        WinMove, ahk_id %hwnd%, , 0, 0, 283, %rowHeight%
+        WinMove, ahk_id %hwnd%, , %x%, %y%, 283, %rowHeight%
         WinSet, Style, +0xC00000, ahk_id %hwnd%
         WinSet, Redraw, , ahk_id %hwnd%
         SendMessage, 0x0005, 1, 0,, ahk_id %hwnd%
@@ -362,10 +398,10 @@ RunInjectFlow:
     if (sendFriendRequestAfterInject) {
         UpdateInjectUi("Sending friend request(s)...", 92)
         resolvedList := BuildResolvedFriendRequestList(InjectSelectedFriendIdsToCsv())
-        IniWrite, %resolvedList%, InjectAccount.ini, UserSettings, injectFriendRequestIds
+        IniWrite, %resolvedList%, %injectIniPath%, UserSettings, injectFriendRequestIds
         sendFRScript := A_ScriptDir . "\_SendFriendRequest.ahk"
         if (FileExist(sendFRScript)) {
-            RunWait, %A_AhkPath% "%sendFRScript%" "%winTitle%" "%folderPath%"
+            RunWait, "%A_AhkPath%" "%sendFRScript%" "%winTitle%" "%folderPath%" "%injectIniPath%"
         } else {
             MsgBox, 48, , Cannot find _SendFriendRequest.ahk next to _InjectAccount.ahk.
         }
@@ -374,6 +410,11 @@ RunInjectFlow:
     SetInjectUiBusy(false)
     injectInProgress := 0
 return
+
+CleanupInjectRun(exitReason, exitCode) {
+    global injectIniPath
+    FileDelete, %injectIniPath%
+}
 
 GetVmDisplayName(folder) {
     configFolder := folder "\configs"
@@ -504,7 +545,11 @@ ShowInjectStepError(stepName) {
 }
 
 SetInjectUiBusy(isBusy) {
-    global headless
+    global headless, injectMutex
+    if (!isBusy && injectMutex) {
+        DllCall("CloseHandle", "Ptr", injectMutex)
+        injectMutex := 0
+    }
     if (headless)
         return
 
@@ -779,20 +824,20 @@ ValidateInjectFriendSlots() {
 
 SaveInjectFriendIniSettings() {
     global winTitle, fileName, folderPath, selectedFilePath, sendFriendRequestAfterInject, settingsIniFriend
-    IniWrite, %winTitle%, InjectAccount.ini, UserSettings, winTitle
-    IniWrite, %fileName%, InjectAccount.ini, UserSettings, fileName
+    IniWrite, %winTitle%, %injectIniPath%, UserSettings, winTitle
+    IniWrite, %fileName%, %injectIniPath%, UserSettings, fileName
     IniWrite, %folderPath%, %settingsIniFriend%, ToolsAndSystem, folderPath
-    IniWrite, %selectedFilePath%, InjectAccount.ini, UserSettings, selectedFilePath
-    IniWrite, %sendFriendRequestAfterInject%, InjectAccount.ini, UserSettings, sendFriendRequestAfterInject
+    IniWrite, %selectedFilePath%, %injectIniPath%, UserSettings, selectedFilePath
+    IniWrite, %sendFriendRequestAfterInject%, %injectIniPath%, UserSettings, sendFriendRequestAfterInject
     favoriteCsv := FavoriteFriendIdsToCsv()
     labelsPipe := FavoriteFriendLabelsToPipe()
     selectedCsv := InjectSelectedFriendIdsToCsv()
     resolvedList := BuildResolvedFriendRequestList(selectedCsv)
-    IniWrite, %favoriteCsv%, InjectAccount.ini, UserSettings, favoriteFriendIDs
-    IniWrite, %labelsPipe%, InjectAccount.ini, UserSettings, favoriteFriendLabels
-    IniWrite, %selectedCsv%, InjectAccount.ini, UserSettings, injectSelectedFriendIDs
-    IniWrite, %selectedCsv%, InjectAccount.ini, UserSettings, injectExtraFriendIDs
-    IniWrite, %resolvedList%, InjectAccount.ini, UserSettings, injectFriendRequestIds
+    IniWrite, %favoriteCsv%, %injectIniPath%, UserSettings, favoriteFriendIDs
+    IniWrite, %labelsPipe%, %injectIniPath%, UserSettings, favoriteFriendLabels
+    IniWrite, %selectedCsv%, %injectIniPath%, UserSettings, injectSelectedFriendIDs
+    IniWrite, %selectedCsv%, %injectIniPath%, UserSettings, injectExtraFriendIDs
+    IniWrite, %resolvedList%, %injectIniPath%, UserSettings, injectFriendRequestIds
 }
 
 LoadInjectFavoriteGuiState(favoriteIdsCsv, favoriteLabelsPipe, selectedIdsCsv) {
