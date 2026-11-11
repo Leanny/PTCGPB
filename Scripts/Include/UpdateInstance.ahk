@@ -451,14 +451,51 @@ MuMuAdb(index, cmd) {
     return MuMuManagerCommand("adb -v " . MuMuQuoteArg(index) . " -c " . MuMuQuoteArg(cmd), true)
 }
 
+; Waits until Android reports boot completed and the instance has been up for at least
+; minSeconds. Returns true when that is the case, false on timeout.
+WaitForInstanceUptime(index, minSeconds, timeoutSeconds := 120) {
+    deadline := A_TickCount + timeoutSeconds * 1000
+    while (A_TickCount < deadline) {
+        MuMuAdb(index, "connect")
+        booted := Trim(MuMuAdb(index, "shell getprop sys.boot_completed"), "`r`n ")
+        uptime := RegExMatch(MuMuAdb(index, "shell cat /proc/uptime"), "^\s*(\d+)", match) ? match1 + 0 : 0
+        if (booted = "1" && uptime >= minSeconds)
+            return true
+        Sleep, 2000
+    }
+    return false
+}
+
 ; Allows the app to draw over other apps. Returns "" on success, otherwise an error message.
-GrantOverlayPermission(index, package) {
+; Right after the first install of an app the system does not keep the setting yet if
+; it is applied early in the boot, so with settleSeconds > 0 the call waits that long,
+; then until the instance has been up for a while, and only counts the permission as
+; applied once it still reads back as allowed a few seconds later.
+GrantOverlayPermission(index, package, settleSeconds := 0) {
+    if (settleSeconds > 0) {
+        Sleep, % settleSeconds * 1000
+        WaitForInstanceUptime(index, 25)
+    }
+
     MuMuAdb(index, "connect")
-    MuMuAdb(index, "shell cmd appops set " . package . " SYSTEM_ALERT_WINDOW allow")
-    output := MuMuAdb(index, "shell cmd appops get " . package . " SYSTEM_ALERT_WINDOW")
-    if (!InStr(output, "SYSTEM_ALERT_WINDOW: allow"))
-        return "Could not enable the overlay permission for " . package . ":`n" . output
-    return ""
+    attempts := settleSeconds > 0 ? 6 : 1
+    output := ""
+    Loop, %attempts% {
+        MuMuAdb(index, "shell cmd appops set " . package . " SYSTEM_ALERT_WINDOW allow")
+        output := MuMuAdb(index, "shell cmd appops get " . package . " SYSTEM_ALERT_WINDOW")
+        if (InStr(output, "SYSTEM_ALERT_WINDOW: allow")) {
+            if (settleSeconds <= 0)
+                return ""
+            ; Still applied after a short pause? Then it is really kept.
+            Sleep, 4000
+            output := MuMuAdb(index, "shell cmd appops get " . package . " SYSTEM_ALERT_WINDOW")
+            if (InStr(output, "SYSTEM_ALERT_WINDOW: allow"))
+                return ""
+        }
+        if (A_Index < attempts)
+            Sleep, 3000
+    }
+    return "Could not enable the overlay permission for " . package . ":`n" . output
 }
 
 ; Kernel boot id of a running instance. It changes with every reboot, so it proves a
@@ -521,33 +558,81 @@ RestartInstances(indexes) {
 
 ; Installs the apk in a running instance and restarts it. Android installs over an
 ; existing app as an update, so app data is kept. When grantOverlay is set, the
-; app's overlay permission is enabled as well.
+; app's overlay permission is enabled after the restart.
 ; Returns "" on success, otherwise an error message.
-InstallApkOnRunning(index, apkPath, grantOverlay := false) {
+InstallApkOnRunning(index, apkPath, grantOverlay := false, overlaySettleSeconds := 0) {
     SB_SetText("Installing " . apkPath . "...")
     output := MuMuManagerCommand("control -v " . MuMuQuoteArg(index) . " app install --apk " . MuMuQuoteArg(apkPath), true)
     if (!RegExMatch(output, """package""\s*:\s*""([^""]+)""", match))
         return "Installing the apk failed:`n" . output
-
-    error := ""
-    if (grantOverlay) {
-        SB_SetText("Enabling overlay permission...")
-        error := GrantOverlayPermission(index, match1)
-    }
+    package := match1
 
     SB_SetText("Restarting instance " . index . "...")
     restartError := RestartInstances(index)
-    return error != "" ? error : restartError
+    if (restartError != "")
+        return restartError
+
+    ; The overlay permission is applied after the restart: when it is set right after
+    ; the first install of the app it is gone again after the restart.
+    if (grantOverlay) {
+        SB_SetText("Enabling overlay permission...")
+        return GrantOverlayPermission(index, package, overlaySettleSeconds)
+    }
+    return ""
 }
 
 ; Launches the instance, waits for Android to boot and installs the apk.
 ; Returns "" on success, otherwise an error message.
-InstallApk(index, apkPath, grantOverlay := false) {
+InstallApk(index, apkPath, grantOverlay := false, overlaySettleSeconds := 0) {
     SB_SetText("Launching instance " . index . "...")
     MuMuManagerCommand("control -v " . MuMuQuoteArg(index) . " launch")
     if (!WaitForAndroid(index))
         return "Instance " . index . " did not finish booting in time."
-    return InstallApkOnRunning(index, apkPath, grantOverlay)
+    return InstallApkOnRunning(index, apkPath, grantOverlay, overlaySettleSeconds)
+}
+
+; Launches the game once in a running instance to test the installation. The boot
+; screen counts as reached once the game stayed in the foreground for bootSeconds
+; (so it got past its splash screens and did not crash). If the game sends the user
+; to the "Display over other apps" settings page the overlay permission is applied
+; again and the game is started once more (up to 2 times).
+; Returns "" on success, otherwise an error message.
+LaunchGameOnce(index, timeoutSeconds := 90, bootSeconds := 15) {
+    global gamePackage
+
+    MuMuAdb(index, "connect")
+    retries := 0
+    startGame := true
+    deadline := A_TickCount + timeoutSeconds * 1000
+    focusedSince := 0
+    while (A_TickCount < deadline) {
+        if (startGame) {
+            MuMuAdb(index, "shell am start -n " . gamePackage . "/com.unity3d.player.UnityPlayerActivity")
+            startGame := false
+            focusedSince := 0
+        }
+        Sleep, 2000
+        focus := MuMuAdb(index, "shell dumpsys window | grep mCurrentFocus")
+        if (InStr(focus, "OverlaySettingsActivity")) {
+            if (retries >= 2)
+                return "The game keeps asking for the overlay permission."
+            retries++
+            SB_SetText("Overlay permission was not kept, applying it again...")
+            MuMuAdb(index, "shell am force-stop " . gamePackage)
+            MuMuAdb(index, "shell input keyevent 3")
+            if (GrantOverlayPermission(index, gamePackage, 1) != "")
+                return "Could not enable the overlay permission for " . gamePackage . "."
+            startGame := true
+            deadline := A_TickCount + timeoutSeconds * 1000
+        } else if (InStr(focus, gamePackage)) {
+            if (!focusedSince)
+                focusedSince := A_TickCount
+            else if (A_TickCount - focusedSince >= bootSeconds * 1000)
+                return ""
+        } else
+            focusedSince := 0
+    }
+    return "The game did not reach its boot screen in time."
 }
 
 ; Path of MuMuManager.exe, or "" if MuMu was not found.
@@ -688,7 +773,15 @@ AddInstance(androidMajor, newName, apkPath) {
     FileDelete, %settingsFile%
     MuMuManagerCommand("rename -v " . MuMuQuoteArg(newIndex) . " -n " . MuMuQuoteArg(newName))
 
-    installError := InstallApk(newIndex, apkPath, IsModMenuApk(apkPath))
+    ; The overlay permission can't be applied right after the install: wait a bit first.
+    installError := InstallApk(newIndex, apkPath, IsModMenuApk(apkPath), 5)
+
+    ; Launch the game once to test the installation and wait for its boot screen.
+    launchError := ""
+    if (installError = "") {
+        SB_SetText("Launching the game once to test it...")
+        launchError := LaunchGameOnce(newIndex)
+    }
     RefreshInstanceList()
 
     SplitPath, apkPath, apkName
@@ -696,7 +789,14 @@ AddInstance(androidMajor, newName, apkPath) {
     if (!applied)
         message .= "`nApplying the settings reported an error."
     if (installError != "")
-        MsgBox, 48, Add Instance, % message . "`n" . installError
+        ShowAddResult(48, message . "`n" . installError)
+    else if (launchError != "")
+        ShowAddResult(48, message . "`nInstalled " . apkName . (IsModMenuApk(apkPath) ? ", enabled the overlay permission" : "") . ", but testing the app failed:`n" . launchError)
     else
-        MsgBox, % applied ? 64 : 48, Add Instance, % message . "`nInstalled " . apkName . (IsModMenuApk(apkPath) ? ", enabled the overlay permission" : "") . " and restarted the instance."
+        ShowAddResult(applied ? 64 : 48, message . "`nInstalled " . apkName . (IsModMenuApk(apkPath) ? ", enabled the overlay permission" : "") . ", restarted the instance and launched the game once: the app was tested and reached the boot screen.")
+}
+
+; Tells the user how adding an instance went.
+ShowAddResult(options, message) {
+    MsgBox, % options, Add Instance, % message
 }

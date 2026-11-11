@@ -56,6 +56,7 @@
         , "gpTestWaitTime": 150
         , "showcaseEnabled": 0
         , "inDepthHistoryImport": 0
+        , "claimSpecialPack": 0
         , "claimDailyMission": 0
         , "slowMotion": 0
         , "claimSpecialMissions": 0
@@ -63,6 +64,7 @@
         , "instanceLaunchDelay": 5
         , "folderPath": "C:\Program Files\Netease"
         , "RowGap": 105
+        , "StartOffset": 5
         , "debugMode": 0
         , "disableFailsafe": 0
         , "logLevel": "info"
@@ -76,6 +78,7 @@
         , "waitAfterBulkLaunch": 40000
         , "WishlistCheck": 0
         , "s4tWishlist": 0
+        , "s4tRGB": 0
         , "saveAccountFriendInfo": 0
         , "updateChannel": "stable"
         , "automaticUpdateChecks": 1

@@ -53,6 +53,7 @@ SpecialEvents/PastEvents
 
 .REFACTORING_SUMMARY.md
 *.py
+*.pyc
 carddb_balance.log
 Cargo.lock
 

@@ -44,7 +44,6 @@ Gui, Add, Text, x10 y+15 w170, Expiry Time(UTC,hh:mm:ss):
 Gui, Add, Edit, vInputExpTime w100 x+10 yp-5, 05:59:59
 Gui, Add, Text, vLblClaimSteps +0x100 x10 y+15 w170, Claim Steps:
 Gui, Add, Edit, vInputClaimSteps w100 x+10 yp-5, 1
-Gui, Add, Checkbox, vInputEliteDeck x10 y+15 w270, Elite Deck event
 
 Gui, Add, Text, x10 y+20 w270 cBlue, Optional fields:
 Gui, Add, Text, vLblClaimDays +0x100 x10 y+10 w170, Claim Days:
@@ -137,7 +136,6 @@ BtnSave:
     displayExpDate := SubStr(convExpDate, 1, 4) . "-" . SubStr(convExpDate, 5, 2) . "-" . SubStr(convExpDate, 7, 2)
     claimDaysDisplay := (InputClaimDays = "") ? "(all steps)" : InputClaimDays
     giftDaysDisplay := (InputGiftDays = "") ? "(none)" : InputGiftDays
-    eliteDeckDisplay := InputEliteDeck ? "Yes" : "No"
 
     ConfirmMsg := "Are you sure you want to save the following details?`n`n"
         . "Event Name: " . InputName . "`n"
@@ -146,7 +144,6 @@ BtnSave:
         . "Claim Steps (Days): " . InputClaimSteps . "`n"
         . "Claim Days: " . claimDaysDisplay . "`n"
         . "Gift Days: " . giftDaysDisplay . "`n"
-        . "Elite Deck: " . eliteDeckDisplay . "`n"
         . "Box Coordinates: Set"
 
     MsgBox, 4, Final Confirmation, %ConfirmMsg%
@@ -180,7 +177,6 @@ BtnSave:
         ClaimSteps=%InputClaimSteps%
         ClaimDays=%InputClaimDays%
         GiftDays=%InputGiftDays%
-        EliteDeck=%InputEliteDeck%
 
         [RedBox]
         Coords=%rx1%, %ry1%, %rx2%, %ry2%

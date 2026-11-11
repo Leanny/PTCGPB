@@ -70,6 +70,7 @@ Txt_slowMotion:兼容原版速度
 Txt_Monitor:顯示器：
 Txt_Scale:縮放比例：
 Txt_RowGap:列間距：
+Txt_StartOffset:起始偏移：
 Txt_FolderPath:資料夾路徑：
 Txt_OcrLanguage:OCR 語言：
 Txt_ClientLanguage:遊戲語言

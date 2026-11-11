@@ -590,6 +590,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["createdAt"] := "0"
     account["lastRenamedAt"] := "0"
     account["lastPackPulled"] := 0
+    account["lastSpecialPackPulled"] := "0"
     account["lastLoggedIn"] := "0"
     account["shinedust"] := AccountMetadata_NewShinedust()
     account["flags"] := {}
@@ -889,6 +890,7 @@ AccountMetadata_ParseAccount(accountJson) {
     account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastPackPulled", AccountMetadata_ParseNumber(accountJson, "lastPackPulled", 0))
     if (account["lastPackPulled"] = "" || account["lastPackPulled"] = "0")
         account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastModified", account["lastPackPulled"])
+    account["lastSpecialPackPulled"] := AccountMetadata_ParseString(accountJson, "lastSpecialPackPulled", AccountMetadata_ParseNumber(accountJson, "lastSpecialPackPulled", 0))
     account["lastLoggedIn"] := AccountMetadata_ParseString(accountJson, "lastLoggedIn", AccountMetadata_ParseNumber(accountJson, "lastLoggedIn", 0))
 
     shinedustPos := InStr(accountJson, """shinedust""")
@@ -997,6 +999,8 @@ AccountMetadata_SerializeAccount(account, indent := "") {
 
     if (account["lastPackPulled"] != "" && account["lastPackPulled"] != "0")
         AccountMetadata_AppendJsonString(json, firstField, "lastPackPulled", account["lastPackPulled"], "      ")
+    if (account["lastSpecialPackPulled"] != "" && account["lastSpecialPackPulled"] != "0")
+        AccountMetadata_AppendJsonString(json, firstField, "lastSpecialPackPulled", account["lastSpecialPackPulled"], "      ")
     if (account["lastLoggedIn"] != "" && account["lastLoggedIn"] != "0")
         AccountMetadata_AppendJsonString(json, firstField, "lastLoggedIn", account["lastLoggedIn"], "      ")
 
@@ -1176,6 +1180,8 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
         baseAccount["lastRenamedAt"] := patchAccount["lastRenamedAt"]
     if (patchAccount["lastPackPulled"] != "" && patchAccount["lastPackPulled"] != "0")
         baseAccount["lastPackPulled"] := patchAccount["lastPackPulled"]
+    if (patchAccount["lastSpecialPackPulled"] != "" && patchAccount["lastSpecialPackPulled"] != "0")
+        baseAccount["lastSpecialPackPulled"] := patchAccount["lastSpecialPackPulled"]
     if (patchAccount["lastLoggedIn"] != "" && patchAccount["lastLoggedIn"] != "0")
         baseAccount["lastLoggedIn"] := patchAccount["lastLoggedIn"]
 
@@ -1501,6 +1507,10 @@ AccountMetadata_SaveAccount(instance, fileName, account) {
         account["lastPackPulled"] := store["accounts"][key]["lastPackPulled"]
     else if (account["lastPackPulled"] = "")
         account["lastPackPulled"] := "0"
+    if (store["accounts"].HasKey(key) && store["accounts"][key]["lastSpecialPackPulled"] != "" && store["accounts"][key]["lastSpecialPackPulled"] != "0")
+        account["lastSpecialPackPulled"] := store["accounts"][key]["lastSpecialPackPulled"]
+    else if (account["lastSpecialPackPulled"] = "")
+        account["lastSpecialPackPulled"] := "0"
     if (!IsObject(account["flags"]))
         account["flags"] := {}
     if (store["accounts"].HasKey(key) && IsObject(store["accounts"][key]["flags"]) && store["accounts"][key]["flags"].HasKey("W"))
@@ -1774,6 +1784,12 @@ AccountMetadata_SetLastPackPulledNow(deviceAccount, instance := "", fileName := 
     if (deviceAccount = "")
         return false
     return AccountMetadata_SetDeviceFields(deviceAccount, {"lastPackPulled": AccountMetadata_Now()}, instance, fileName)
+}
+
+AccountMetadata_SetLastSpecialPackPulledNow(deviceAccount, instance := "", fileName := "") {
+    if (deviceAccount = "")
+        return false
+    return AccountMetadata_SetDeviceFields(deviceAccount, {"lastSpecialPackPulled": AccountMetadata_Now()}, instance, fileName)
 }
 
 AccountMetadata_SetLastLoggedInNow(deviceAccount, instance := "", fileName := "") {

@@ -292,13 +292,36 @@ MonitorGetMuMuBackendPids(vmFolderName) {
 
     try {
         for process in ComObjGet("winmgmts:").ExecQuery("Select ProcessId, Name, CommandLine from Win32_Process Where Name like 'MuMu%'") {
-            if (process.CommandLine != "" && InStr(process.CommandLine, vmFolderName))
+            if (process.CommandLine != "" && MonitorCommandLineTargetsVm(process.CommandLine, vmFolderName))
                 pids.Push(process.ProcessId + 0)
         }
     } catch e {
         LogError("Monitor backend lookup failed for " . vmFolderName . ": " . e.Message, "Monitor.txt")
     }
     return pids
+}
+
+; Returns true only when vmFolderName appears in the command line as a complete
+; token, delimited on both sides by characters that cannot be part of a VM
+; folder name (or by the string edges). A plain substring match would wrongly
+; scope e.g. "MuMuPlayerGlobal-15.0-1" to processes of "MuMuPlayerGlobal-15.0-10".
+MonitorCommandLineTargetsVm(commandLine, vmFolderName) {
+    pos := 1
+    while (pos := InStr(commandLine, vmFolderName, false, pos)) {
+        before := (pos > 1) ? SubStr(commandLine, pos - 1, 1) : ""
+        afterPos := pos + StrLen(vmFolderName)
+        after := (afterPos <= StrLen(commandLine)) ? SubStr(commandLine, afterPos, 1) : ""
+        if (!MonitorIsVmNameChar(before) && !MonitorIsVmNameChar(after))
+            return true
+        pos++
+    }
+    return false
+}
+
+; Characters that may appear inside a MuMu VM folder name (letters, digits,
+; dot, dash, underscore). Anything else acts as a token delimiter.
+MonitorIsVmNameChar(char) {
+    return char != "" && RegExMatch(char, "[A-Za-z0-9._-]")
 }
 
 MonitorKillMuMuBackendPids(vmFolderName) {

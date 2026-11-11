@@ -92,7 +92,7 @@ needlesDict.Add(new Needle("FriendLimit", "FriendLimit", new Coordinate(221, 267
 ;==============================================================================================================================
 
 ; Wonderpick
-needlesDict.Add(new Needle("WonderPick_NoEnergy", "noWPenergy", new Coordinate(82, 422, 93, 434)))
+needlesDict.Add(new Needle("WonderPick_NoEnergy", "noWPenergy", new Coordinate(40, 422, 50, 433)))
 needlesDict.Add(new Needle("WonderPick_WonderPickButtonInHome", "WonderPick", new Coordinate(244, 79, 259, 92)))
 needlesDict.Add(new Needle("WonderPick_EnergyStatusAfterSelect", "WonderPickRaminItems", new Coordinate(22, 439, 38, 474)))
 needlesDict.Add(new Needle("WonderPick_SelectCards", "Card", new Coordinate(166, 331, 194, 359)))
@@ -107,15 +107,17 @@ needlesDict.Add(new Needle("ShinedustFlair", "ShinedustFlair", new Coordinate(14
 
 ; Receive Gift
 needlesDict.Add(new Needle("Gift_ClaimAllButton", "ClaimAll", new Coordinate(170, 434, 216, 447)))
+needlesDict.Add(new Needle("Gift_ClaimTopButton", "ClaimTop", new Coordinate(175, 150, 205, 175)))
 needlesDict.Add(new Needle("Gift_ReceivedWindowRightBorder", "GiftReceiveWindowBorder", new Coordinate(260, 200, 265, 205)))
 needlesDict.Add(new Needle("Gift_ResultAfterOpenPack", "OpeningMultiple", new Coordinate(167, 494, 178, 505)))
-needlesDict.Add(new Needle("Gift_Claimable", "Claimable", new Coordinate(22, 105, 27, 112)))
+needlesDict.Add(new Needle("Gift_Claimable", "ClaimTop", new Coordinate(175, 150, 205, 175)))
 needlesDict.Add(new Needle("Gift_ClaimedAll", "ClaimedAll", new Coordinate(257, 410, 267, 435)))
 
 ;==============================================================================================================================
 
 ; Common
 needlesDict.Add(new Needle("Common_ActivatedSocialInMainMenu", "Social", new Coordinate(128, 509, 141, 520)))
+needlesDict.Add(new Needle("Common_InactiveSocialInMainMenu", "SocialWhite", new Coordinate(127, 511, 136, 520)))
 needlesDict.Add(new Needle("Common_CloseAlertWindowInMain", "CloseAlertWindow", new Coordinate(5, 375, 40, 400)))
 needlesDict.Add(new Needle("Common_ActivatedHomeInMainMenu", "FogHomeIcon", new Coordinate(24, 499, 44, 522)))
 needlesDict.Add(new Needle("Common_PopupXButtonInMain", "Privacy", new Coordinate(130, 473, 145, 488)))
@@ -175,12 +177,16 @@ needlesDict.Add(new Needle("Menu_MiscMenuLeftTop", "InSubMenu", new Coordinate(0
 
 ; Pack
 needlesDict.Add(new Needle("Pack_PackPointButton", "Points", new Coordinate(238, 406, 247, 416)))
+needlesDict.Add(new Needle("Pack_NewHG", "NewHG", new Coordinate(222, 59, 242, 76)))
+needlesDict.Add(new Needle("Pack_CannotOpenMoreFreePacks", "CannotOpenMoreFreePacks", new Coordinate(110, 395, 162, 442)))
+needlesDict.Add(new Needle("Pack_OpenButton", "PackOpenButton", new Coordinate(75, 410, 82, 428)))
 needlesDict.Add(new Needle("Pack_ScrollInSelectExpansion", "SelectExpansion", new Coordinate(119, 138, 157, 146)))
 needlesDict.Add(new Needle("Pack_ASeries", "ExpansionSeries", new Coordinate(248, 447, 264, 467)))
 needlesDict.Add(new Needle("Pack_SkipButtonAfterOpenPack", "Skip", new Coordinate(245, 495, 256, 507)))
 needlesDict.Add(new Needle("Pack_SpecialPackNotification", "Confirm", new Coordinate(118, 360, 135, 397)))
 needlesDict.Add(new Needle("Pack_ResultAfterOpenPack", "Opening", new Coordinate(54, 96, 73, 115)))
 needlesDict.Add(new Needle("Pack_ReadyForOpenPack", "Pack", new Coordinate(198, 271, 202, 282)))
+needlesDict.Add(new Needle("Pack_ReadyForOpenPack2", "Trace", new Coordinate(127, 276, 140, 284)))
 needlesDict.Add(new Needle("Pack_NextButtonAfterOpenPack", "Next", new Coordinate(131, 74, 140, 84)))
 needlesDict.Add(new Needle("Next2", "Next2", new Coordinate(131, 74, 140, 84)))  ; ------------------------------ Finding
 needlesDict.Add(new Needle("Pack_BackButtonInSelectPackScreen", "ConfirmPack", new Coordinate(127, 462, 137, 475)))
@@ -226,7 +232,9 @@ needlesDict.Add(new Needle("Create_BeginNewAccountButton", "Save", new Coordinat
 needlesDict.Add(new Needle("Create_NintendoLink", "Link", new Coordinate(65, 340, 91, 347)))
 needlesDict.Add(new Needle("Create_NintendoLink2", "Link2", new Coordinate(64, 320, 92, 326)))
 needlesDict.Add(new Needle("Create_DownloadAlertWindow", "Confirm", new Coordinate(118, 347, 135, 384)))
+needlesDict.Add(new Needle("Create_DownloadAlertWindowTutorial", "Confirm", new Coordinate(75, 383, 77, 385)))
 needlesDict.Add(new Needle("Create_DownloadComplete", "Complete", new Coordinate(215, 369, 233, 397)))
+needlesDict.Add(new Needle("Create_DownloadingData", "DownloadingData", new Coordinate(240, 478, 260, 496)))
 needlesDict.Add(new Needle("Create_CinematicBackground", "Cinematic", new Coordinate(0, 40, 7, 47)))
 needlesDict.Add(new Needle("Create_WelcomePopup", "Welcome", new Coordinate(72, 234, 125, 239)))
 needlesDict.Add(new Needle("Boot_Welcome", "Welcome", new Coordinate(70, 278, 140, 295)))
@@ -325,14 +333,24 @@ GetSpeedModClickY(speed) {
 
 ; Opens the SpeedMod menu and selects the given speed (1, 2 or 3).
 SetGameSpeed(speed) {
-    FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
-    FindImageAndClick(GetSpeedModNeedle(speed), GetSpeedModClickX(speed), GetSpeedModClickY(speed))
+    global session
+    if(session.get("setSpeed") > 1) {
+        FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
+        FindImageAndClick(GetSpeedModNeedle(speed), GetSpeedModClickX(speed), GetSpeedModClickY(speed))
+        Delay(1)
+        adbClick_wbb(51, 297)
+        Delay(1)
+        session.set("currentGameSpeed", speed)
+    }
 }
 
 ; Opens the SpeedMod menu and selects the configured speed (3x, otherwise 2x).
 SetConfiguredGameSpeed() {
     global session
-    SetGameSpeed(session.get("setSpeed") = 3 ? 3 : 2)
+    target := session.get("setSpeed") = 3 ? 3 : 2
+    if (session.get("currentGameSpeed") = target)
+        return
+    SetGameSpeed(target)
 }
 
 IsSpeedModImageName(imageName) {

@@ -25,14 +25,18 @@ DoWonderPickOnly() {
     if (isTerminatePTCGPHelperApp()) {
         InitPackOpening()
     }
+
+    SetGameSpeed(1)
+
     Loop {
         if (TryWonderPickDexSwipeRegister()) {
             pickAlreadyRevealed := true
             break
         }
-        adbClick_wbb(80, 390) ; first wonderpick slot
-        adbClick_wbb(80, 460) ; backup, second wonderpick slot
+        adbClick_wbb(30, 390) ; first wonderpick slot
+        adbClick_wbb(250, 460) ; backup, second wonderpick slot
         if(FindOrLoseImage("WonderPick_NoEnergy", 0, failSafeTime)) {
+            ; todo: this needs to be fixed for other languages
             Sleep, 2000
             CreateStatusMessage("No WonderPick Energy left!",,,, false)
             Sleep, 2000
@@ -47,6 +51,7 @@ DoWonderPickOnly() {
             if(FindOrLoseImage("WonderPick_EnergyStatusAfterSelect", 0, failSafeTime)){
                 adbClick_wbb(198, 456)
                 Delay(3)
+                SetGameSpeed(3)
             }
             if(FindOrLoseImage("WonderPick_SelectCards", 0, failSafeTime))
                 break
@@ -55,6 +60,8 @@ DoWonderPickOnly() {
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Waiting for WonderPick`n(" . failSafeTime . "/45 seconds)")
     }
+    SetGameSpeed(3)
+
     if (!pickAlreadyRevealed) {
         Sleep, 300
         if(botConfig.get("slowMotion"))
@@ -83,6 +90,8 @@ DoWonderPickOnly() {
             failSafeTime := 0
             continue
         }
+        adbClick(142, 122)
+        Delay(1)
         adbClick_wbb(146, 494)
         Delay(1)
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime) || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, failSafeTime))
