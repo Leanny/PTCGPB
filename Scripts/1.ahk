@@ -211,7 +211,7 @@ Loop {
 
 if(botConfig.get("slowMotion")) {
     session.set("setSpeed", 1)
-} else() {
+} else {
     session.set("setSpeed", 3) ;always 1x/3x
 }
 if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account")
