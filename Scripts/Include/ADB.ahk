@@ -652,7 +652,7 @@ adbGrantOverlayPermission(package := "jp.pokemon.pokemontcgp") {
     return true
 }
 
-; Denies the camera permission of the game (user-fixed) so MuMu's "Scan" popup stops appearing.
+; Denies the camera permission of the game (user-fixed) so Android never shows its permission dialog.
 ; Resulting state: granted=false, flags=USER_SET|USER_FIXED, appops CAMERA=ignore.
 adbDenyCameraPermission(package := "jp.pokemon.pokemontcgp") {
     prof := Prof_Scope(A_ThisFunc)
@@ -664,11 +664,66 @@ adbDenyCameraPermission(package := "jp.pokemon.pokemontcgp") {
     adbWriteRaw("pm set-permission-flags " . package . " android.permission.CAMERA user-set user-fixed")
     adbWriteRaw("cmd appops set --uid " . package . " CAMERA ignore")
     output := adbWriteRaw(check, true)
+
+    ; Android 12 has no "pm set-permission-flags", so the flag has to be written to the permission file
+    if (!adbCameraDenied(output) && adbSetCameraFixedViaFile(package)) {
+        adbWriteRaw("cmd appops set --uid " . package . " CAMERA ignore")
+        output := adbWriteRaw(check, true)
+    }
+
     if (!adbCameraDenied(output)) {
         LogWarn("Could not deny the camera permission for " . package . ": " . Trim(output, "`r`n`t "), "ADB.txt")
         return false
     }
     LogInfo("Denied the camera permission for " . package, "ADB.txt")
+    return true
+}
+
+; Android 12 fallback: set USER_FIXED (0x2) in runtime-permissions.xml (flags are hex, 303 = USER_SET|USER_FIXED|USER_SENSITIVE_*)
+; and restart the framework (zygote) so Android reloads the file. This drops adb root, so the shell is re-initialized afterwards.
+adbSetCameraFixedViaFile(package) {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+    file := "/data/misc_de/0/apexdata/com.android.permission/runtime-permissions.xml"
+    block := "sed -n '/package name=." . package . "./,/<.package>/p' " . file . " | grep 'permission.CAMERA. granted'"
+
+    ; "pm revoke" makes Android persist an entry for the package, which can take a moment
+    entry := ""
+    Loop, 10 {
+        entry := adbWriteRaw(block, true)
+        if (InStr(entry, "android.permission.CAMERA"))
+            break
+        Sleep, 500
+    }
+    if (!InStr(entry, "android.permission.CAMERA")) {
+        LogWarn("Camera permission entry for " . package . " not found in " . file, "ADB.txt")
+        return false
+    }
+
+    adbWriteRaw("am force-stop " . package)
+    adbWriteRaw("sed -i '/package name=." . package . "./,/<.package>/{/permission.CAMERA. granted/s/flags=.[0-9a-f]*./flags=""303""/}' " . file)
+    if (!InStr(adbWriteRaw(block, true), "flags=""303"""))
+        return false
+
+    LogInfo("Restarting Android framework to apply the camera permission flags for " . package, "ADB.txt")
+    try {
+        session.get("adbShell").StdIn.WriteLine("setprop ctl.restart zygote;echo done;")
+    } catch {
+    }
+    Sleep, 3000
+    try {
+        session.get("adbShell").Terminate()
+    } catch {
+    }
+    session.set("adbShell", "")
+
+    ; wait until Android is back, then reconnect the root shell
+    Loop, 30 {
+        initializeAdbShell()
+        if (InStr(adbWriteRaw("getprop sys.boot_completed", true), "1"))
+            return true
+        Sleep, 2000
+    }
     return true
 }
 
