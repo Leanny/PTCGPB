@@ -717,14 +717,22 @@ adbSetCameraFixedViaFile(package) {
     }
     session.set("adbShell", "")
 
-    ; wait until Android is back, then reconnect the root shell
+    ; The restart drops adb root. Reconnect and only continue once the shell is root and Android has booted.
     Loop, 30 {
         initializeAdbShell()
-        if (InStr(adbWriteRaw("getprop sys.boot_completed", true), "1"))
+        state := adbWriteRaw("getprop sys.boot_completed; id", true)
+        if (InStr(state, "uid=0") && RegExMatch(state, "m)^1\s*$"))
             return true
+
+        try {
+            session.get("adbShell").Terminate()
+        } catch {
+        }
+        session.set("adbShell", "")
         Sleep, 2000
     }
-    return true
+    LogWarn("Could not get a root shell back after restarting the Android framework", "ADB.txt")
+    return false
 }
 
 adbCameraDenied(output) {
