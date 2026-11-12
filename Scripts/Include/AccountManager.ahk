@@ -739,6 +739,13 @@ AccountEligibility_RenameAccountEligible(accountMeta) {
     return true
 }
 
+AccountEligibility_ClaimShopPacksEligible(accountMeta) {
+    if (!IsObject(accountMeta) || !IsObject(accountMeta["claimedShopPacks"]))
+        return true
+    claimedCount := accountMeta["claimedShopPacks"].MaxIndex()
+    return (claimedCount = "" ? 0 : claimedCount) < 2 ; only 2 tickets are obtainable right now
+}
+
 AccountEligibility_ToUTC(timestamp) {
     if (timestamp = "" || timestamp = "0")
         return "0"
@@ -941,6 +948,9 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (method = "Rename Account")
         return AccountEligibility_RenameAccountEligible(accountMeta)
 
+    if (method = "Claim Shop Packs")
+        return AccountEligibility_ClaimShopPacksEligible(accountMeta)
+
     packCount := accountMeta["packCount"] + 0
     if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
         return false
@@ -1011,7 +1021,7 @@ CreateAccountList(instance) {
     global botConfig
 
     ; Clean up stale used accounts first (skipped for Rename — used accounts stay eligible)
-    if (botConfig.get("deleteMethod") != "Rename Account")
+    if (botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs")
         CleanupUsedAccounts()
 
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . instance
@@ -1025,7 +1035,7 @@ CreateAccountList(instance) {
 
     ; Rename Account must rescan all XMLs (including used) whenever the queue is built.
     ; Do not set forceRegeneration — that passes --force-clear-used and wipes used_accounts.txt.
-    if (botConfig.get("deleteMethod") = "Rename Account")
+    if (botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs")
         needRegeneration := true
 
     ; First check: Do list files exist and are they not empty?
@@ -1101,7 +1111,7 @@ CreateAccountList(instance) {
         command .= " --spend-hourglass"
     if (botConfig.get("forceInjectAccounts") && InStr(botConfig.get("deleteMethod"), "Inject"))
         command .= " --force-inject"
-    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account")
+    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs")
         command .= " --force-clear-used"
 
     hScheduleLock := CreateAccountListSchedule_AcquireLock()

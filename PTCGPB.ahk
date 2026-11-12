@@ -45,7 +45,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.3.0-beta.8"
+    ,localVersion := "v10.3.0-beta.9"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -247,7 +247,7 @@ UpdateHourglassPackCountVisibility(deleteMethod := "") {
     }
 
     GuiControlGet, spendHourGlassChecked, , ui_spendHourGlass
-    packCountVisible := (spendHourGlassChecked && deleteMethod != "Create Bots (13P)" && deleteMethod != "Inject Rewards" && deleteMethod != "Rename Account") ? "Show" : "Hide"
+    packCountVisible := (spendHourGlassChecked && deleteMethod != "Create Bots (13P)" && deleteMethod != "Inject Rewards" && deleteMethod != "Rename Account" && deleteMethod != "Claim Shop Packs") ? "Show" : "Hide"
     tenPackVisible := (spendHourGlassChecked && deleteMethod = "Inject 13P+") ? "Show" : "Hide"
     GuiControl, %tenPackVisible%, ui_hourglassTenPackOpening
     GuiControl, %packCountVisible%, ui_spendHourglassPackCountText
@@ -393,7 +393,7 @@ NextStep:
     } else if (botMethod = "Inject Rewards") {
         botY_chkTenPack := -100
         botY_hourglassCountRow := -100
-    } else if (botMethod = "Rename Account") {
+    } else if (botMethod = "Rename Account" || botMethod = "Claim Shop Packs") {
         botY_chkTenPack := -100
         botY_hourglassCountRow := -100
     } else {
@@ -413,16 +413,18 @@ NextStep:
         defaultDelete := 4
     else if (botMethod = "Rename Account")
         defaultDelete := 5
+    else if (botMethod = "Claim Shop Packs")
+        defaultDelete := 6
     Gui, Add, Text, x20 y%botY207% %sectionColor%, Bot Mode
-    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w210 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account
+    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w210 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs
 
     Gui, Add, Text, % "vui_injectWonderpickMinPacksText x20 y" . botY257 . " " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), Min Packs:
     Gui, Add, Edit, % "vui_injectWonderpickMinPacks w40 x190 y" . botY257 . " h20 -E0x200 Background2A2A2A cWhite Center" . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % botConfig.get("injectWonderpickMinPacks")
     Gui, Add, Checkbox, % (botConfig.get("packMethod") ? "Checked" : "") " vui_packMethod x20 y" . botY_chkPack . " w190 h20 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % dict["Txt_packMethod"]
     Gui, Add, Checkbox, % (botConfig.get("openExtraPack") ? "Checked" : "") " vui_openExtraPack gopenExtraPackSettings x20 y" . botY_chkOpen . " w190 h20 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+" || botMethod = "Inject 13P+") ? "" : " Hidden"), % dict["Txt_openExtraPack"]
-    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y" . botY_chkSpend . " w190 h20 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account")? " Hidden":""), % dict["Txt_spendHourGlass"]
-    hourglassSpendUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account") ? " Hidden" : ""
-    hourglassPackCountUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
+    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y" . botY_chkSpend . " w190 h20 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs")? " Hidden":""), % dict["Txt_spendHourGlass"]
+    hourglassSpendUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs") ? " Hidden" : ""
+    hourglassPackCountUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
     hourglassTenPackUiHidden := (botMethod != "Inject 13P+" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
     Gui, Add, Checkbox, % (botConfig.get("hourglassTenPackOpening") ? "Checked" : "") " vui_hourglassTenPackOpening x20 y" . botY_chkTenPack . " w190 h20 " . sectionColor . hourglassTenPackUiHidden, % dict["Txt_hourglassTenPackOpening"]
     Gui, Add, Text, % "vui_spendHourglassPackCountText x38 y" . botY_hourglassCountRow . " w147 h20 " . sectionColor . hourglassPackCountUiHidden, % dict["Txt_spendHourglassPackCount"]
@@ -439,6 +441,11 @@ NextStep:
     else if (botConfig.get("injectSortMethod") = "LastLoginAsc")
         sortOption := 5
     Gui, Add, DropDownList, % "vui_SortByDropdown gSortByDropdownHandler choose" . sortOption . " x90 y" . botY_sortRow . " w140 Background2A2A2A cWhite", Oldest First|Newest First|Fewest Packs First|Most Packs First|Oldest Last Login
+
+    shopPackUiHidden := (botMethod = "Claim Shop Packs") ? "" : " Hidden"
+    Gui, Add, Text, % "vui_ShopPackText x20 y" . (botY257 + 3) . " " . sectionColor . shopPackUiHidden, Select Pack
+    Gui, Add, Button, % "vui_ShopPackButton gShowShopPackSelection x100 y" . (botY257 - 3) . " w130 h25 BackgroundTrans" . shopPackUiHidden, Loading...
+    UpdateShopPackButtonText()
 
     Gui, Add, Text, % "x20 y" . botY_accountRow . " " . sectionColor . " vui_AccountNameText", % GuiLabel(dict["Txt_AccountName"])
     Gui, Add, Edit, % "vui_AccountName w100 x130 y" . botY_accountRow . " h20 -E0x200 Background2A2A2A cWhite Center", % botConfig.get("AccountName")
@@ -682,7 +689,26 @@ deleteSettings:
         GuiControl, Show, ui_AccountNameText
         GuiControl, Show, ui_AccountName
         GuiControl, Hide, ui_WaitTime
+    } else if (curDeleteMethod = "Claim Shop Packs") {
+        GuiControl, Hide, ui_FriendID
+        GuiControl, Hide, ui_spendHourGlass
+        GuiControl, Hide, ui_hourglassTenPackOpening
+        GuiControl, Hide, ui_spendHourglassPackCountText
+        GuiControl, Hide, ui_spendHourglassPackCount
+        GuiControl, Hide, ui_packMethod
+        GuiControl, Hide, ui_injectWonderpickMinPacksText
+        GuiControl, Hide, ui_injectWonderpickMinPacks
+        GuiControl, Hide, ui_openExtraPack
+        GuiControl, Show, ui_SortByText
+        GuiControl, Show, ui_SortByDropdown
+        GuiControl, Hide, ui_AccountNameText
+        GuiControl, Hide, ui_AccountName
+        GuiControl, Hide, ui_WaitTime
     }
+
+    shopPackVisible := (curDeleteMethod = "Claim Shop Packs") ? "Show" : "Hide"
+    GuiControl, %shopPackVisible%, ui_ShopPackText
+    GuiControl, %shopPackVisible%, ui_ShopPackButton
 
     if (curDeleteMethod != "Inject Wonderpick 96P+") {
         GuiControl,, ui_runMain, 0
@@ -1147,6 +1173,111 @@ return
 
 CancelPackSelection:
     Gui, PackSelect:Destroy
+return
+
+; =================== UI - Shop Pack Selection(Claim Shop Packs, New Window) ===================
+
+UpdateShopPackButtonText() {
+    global botConfig, dict, session
+
+    selectedPacks := []
+    selectedMap := GetSelectedShopPackIDs()
+    For orderIdx, packID in session.get("shopPackOrder") {
+        if (selectedMap.HasKey(packID))
+            selectedPacks.Push(dict["Txt_ShopPack_" . packID] ? dict["Txt_ShopPack_" . packID] : packID)
+    }
+
+    packCount := selectedPacks.MaxIndex() ? selectedPacks.MaxIndex() : 0
+    if (packCount = 0)
+        buttonText := "Select..."
+    else if (packCount = 1)
+        buttonText := selectedPacks[1]
+    else
+        buttonText := selectedPacks[1] . " +" . (packCount - 1) . " more"
+
+    Gui, Font, s7 cWhite, Segoe UI
+    GuiControl,, ui_ShopPackButton, %buttonText%
+    GuiControl, Font, ui_ShopPackButton
+    Gui, Font, s10 cWhite, Segoe UI
+}
+
+ShowShopPackSelection:
+    HelpTT_DismissForClick()
+    Gui, Submit, NoHide
+
+    Gui, ShopPackSelect:Destroy
+    Gui, ShopPackSelect:New, +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Claim Shop Packs
+    Gui, ShopPackSelect:Color, 1E1E1E, 333333
+    Gui, ShopPackSelect:Font, s10 cWhite, Segoe UI
+
+    shopColumnSize := 300
+    shopYInit := 35
+    shopMaxHeight := shopYInit
+    shopSelectedMap := GetSelectedShopPackIDs()
+    shopPackOrder := session.get("shopPackOrder")
+    shopPackObj := session.get("shopPackObj")
+
+    shopSeriesList := []
+    shopSeriesSeen := {}
+    For orderIdx, packID in shopPackOrder {
+        seriesValue := shopPackObj[packID]["Series"]
+        if (!shopSeriesSeen.HasKey(seriesValue)) {
+            shopSeriesSeen[seriesValue] := true
+            shopSeriesList.Push(seriesValue)
+        }
+    }
+
+    shopSeriesIdx := 0
+    For seriesIdx, seriesValue in shopSeriesList {
+        shopSeriesX := 10 + (shopSeriesIdx * shopColumnSize)
+        shopPackY := shopYInit
+        Gui, ShopPackSelect:Add, Text, % "x" . shopSeriesX . " y10 cWhite", %seriesValue%-Series
+
+        For orderIdx, packID in shopPackOrder {
+            if (shopPackObj[packID]["Series"] != seriesValue)
+                continue
+
+            viewPackName := dict["Txt_ShopPack_" . packID] ? dict["Txt_ShopPack_" . packID] : packID
+            isChecked := shopSelectedMap.HasKey(packID) ? "Checked" : ""
+            Gui, ShopPackSelect:Add, Checkbox, vui_ShopSelect_%packID% %isChecked% x%shopSeriesX% y%shopPackY% w280 cWhite, %viewPackName%
+            shopPackY += 25
+        }
+
+        if (shopMaxHeight < shopPackY)
+            shopMaxHeight := shopPackY
+        shopSeriesIdx += 1
+    }
+    shopWindowWidth := shopSeriesIdx * shopColumnSize + 10
+
+    shopBtnY := shopMaxHeight + 10
+    shopBtnX := (shopWindowWidth - 170) / 2
+    Gui, ShopPackSelect:Add, Button, x%shopBtnX% y%shopBtnY% w80 h30 gApplyShopPackSelection, Apply
+    shopBtnX += 90
+    Gui, ShopPackSelect:Add, Button, x%shopBtnX% y%shopBtnY% w80 h30 gCancelShopPackSelection, Cancel
+    shopBtnY += 40
+
+    PTCGPB_PopupRightOfCtl("ui_ShopPackButton", shopWindowWidth, 12, popupX, popupY)
+    Gui, ShopPackSelect:Show, x%popupX% y%popupY% w%shopWindowWidth% h%shopBtnY%
+return
+
+ApplyShopPackSelection:
+    Gui, ShopPackSelect:Submit, NoHide
+
+    shopSelectedIDs := ""
+    For orderIdx, packID in session.get("shopPackOrder") {
+        GuiControlGet, shopState, ShopPackSelect:, ui_ShopSelect_%packID%
+        if (shopState = 1)
+            shopSelectedIDs .= (shopSelectedIDs = "" ? "" : ",") . packID
+    }
+    botConfig.set("shopClaimPacks", shopSelectedIDs, "General")
+    Gui, ShopPackSelect:Destroy
+
+    Gui, 1:Default
+    UpdateShopPackButtonText()
+return
+
+CancelShopPackSelection:
+    Gui, ShopPackSelect:Destroy
 return
 
 ; =================== UI - Inject WP Card Detection(New Window, Details) ===================
@@ -2881,7 +3012,7 @@ HelpTT_Init() {
     HelpTT_Add("ui_Mains", "Mains", "Number of Main instances to run.`nName their MuMu instances exactly 'Main', 'Main2', 'Main3', ...")
 
     ; --- Main window: Bot Settings
-    HelpTT_Add("ui_deleteMethod", "deleteMethod", "Bot mode:`n• Create Bots (13P): creates brand-new accounts, opens their packs and saves them as XML.`n• Inject 13P+: loads saved accounts, opens their available packs, then marks them as used.`n• Inject Wonderpick 96P+: loads accounts with at least 'Min Packs' packs, friends your Main(s) and opens packs for God Pack testing; unfriends at the end.`n• Inject Rewards: loads saved accounts only to claim rewards (event missions, gifts) without opening packs; accounts stay available for the other modes.`n• Rename Account: loads saved accounts, opens the profile and renames them using AccountName / usernames list; accounts stay available for the other modes.")
+    HelpTT_Add("ui_deleteMethod", "deleteMethod", "Bot mode:`n• Create Bots (13P): creates brand-new accounts, opens their packs and saves them as XML.`n• Inject 13P+: loads saved accounts, opens their available packs, then marks them as used.`n• Inject Wonderpick 96P+: loads accounts with at least 'Min Packs' packs, friends your Main(s) and opens packs for God Pack testing; unfriends at the end.`n• Inject Rewards: loads saved accounts only to claim rewards (event missions, gifts) without opening packs; accounts stay available for the other modes.`n• Rename Account: loads saved accounts, opens the profile and renames them using AccountName / usernames list; accounts stay available for the other modes.`n• Claim Shop Packs: loads saved accounts to claim the packs chosen under 'Select Pack' from the shop.")
     HelpTT_Add("ui_forceInjectAccounts", "forceInjectAccounts", "Overrides all normal injection conditions for each account once.`nAfter an account is injected, its FI metadata flag prevents another forced injection until you clear the force inject flags.")
     HelpTT_Add("ui_injectWonderpickMinPacks", "injectWonderpickMinPacks", "Minimum number of packs a saved account must have to be injected in Wonderpick mode (70-999, default 96).")
     HelpTT_Add("ui_packMethod", "packMethod", "When enabled, the bot opens packs one at a time, removing and re-adding friends between each pack.")
