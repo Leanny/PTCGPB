@@ -22,6 +22,7 @@ pToken := Gdip_Startup()
 #Include BotPackOpening.ahk
 #Include BotMissions.ahk
 #Include BotWonderPick.ahk
+#Include BotShopPackPurchase.ahk
 #Include BotTutorial.ahk
 #Include BotAccountMenu.ahk
 #Include BotDebugTools.ahk
@@ -109,7 +110,7 @@ if (stopAfterRunPending = 1) {
 
 originalDeleteMethod := botConfig.get("deleteMethod")
 if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
-    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account"
+    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs"
     if (!InStr(validMethods, originalDeleteMethod)) {
         botConfig.set("deleteMethod", "Create Bots (13P)", "General")
         botConfig.saveConfigToSettings("General")
@@ -214,7 +215,7 @@ if(botConfig.get("slowMotion")) {
 } else {
     session.set("setSpeed", 3) ;always 1x/3x
 }
-if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account")
+if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs")
     session.set("injectMethod", true)
 
 startPackList := ""
@@ -469,6 +470,27 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(botConfig.get("deleteMethod") = "Inject Rewards")
             Goto, EndOfRun
 
+        if(botConfig.get("deleteMethod") = "Claim Shop Packs")
+        {
+            accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+            shopPackID := ShopPack_PickPack()
+            LogInfo("Claim Shop Packs: picked " . ShopPack_Name(shopPackID) . " | account=" . session.get("accountFileName"), "ShopClaim.txt")
+            if (GoToShopPack(shopPackID)) {
+                accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
+                while (BuyShopPack()) {
+                    accountMeta["claimedShopPacks"].Push(AccountMetadata_Now()) ; one timestamp per claimed pack
+                    AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
+                    LogInfo("Claimed shop pack " . ShopPack_Name(shopPackID) . " | account=" . session.get("accountFileName") . " | total claimed=" . accountMeta["claimedShopPacks"].MaxIndex(), "ShopClaim.txt")
+                }
+            }
+            if (session.get("injectMethod") && session.get("loadedAccount")) {
+                MarkAccountAsClaimed()
+                LogInfo("Marked account as claimed (reusable): " . session.get("accountFileName"))
+                session.set("loadedAccount", false)
+            }
+            ExitApp
+            continue
+        }
         if(botConfig.get("deleteMethod") = "Rename Account") {
             if (!AccountRename_CanRenameCurrentAccount()) {
                 LogInfo("Rename skipped (account age or rename cooldown) | account=" . session.get("accountFileName"))

@@ -25,6 +25,7 @@
         , "ui_waitTime": "waitTime"}
 
     defaultValueMap := {"BotLanguage":"English"
+        , "shopClaimPacks":""
         , "IsLanguageSet":0
         , "shownLicense":0
         , "defaultBotLanguage":1
