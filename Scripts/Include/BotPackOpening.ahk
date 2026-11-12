@@ -626,36 +626,36 @@ PackOpening(tenPackOpening := false) {
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
             Delay(1)
-            if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack2", 0, failSafeTime)) {
-                adbClick_wbb(256, 505)
-                Delay(1)
-            } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
-                adbClick_wbb(146, 489) ;146, 494
-                Delay(1)
-            } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
-                adbClick_wbb(146, 489) ;146, 494
-                Delay(1)
-            } else if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
-                adbClick_wbb(37, 378)
-                Delay(1)
-            } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
-                break
-            } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
-                break
-            } else {
-                adbClick_wbb(146, 489) ;146, 494
-                Delay(1)
-            }
-            failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-            CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
-            if(failSafeTime > 45)
-                restartGameInstance("Stuck at Home")
+        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack2", 0, failSafeTime)) {
+            adbClick_wbb(256, 505)
+            Delay(1)
+        } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
+            adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
+        } else if(FindOrLoseImage("Next2", 0, failSafeTime)) {
+            adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
+        } else if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+            adbClick_wbb(37, 378)
+            Delay(1)
+        } else if(FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, failSafeTime)) {
+            break
+        } else if(FindOrLoseImage("Create_TutorialUseResourceForOpenPack", 0, failSafeTime)) {
+            break
+        } else {
+            adbClick_wbb(146, 489) ;146, 494
+            Delay(1)
         }
-
-        CardDetection_FlushPendingGodPack()
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for Home`n(" . failSafeTime . "/45 seconds)")
+        if(failSafeTime > 45)
+            restartGameInstance("Stuck at Home")
     }
 
-    HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
+    CardDetection_FlushPendingGodPack()
+}
+
+HourglassOpening(HG := false, NEIRestart := true, tenPackOpening := false) {
     global botConfig, session
     if (isTerminatePTCGPHelperApp()) {
         InitPackOpening()
