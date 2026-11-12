@@ -284,6 +284,9 @@ needlesDict.Add(new Needle("Privacy_Green", "Privacy3", new Coordinate(31, 353, 
 needlesDict.Add(new Needle("Shop_TicketIcon", "ShopTicketIcon", new Coordinate(150, 60, 180, 90)))
 needlesDict.Add(new Needle("Shop_DailyGiftDot", "ShopDailyGiftDot", new Coordinate(250, 178, 274, 202)))
 needlesDict.Add(new Needle("Shop_PurchaseOKButton", "ShopPurchaseOK", new Coordinate(83, 349, 193, 380)))
+needlesDict.Add(new Needle("Shop_ExchangeDoneButton", "ShopExchangeDone", new Coordinate(83, 349, 193, 380)))
+needlesDict.Add(new Needle("Shop_PackDialogOK", "ShopPackDialogOK", new Coordinate(150, 372, 250, 404)))
+needlesDict.Add(new Needle("Shop_NoTickets", "ShopNoTickets", new Coordinate(182, 68, 206, 81)))
 
 
 ; Do not use
