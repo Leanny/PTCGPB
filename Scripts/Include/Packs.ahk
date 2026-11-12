@@ -91,6 +91,10 @@
             Delay(1)
             if(FindOrLoseImage("Pack_PackPointButton", 0, failSafeTime))
                 break
+            if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+                adbClick_wbb(37, 378)
+                Delay(1)
+            }
             failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
             if (failSafeTime >= 45)
                 return false
