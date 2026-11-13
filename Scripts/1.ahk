@@ -259,7 +259,10 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     CreateStatusMessage("Stuck account still has friends. Unfriending accounts...")
     waitForAppBootScreen()
     Delay(1)
-    startPreProcess(botConfig.get("deleteMethod"))
+    if (botConfig.get("deleteMethod") = "Claim Shop Packs")
+        startPreProcess("Rename Account")
+    else
+        startPreProcess(botConfig.get("deleteMethod"))
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
         AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
         SetSpendHourglassMetadataFlag()
@@ -428,7 +431,10 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         session.set("keepAccount", false)
         session.set("s4tFoundTradeable", false)
 
-        startPreProcess(botConfig.get("deleteMethod"))
+        if (botConfig.get("deleteMethod") = "Claim Shop Packs")
+            startPreProcess("Rename Account")
+        else
+            startPreProcess(botConfig.get("deleteMethod"))
         methodType := botConfig.get("deleteMethod")
         if ((methodType = "Inject 13P+" || methodType = "Inject Rewards") && IsFunc("EnsureAccountFriendInfo")) {
             session.set("accountFriendInfoReturnedHome", false)
@@ -530,6 +536,13 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     }
                 }
             }
+            now := A_NowUTC
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
+            EnvSub, now, 1970, seconds
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
+            session.set("rerolls", session.get("rerolls") + 1)
+            IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
+            LogInfo("Run finished | shop claim | account=" . session.get("accountFileName"))
             continue
         }
         if(botConfig.get("deleteMethod") = "Rename Account") {
