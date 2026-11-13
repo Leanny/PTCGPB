@@ -518,18 +518,19 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
 }
 
 ; Returns true while inside the configured stop window before the daily reset.
-; Daily reset is 06:00 UTC (see AccountEligibility_CurrentDailyResetUTC).
+; Daily reset is 06:00 UTC.
 MainDailyResetStopDue() {
     minutes := botConfig.get("stopBeforeDailyResetMin") + 0
     if (minutes <= 0)
         return false
 
-    nextResetUTC := AccountEligibility_CurrentDailyResetUTC()
-    if (nextResetUTC <= A_NowUTC)
+    nowUTC := A_NowUTC
+    nextResetUTC := SubStr(nowUTC, 1, 8) . "060000"
+    if (nextResetUTC <= nowUTC)
         nextResetUTC += 1, Days
 
     secondsUntilReset := nextResetUTC
-    secondsUntilReset -= %A_NowUTC%, Seconds
+    secondsUntilReset -= %nowUTC%, Seconds
     return (secondsUntilReset <= minutes * 60)
 }
 
