@@ -156,6 +156,19 @@ if(botConfig.get("heartBeat"))
 FindImageAndClick("Common_ActivatedSocialInMainMenu", 143, 518, , 1000, 150)
 
 Loop {
+    if (MainDailyResetStopDue() && !session.get("stopAfterGPTest")) {
+        settingsPath := A_ScriptDir . "\..\Settings.ini"
+        IniRead, savedStopPreferenceMain, %settingsPath%, Extra, stopPreferenceMain, none
+        if (savedStopPreferenceMain = "gp_test") {
+            LogInfo("Daily reset window reached: running GP test then stopping | " . botConfig.get("stopBeforeDailyResetMin") . " min before reset")
+            Gosub, StopMainAfterGPTest
+        } else {
+            LogInfo("Stopping before daily reset | " . botConfig.get("stopBeforeDailyResetMin") . " min before reset")
+            CreateStatusMessage("Stopping before daily reset...",,,, false)
+            ExitApp
+        }
+    }
+
     if (session.get("autoUseGPTest") && botConfig.get("groupRerollEnabled")) {
         session.set("autotest_time", (A_TickCount - session.get("autotest")) // 1000)
         CreateStatusMessage("Auto GP Test Timer : " . session.get("autotest_time") .  "/ " . session.get("TestTime") . " seconds", "AutoGPTest", 0, 605, false, true)
@@ -502,6 +515,23 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
 
     }
     return confirmed
+}
+
+; Returns true while inside the configured stop window before the daily reset.
+; Daily reset is 06:00 UTC.
+MainDailyResetStopDue() {
+    minutes := botConfig.get("stopBeforeDailyResetMin") + 0
+    if (minutes <= 0)
+        return false
+
+    nowUTC := A_NowUTC
+    nextResetUTC := SubStr(nowUTC, 1, 8) . "060000"
+    if (nextResetUTC <= nowUTC)
+        nextResetUTC += 1, Days
+
+    secondsUntilReset := nextResetUTC
+    secondsUntilReset -= %nowUTC%, Seconds
+    return (secondsUntilReset <= minutes * 60)
 }
 
 resetWindows(){
