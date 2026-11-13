@@ -590,6 +590,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["createdAt"] := "0"
     account["lastRenamedAt"] := "0"
     account["claimedShopPacks"] := []
+    account["lastShopClaimAttempt"] := "0"
     account["lastPackPulled"] := 0
     account["lastSpecialPackPulled"] := "0"
     account["lastLoggedIn"] := "0"
@@ -900,6 +901,7 @@ AccountMetadata_ParseAccount(accountJson) {
     account["createdAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "createdAt", AccountMetadata_ParseNumber(accountJson, "createdAt", account["createdAt"])))
     account["lastRenamedAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "lastRenamedAt", AccountMetadata_ParseNumber(accountJson, "lastRenamedAt", account["lastRenamedAt"])))
     account["claimedShopPacks"] := AccountMetadata_ParseStringArray(accountJson, "claimedShopPacks")
+    account["lastShopClaimAttempt"] := AccountMetadata_ParseString(accountJson, "lastShopClaimAttempt", AccountMetadata_ParseNumber(accountJson, "lastShopClaimAttempt", 0))
     account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastPackPulled", AccountMetadata_ParseNumber(accountJson, "lastPackPulled", 0))
     if (account["lastPackPulled"] = "" || account["lastPackPulled"] = "0")
         account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastModified", account["lastPackPulled"])
@@ -1021,6 +1023,8 @@ AccountMetadata_SerializeAccount(account, indent := "") {
         }
         json .= "]"
     }
+    if (account["lastShopClaimAttempt"] != "" && account["lastShopClaimAttempt"] != "0")
+        AccountMetadata_AppendJsonString(json, firstField, "lastShopClaimAttempt", account["lastShopClaimAttempt"], "      ")
 
     if (account["lastPackPulled"] != "" && account["lastPackPulled"] != "0")
         AccountMetadata_AppendJsonString(json, firstField, "lastPackPulled", account["lastPackPulled"], "      ")
@@ -1205,6 +1209,8 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
         baseAccount["lastRenamedAt"] := patchAccount["lastRenamedAt"]
     if (IsObject(patchAccount["claimedShopPacks"]) && patchAccount["claimedShopPacks"].MaxIndex() != "")
         baseAccount["claimedShopPacks"] := patchAccount["claimedShopPacks"]
+    if (patchAccount["lastShopClaimAttempt"] != "" && patchAccount["lastShopClaimAttempt"] != "0")
+        baseAccount["lastShopClaimAttempt"] := patchAccount["lastShopClaimAttempt"]
     if (patchAccount["lastPackPulled"] != "" && patchAccount["lastPackPulled"] != "0")
         baseAccount["lastPackPulled"] := patchAccount["lastPackPulled"]
     if (patchAccount["lastSpecialPackPulled"] != "" && patchAccount["lastSpecialPackPulled"] != "0")

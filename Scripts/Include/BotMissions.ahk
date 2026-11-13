@@ -293,10 +293,6 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
         adbClick_wbb(197, 459)
         Delay(0.2)
         adbClick_wbb(175, 445)
-        Delay(0.5)
-        adbClick_wbb(261, 517)
-        Delay(0.5)
-        adbClick_wbb(261, 517)
         if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
             break
     }
@@ -555,10 +551,9 @@ HandleMissionDeckFailsafe() {
 ; under the toast, so only check it once the toast is gone: dismiss it first,
 ; then probe-tap until List is back, clicking through Skip/Next as they appear.
 SkipCardReveal() {
-    adbClick_wbb(146, 489) ; dismiss the CompleteGotAllClaims toast
     Delay(1)
     Loop, 15 {
-        if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, 0, , true)) {
+        if (!FindOrLoseImage("Mission_CompleteGotAllClaims", 0, 0, , true)) {
             adbClick_wbb(146, 489) ; toast still up: keep dismissing
             Delay(1)
             continue

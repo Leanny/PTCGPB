@@ -473,11 +473,18 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(botConfig.get("deleteMethod") = "Claim Shop Packs")
         {
             accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+            ; Record the attempt up front so accounts without tickets, failed
+            ; shop visits or crashes are not re-queued until the next daily reset.
+            accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
+            accountMeta["lastShopClaimAttempt"] := AccountMetadata_Now()
+            AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
             shopPackID := ShopPack_PickPack()
+            claimed := false
             LogInfo("Claim Shop Packs: picked " . ShopPack_Name(shopPackID) . " | account=" . session.get("accountFileName"), "ShopClaim.txt")
             if (GoToShopPack(shopPackID)) {
                 accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
                 while (BuyShopPack()) {
+                    claimed := true
                     accountMeta["claimedShopPacks"].Push(AccountMetadata_Now()) ; one timestamp per claimed pack
                     AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
                     LogInfo("Claimed shop pack " . ShopPack_Name(shopPackID) . " | account=" . session.get("accountFileName") . " | total claimed=" . accountMeta["claimedShopPacks"].MaxIndex(), "ShopClaim.txt")
@@ -488,7 +495,41 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 LogInfo("Marked account as claimed (reusable): " . session.get("accountFileName"))
                 session.set("loadedAccount", false)
             }
-            ExitApp
+            ; claim gift packs
+            if(claimed && botConfig.get("receiveGift")) {
+                GoToMain()
+                giftClaimed := true
+                while (giftClaimed = true) {
+                    GoToMain()
+                    if (isTerminatePTCGPHelperApp()) {
+                        InitPackOpening(true)
+                    }
+                    LogInfo("Receiving gifts")
+                    giftClaimed := ReceiveGiftExtended()
+                    LogInfo("Receive gifts done | claimed=" . (giftClaimed ? 1 : 0))
+                    if(giftClaimed) {
+                        CheckPack(true)
+                        ; restart to claim more
+                        closePTCGPApp()
+                        Sleep, 100
+                        startPTCGPApp()
+                        ; Treat the restart as a boot gate: reuse the same sequence used when
+                        ; loading an injected account (SpeedMod menu), then run the normal
+                        ; startPreProcess so the game reaches the expected main screen.
+                        waitForAppBootScreen()
+                        Delay(1)
+                        ; Elite Deck restart must always land at Home, regardless of bot mode.
+                        startPreProcess("Inject Rewards")
+                        SetConfiguredGameSpeed()
+
+                        ; After the restart, give the game time to sync the cards into
+                        ; MissionUserPrefs before capturing the post-restart snapshot.
+                        Sleep, 3000
+                    } else {
+                        TerminateHelper()
+                    }
+                }
+            }
             continue
         }
         if(botConfig.get("deleteMethod") = "Rename Account") {
