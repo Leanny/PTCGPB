@@ -793,6 +793,16 @@ AccountEligibility_SpecialPackAvailable(accountMeta) {
     return AccountEligibility_ToUTC(last) < AccountEligibility_LastSpecialPackResetUTC()
 }
 
+; True when the current injected account may still pull the weekly special
+; pack. Non-injected accounts have no metadata, so the attempt is allowed.
+AccountEligibility_CanPullSpecialPack() {
+    global session
+    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+        return true
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+    return AccountEligibility_SpecialPackAvailable(accountMeta)
+}
+
 AccountEligibility_GetFlag(accountMeta, flag) {
     if (!IsObject(accountMeta["flags"]))
         return AccountMetadata_NewFlag(0)

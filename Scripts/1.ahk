@@ -616,7 +616,8 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         ; special pack
-        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") ) {
+
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") && AccountEligibility_CanPullSpecialPack()) {
             if(FindOrLoseImage("Pack_NewHG", 1, 0) && FindOrLoseImage("Pack_PackPointButton", 1, 0)) {
                 adbClick_wbb(138, 230)
             }
@@ -744,7 +745,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         }
 
         ; claim special pack
-        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") ) {
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") && (!IsObject(accountMeta) || AccountEligibility_SpecialPackAvailable(accountMeta))) {
             if(FindOrLoseImage("Pack_NewHG", 1, 0) && FindOrLoseImage("Pack_PackPointButton", 1, 0)) {
                 adbClick_wbb(138, 230)
             }
