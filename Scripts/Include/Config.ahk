@@ -25,6 +25,7 @@
         , "ui_waitTime": "waitTime"}
 
     defaultValueMap := {"BotLanguage":"English"
+        , "shopClaimPacks":""
         , "IsLanguageSet":0
         , "shownLicense":0
         , "defaultBotLanguage":1
@@ -78,6 +79,7 @@
         , "waitAfterBulkLaunch": 40000
         , "WishlistCheck": 0
         , "s4tWishlist": 0
+        , "s4tRGB": 0
         , "saveAccountFriendInfo": 0
         , "updateChannel": "stable"
         , "automaticUpdateChecks": 1

@@ -136,6 +136,14 @@ DoTutorial() {
             adbClick(141, 484)
             Delay(1)
         }
+        if(FindOrLoseImage("Create_SignupsDataSharing", 0, failSafeTime)) {
+            adbClick(82, 287)
+            Sleep, 1000
+            adbClick(90, 425)
+            Sleep, 100
+            adbClick(141, 484)
+            Delay(1)
+        }
         if(FindImageAndClick("Create_BeginNewAccountButton", 145, 484, , , 2, failSafeTime)) ;wait to be at create save data screen while clicking
             break
         Delay(1)
@@ -189,19 +197,14 @@ DoTutorial() {
         } else if(FindOrLoseImage("Create_CinematicBackground", 0, failSafeTime)){
             break
         }
+        adbClick_wbb(195, 384)
         Delay(1)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
     }
 
-    if(session.get("setSpeed") = 3){
-        SetGameSpeed(1)
-    }
-
+    SetGameSpeed(1)
     FindImageAndClick("Create_WelcomePopup", 253, 506, , 110) ;click through cutscene until welcome page
-
-    if(session.get("setSpeed") = 3){
-        SetGameSpeed(3)
-    }
+    SetGameSpeed(3)
     FindImageAndClick("Create_NameInputIcon", 189, 438) ;wait for name input screen
     FindImageAndClick("Create_DeactivatedOKButton", 139, 257) ;wait for name input screen
 
@@ -248,18 +251,14 @@ DoTutorial() {
     adbClick_wbb(140, 424)
 
     FindImageAndClick("Pack_ReadyForOpenPack", 140, 424) ;wait for pack to be ready  to trace
-    if(session.get("setSpeed") > 1) {
-        SetGameSpeed(1)
-    }
+    SetGameSpeed(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") = 3) {
-                SetGameSpeed(3) ; click 3x
-            }
+            SetGameSpeed(3) ; click 3x
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -267,18 +266,14 @@ DoTutorial() {
     }
 
     FindImageAndClick("Create_SwipeForRegisterDexIcon", 140, 375) ;click through cards until needing to swipe up
-    if(session.get("setSpeed") > 1) {
-        SetGameSpeed(1)
-    }
+    SetGameSpeed(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
         adbSwipe_wbb("266 770 266 355 60")
         Sleep, 100
         if(FindOrLoseImage("Create_ConfirmRegisteredCard", 0, failSafeTime)){
-            if(session.get("setSpeed") > 1) {
-                SetConfiguredGameSpeed()
-            }
+            SetConfiguredGameSpeed()
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -345,18 +340,14 @@ DoTutorial() {
     adbClick_wbb(142, 436)
 
     FindImageAndClick("Pack_ReadyForOpenPack", 239, 497) ;wait for pack to be ready  to Trace
-    if(session.get("setSpeed") > 1) {
-        SetGameSpeed(1)
-    }
+    SetGameSpeed(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {
         adbSwipe_wbb(adbSwipeParams)
         Sleep, 100
         if(FindOrLoseImage("Pack_ReadyForOpenPack", 1, failSafeTime)){
-            if(session.get("setSpeed") = 3) {
-                SetGameSpeed(3)
-            }
+            SetGameSpeed(3)
             break
         }
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
@@ -390,10 +381,7 @@ DoTutorial() {
 
     ; Bonus Pick confirm (No cost / OK). Wonder4 selection needle often never matches on current UI.
 
-    if(session.get("setSpeed") > 1) {
-        SetGameSpeed(1)
-    }
-
+    SetGameSpeed(1)
     session.set("failSafe", A_TickCount)
     failSafeTime := 0
     Loop {

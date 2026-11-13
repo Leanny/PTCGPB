@@ -581,8 +581,9 @@ CheckPack(stopEarly := false) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
+    foundRGB         := CountOccurances(cards, rarity, 1000)
 
-    PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star)
+    PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star, foundRGB)
 
     foundWishlist    := Wishlist_ProcessPack(cards, pack)
     foundWishlist2Star := Wishlist_CountTwoStarMatches(cards, rarity, session.get("wishlistMap"))
@@ -614,6 +615,7 @@ CheckPack(stopEarly := false) {
         tradeableList.Push({key: "Crown",     flag: botConfig.get("s4tCrown"),      count: foundCrown})
         tradeableList.Push({key: "Shiny1Star",flag: botConfig.get("s4tShiny1Star"), count: foundShiny1Star})
         tradeableList.Push({key: "Shiny2Star",flag: botConfig.get("s4tShiny2Star"), count: foundShiny2Star})
+        tradeableList.Push({key: "RGB",       flag: botConfig.get("s4tRGB"),        count: foundRGB})
         tradeableList.Push({key: "Wishlist",  flag: botConfig.get("s4tWishlist"),   count: foundWishlist})
 
         foundCards := {}
@@ -794,6 +796,7 @@ CheckPackFallback(detectedCardCount := 0) {
         foundImmersive := 0
         foundShiny1Star := 0
         foundShiny2Star := 0
+        foundRGB := 0
         foundTrainer := 0
         foundRainbow := 0
         foundFullArt := 0
@@ -856,11 +859,14 @@ CheckPackFallback(detectedCardCount := 0) {
         if (botConfig.get("s4tFullArt")) {
             foundFullArt := currentPackInfo["TypeCount"]["fullart"]
         }
+        if (botConfig.get("s4tRGB")) {
+            foundRGB := FindCard("rgb")
+        }
 
-        foundTradeable := found3Dmnd + found4Dmnd + found1Star + foundGimmighoul + foundCrown + foundImmersive + foundShiny1Star + foundShiny2Star + foundTrainer + foundRainbow + foundFullArt
+        foundTradeable := found3Dmnd + found4Dmnd + found1Star + foundGimmighoul + foundCrown + foundImmersive + foundShiny1Star + foundShiny2Star + foundTrainer + foundRainbow + foundFullArt + foundRGB
 
         if (foundTradeable > 0) {
-            FoundTradeable(found3Dmnd, found4Dmnd, found1Star, foundGimmighoul, foundCrown, foundImmersive, foundShiny1Star, foundShiny2Star, foundTrainer, foundRainbow, foundFullArt)
+            FoundTradeable(found3Dmnd, found4Dmnd, found1Star, foundGimmighoul, foundCrown, foundImmersive, foundShiny1Star, foundShiny2Star, foundTrainer, foundRainbow, foundFullArt, foundRGB)
             ; Continue with the rest of the run in s4t mode; don't return early.
         }
     }

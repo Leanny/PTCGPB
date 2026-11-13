@@ -2411,6 +2411,17 @@ fn rename_account_eligible(account: &Value) -> bool {
     true
 }
 
+const MAX_SHOP_PACK_CLAIMS: usize = 2;
+
+fn claim_shop_packs_eligible(account: &Value) -> bool {
+    account
+        .get("claimedShopPacks")
+        .and_then(Value::as_array)
+        .map(|claimed| claimed.len())
+        .unwrap_or(0)
+        < MAX_SHOP_PACK_CLAIMS
+}
+
 fn timestamp_to_utc(timestamp: &str) -> Option<DateTime<Utc>> {
     parse_local(timestamp).map(|dt| dt.with_timezone(&Utc))
 }
@@ -2701,6 +2712,7 @@ fn eligible(
     match options.delete_method.as_str() {
         "Create Bots (13P)" => true,
         "Rename Account" => rename_account_eligible(account),
+        "Claim Shop Packs" => claim_shop_packs_eligible(account),
         "Inject Rewards" => inject_rewards_eligible(account, options, active_events),
         "Inject 13P+" | "Inject Wonderpick 96P+" => inject_pack_eligible(account, options),
         _ => true,
@@ -3005,6 +3017,7 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
         // Rename Account sweeps every saved XML, including those in used_accounts.txt.
         if !options.force_inject
             && options.delete_method != "Rename Account"
+            && options.delete_method != "Claim Shop Packs"
             && used_account_matches(&used_state.used, &file_name, &device_account)
         {
             continue;
@@ -3110,6 +3123,7 @@ fn count_eligible_for_all_instances(
             let device_account = extract_device_account_from_xml(&path);
             if !options.force_inject
                 && options.delete_method != "Rename Account"
+            && options.delete_method != "Claim Shop Packs"
                 && used_account_matches(&used_state.used, &file_name, &device_account)
             {
                 continue;

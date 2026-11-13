@@ -22,6 +22,7 @@ pToken := Gdip_Startup()
 #Include BotPackOpening.ahk
 #Include BotMissions.ahk
 #Include BotWonderPick.ahk
+#Include BotShopPackPurchase.ahk
 #Include BotTutorial.ahk
 #Include BotAccountMenu.ahk
 #Include BotDebugTools.ahk
@@ -109,7 +110,7 @@ if (stopAfterRunPending = 1) {
 
 originalDeleteMethod := botConfig.get("deleteMethod")
 if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
-    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account"
+    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs"
     if (!InStr(validMethods, originalDeleteMethod)) {
         botConfig.set("deleteMethod", "Create Bots (13P)", "General")
         botConfig.saveConfigToSettings("General")
@@ -209,9 +210,12 @@ Loop {
     CreateStatusMessage("Trying to create button GUI...")
 }
 
-session.set("setSpeed", 3) ;always 1x/3x
-
-if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account")
+if(botConfig.get("slowMotion")) {
+    session.set("setSpeed", 1)
+} else {
+    session.set("setSpeed", 3) ;always 1x/3x
+}
+if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs")
     session.set("injectMethod", true)
 
 startPackList := ""
@@ -222,6 +226,7 @@ LogInfo("Instance started | mode=" . botConfig.get("deleteMethod") . " | packs="
 initializeAdbShell()
 RemoveOldFiles()
 adbGrantOverlayPermission()
+adbDenyCameraPermission()
 
 if(session.get("injectMethod"))
     createAccountList(session.get("scriptName"))
@@ -432,6 +437,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 GoToMain()
         }
         if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
+            SetGameSpeed(3)
             AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
             SetSpendHourglassMetadataFlag()
             GetHistoryOfAccount()
@@ -464,6 +470,27 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(botConfig.get("deleteMethod") = "Inject Rewards")
             Goto, EndOfRun
 
+        if(botConfig.get("deleteMethod") = "Claim Shop Packs")
+        {
+            accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+            shopPackID := ShopPack_PickPack()
+            LogInfo("Claim Shop Packs: picked " . ShopPack_Name(shopPackID) . " | account=" . session.get("accountFileName"), "ShopClaim.txt")
+            if (GoToShopPack(shopPackID)) {
+                accountMeta["deviceAccount"] := GetCurrentDeviceAccountForMetadata()
+                while (BuyShopPack()) {
+                    accountMeta["claimedShopPacks"].Push(AccountMetadata_Now()) ; one timestamp per claimed pack
+                    AccountMetadata_SaveAccount(session.get("scriptName"), session.get("accountFileName"), accountMeta)
+                    LogInfo("Claimed shop pack " . ShopPack_Name(shopPackID) . " | account=" . session.get("accountFileName") . " | total claimed=" . accountMeta["claimedShopPacks"].MaxIndex(), "ShopClaim.txt")
+                }
+            }
+            if (session.get("injectMethod") && session.get("loadedAccount")) {
+                MarkAccountAsClaimed()
+                LogInfo("Marked account as claimed (reusable): " . session.get("accountFileName"))
+                session.set("loadedAccount", false)
+            }
+            ExitApp
+            continue
+        }
         if(botConfig.get("deleteMethod") = "Rename Account") {
             if (!AccountRename_CanRenameCurrentAccount()) {
                 LogInfo("Rename skipped (account age or rename cooldown) | account=" . session.get("accountFileName"))
@@ -583,8 +610,17 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             }
         }
 
+        if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+            adbClick_wbb(37, 378)
+            Delay(1)
+        }
+
         ; special pack
+
         if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack") && AccountEligibility_CanPullSpecialPack()) {
+            if(FindOrLoseImage("Pack_NewHG", 1, 0) && FindOrLoseImage("Pack_PackPointButton", 1, 0)) {
+                adbClick_wbb(138, 230)
+            }
             SelectPack("HGSpecial")
             if(session.get("OpenSpecialPack")) {
                 PackOpening()
@@ -610,8 +646,11 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     session.set("friendsAdded", PackMethod_RenewFriends())
                     if (!PackMethod_ConsumeStayOnPackScreen()) {
                         GoToMain()
-                        SelectPack("HGPack")
+                        EnterFavouritePackFromHome()
                     }
+                } else if(session.get("OpenedSpecialPack")) {
+                    GoToMain()
+                    EnterFavouritePackFromHome()
                 }
                 if(!session.get("cantOpenMorePacks")) {
                     HourglassOpening(true)
@@ -707,6 +746,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         ; claim special pack
         if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("claimSpecialPack")  && !session.get("OpenedSpecialPack") && (!IsObject(accountMeta) || AccountEligibility_SpecialPackAvailable(accountMeta))) {
+            if(FindOrLoseImage("Pack_NewHG", 1, 0) && FindOrLoseImage("Pack_PackPointButton", 1, 0)) {
+                adbClick_wbb(138, 230)
+            }
             SelectPack("HGSpecial")
             if(session.get("OpenSpecialPack")) {
                 PackOpening()
@@ -734,21 +776,35 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         forceGift := session.get("forceReceiveGiftThisRun")
         if(!session.get("missionDoneList")["receivedGiftDone"] && botConfig.get("receiveGift") && session.get("injectMethod") && (forceGift || !IsObject(accountMeta) || !AccountEligibility_FlagIsSet(accountMeta, "R"))) {
-            GoToMain()
-            if (isTerminatePTCGPHelperApp()) {
-                InitPackOpening(true)
-            }
-            session.set("openedGiftPack", false)
-            LogInfo("Receiving gifts")
-            giftClaimed := ReceiveGiftExtended()
-            LogInfo("Receive gifts done | claimed=" . (giftClaimed ? 1 : 0))
-            if(giftClaimed) {
-                HandleGiftedPacksAfterReceiveGift()
-            }
-            if (session.get("openedGiftPack") = true) {
-                CheckPack(true)
-            } else {
-                TerminateHelper()
+            giftClaimed := true
+            while (giftClaimed = true) {
+                GoToMain()
+                if (isTerminatePTCGPHelperApp()) {
+                    InitPackOpening(true)
+                }
+                LogInfo("Receiving gifts")
+                giftClaimed := ReceiveGiftExtended()
+                LogInfo("Receive gifts done | claimed=" . (giftClaimed ? 1 : 0))
+                if(giftClaimed) {
+                    CheckPack(true)
+                    ; restart to claim more
+                    closePTCGPApp()
+                    Sleep, 100
+                    startPTCGPApp()
+                    ; Treat the restart as a boot gate: reuse the same sequence used when
+                    ; loading an injected account (SpeedMod menu), then run the normal
+                    ; startPreProcess so the game reaches the expected main screen.
+                    waitForAppBootScreen()
+                    Delay(1)
+                    ; Elite Deck restart must always land at Home, regardless of bot mode.
+                    startPreProcess("Inject Rewards")
+
+                    ; After the restart, give the game time to sync the cards into
+                    ; MissionUserPrefs before capturing the post-restart snapshot.
+                    Sleep, 3000
+                } else {
+                    TerminateHelper()
+                }
             }
             session.get("missionDoneList")["receivedGiftDone"] := 1
             session.set("forceReceiveGiftThisRun", 0)
@@ -756,7 +812,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             if (session.get("injectMethod") && session.get("loadedAccount"))
                 setMetaData()
         }
-
         ; Hourglass spending
         if (botConfig.get("spendHourGlass") = 1 && !(botConfig.get("deleteMethod") = "Inject 13P+" && session.get("accountOpenPacks") >= session.get("maxAccountPackNum")) && botConfig.get("deleteMethod") != "Inject Rewards" && botConfig.get("deleteMethod") != "Rename Account") {
             SpendAllHourglass()
@@ -770,7 +825,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if (session.get("injectMethod") && session.get("friended") && !session.get("keepAccount")) {
             RemoveFriends()
         }
-
         ; Showcase likes
         botConfig.loadIniSectionFromSettingsFile("Extra")
         if (botConfig.get("showcaseLikes") > 0 && botConfig.get("showcaseEnabled") = 1) {
@@ -896,9 +950,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                 LogInfo("Saved account: " . session.get("accountFileName") . " | packs=" . session.get("accountOpenPacks"))
 
                 if (botConfig.get("deleteMethod") = "Create Bots (13P)" && IsFunc("EnsureAccountFriendInfo")) {
-                    if(session.get("setSpeed") > 1) {
-                        SetGameSpeed(1)
-                    }
+                    SetGameSpeed(1)
                     EnsureAccountFriendInfo("Create Bots (13P)", false, true)
                 }
                 ; if Create Bots + FoundTradeable, log to database and push discord webhook message(s)
@@ -1007,11 +1059,10 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
             Delay(1)
         }
     }
-/*
-if(imageName = "CommunityShowcase") {
-    TradeTutorialForShowcase()
-}
-*/
+
+    if(imageName = "CommunityShowcase") {
+        TryHandleTradeTutorialForShowcase()
+    }
 
     ErrorCheckInScreen(pBitmap)
 
@@ -1196,11 +1247,10 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         }
 
         Gdip_DisposeImage(pBitmap)
-/*
-if(imageName = "CommunityShowcase") {
-    TradeTutorialForShowcase()
-}
-*/
+
+        if(imageName = "CommunityShowcase") {
+            TryHandleTradeTutorialForShowcase()
+        }
 
         if(skip) {
             ElapsedTime := (A_TickCount - session.get("StartSkipTime")) // 1000
@@ -1221,6 +1271,15 @@ if(imageName = "CommunityShowcase") {
     }
     Gdip_DisposeImage(pBitmap)
     return confirmed
+}
+
+TryHandleTradeTutorialForShowcase() {
+    if (FindOrLoseImage("Friend_AddButtonInFriendList", 0, , , true))
+        return false
+
+    adbClick(182, 435)
+    Delay(0.2)
+    return true
 }
 
 resetWindows() {
@@ -1274,6 +1333,7 @@ DirectlyPositionWindow() {
 restartGameInstance(reason, RL := true) {
     prof := Prof_Scope(A_ThisFunc)
     global botConfig, session, DeadCheck
+    session.set("currentGameSpeed", 0)
     isStuck := InStr(reason, "Stuck")
 
     if (Debug)

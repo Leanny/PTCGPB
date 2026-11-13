@@ -308,13 +308,19 @@ startPreProcess(methodType){
     }
     else if(methodType = "Inject Rewards"){
         findImageName := "Home"
-        needleName := "Common_InactiveSocialInMainMenu"
+        needleName := "Friend_BottomDarkHomeIcon"
         clickX := 33
         clickY := 511
     }
     else if(methodType = "Rename Account"){
         findImageName := "Home"
         needleName := "Common_InactiveSocialInMainMenu"
+        clickX := 33
+        clickY := 511
+    }
+    else if(methodType = "Claim Shop Packs"){
+        findImageName := "Home"
+        needleName := "Friend_BottomDarkHomeIcon"
         clickX := 33
         clickY := 511
     }
@@ -384,6 +390,7 @@ startPreProcess(methodType){
                 || FindOrLoseImage("Pack_PackPointButton", 0, , , true)
                 || FindOrLoseImage("Pack_BackButtonInSelectPackScreen", 0, , , true)
                 || FindOrLoseImage("Pack_ReadyForOpenPack", 0, , , true)
+                || FindOrLoseImage("Pack_ReadyForOpenPack2", 0, , , true)
                 || FindOrLoseImage("Pack_HourglassImageAfterOpenPackClick", 0, , , true)
                 || FindOrLoseImage("Pack_HourglassAndPokeGoldImageAfterOpenPackClick", 0, , , true)
                 || FindOrLoseImage("Pack_PokeGoldImageAfterOpenPackClick", 0, , , true)){
