@@ -797,6 +797,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
                     Delay(1)
                     ; Elite Deck restart must always land at Home, regardless of bot mode.
                     startPreProcess("Inject Rewards")
+                    SetConfiguredGameSpeed()
 
                     ; After the restart, give the game time to sync the cards into
                     ; MissionUserPrefs before capturing the post-restart snapshot.
