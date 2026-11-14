@@ -76,17 +76,6 @@
                                     Accounts remain available for other modes
                                 </td>
                             </tr>
-                            <tr>
-                                <td>Claim Shop Packs</td>
-                                <td>Eligible saved accounts</td>
-                                <td>
-                                    Exchange shop tickets for the selected
-                                    guaranteed two-star packs
-                                </td>
-                                <td>
-                                    Accounts remain available for other modes
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -233,7 +222,6 @@
                     <li>Claim Special Missions</li>
                     <li>Receive Gift</li>
                     <li>Track Shinedust</li>
-                    <li>Claim Special Pack</li>
                 </ul>
                 <p>
                     You may leave every option unchecked to only log in and out.
@@ -283,49 +271,6 @@
                     <li>
                         The mode scans all saved XMLs, including accounts that
                         were already marked as used by a pack-opening mode.
-                    </li>
-                </ul>
-
-                <h2>Claim Shop Packs</h2>
-                <div class="card accent-orange">
-                    <p>
-                        Loads saved accounts, opens the in-game Shop and
-                        exchanges the account's shop tickets for guaranteed
-                        two-star packs. Accounts remain available for
-                        pack-opening and reward modes.
-                    </p>
-                    <p>
-                        <span class="tag">Saved XML accounts</span
-                        ><span class="tag">Uses shop tickets</span
-                        ><span class="tag">Accounts remain available</span>
-                    </p>
-                </div>
-                <h3>Relevant settings and behavior</h3>
-                <ul>
-                    <li>
-                        <strong>Select Pack:</strong> opens a window listing the
-                        shop packs grouped by series. For each account, PTCGPB
-                        picks one of the checked packs at random. When nothing
-                        is checked, Genetic Apex: Mewtwo is used.
-                    </li>
-                    <li>
-                        <strong>Sort By:</strong> controls the order in which
-                        eligible saved accounts are processed.
-                    </li>
-                    <li>
-                        The bot keeps buying the chosen pack until the account
-                        has no tickets left. Each claimed pack is recorded in
-                        the account metadata.
-                    </li>
-                    <li>
-                        An account becomes ineligible once two shop packs have
-                        been claimed on it, since only two tickets can currently
-                        be obtained per account.
-                    </li>
-                    <li>
-                        Like Rename Account, the mode scans all saved XMLs,
-                        including accounts already marked as used. Details of
-                        each run are logged to <code>ShopClaim.txt</code>.
                     </li>
                 </ul>
 

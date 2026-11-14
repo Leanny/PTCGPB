@@ -513,11 +513,6 @@ RemoveFriends() {
         return false
     }
 
-    ; The app may have been restarted since the last speed change (stuck recovery,
-    ; gift-claim restarts): a fresh process runs at 1x, so restore the configured speed
-    ; before spending time on the friend list.
-    SetConfiguredGameSpeed()
-
     session.set("friendIDs", ReadFile("ids"))
 
     if(!session.get("friendIDs") && botConfig.get("FriendID") = "") {

@@ -38,6 +38,7 @@ DllCall("ntdll\ZwDelayExecution","Int",0,"Int64*",-5000)
 #Include Utils.ahk
 #Include AccountMetadata.ahk
 #Include GitManager.ahk
+#Include %A_ScriptDir%\Accounts\ShareSettings.ahk
 
 version = Arturos PTCGP Bot
 
@@ -45,7 +46,7 @@ OnError("ErrorHandler")
 
 repoUser := "Leanny"
     ,repoName := "PTCGPB"
-    ,localVersion := "v10.3.0-beta.10"
+    ,localVersion := "v10.3.0-beta.9"
     ,scriptFolder := A_ScriptDir
     ,g_UpdateReleases := []
 
@@ -488,9 +489,11 @@ NextStep:
     Gui, Add, Button, x270 y133 w210 h25 gShowS4TSettings vui_S4TButton BackgroundTrans, Loading...
 
     Gui, Font, s7 cWhite, Segoe UI
-    Gui, Add, Button, x310 y163 w130 h20 gOpenCardDatabase BackgroundTrans, Open Card Database
+    Gui, Add, Button, x272 y163 w102 h20 gOpenCardDatabase BackgroundTrans, Open Card Database
+    Gui, Add, Button, x380 y163 w100 h20 gShowShareSettings vui_ShareSettingsButton BackgroundTrans, Loading...
 
     UpdateS4TButtonText()
+    UpdateShareSettingsButtonText()
 
     ; =================== UI - Group Settings ===================
     sectionColor := "cWhite"
@@ -718,6 +721,7 @@ deleteSettings:
     UpdateHourglassPackCountVisibility(curDeleteMethod)
     g_prevDeleteMethod := curDeleteMethod
     UpdateCardDetectionButtonText()
+    UpdateShareSettingsButtonText()
 return
 
 openExtraPackSettings:
@@ -1705,6 +1709,223 @@ CancelS4TSettings:
     Gui, S4TSettingsSelect:Destroy
 return
 
+; =================== UI - Collection Share Settings ===================
+UpdateShareSettingsButtonText() {
+    global botConfig
+
+    curDm := ""
+    GuiControlGet, curDm,, ui_deleteMethod
+    if (ErrorLevel || curDm = "")
+        curDm := botConfig.get("deleteMethod")
+
+    if (curDm != "Inject Wonderpick 96P+") {
+        Gui, Font, s8 cGray, Segoe UI
+        GuiControl, Font, ui_ShareSettingsButton
+        GuiControl,, ui_ShareSettingsButton, Inject 96P+ only
+        return
+    }
+
+    statusText := "Collection Share: Off"
+    if (ShareSettings_AnyEnabled())
+        statusText := "Collection Share: On"
+    Gui, Font, s7 cWhite, Segoe UI
+    GuiControl, Font, ui_ShareSettingsButton
+    GuiControl,, ui_ShareSettingsButton, %statusText%
+    return
+}
+
+; Tooltips for one Main row of the popup; rows are created on demand, so they
+; are registered here instead of in HelpTT_Init.
+ShareSettingsAddHelp(idx) {
+    prefix := "ui_shareM" . idx
+    HelpTT_Add(prefix . "Enabled_Popup", "shareEnabled", "When enabled, this Main requests one card per day.`nThe first account that owns it shares it at the end of its run.")
+    HelpTT_Add(prefix . "Collection_Popup", "shareCollection", "Card Database collection of this Main, created with 'Import Collection' on the Main window.`nIt is updated from the Main's game history once a day to find the cards it is missing.`n'-' = not configured: nothing is shared to this Main.")
+    HelpTT_Add(prefix . "FriendCode_Popup", "shareFriendCode", "This Main's Friend ID (16 digits; spaces and dashes are ignored).`nThe sharing account uses it to add the Main as a friend and favourite it before sharing.")
+    HelpTT_Add(prefix . "Sort_Popup", "shareSort", "Which missing card is requested first:`n• Expansion: by collection number.`n• Rarity: 4-diamond cards first, then 3, 2 and 1 (by collection number within each rarity).")
+    HelpTT_Add(prefix . "Expansion_Popup", "shareExpansion", "Which expansion the requested card comes from:`n• The newest expansion: shared straight from the card screen.`n• Any older entry: that expansion only - the sharing account opens 'View Other Booster Packs' and picks it by logo.")
+}
+
+ShowShareSettings:
+    global g_sharePopupMains, g_shareExpansions
+    HelpTT_DismissForClick()
+    Gui, 1:Default
+    Gui, Submit, NoHide
+
+    GuiControlGet, curMethod, , ui_deleteMethod
+    if (curMethod != "Inject Wonderpick 96P+") {
+        MsgBox, 64, Collection Share, Daily collection share is for 'Inject Wonderpick 96P+' mode.`n`nSelect that method in Bot Settings first.
+        return
+    }
+    sharePopupW := 370
+    PTCGPB_PopupRightOfCtl("ui_ShareSettingsButton", sharePopupW, 12, popupX, popupY)
+
+    Gui, ShareSettingsSelect:Destroy
+    Gui, ShareSettingsSelect:New, +ToolWindow -MaximizeBox -MinimizeBox +LastFound, Collection Share Settings
+    Gui, ShareSettingsSelect:Color, 1E1E1E, 333333
+    Gui, ShareSettingsSelect:Font, s10 cWhite, Segoe UI
+
+    mainsUi := ui_Mains + 0
+    if (mainsUi < 1) {
+        MsgBox, 64, Collection Share, Daily collection share requires at least 1 Main instance.`n`nSet 'Mains' to 1 or more first.
+        return
+    }
+    g_sharePopupMains := mainsUi
+
+    shareProfiles := ShareSettings_ListProfiles()
+    g_shareExpansions := ShareSettings_ListExpansions()
+    shareExpOptions := "", sep := ""
+    for _, e in g_shareExpansions {
+        shareExpOptions .= sep . e.name
+        sep := "|"
+    }
+    if (shareExpOptions = "")
+        shareExpOptions := "Latest" ; Helper file missing: keep one selectable entry
+
+    Gui, ShareSettingsSelect:Font, s9 cGray, Segoe UI
+    hintW := sharePopupW - 60
+    Gui, ShareSettingsSelect:Add, Text, x15 y10 w%hintW%, One collection, friend code, sort order and expansion per Main.
+    Gui, ShareSettingsSelect:Font, s10 cWhite, Segoe UI
+    helpBtnX := sharePopupW - 37
+    Gui, ShareSettingsSelect:Add, Button, x%helpBtnX% y5 w22 h22 vui_shareGuide_Popup, ?
+
+    yPos := 48
+    Loop, % g_sharePopupMains {
+        idx := A_Index
+        mainLabel := "Main" . (idx > 1 ? idx : "")
+        shareCfg := ShareSettings_MainConfig(idx)
+
+        foundIdx := 0
+        Loop, % shareProfiles.Length() {
+            if (shareProfiles[A_Index].key = shareCfg.collection)
+                foundIdx := A_Index
+        }
+        hasPlaceholder := (shareCfg.collection = "" || foundIdx = 0)
+        rowOptions := ""
+        sep := ""
+        if (hasPlaceholder) {
+            rowOptions := "-"
+            sep := "|"
+        }
+        Loop, % shareProfiles.Length() {
+            rowOptions .= sep . shareProfiles[A_Index].displayName
+            sep := "|"
+        }
+        shareSel := (hasPlaceholder ? 1 : foundIdx)
+        sortChoice := (shareCfg.sort = "rarity" ? 2 : 1)
+        expSel := g_shareExpansions.Length()
+        if (expSel < 1)
+            expSel := 1
+        Loop, % g_shareExpansions.Length() {
+            if (g_shareExpansions[A_Index].code = shareCfg.expansion) {
+                expSel := A_Index
+                break
+            }
+        }
+
+        grpX := 15
+        grpW := sharePopupW - 30
+        grpH := 165
+        Gui, ShareSettingsSelect:Add, GroupBox, x%grpX% y%yPos% w%grpW% h%grpH% cWhite, % mainLabel
+
+        lblX := grpX + 15
+        ctlX := grpX + 100
+        ctlW := grpW - 115
+        iy := yPos + 24
+
+        Gui, ShareSettingsSelect:Add, Checkbox, % (shareCfg.enabled ? "Checked" : "") " vui_shareM" . idx . "Enabled_Popup x" . lblX . " y" . iy . " cWhite", Enabled
+        iy += 27
+
+        Gui, ShareSettingsSelect:Add, Text, x%lblX% y%iy% cWhite, Collection:
+        Gui, ShareSettingsSelect:Add, DropDownList, % "vui_shareM" . idx . "Collection_Popup x" . ctlX . " y" . iy . " w" . ctlW . " Choose" . shareSel . " Background2A2A2A cWhite", %rowOptions%
+        iy += 27
+
+        Gui, ShareSettingsSelect:Add, Text, x%lblX% y%iy% cWhite, Friend code:
+        Gui, ShareSettingsSelect:Add, Edit, % "vui_shareM" . idx . "FriendCode_Popup x" . ctlX . " y" . iy . " w" . ctlW . " h20 -E0x200 Background2A2A2A cWhite", % shareCfg.friendCode
+        iy += 27
+
+        Gui, ShareSettingsSelect:Add, Text, x%lblX% y%iy% cWhite, Sort order:
+        Gui, ShareSettingsSelect:Add, DropDownList, % "vui_shareM" . idx . "Sort_Popup x" . ctlX . " y" . iy . " w" . ctlW . " Choose" . sortChoice . " Background2A2A2A cWhite", Expansion|Rarity
+        iy += 27
+
+        Gui, ShareSettingsSelect:Add, Text, x%lblX% y%iy% cWhite, Expansion:
+        Gui, ShareSettingsSelect:Add, DropDownList, % "vui_shareM" . idx . "Expansion_Popup x" . ctlX . " y" . iy . " w" . ctlW . " Choose" . expSel . " Background2A2A2A cWhite", %shareExpOptions%
+
+        ShareSettingsAddHelp(idx)
+        yPos += grpH + 10
+    }
+
+    btnX := (sharePopupW - 150) / 2
+    btn2X := btnX + 80
+    Gui, ShareSettingsSelect:Add, Button, x%btnX% y%yPos% w70 h30 gApplyShareSettings, Apply
+    Gui, ShareSettingsSelect:Add, Button, x%btn2X% y%yPos% w70 h30 gCancelShareSettings, Cancel
+    yPos += 42
+
+    Gui, ShareSettingsSelect:Show, x%popupX% y%popupY% w%sharePopupW% h%yPos%
+return
+
+ApplyShareSettings:
+    Gui, ShareSettingsSelect:Submit, NoHide
+
+    Loop, % g_sharePopupMains {
+        GuiControlGet, shareFriendCode, ShareSettingsSelect:, ui_shareM%A_Index%FriendCode_Popup
+        shareFriendCode := RegExReplace(shareFriendCode, "[\s-]")
+        if (shareFriendCode != "" && !RegExMatch(shareFriendCode, "^\d{16}$")) {
+            MsgBox, 64, Collection Share, % "Main" . (A_Index > 1 ? A_Index : "") . ": the friend code must be 16 digits.`n`nSpaces and dashes are ignored."
+            return
+        }
+    }
+
+    GoSub, saveShare
+
+    Gui, ShareSettingsSelect:Destroy
+
+    Gui, 1:Default
+
+    UpdateShareSettingsButtonText()
+return
+
+saveShare:
+    global g_sharePopupMains, g_shareExpansions
+    Gui, ShareSettingsSelect:Default
+    shareProfiles := ShareSettings_ListProfiles()
+    Loop, % g_sharePopupMains {
+        idx := A_Index
+        GuiControlGet, shareCollectionSel,, ui_shareM%idx%Collection_Popup
+        shareCollectionKey := ""
+        Loop, % shareProfiles.Length() {
+            if (shareProfiles[A_Index].displayName = shareCollectionSel) {
+                shareCollectionKey := shareProfiles[A_Index].key
+                break
+            }
+        }
+        GuiControlGet, shareFriendCode,, ui_shareM%idx%FriendCode_Popup
+        shareFriendCode := RegExReplace(shareFriendCode, "[\s-]")
+        GuiControlGet, shareEnabled,, ui_shareM%idx%Enabled_Popup
+        GuiControlGet, shareSort,, ui_shareM%idx%Sort_Popup
+        shareSortKey := (shareSort = "Rarity" ? "rarity" : "expansion")
+        GuiControlGet, shareExpSel,, ui_shareM%idx%Expansion_Popup
+        shareExpCode := ""
+        for _, e in g_shareExpansions {
+            if (e.name = shareExpSel) {
+                ; the newest set needs no picker: store "" so the choice keeps
+                ; tracking future releases (old "Latest" semantics)
+                shareExpCode := (e.code = ShareExpansionLatestCode()) ? "" : e.code
+                break
+            }
+        }
+        botConfig.set("shareMain" . idx . "Enabled", shareEnabled, "Extra")
+        botConfig.set("shareMain" . idx . "Collection", shareCollectionKey, "Extra")
+        botConfig.set("shareMain" . idx . "FriendCode", shareFriendCode, "Extra")
+        botConfig.set("shareMain" . idx . "Sort", shareSortKey, "Extra")
+        botConfig.set("shareMain" . idx . "Expansion", shareExpCode, "Extra")
+    }
+    botConfig.saveConfigToSettings("Extra")
+return
+
+CancelShareSettings:
+    Gui, ShareSettingsSelect:Destroy
+return
+
 ; =================== UI - Tools and System Settings(New Window, Details) ===================
 ShowToolsAndSystemSettings:
     HelpTT_DismissForClick()
@@ -1843,10 +2064,6 @@ ShowToolsAndSystemSettings:
     Gui, ToolsAndSystemSelect:Add, Edit, vui_instanceLaunchDelay_Popup w30 x355 y%yPos2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("instanceLaunchDelay")
     yPos2 += 30
 
-    Gui, ToolsAndSystemSelect:Add, Text, x%col2X% y%yPos2% %sectionColor%, Stop Main before reset
-    Gui, ToolsAndSystemSelect:Add, Edit, vui_stopBeforeDailyResetMin_Popup w30 x365 y%yPos2% h20 -E0x200 Background2A2A2A cWhite Center, % botConfig.get("stopBeforeDailyResetMin")
-    yPos2 += 30
-
     Gui, ToolsAndSystemSelect:Add, Checkbox, % (botConfig.get("autoLaunchMonitor") ? "Checked" : "") " vui_autoLaunchMonitor_Popup x" . col2X . " y" . yPos2 . " " . sectionColor, % dict["Txt_autoLaunchMonitor"]
     yPos2 += 26
     if (currentDeleteMethod != "Create Bots (13P)") {
@@ -1954,7 +2171,6 @@ saveToolsAndSystemSettings:
     botConfig.set("ocrLanguage", ui_ocrLanguage_Popup, "ToolsAndSystem")
     botConfig.set("clientLanguage", ui_clientLanguage_Popup, "ToolsAndSystem")
     botConfig.set("instanceLaunchDelay", ui_instanceLaunchDelay_Popup, "ToolsAndSystem")
-    botConfig.set("stopBeforeDailyResetMin", ui_stopBeforeDailyResetMin_Popup, "ToolsAndSystem")
     botConfig.set("autoLaunchMonitor", ui_autoLaunchMonitor_Popup, "ToolsAndSystem")
     botConfig.set("logLevel", ui_logLevel_Popup, "ToolsAndSystem")
     currentDeleteMethod := botConfig.get("deleteMethod")
@@ -3039,6 +3255,8 @@ HelpTT_Init() {
     HelpTT_Add("ui_PackSelectionButton", "PackSelection", "Opens pack selection to choose which booster packs (expansions) the bot opens.")
     HelpTT_Add("ui_CardDetectionButton", "CardDetection", "Opens card detection settings to choose which pulls count as worth keeping in Inject Wonderpick mode.")
     HelpTT_Add("ui_S4TButton", "S4T", "Opens Save for Trade settings to get Discord notifications when an account pulls tradeable cards of the rarities you select.")
+    HelpTT_Add("ui_ShareSettingsButton", "CollectionShare", "Opens daily collection share settings: once a day, an account that owns a card your Main is missing shares it with the Main automatically.`nInject Wonderpick 96P+ only.")
+    HelpTT_Add("ui_shareGuide_Popup", "shareGuide", "How daily collection share works:`n• Step 0 - required: in game, remove every 1-4 diamond card from your favourites or the feature breaks.`n• First create the Main's collection with 'Import Collection' on the Main window.`n• Once a day the Main updates it and requests one missing card of the latest expansion (1-4 diamonds).`n• The first account that owns the card adds the Main as a friend and shares it at the end of its run.`n• One card per Main and one share per account each day.`n• Claim the card in game: until then it is not requested again.")
     HelpTT_Add("ui_GroupRerollButton", "GroupReroll", "Opens group reroll settings: shared ids.txt URLs and automatic God Pack testing.")
     HelpTT_Add("ui_DiscordSettingsButton", "DiscordSettings", "Opens Discord settings: webhooks, user IDs and heartbeat used for notifications.")
     HelpTT_Add("ui_StartBotButton", "btn_start", "Saves all settings and starts the instance scripts.")
@@ -3114,7 +3332,6 @@ HelpTT_Init() {
     HelpTT_Add("ui_ocrLanguage_Popup", "ocrLanguage", "Language used by OCR to read text in the game (set it as your Windows display language for best results).")
     HelpTT_Add("ui_clientLanguage_Popup", "clientLanguage", "Language your game client is set to.")
     HelpTT_Add("ui_instanceLaunchDelay_Popup", "instanceLaunchDelay", "Seconds to wait between launching one MuMu instance and the next.")
-    HelpTT_Add("ui_stopBeforeDailyResetMin_Popup", "stopBeforeDailyResetMin", "Minutes before the daily reset (06:00 UTC) at which Main.ahk stops itself.`n0 or empty = disabled. Applies when Main is running; it checks continuously, no restart needed.")
     HelpTT_Add("ui_autoLaunchMonitor_Popup", "autoLaunchMonitor", "When enabled, opens the Monitor when the bot starts.`nThe Monitor watches all instances and restarts any that get stuck.")
     HelpTT_Add("ui_startCockpitWithBot_Popup", "startCockpitWithBot", "When enabled, opens the Cockpit when the bot starts.`nThe Cockpit is a live dashboard with the status and metrics of all running instances.")
     HelpTT_Add("ui_saveToGit_Popup", "saveToGit", "When enabled, commits the selected backup categories to git on the shared backup interval (configured in Backup settings).")

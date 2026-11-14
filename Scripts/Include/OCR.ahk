@@ -31,7 +31,7 @@ CLSIDFromString(IID, ByRef CLSID) {
     Return &CLSID
 }
 
-ocr(fileOrStream, lang := "FirstFromAvailableLanguages")
+ocr(fileOrStream, lang := "FirstFromAvailableLanguages", returnWords := false)
 {
     prof := Prof_Scope(A_ThisFunc)
     static OcrEngineStatics, OcrEngine, MaxDimension, LanguageFactory, Language, CurrentLanguage, BitmapDecoderStatics, GlobalizationPreferencesStatics
@@ -123,12 +123,36 @@ ocr(fileOrStream, lang := "FirstFromAvailableLanguages")
     WaitForAsync(OcrResult)
     DllCall(NumGet(NumGet(OcrResult+0)+6*A_PtrSize), "ptr", OcrResult, "ptr*", LinesList)   ; get_Lines
     DllCall(NumGet(NumGet(LinesList+0)+7*A_PtrSize), "ptr", LinesList, "int*", count)   ; count
+    words := []
     loop % count
     {
         DllCall(NumGet(NumGet(LinesList+0)+6*A_PtrSize), "ptr", LinesList, "int", A_Index-1, "ptr*", OcrLine)
-        DllCall(NumGet(NumGet(OcrLine+0)+7*A_PtrSize), "ptr", OcrLine, "ptr*", hText)
-        buffer := DllCall("Combase.dll\WindowsGetStringRawBuffer", "ptr", hText, "uint*", length, "ptr")
-        text .= StrGet(buffer, "UTF-16") "`n"
+        if (returnWords) {
+            ; IOcrLine vtable: idx6 = get_Words (IVectorView<IOcrWord>), idx7 = get_Text
+            ; IVectorView vtable: idx6 = GetAt, idx7 = get_Size
+            ; IOcrWord vtable: idx6 = get_BoundingRect (Rect* = 4 floats), idx7 = get_Text
+            VarSetCapacity(wbuf, A_PtrSize, 0)
+            DllCall(NumGet(NumGet(OcrLine+0)+6*A_PtrSize), "ptr", OcrLine, "ptr", &wbuf)
+            WordsView := NumGet(wbuf, 0, "ptr")
+            wordCount := 0
+            if (WordsView)
+                DllCall(NumGet(NumGet(WordsView+0)+7*A_PtrSize), "ptr", WordsView, "int*", wordCount)
+            Loop, % wordCount {
+                DllCall(NumGet(NumGet(WordsView+0)+6*A_PtrSize), "ptr", WordsView, "int", A_Index-1, "ptr*", OcrWord)
+                VarSetCapacity(rb, 16, 0)
+                DllCall(NumGet(NumGet(OcrWord+0)+6*A_PtrSize), "ptr", OcrWord, "ptr", &rb)
+                DllCall(NumGet(NumGet(OcrWord+0)+7*A_PtrSize), "ptr", OcrWord, "ptr*", hWord)
+                wbuf2 := DllCall("Combase.dll\WindowsGetStringRawBuffer", "ptr", hWord, "uint*", wlen, "ptr")
+                words.Push({text: Trim(StrGet(wbuf2, "UTF-16")), x: NumGet(rb, 0, "float"), y: NumGet(rb, 4, "float"), w: NumGet(rb, 8, "float"), h: NumGet(rb, 12, "float")})
+                ObjRelease(OcrWord)
+            }
+            if (WordsView)
+                ObjRelease(WordsView)
+        } else {
+            DllCall(NumGet(NumGet(OcrLine+0)+7*A_PtrSize), "ptr", OcrLine, "ptr*", hText)
+            buffer := DllCall("Combase.dll\WindowsGetStringRawBuffer", "ptr", hText, "uint*", length, "ptr")
+            text .= StrGet(buffer, "UTF-16") "`n"
+        }
         ObjRelease(OcrLine)
     }
     Close := ComObjQuery(IRandomAccessStream, IClosable := "{30D5A829-7FA4-4026-83BB-D75BAE4EA99E}")
@@ -144,6 +168,8 @@ ocr(fileOrStream, lang := "FirstFromAvailableLanguages")
     ObjRelease(SoftwareBitmap)
     ObjRelease(OcrResult)
     ObjRelease(LinesList)
+    if (returnWords)
+        return words
     return text
 }
 

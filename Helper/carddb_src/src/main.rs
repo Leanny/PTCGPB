@@ -11,7 +11,7 @@ use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 use std::thread;
-use std::time::{Duration as StdDuration, Instant, SystemTime};
+use std::time::{Duration as StdDuration, Instant, SystemTime, UNIX_EPOCH};
 
 mod dashboard_db;
 mod dashboard_index;
@@ -184,6 +184,40 @@ enum Command {
     },
     SnapshotAccounts,
     RepairAccountsFromSnapshot,
+    ShareTarget {
+        #[arg(long)]
+        collection: String,
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Candidate ordering: "expansion" (collection number asc, default)
+        /// or "rarity" (rarity desc, then collection number asc).
+        #[arg(long, default_value = "expansion")]
+        sort: String,
+        /// Restrict candidates to one expansion code (e.g. "A3b"). Defaults to
+        /// the latest expansion when omitted.
+        #[arg(long)]
+        expansion: Option<String>,
+    },
+    MarkShared {
+        #[arg(long)]
+        device_account: String,
+        #[arg(long)]
+        card: String,
+    },
+    CheckOwned {
+        #[arg(long)]
+        device_account: String,
+        #[arg(long)]
+        card: String,
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+    MarkPendingShare {
+        #[arg(long)]
+        collection: String,
+        #[arg(long)]
+        card: String,
+    },
 }
 
 fn main() {
@@ -434,6 +468,25 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::SnapshotAccounts => snapshot_accounts(&cli.root),
         Command::RepairAccountsFromSnapshot => repair_accounts_from_snapshot(&cli.root),
+        Command::ShareTarget {
+            collection,
+            out,
+            sort,
+            expansion,
+        } => share_target(&cli.root, &collection, out.as_deref(), &sort, expansion.as_deref()),
+        Command::MarkShared {
+            device_account,
+            card,
+        } => mark_shared(&cli.root, &device_account, &card),
+        Command::CheckOwned {
+            device_account,
+            card,
+            out,
+        } => check_owned(&cli.root, &device_account, &card, out.as_deref()),
+        Command::MarkPendingShare {
+            collection,
+            card,
+        } => mark_pending_share(&cli.root, &collection, &card),
     }
 }
 
@@ -2356,7 +2409,6 @@ struct Candidate {
     sort_time: String,
     last_login: String,
     pack_count: i64,
-    shop_pack_claims: usize,
 }
 
 struct UsedAccountsState {
@@ -2414,26 +2466,13 @@ fn rename_account_eligible(account: &Value) -> bool {
 
 const MAX_SHOP_PACK_CLAIMS: usize = 2;
 
-fn shop_pack_claim_count(account: &Value) -> usize {
+fn claim_shop_packs_eligible(account: &Value) -> bool {
     account
         .get("claimedShopPacks")
         .and_then(Value::as_array)
         .map(|claimed| claimed.len())
         .unwrap_or(0)
-}
-
-// An account is eligible while it has fewer than MAX_SHOP_PACK_CLAIMS claims and
-// no claim attempt since the last daily reset. The attempt gate stops accounts
-// without tickets (or with a failed shop visit) from being re-queued forever.
-fn claim_shop_packs_eligible(account: &Value) -> bool {
-    shop_pack_claim_count(account) < MAX_SHOP_PACK_CLAIMS
-        && !was_after_daily_reset(field_str(account, "lastShopClaimAttempt"))
-}
-
-// Stable sort: accounts with fewer shop pack claims always come first, the
-// user's Sort By order is kept within each claim-count group.
-fn prioritize_fewest_shop_pack_claims(candidates: &mut Vec<Candidate>) {
-    candidates.sort_by_key(|c| c.shop_pack_claims);
+        < MAX_SHOP_PACK_CLAIMS
 }
 
 fn timestamp_to_utc(timestamp: &str) -> Option<DateTime<Utc>> {
@@ -3079,14 +3118,10 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
             sort_time,
             last_login,
             pack_count,
-            shop_pack_claims: shop_pack_claim_count(account),
         });
     }
 
     sort_candidates(&mut candidates, &options.sort_method);
-    if options.delete_method == "Claim Shop Packs" {
-        prioritize_fewest_shop_pack_claims(&mut candidates);
-    }
 
     let list = candidates
         .into_iter()
@@ -4439,9 +4474,431 @@ fn append_pull(
     Ok(())
 }
 
+fn helper_json_path(root: &Path, name: &str) -> PathBuf {
+    root.join("Helper").join(name)
+}
+
+fn load_helper_json(root: &Path, name: &str) -> Result<Value> {
+    let path = helper_json_path(root, name);
+    let text = fs::read_to_string(&path)
+        .with_context(|| format!("Could not read {:?}", path))?;
+    let value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
+        .with_context(|| format!("Could not parse {:?}", path))?;
+    Ok(value)
+}
+
+#[derive(Clone)]
+struct ShareCardmapEntry {
+    expansion: String,
+    collection_number: i64,
+}
+
+fn collect_share_cardmap_entries(
+    map: &mut HashMap<String, ShareCardmapEntry>,
+    value: &Value,
+) {
+    match value {
+        Value::Object(obj) => {
+            for (key, entry) in obj {
+                match entry {
+                    Value::String(expansion) => {
+                        if is_valid_card_id(key) && !expansion.is_empty() {
+                            map.insert(
+                                key.clone(),
+                                ShareCardmapEntry {
+                                    expansion: expansion.clone(),
+                                    collection_number: 0,
+                                },
+                            );
+                        }
+                    }
+                    Value::Object(_) => {
+                        let expansion = value_str(
+                            entry,
+                            &[
+                                "ExpansionID",
+                                "expansionID",
+                                "expansionId",
+                                "ExpansionId",
+                                "pack",
+                                "Pack",
+                            ],
+                        )
+                        .map(str::to_owned);
+                        if let (Some(expansion), true) =
+                            (expansion, is_valid_card_id(key))
+                        {
+                            let collection_number = entry
+                                .get("CollectionNumber")
+                                .and_then(Value::as_i64)
+                                .unwrap_or(0);
+                            map.insert(
+                                key.clone(),
+                                ShareCardmapEntry {
+                                    expansion,
+                                    collection_number,
+                                },
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+                collect_share_cardmap_entries(map, entry);
+            }
+        }
+        Value::Array(items) => {
+            for entry in items {
+                collect_share_cardmap_entries(map, entry);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn parse_share_cardmap(path: &Path) -> Result<HashMap<String, ShareCardmapEntry>> {
+    let text = fs::read_to_string(path)
+        .with_context(|| format!("Could not read {:?}", path))?;
+    let value: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
+        .with_context(|| format!("Could not parse cardmap.json at {:?}", path))?;
+    let mut map = HashMap::new();
+    collect_share_cardmap_entries(&mut map, &value);
+    Ok(map)
+}
+
+fn latest_expansion_code(root: &Path) -> Result<String> {
+    let value = load_helper_json(root, "en_US.json")?;
+    let obj = value
+        .as_object()
+        .context("en_US.json is not a JSON object")?;
+    let mut best: Option<(u64, String)> = None;
+    for (key, val) in obj {
+        let Some(rest) = key.strip_prefix("EXPANSION_NAME_") else {
+            continue;
+        };
+        if !rest.chars().all(|c| c.is_ascii_digit()) {
+            continue;
+        }
+        let Ok(index) = rest.parse::<u64>() else {
+            continue;
+        };
+        let Some(code) = val.as_str() else {
+            continue;
+        };
+        if code.starts_with("SP") {
+            continue;
+        }
+        if best.as_ref().map_or(true, |(best_index, _)| index > *best_index) {
+            best = Some((index, code.to_owned()));
+        }
+    }
+    best.map(|(_, code)| code)
+        .context("No usable expansion code found in en_US.json")
+}
+
+fn load_card_rarities(root: &Path) -> Result<HashMap<String, i64>> {
+    let value = load_helper_json(root, "cardmaster.json")?;
+    let mut map = HashMap::new();
+    if let Some(obj) = value.as_object() {
+        for (card_id, entry) in obj {
+            if let Some(rarity) = entry.get("Rarity").and_then(Value::as_i64) {
+                map.insert(card_id.clone(), rarity);
+            }
+        }
+    }
+    Ok(map)
+}
+
+fn card_mark_counts(value: Option<&Value>) -> HashMap<String, i64> {
+    let mut counts = HashMap::new();
+    if let Some(obj) = value.and_then(Value::as_object) {
+        for (card_id, entry) in obj {
+            let count = entry.get("count").and_then(Value::as_i64).unwrap_or(0);
+            if count > 0 {
+                *counts.entry(card_id.clone()).or_insert(0) += count;
+            }
+        }
+    }
+    counts
+}
+
+fn account_card_counts(doc: &Value) -> HashMap<String, i64> {
+    let mut counts: HashMap<String, i64> = HashMap::new();
+    if let Some(pulls) = doc.get("pulls").and_then(Value::as_array) {
+        for pull in pulls {
+            if let Some(cards) = pull.get("cards").and_then(Value::as_array) {
+                for card in cards {
+                    if let Some(card_id) = card.as_str() {
+                        if is_valid_card_id(card_id) {
+                            *counts.entry(card_id.to_owned()).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if let Some(cards) = doc.get("registeredCards").and_then(Value::as_array) {
+        for card in cards {
+            if let Some(card_id) = card.as_str() {
+                if is_valid_card_id(card_id) {
+                    *counts.entry(card_id.to_owned()).or_insert(0) += 1;
+                }
+            }
+        }
+    }
+    for (card_id, count) in card_mark_counts(doc.get("sharedCards")) {
+        if let Some(entry) = counts.get_mut(&card_id) {
+            *entry -= count;
+        }
+    }
+    for (card_id, count) in card_mark_counts(doc.get("tradedCards")) {
+        if let Some(entry) = counts.get_mut(&card_id) {
+            *entry -= count;
+        }
+    }
+    counts.retain(|_, count| *count > 0);
+    counts
+}
+
+fn sort_share_candidates(candidates: &mut [(i64, i64, String)], sort: &str) {
+    match sort {
+        "rarity" => candidates.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1))),
+        _ => candidates.sort_by(|a, b| a.1.cmp(&b.1)),
+    }
+}
+
+fn share_target(root: &Path, collection: &str, out: Option<&Path>, sort: &str, expansion: Option<&str>) -> Result<()> {
+    let sort_mode = match sort {
+        "expansion" => "expansion",
+        "rarity" => "rarity",
+        other => anyhow::bail!("Invalid share-target sort mode: {}", other),
+    };
+    let coll_path = collection_file_path(root, collection);
+    let coll_text = fs::read_to_string(&coll_path).with_context(|| {
+        format!("Could not read collection file {:?}", coll_path)
+    })?;
+    let coll: Value = serde_json::from_str(coll_text.trim_start_matches('\u{feff}'))
+        .with_context(|| format!("Could not parse {:?}", coll_path))?;
+
+    let mut main_owned: HashSet<String> = HashSet::new();
+    if let Some(cards) = coll.get("registeredCards").and_then(Value::as_array) {
+        for card in cards {
+            if let Some(card_id) = card.as_str() {
+                if is_valid_card_id(card_id) {
+                    main_owned.insert(card_id.to_owned());
+                }
+            }
+        }
+    }
+    // Cards already shared to the Main but not yet claimed in-game: they still
+    // look missing in registeredCards, so exclude them from the target.
+    if let Some(pending) = coll.get("pendingShareCards").and_then(Value::as_array) {
+        for card in pending {
+            if let Some(card_id) = card.as_str() {
+                if is_valid_card_id(card_id) {
+                    main_owned.insert(card_id.to_owned());
+                }
+            }
+        }
+    }
+
+    let cardmap_path = ensure_cardmap(root)?;
+    let cardmap = parse_share_cardmap(&cardmap_path)?;
+    let target_expansion = match expansion {
+        Some(code) => code.to_owned(),
+        None => latest_expansion_code(root)?,
+    };
+    let rarities = load_card_rarities(root)?;
+
+    // (rarity, collection_number, card_id)
+    let mut candidates: Vec<(i64, i64, String)> = Vec::new();
+    for (card_id, entry) in &cardmap {
+        if entry.expansion != target_expansion || main_owned.contains(card_id) {
+            continue;
+        }
+        let rarity = rarities.get(card_id).copied().unwrap_or(-1);
+        if !matches!(rarity, 100 | 200 | 300 | 400) {
+            continue;
+        }
+        candidates.push((rarity, entry.collection_number, card_id.clone()));
+    }
+    sort_share_candidates(&mut candidates, sort_mode);
+
+    let mut available: HashMap<String, i64> = HashMap::new();
+    let accounts_dir = account_files_dir(root);
+    if accounts_dir.is_dir() {
+        for entry in fs::read_dir(&accounts_dir)
+            .with_context(|| format!("Could not read {:?}", accounts_dir))?
+        {
+            let path = entry?.path();
+            if !path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case("json"))
+            {
+                continue;
+            }
+            let Ok(text) = fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(doc) = serde_json::from_str::<Value>(
+                text.trim_start_matches('\u{feff}'),
+            ) else {
+                continue;
+            };
+            for (card_id, count) in account_card_counts(&doc) {
+                *available.entry(card_id).or_insert(0) += count;
+            }
+        }
+    }
+
+    let mut result = json!({
+        "ok": true,
+        "cardId": Value::Null,
+        "expansion": target_expansion,
+    });
+    for (_, collection_number, card_id) in &candidates {
+        if available.get(card_id).copied().unwrap_or(0) > 0 {
+            result["cardId"] = json!(card_id);
+            result["collectionNumber"] = json!(collection_number);
+            result["rarity"] = json!(rarities.get(card_id).copied().unwrap_or(-1));
+            break;
+        }
+    }
+
+    let text = serde_json::to_string_pretty(&result)? + "\n";
+    if let Some(out_path) = out {
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(out_path, &text)
+            .with_context(|| format!("Could not write {:?}", out_path))?;
+    }
+    print!("{}", text);
+    Ok(())
+}
+
+fn mark_shared(root: &Path, device_account: &str, card: &str) -> Result<()> {
+    if device_account.trim().is_empty() || card.trim().is_empty() {
+        return Ok(());
+    }
+    if !is_valid_card_id(card) {
+        anyhow::bail!("Invalid card id for mark-shared: {}", card);
+    }
+
+    let path = account_file_path(root, device_account);
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let mut doc = load_account_document(&path, device_account)?;
+    if !doc["sharedCards"].is_object() {
+        doc["sharedCards"] = json!({});
+    }
+    let timestamp_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    {
+        let shared = doc["sharedCards"].as_object_mut().expect("sharedCards object");
+        let entry = shared
+            .entry(card.to_owned())
+            .or_insert_with(|| json!({ "timestampMs": 0, "count": 0 }));
+        let prev_count = entry.get("count").and_then(Value::as_i64).unwrap_or(0);
+        *entry = json!({ "timestampMs": timestamp_ms, "count": prev_count + 1 });
+    }
+    write_account_document(root, device_account, &doc)
+}
+
+fn check_owned(root: &Path, device_account: &str, card: &str, out: Option<&Path>) -> Result<()> {
+    let mut result = json!({ "ok": true, "owned": false });
+    if !device_account.trim().is_empty() && is_valid_card_id(card) {
+        let path = account_file_path(root, device_account);
+        if path.exists() {
+            if let Ok(text) = fs::read_to_string(&path) {
+                if let Ok(doc) =
+                    serde_json::from_str::<Value>(text.trim_start_matches('\u{feff}'))
+                {
+                    result["owned"] =
+                        json!(account_card_counts(&doc).get(card).copied().unwrap_or(0) > 0);
+                }
+            }
+        }
+    }
+    let text = serde_json::to_string_pretty(&result)? + "\n";
+    if let Some(out_path) = out {
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(out_path, &text)
+            .with_context(|| format!("Could not write {:?}", out_path))?;
+    }
+    print!("{}", text);
+    Ok(())
+}
+
+fn mark_pending_share(root: &Path, collection: &str, card: &str) -> Result<()> {
+    if collection.trim().is_empty() || card.trim().is_empty() {
+        return Ok(());
+    }
+    if !is_valid_card_id(card) {
+        anyhow::bail!("Invalid card id for mark-pending-share: {}", card);
+    }
+
+    let coll_path = collection_file_path(root, collection);
+    if !coll_path.exists() {
+        return Ok(());
+    }
+    let coll_text = fs::read_to_string(&coll_path)
+        .with_context(|| format!("Could not read collection file {:?}", coll_path))?;
+    let mut doc: Value = serde_json::from_str(coll_text.trim_start_matches('\u{feff}'))
+        .with_context(|| format!("Could not parse {:?}", coll_path))?;
+
+    if !doc["pendingShareCards"].is_array() {
+        doc["pendingShareCards"] = json!([]);
+    }
+    let already = doc["pendingShareCards"]
+        .as_array()
+        .is_some_and(|pending| pending.iter().any(|c| c.as_str() == Some(card)));
+    let registered = doc
+        .get("registeredCards")
+        .and_then(Value::as_array)
+        .is_some_and(|cards| cards.iter().any(|c| c.as_str() == Some(card)));
+    if !already && !registered {
+        doc["pendingShareCards"]
+            .as_array_mut()
+            .expect("pendingShareCards array")
+            .push(json!(card));
+    }
+    write_collection_document(root, collection, &doc)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn share_candidates_order_by_expansion_or_rarity() {
+        let mut candidates = vec![
+            (300, 3, "rare300-num3".to_owned()),
+            (400, 56, "rare400-num56".to_owned()),
+            (400, 10, "rare400-num10".to_owned()),
+            (100, 1, "rare100-num1".to_owned()),
+        ];
+
+        sort_share_candidates(&mut candidates, "expansion");
+        let order: Vec<&str> = candidates.iter().map(|c| c.2.as_str()).collect();
+        assert_eq!(
+            order,
+            ["rare100-num1", "rare300-num3", "rare400-num10", "rare400-num56"]
+        );
+
+        sort_share_candidates(&mut candidates, "rarity");
+        let order: Vec<&str> = candidates.iter().map(|c| c.2.as_str()).collect();
+        assert_eq!(
+            order,
+            ["rare400-num10", "rare400-num56", "rare300-num3", "rare100-num1"]
+        );
+    }
 
     #[test]
     fn card_id_validation_rejects_mojibake_and_oversized_values() {
@@ -4878,73 +5335,6 @@ mod tests {
         assert!(!eligible(&completed, &options, &events));
     }
 
-    fn shop_options() -> ScheduleOptions {
-        ScheduleOptions {
-            instance: "1".to_owned(),
-            delete_method: "Claim Shop Packs".to_owned(),
-            sort_method: "ModifiedAsc".to_owned(),
-            inject_wonderpick_min_packs: 96,
-            wonderpick_for_event_missions: false,
-            claim_daily_mission: false,
-            claim_special_missions: false,
-            receive_gift: false,
-            ocr_shinedust: false,
-            s4t_enabled: false,
-            spend_hourglass: false,
-            force_inject: false,
-            force_clear_used: false,
-        }
-    }
-
-    #[test]
-    fn claim_shop_packs_eligibility_uses_claim_count_and_daily_attempt_gate() {
-        let options = shop_options();
-        let old = (Local::now() - Duration::days(2))
-            .format("%Y%m%d%H%M%S")
-            .to_string();
-        let now = Local::now().format("%Y%m%d%H%M%S").to_string();
-
-        assert!(eligible(&json!({}), &options, &[]));
-        assert!(eligible(&json!({ "claimedShopPacks": [old] }), &options, &[]));
-        assert!(!eligible(&json!({ "claimedShopPacks": [old, old] }), &options, &[]));
-        assert!(eligible(&json!({ "lastShopClaimAttempt": old }), &options, &[]));
-        assert!(!eligible(&json!({ "lastShopClaimAttempt": now }), &options, &[]));
-        assert!(!eligible(
-            &json!({ "claimedShopPacks": [old], "lastShopClaimAttempt": now }),
-            &options,
-            &[]
-        ));
-    }
-
-    #[test]
-    fn claim_shop_packs_puts_unclaimed_accounts_first_keeping_sort_order() {
-        let candidate = |name: &str, sort_time: &str, claims: usize| Candidate {
-            file_name: name.to_owned(),
-            sort_time: sort_time.to_owned(),
-            last_login: "0".to_owned(),
-            pack_count: 0,
-            shop_pack_claims: claims,
-        };
-        let mut candidates = vec![
-            candidate("one_old.xml", "20260501000000", 1),
-            candidate("zero_new.xml", "20260504000000", 0),
-            candidate("one_new.xml", "20260503000000", 1),
-            candidate("zero_old.xml", "20260502000000", 0),
-        ];
-
-        sort_candidates(&mut candidates, "ModifiedAsc");
-        prioritize_fewest_shop_pack_claims(&mut candidates);
-
-        let names = candidates
-            .iter()
-            .map(|candidate| candidate.file_name.as_str())
-            .collect::<Vec<_>>();
-        assert_eq!(
-            names,
-            vec!["zero_old.xml", "zero_new.xml", "one_old.xml", "one_new.xml"]
-        );
-    }
-
     #[test]
     fn last_login_sort_orders_unset_login_first_then_oldest_login() {
         let mut candidates = vec![
@@ -4953,21 +5343,18 @@ mod tests {
                 sort_time: "20260503000000".to_owned(),
                 last_login: "20260505000000".to_owned(),
                 pack_count: 20,
-                shop_pack_claims: 0,
             },
             Candidate {
                 file_name: "unset.xml".to_owned(),
                 sort_time: "20260502000000".to_owned(),
                 last_login: "0".to_owned(),
                 pack_count: 30,
-                shop_pack_claims: 0,
             },
             Candidate {
                 file_name: "old.xml".to_owned(),
                 sort_time: "20260501000000".to_owned(),
                 last_login: "20260504000000".to_owned(),
                 pack_count: 10,
-                shop_pack_claims: 0,
             },
         ];
 
