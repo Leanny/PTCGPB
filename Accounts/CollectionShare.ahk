@@ -1229,7 +1229,24 @@ CollectionShare_RapidOcrLang(ocrTag) {
     return ""
 }
 
-CollectionShare_RapidOcr(shotFile, ocrTag := "") {
+;-------------------------------------------------------------------------------
+; CollectionShare_CropImage - Save a (x,y,w,h) slice of a PNG via GDI+. Used to
+; OCR a small screen region instead of the full frame (much faster).
+;-------------------------------------------------------------------------------
+CollectionShare_CropImage(srcFile, dstFile, x, y, w, h) {
+    pBmp := Gdip_CreateBitmapFromFile(srcFile)
+    if (!pBmp)
+        return false
+    pCrop := Gdip_CloneBitmapArea(pBmp, x, y, w, h)
+    Gdip_DisposeImage(pBmp)
+    if (!pCrop)
+        return false
+    ok := (Gdip_SaveBitmapToFile(pCrop, dstFile) = 0)
+    Gdip_DisposeImage(pCrop)
+    return ok
+}
+
+CollectionShare_RapidOcr(shotFile, ocrTag := "", cX := 0, cY := 0, cW := 0, cH := 0) {
     global session
     static exe := ""
     static exeDir := ""
@@ -1250,7 +1267,17 @@ CollectionShare_RapidOcr(shotFile, ocrTag := "") {
     }
     if (!exe)
         return ""
-    cmd := """" . exe . """ --image_path """ . shotFile . """ --ensureLogger 0 --doAngle 0 --mostAngle 0" . CollectionShare_RapidOcrLang(ocrTag)
+    ; Optional (cX,cY,cW,cH): OCR only that region of the frame. Returned word
+    ; coordinates stay absolute (offset back), so callers are unchanged.
+    ocrFile := shotFile
+    if (cW > 0 && cH > 0) {
+        cropFile := A_Temp . "\rapidocr_crop_" . session.get("scriptName") . ".png"
+        if (CollectionShare_CropImage(shotFile, cropFile, cX, cY, cW, cH))
+            ocrFile := cropFile
+        else
+            cX := 0, cY := 0 ; crop failed: fall back to the full frame
+    }
+    cmd := """" . exe . """ --image_path """ . ocrFile . """ --ensureLogger 0 --doAngle 0 --mostAngle 0" . CollectionShare_RapidOcrLang(ocrTag)
     outFile := A_Temp . "\rapidocr_" . session.get("scriptName") . ".json"
     RunWait, %ComSpec% /c cd /d "%exeDir%" && %cmd% > "%outFile%", , Hide
     if (!FileExist(outFile))
@@ -1280,7 +1307,7 @@ CollectionShare_RapidOcr(shotFile, ocrTag := "") {
             if (v > maxY)
                 maxY := v
         }
-        words.Push({text: m9, x: minX, y: minY, w: maxX - minX, h: maxY - minY})
+        words.Push({text: m9, x: minX + cX, y: minY + cY, w: maxX - minX, h: maxY - minY})
         pos := p + StrLen(m)
     }
     return words
