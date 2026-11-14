@@ -8,7 +8,32 @@ GoToShopFromHome(timeoutSeconds := 20) {
     global session
 
     if (!FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true)) {
-        LogWarn("GoToShopFromHome: Home screen not detected (Common_ShopButtonInMain missing)")
+        LogDebug("GoToShopFromHome: Home not detected, moving to Main first")
+        Loop, 10 {
+            if (FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true))
+                break
+            if (FindOrLoseImage("Shop_TicketIcon", 0, 0, , true)
+                || FindOrLoseImage("Shop_PackDialogOK", 0, 0, , true)) {
+                adbClick_wbb(141, 500) ; shop close X
+                DelayH(600)
+                continue
+            }
+            adbClick_wbb(40, 516) ; bottom-nav Home icon
+            DelayH(500)
+            if (FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true))
+                break
+            adbClick_wbb(175, 445) ; dismiss any overlay/popup
+            DelayH(500)
+        }
+        if (!FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true)) {
+            LogWarn("GoToShopFromHome: Home screen not detected (Common_ShopButtonInMain missing)")
+            return false
+        }
+    }
+
+    GoToMain()
+    if (!FindOrLoseImage("Common_ShopButtonInMain", 0, 0, , true)) {
+        LogWarn("GoToShopFromHome: Home screen lost after GoToMain")
         return false
     }
 
