@@ -58,6 +58,34 @@ jobs:
           cargo build --release --target x86_64-pc-windows-msvc
           Pop-Location
           Copy-Item -LiteralPath "$env:CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/cardimage.exe" -Destination Helper/cardimage.exe -Force
+      - name: Fetch RapidOCR engine for the shop-pack OCR selection
+        shell: pwsh
+        run: |
+          $archive = "$env:TEMP\rapidocr.7z"
+          Invoke-WebRequest -Uri "https://github.com/hiroi-sora/RapidOCR-json/releases/download/v0.2.0/RapidOCR-json_v0.2.0.7z" -OutFile $archive
+          & 7z x $archive -o"$env:TEMP\rapidocr-src" | Out-Null
+          New-Item -ItemType Directory rapidocr\RapidOCR-json_v0.2.0\models -Force | Out-Null
+          Copy-Item "$env:TEMP\rapidocr-src\RapidOCR-json_v0.2.0\RapidOCR-json.exe" rapidocr\RapidOCR-json_v0.2.0\
+          # Only the models and keysets the picker actually uses:
+          # det v4 + cls (shared), rec v4 (latin fallback), and the CJK recognizers.
+          $keep = @(
+            'ch_PP-OCRv3_det_infer.onnx',
+            'ch_PP-OCRv4_det_infer.onnx',
+            'ch_ppocr_mobile_v2.0_cls_infer.onnx',
+            'rec_ch_PP-OCRv4_infer.onnx',
+            'dict_chinese.txt',
+            'ppocr_keys_v1.txt',
+            'rec_japan_PP-OCRv3_infer.onnx',
+            'dict_japan.txt',
+            'rec_korean_PP-OCRv3_infer.onnx',
+            'dict_korean.txt',
+            'rec_chinese_cht_PP-OCRv3_infer.onnx',
+            'dict_chinese_cht.txt',
+            'configs.txt'
+          )
+          foreach ($f in $keep) {
+            Copy-Item "$env:TEMP\rapidocr-src\RapidOCR-json_v0.2.0\models\$f" rapidocr\RapidOCR-json_v0.2.0\models\
+          }
 
       - name: Build release bundle and checksums
         shell: pwsh
