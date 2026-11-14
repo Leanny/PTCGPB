@@ -493,8 +493,10 @@ ClaimVisibleEventRewards(eventResult) {
                         return specialEventName
                     }
                 }
-                if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                if (!FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     SkipCardReveal()
+                }
+                if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     eventResult[specialEventName] := true
                     return specialEventName
                 }
@@ -553,24 +555,13 @@ HandleMissionDeckFailsafe() {
 SkipCardReveal() {
     Delay(1)
     Loop, 15 {
-        if (!FindOrLoseImage("Mission_CompleteGotAllClaims", 0, 0, , true)) {
-            adbClick_wbb(146, 489) ; toast still up: keep dismissing
-            Delay(1)
-            continue
-        }
         if (FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, 0, , true))
             break ; toast gone and List visible: back on the Missions page
         if (FindOrLoseImage("Mission_SkipEventReveal", 0, 0, , true) || FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, 0, , true) || FindOrLoseImage("Pack_AnimationToReadyOpenPack", 0, 0, , true)) {
             adbClick_wbb(247, 500)
             Delay(1)
-            continue
         }
-        if (FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, 0, , true) || FindOrLoseImage("Next2", 0, , , true)) {
-            adbClick_wbb(146, 489)
-            Delay(1)
-            continue
-        }
-        adbClick_wbb(146, 489) ; reveal covering the screen: tap to bring Skip up
+        adbClick_wbb(146, 459) ; reveal covering the screen: tap to bring Skip up
         Delay(1)
     }
 }
