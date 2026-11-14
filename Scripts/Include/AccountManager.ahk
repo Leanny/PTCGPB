@@ -739,18 +739,11 @@ AccountEligibility_RenameAccountEligible(accountMeta) {
     return true
 }
 
-; Eligible while fewer than 2 shop packs were claimed (only 2 tickets are
-; obtainable right now) and no claim was attempted since the last daily reset.
-; Mirrors claim_shop_packs_eligible in carddb (main.rs).
 AccountEligibility_ClaimShopPacksEligible(accountMeta) {
-    if (!IsObject(accountMeta))
-        return true
-    if (AccountEligibility_WasAfterDailyReset(accountMeta["lastShopClaimAttempt"]))
-        return false
-    if (!IsObject(accountMeta["claimedShopPacks"]))
+    if (!IsObject(accountMeta) || !IsObject(accountMeta["claimedShopPacks"]))
         return true
     claimedCount := accountMeta["claimedShopPacks"].MaxIndex()
-    return (claimedCount = "" ? 0 : claimedCount) < 2
+    return (claimedCount = "" ? 0 : claimedCount) < 2 ; only 2 tickets are obtainable right now
 }
 
 AccountEligibility_ToUTC(timestamp) {
@@ -798,16 +791,6 @@ AccountEligibility_SpecialPackAvailable(accountMeta) {
     if (last = "" || last = "0")
         return true
     return AccountEligibility_ToUTC(last) < AccountEligibility_LastSpecialPackResetUTC()
-}
-
-; True when the current injected account may still pull the weekly special
-; pack. Non-injected accounts have no metadata, so the attempt is allowed.
-AccountEligibility_CanPullSpecialPack() {
-    global session
-    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
-        return true
-    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
-    return AccountEligibility_SpecialPackAvailable(accountMeta)
 }
 
 AccountEligibility_GetFlag(accountMeta, flag) {

@@ -84,3 +84,6 @@ banned/
 
 # Large apks used by the instance manager
 apks/
+
+# Third-party OCR engine bundled by CI, not tracked
+/rapidocr/

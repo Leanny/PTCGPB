@@ -626,7 +626,8 @@ PackOpening(tenPackOpening := false) {
         if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime)) {
             adbClick_wbb(247, 500)
             Delay(1)
-        } else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack2", 0, failSafeTime)) {
+        }
+        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack2", 0, failSafeTime)) {
             adbClick_wbb(256, 505)
             Delay(1)
         } else if(FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, failSafeTime)) {
