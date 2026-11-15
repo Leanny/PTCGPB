@@ -324,6 +324,12 @@ startPreProcess(methodType){
         clickX := 33
         clickY := 511
     }
+    else if(methodType = "Battle Tutorial"){
+        findImageName := "Battle"
+        needleName := "Battle_Activated"
+        clickX := 186
+        clickY := 512
+    }
 
     findImageName .= "`n(Selected pack: " . session.get("openPack") . ")"
 

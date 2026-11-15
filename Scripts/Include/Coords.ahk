@@ -262,6 +262,7 @@ needlesDict.Add(new Needle("Create_TutorialPremiumPass", "Hourglass1", new Coord
 needlesDict.Add(new Needle("Create_InfoIconInStandByOpenPack", "Hourglass2", new Coordinate(240, 197, 262, 218)))
 needlesDict.Add(new Needle("Create_TitleBottomBorderInWPSelectCard", "Pick", new Coordinate(65, 128, 198, 133)))
 needlesDict.Add(new Needle("Create_SoloBattleMissionIconInDetail", "1solobattlemission", new Coordinate(108, 135, 177, 163)))
+needlesDict.Add(new Needle("Battle_Activated", "BattleActivated", new Coordinate(180, 503, 198, 520)))
 needlesDict.Add(new Needle("Create_FullFreepackInMainCenter", "Main", new Coordinate(123, 314, 135, 323)))
 needlesDict.Add(new Needle("Create_SignupNotification", "SignupNotification", new Coordinate(218, 117, 253, 153)))
 needlesDict.Add(new Needle("Create_SignupsDataSharing", "SignupsDataSharing", new Coordinate(8, 488, 34, 512)))

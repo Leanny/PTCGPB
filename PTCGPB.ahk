@@ -247,7 +247,7 @@ UpdateHourglassPackCountVisibility(deleteMethod := "") {
     }
 
     GuiControlGet, spendHourGlassChecked, , ui_spendHourGlass
-    packCountVisible := (spendHourGlassChecked && deleteMethod != "Create Bots (13P)" && deleteMethod != "Inject Rewards" && deleteMethod != "Rename Account" && deleteMethod != "Claim Shop Packs") ? "Show" : "Hide"
+    packCountVisible := (spendHourGlassChecked && deleteMethod != "Create Bots (13P)" && deleteMethod != "Inject Rewards" && deleteMethod != "Rename Account" && deleteMethod != "Claim Shop Packs" && deleteMethod != "Battle Tutorial") ? "Show" : "Hide"
     tenPackVisible := (spendHourGlassChecked && deleteMethod = "Inject 13P+") ? "Show" : "Hide"
     GuiControl, %tenPackVisible%, ui_hourglassTenPackOpening
     GuiControl, %packCountVisible%, ui_spendHourglassPackCountText
@@ -393,7 +393,7 @@ NextStep:
     } else if (botMethod = "Inject Rewards") {
         botY_chkTenPack := -100
         botY_hourglassCountRow := -100
-    } else if (botMethod = "Rename Account" || botMethod = "Claim Shop Packs") {
+    } else if (botMethod = "Rename Account" || botMethod = "Claim Shop Packs" || botMethod = "Battle Tutorial") {
         botY_chkTenPack := -100
         botY_hourglassCountRow := -100
     } else {
@@ -415,16 +415,18 @@ NextStep:
         defaultDelete := 5
     else if (botMethod = "Claim Shop Packs")
         defaultDelete := 6
+    else if (botMethod = "Battle Tutorial")
+        defaultDelete := 7
     Gui, Add, Text, x20 y%botY207% %sectionColor%, Bot Mode
-    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w210 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs
+    Gui, Add, DropDownList, vui_deleteMethod gdeleteSettings choose%defaultDelete% x20 y%botY227% w210 Background2A2A2A cWhite, Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs|Battle Tutorial
 
     Gui, Add, Text, % "vui_injectWonderpickMinPacksText x20 y" . botY257 . " " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), Min Packs:
     Gui, Add, Edit, % "vui_injectWonderpickMinPacks w40 x190 y" . botY257 . " h20 -E0x200 Background2A2A2A cWhite Center" . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % botConfig.get("injectWonderpickMinPacks")
     Gui, Add, Checkbox, % (botConfig.get("packMethod") ? "Checked" : "") " vui_packMethod x20 y" . botY_chkPack . " w190 h20 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+") ? "" : " Hidden"), % dict["Txt_packMethod"]
     Gui, Add, Checkbox, % (botConfig.get("openExtraPack") ? "Checked" : "") " vui_openExtraPack gopenExtraPackSettings x20 y" . botY_chkOpen . " w190 h20 " . sectionColor . ((botMethod = "Inject Wonderpick 96P+" || botMethod = "Inject 13P+") ? "" : " Hidden"), % dict["Txt_openExtraPack"]
-    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y" . botY_chkSpend . " w190 h20 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs")? " Hidden":""), % dict["Txt_spendHourGlass"]
-    hourglassSpendUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs") ? " Hidden" : ""
-    hourglassPackCountUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
+    Gui, Add, Checkbox, % (botConfig.get("spendHourGlass") ? "Checked" : "") " vui_spendHourGlass gspendHourGlassSettings x20 y" . botY_chkSpend . " w190 h20 " . sectionColor . ((botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs" || botMethod = "Battle Tutorial")? " Hidden":""), % dict["Txt_spendHourGlass"]
+    hourglassSpendUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs" || botMethod = "Battle Tutorial") ? " Hidden" : ""
+    hourglassPackCountUiHidden := (botMethod = "Create Bots (13P)" || botMethod = "Inject Rewards" || botMethod = "Rename Account" || botMethod = "Claim Shop Packs" || botMethod = "Battle Tutorial" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
     hourglassTenPackUiHidden := (botMethod != "Inject 13P+" || !botConfig.get("spendHourGlass")) ? " Hidden" : ""
     Gui, Add, Checkbox, % (botConfig.get("hourglassTenPackOpening") ? "Checked" : "") " vui_hourglassTenPackOpening x20 y" . botY_chkTenPack . " w190 h20 " . sectionColor . hourglassTenPackUiHidden, % dict["Txt_hourglassTenPackOpening"]
     Gui, Add, Text, % "vui_spendHourglassPackCountText x38 y" . botY_hourglassCountRow . " w147 h20 " . sectionColor . hourglassPackCountUiHidden, % dict["Txt_spendHourglassPackCount"]
@@ -690,6 +692,21 @@ deleteSettings:
         GuiControl, Show, ui_AccountName
         GuiControl, Hide, ui_WaitTime
     } else if (curDeleteMethod = "Claim Shop Packs") {
+        GuiControl, Hide, ui_FriendID
+        GuiControl, Hide, ui_spendHourGlass
+        GuiControl, Hide, ui_hourglassTenPackOpening
+        GuiControl, Hide, ui_spendHourglassPackCountText
+        GuiControl, Hide, ui_spendHourglassPackCount
+        GuiControl, Hide, ui_packMethod
+        GuiControl, Hide, ui_injectWonderpickMinPacksText
+        GuiControl, Hide, ui_injectWonderpickMinPacks
+        GuiControl, Hide, ui_openExtraPack
+        GuiControl, Show, ui_SortByText
+        GuiControl, Show, ui_SortByDropdown
+        GuiControl, Hide, ui_AccountNameText
+        GuiControl, Hide, ui_AccountName
+        GuiControl, Hide, ui_WaitTime
+    } else if (curDeleteMethod = "Battle Tutorial") {
         GuiControl, Hide, ui_FriendID
         GuiControl, Hide, ui_spendHourGlass
         GuiControl, Hide, ui_hourglassTenPackOpening
