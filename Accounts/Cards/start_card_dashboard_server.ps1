@@ -942,18 +942,24 @@ function Invoke-InjectAccount {
 
     $headless = -not [string]::IsNullOrWhiteSpace($winTitle)
     $ahkExe = Resolve-AutoHotkeyExe
+    $runIniPath = $null
     try {
+        # Each worker keeps its own settings while later launches update the defaults.
+        $runIniPath = Join-Path ([System.IO.Path]::GetTempPath()) ("PTCGPB-Inject-" + [guid]::NewGuid().ToString("N") + ".ini")
+        Copy-Item -LiteralPath $iniPath -Destination $runIniPath
         $argList = @()
         if ($ahkExe) { $argList += "`"$ahkPath`"" }
         if ($headless) { $argList += "/headless" }
+        $argList += @("/run-config", "`"$runIniPath`"")
         if ($ahkExe) {
-            Start-Process -FilePath $ahkExe -ArgumentList $argList -WorkingDirectory $accountsDir | Out-Null
-        } elseif ($headless) {
-            Start-Process -FilePath $ahkPath -ArgumentList @("/headless") -WorkingDirectory $accountsDir | Out-Null
+            Start-Process -FilePath $ahkExe -ArgumentList $argList -WorkingDirectory $accountsDir -WindowStyle Hidden | Out-Null
         } else {
-            Start-Process -FilePath $ahkPath -WorkingDirectory $accountsDir | Out-Null
+            Start-Process -FilePath $ahkPath -ArgumentList $argList -WorkingDirectory $accountsDir -WindowStyle Hidden | Out-Null
         }
     } catch {
+        if ($runIniPath -and (Test-Path -LiteralPath $runIniPath)) {
+            Remove-Item -LiteralPath $runIniPath -Force
+        }
         Write-JsonResponse -Context $Context -StatusCode 500 -Payload @{ ok = $false; error = "Failed to launch AutoHotkey: $($_.Exception.Message)" }
         return
     }

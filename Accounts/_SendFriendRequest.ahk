@@ -2,7 +2,7 @@
 ; Sends friend request(s) after account inject.
 ; Prefers InjectAccount.ini [UserSettings] injectFriendRequestIds= (pre-built list for this run).
 ; Otherwise uses injectSelectedFriendIDs (or legacy injectExtraFriendIDs). At most 10 codes total.
-; Usage: _SendFriendRequest.ahk "<winTitle>" "<folderPath>"
+; Usage: _SendFriendRequest.ahk "<winTitle>" "<folderPath>" ["<injectIniPath>"]
 
 #SingleInstance off
 SetMouseDelay, -1
@@ -54,6 +54,8 @@ global pToken := Gdip_Startup()
 #Include %A_ScriptDir%\..\Scripts\Include\FriendManager.ahk
 
 global g_injectIniPath := A_ScriptDir . "\InjectAccount.ini"
+if (A_Args.Length() >= 3)
+    g_injectIniPath := A_Args[3]
 IniRead, g_injectRequestRaw, %g_injectIniPath%, UserSettings, injectFriendRequestIds,
 if (g_injectRequestRaw = "ERROR")
     g_injectRequestRaw := ""
@@ -219,7 +221,7 @@ if (!hwnd) {
 
 global g_mumuHwnd := hwnd
 
-; Position the MuMu window at a fixed location on screen.
+; Position the MuMu window in its normal run grid slot.
 CreateStatusMessage("Positioning emulator window...",,,, true)
 DirectlyPositionWindow()
 Sleep, 500
@@ -669,8 +671,7 @@ TruncateFriendRequestList(list) {
 }
 
 ;-------------------------------------------------------------------------------
-; DirectlyPositionWindow - position the MuMu window at a fixed location on the
-; selected monitor (first grid slot, since trade always uses a single instance).
+; DirectlyPositionWindow - use the normal run's instance ordering and grid.
 ; Same sequence as 1.ahk: remove title bar, move, restore title bar, redraw,
 ; then FixInstanceScreen.
 ;-------------------------------------------------------------------------------
@@ -686,9 +687,13 @@ DirectlyPositionWindow() {
         SelectedMonitorIndex := 1
     SysGet, Monitor, Monitor, %SelectedMonitorIndex%
 
-    ; Trade always uses a single instance - fix it at the first grid slot.
-    x := MonitorLeft
-    y := MonitorTop
+    instanceIndex := RegExMatch(g_winTitle, "^\d+$") ? g_winTitle + 0 : 1
+    if (botConfig.get("runMain"))
+        instanceIndex += botConfig.get("Mains")
+    columns := Max(1, botConfig.get("Columns"))
+    currentRow := Floor((instanceIndex - 1) / columns)
+    x := MonitorLeft + botConfig.get("StartOffset") + (Mod((instanceIndex - 1), columns) * (scaleParam - 6))
+    y := MonitorTop + currentRow * (rowHeight + botConfig.get("rowGap"))
 
     WinSet, Style, -0xC00000, % "ahk_id " . getMuMuHwnd(g_winTitle)
     WinMove, % "ahk_id " . getMuMuHwnd(g_winTitle), , %x%, %y%, %scaleParam%, %rowHeight%
