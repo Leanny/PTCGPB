@@ -7,6 +7,8 @@ CoordMode, Pixel, Screen
 
 #Include %A_ScriptDir%\Include\
 #Include BotCommon.ahk
+#Include %A_ScriptDir%\..\Accounts\CollectionShare.ahk
+#Include %A_ScriptDir%\..\Accounts\ShareSettings.ahk
 #Include StringCompare.ahk
 #Include Dictionary.ahk
 
@@ -179,6 +181,8 @@ Loop {
         }
     }
 
+    CollectionShare_CoordinateDaily()
+
     if (session.get("GPTest")) {
         if (session.get("triggerTestNeeded"))
             GPTestScript()
@@ -330,6 +334,7 @@ DismissExpiredFriendRequestInApprove() {
 }
 
 #Include HistoryImport.ahk
+#Include %A_ScriptDir%\..\Accounts\CollectionShareCoordinator.ahk
 
 FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation := 20, notShowFinding := 0, coordImageName := "", coordEL := "", coordSafeTime := "") {
     prof := Prof_Scope(A_ThisFunc)

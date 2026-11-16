@@ -1208,9 +1208,9 @@ fn sync_append_or_metadata(
     }
 
     update_account_record(conn, summary)?;
-    if !appended_new_rows {
-        refresh_card_marks(conn, inserter, &summary.account, doc)?;
-    }
+    // Marks can change in the same write that appends pulls (a donor opens
+    // packs and shares a card in one run), so refresh them on every sync.
+    refresh_card_marks(conn, inserter, &summary.account, doc)?;
 
     let (size, modified_ns) = file_fingerprint(path)?;
     inserter.upsert_source_file.execute(params![
@@ -1620,6 +1620,68 @@ mod tests {
             })
             .unwrap();
         assert_eq!(row_count, 1);
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn sqlite_sync_refreshes_card_marks_when_pulls_are_appended() {
+        let root = test_root("marks_with_new_pulls");
+        let _ = fs::remove_dir_all(&root);
+        let accounts_dir = root.join("Accounts/Cards/accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+        fs::write(
+            accounts_dir.join("dev1.json"),
+            serde_json::to_string_pretty(&json!({
+                "deviceAccount": "dev1",
+                "metadata": { "accountName": "Test" },
+                "pulls": [
+                    { "timestamp": "2026-05-05 04:53:46", "pack": "A1", "cards": ["PK_01_000001"] }
+                ],
+                "tradedCards": {},
+                "sharedCards": {}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        rebuild_dashboard_db(&root).unwrap();
+
+        fs::write(
+            accounts_dir.join("dev1.json"),
+            serde_json::to_string_pretty(&json!({
+                "deviceAccount": "dev1",
+                "metadata": { "accountName": "Test" },
+                "pulls": [
+                    { "timestamp": "2026-05-05 04:53:46", "pack": "A1", "cards": ["PK_01_000001"] },
+                    { "timestamp": "2026-05-05 05:00:00", "pack": "A1", "cards": ["PK_01_000003"] }
+                ],
+                "tradedCards": {},
+                "sharedCards": { "PK_01_000001": { "timestampMs": 1, "count": 1 } }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let sync = sync_dashboard_db(&root, None).unwrap();
+        assert_eq!(sync.reindexed_accounts, 1);
+
+        let conn = open_connection(&root).unwrap();
+        let row_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM rows WHERE account_key = 'dev1'", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(row_count, 2);
+        let shared_marks: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM card_marks
+                 WHERE account_key = 'dev1' AND card_id = 'PK_01_000001' AND mark_type = 'shared'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(shared_marks, 1);
 
         let _ = fs::remove_dir_all(&root);
     }
