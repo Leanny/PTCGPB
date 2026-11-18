@@ -8,6 +8,8 @@ CoordMode, Pixel, Screen
 
 #Include %A_ScriptDir%\Include\
 #Include BotCommon.ahk
+#Include StringCompare.ahk
+#Include %A_ScriptDir%\..\Accounts\CollectionShare.ahk
 pToken := Gdip_Startup()
 ;#Include %A_ScriptDir%\Include\Recorder.ahk
 #Include Packs.ahk
@@ -876,6 +878,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(botConfig.get("ocrShinedust") && session.get("injectMethod") && session.get("loadedAccount")) {
             CountShinedust()
         }
+
+        ; Daily collection share (before friend removal)
+        CollectionShare_CheckAndRun()
 
         ; Friend removal for Inject Wonderpick 96P+
         if (session.get("injectMethod") && session.get("friended") && !session.get("keepAccount")) {
