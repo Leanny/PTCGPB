@@ -543,7 +543,6 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             session.set("rerolls", session.get("rerolls") + 1)
             IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
             LogInfo("Run finished | shop claim | account=" . session.get("accountFileName"))
-            ExitApp
             continue
         }
         if(botConfig.get("deleteMethod") = "Rename Account") {
