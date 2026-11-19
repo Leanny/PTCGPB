@@ -23,6 +23,8 @@ pToken := Gdip_Startup()
 #Include BotMissions.ahk
 #Include BotWonderPick.ahk
 #Include BotShopPackPurchase.ahk
+#Include BotBattleTutorial.ahk
+#Include MaskMatch.ahk
 #Include BotTutorial.ahk
 #Include BotAccountMenu.ahk
 #Include BotDebugTools.ahk
@@ -110,7 +112,7 @@ if (stopAfterRunPending = 1) {
 
 originalDeleteMethod := botConfig.get("deleteMethod")
 if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
-    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs"
+    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs|Battle Tutorial"
     if (!InStr(validMethods, originalDeleteMethod)) {
         botConfig.set("deleteMethod", "Create Bots (13P)", "General")
         botConfig.saveConfigToSettings("General")
@@ -215,7 +217,7 @@ if(botConfig.get("slowMotion")) {
 } else {
     session.set("setSpeed", 3) ;always 1x/3x
 }
-if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs")
+if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs" || botConfig.get("deleteMethod") = "Battle Tutorial")
     session.set("injectMethod", true)
 
 startPackList := ""
@@ -543,6 +545,42 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             session.set("rerolls", session.get("rerolls") + 1)
             IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
             LogInfo("Run finished | shop claim | account=" . session.get("accountFileName"))
+            continue
+        }
+        if(botConfig.get("deleteMethod") = "Battle Tutorial") {
+            battleTutorialDone := BotBattleTutorial_Run()
+            if (battleTutorialDone) {
+                BotBattleTutorial_MarkDone()
+                LogInfo("Battle Tutorial completed | account=" . session.get("accountFileName"))
+                if (session.get("injectMethod") && session.get("loadedAccount")) {
+                    MarkAccountAsClaimed()
+                    session.set("loadedAccount", false)
+                }
+            } else {
+                ; failure: the account stays in list_current.txt, so the next
+                ; loadAccount re-picks it. It is retried until flags.BT=1.
+                LogWarn("Battle Tutorial failed - account will be retried | account=" . session.get("accountFileName"))
+                session.set("loadedAccount", false)
+                ClearLoadedAccountRecovery()
+            }
+            clearLastActivityEpoch(session.get("scriptName"))
+            now := A_NowUTC
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
+            EnvSub, now, 1970, seconds
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
+            session.set("rerolls", session.get("rerolls") + 1)
+            session.set("rerolls_local", session.get("rerolls_local") + 1)
+            IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
+            totalSeconds := Round((A_TickCount - session.get("rerollStartTime")) / 1000)
+            totalSeconds_local := Round((A_TickCount - session.get("rerollStartTime_local")) / 1000)
+            session.set("avgtotalSeconds", Round(totalSeconds_local / session.get("rerolls_local")))
+            session.set("aminutes", Floor(session.get("avgtotalSeconds") / 60))
+            session.set("aseconds", Mod(session.get("avgtotalSeconds"), 60))
+            updateTotalTime()
+            session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
+            CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
+            LogInfo("Run finished | battle tutorial | account=" . session.get("accountFileName"))
+            SendMetadataToPTCGPB(session.get("packsThisRun"))
             continue
         }
         if(botConfig.get("deleteMethod") = "Rename Account") {

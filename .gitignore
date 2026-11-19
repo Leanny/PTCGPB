@@ -85,5 +85,5 @@ banned/
 # Large apks used by the instance manager
 apks/
 
-# RapidOCR engine, downloaded on demand by PTCGPB.ahk (Scripts/Include/RapidOcrSetup.ahk)
+# RapidOCR engine
 /rapidocr/
