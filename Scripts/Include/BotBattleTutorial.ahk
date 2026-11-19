@@ -120,6 +120,15 @@ BTT_Tap(wx, wy) {
     adbClick_wbb(wx, wy)
 }
 
+; (30,360) and (268,370) sit on mission rows while the hub list is at the
+; top (02 and 03). Advance taps use the top edge until the header is gone.
+BTT_BlindTap(wx, wy) {
+    if (BTT_Match("BattleTutorial"))
+        BTT_Tap(250, 90)
+    else
+        BTT_Tap(wx, wy)
+}
+
 BTT_Drag(wx1, wy1, wx2, wy2, durMs) {
     Sleep, 450   ; settle: let the previous spam tap's touch-up land first
     x1 := BTT_DevX(wx1), y1 := BTT_DevY(wy1)
@@ -187,7 +196,7 @@ BTT_ClickUntilNeedle(name, tx, ty, timeoutSec) {
         }
         if (A_TickCount > deadline)
             return BTT_Fail(name . " not found within " . timeoutSec . "s")
-        BTT_Tap(tx, ty)
+        BTT_BlindTap(tx, ty)
         Sleep, 120
     }
 }
@@ -219,7 +228,7 @@ BTT_ActUntilNext(cur, next, action, timeoutSec := 45, settleMs := 2000) {
                 BTT_Log(next . " matched at " . pos[1] . "," . pos[2])
                 return true
             }
-            BTT_Tap(30, 360)
+            BTT_BlindTap(30, 360)
         }
         if (A_TickCount > deadline)
             return BTT_Fail(next . " not found within " . timeoutSec . "s after " . cur)
@@ -256,7 +265,7 @@ BTT_ActUntilGone(cur, action, timeoutSec := 45, settleMs := 2000, gonePolls := 8
                     return true
                 }
             }
-            BTT_Tap(30, 360)
+            BTT_BlindTap(30, 360)
         }
         if (A_TickCount > deadline)
             return BTT_Fail(cur . (seen ? " still present" : " never appeared") . " after " . timeoutSec . "s")
@@ -285,7 +294,7 @@ BTT_ClickUntilGone(name, tx, ty, timeoutSec, appearGraceMs := 2000) {
         }
         if (A_TickCount > deadline)
             return BTT_Fail(name . " still present after " . timeoutSec . "s")
-        BTT_Tap(tx, ty)
+        BTT_BlindTap(tx, ty)
         Sleep, 120
     }
 }
@@ -327,7 +336,7 @@ BTT_TapForNeedle(name, tx, ty, timeoutSec, reclickMs := 2000) {
         if (A_TickCount > deadline)
             return BTT_Fail(name . " not found within " . timeoutSec . "s")
         if (A_TickCount >= nextClick) {
-            BTT_Tap(tx, ty)
+            BTT_BlindTap(tx, ty)
             nextClick := A_TickCount + reclickMs
         }
         Sleep, 100
@@ -420,6 +429,73 @@ BTT_ScanMissions() {
     return missions
 }
 
+; Contiguous mission numbers, at least two, blues as a prefix of grays.
+; A lone digit or a blue after a gray is not a frontier.
+BTT_ScanValid(missions) {
+    if (!IsObject(missions) || missions.MaxIndex() < 2)
+        return false
+    arr := []
+    for _, m in missions
+        arr.Push(m)
+    Loop, % arr.MaxIndex() - 1 {
+        i := A_Index
+        Loop, % arr.MaxIndex() - i {
+            j := A_Index
+            if (arr[j].num > arr[j+1].num) {
+                tmp := arr[j], arr[j] := arr[j+1], arr[j+1] := tmp
+            }
+        }
+    }
+    prev := "", seenGray := false
+    for _, m in arr {
+        if (m.blue = "?")
+            return false
+        if (m.blue != 0 && m.blue != 1)
+            return false
+        if (prev != "" && m.num != prev + 1)
+            return false
+        if (m.blue = 0)
+            seenGray := true
+        else if (seenGray)
+            return false
+        prev := m.num
+    }
+    return true
+}
+
+; Last blue badge before the first gray. Scrolls down until a valid read
+; shows that gray (or mission 7+). Does not accept a broken OCR read, and
+; does not scroll back up: the caller enters the mission on this window.
+BTT_Frontier(missions) {
+    Loop, 8 {
+        if (!IsObject(missions))
+            missions := BTT_ScanMissions()
+        if (!IsObject(missions))
+            return BTT_Fail("frontier scan failed")
+        valid := BTT_ScanValid(missions)
+        lastBlue := "", firstGray := "", maxSeen := ""
+        for _, m in missions {
+            if (m.blue = 1 && (lastBlue = "" || m.num > lastBlue))
+                lastBlue := m.num
+            else if (m.blue = 0 && lastBlue != "" && m.num > lastBlue && (firstGray = "" || m.num < firstGray))
+                firstGray := m.num
+            if (maxSeen = "" || m.num > maxSeen)
+                maxSeen := m.num
+        }
+        BTT_Log("frontier step: lastBlue " . (lastBlue = "" ? "none" : Format("{:02}", lastBlue))
+            . " gray " . (firstGray = "" ? "none" : Format("{:02}", firstGray))
+            . " max " . maxSeen . " valid " . valid)
+        if (valid && (lastBlue = "" || firstGray != "" || maxSeen >= 7)) {
+            startNum := (lastBlue = "" ? 0 : lastBlue)
+            BTT_Log("frontier: mission " . Format("{:02}", startNum) . (firstGray != "" ? " (next locked " . Format("{:02}", firstGray) . ")" : ""))
+            return {num: startNum, missions: missions}
+        }
+        BTT_ScrollMissions("down")
+        missions := BTT_ScanMissions()
+    }
+    return BTT_Fail("no valid frontier")
+}
+
 ; OCR the badge column: returns count of mission-number boxes still visible.
 ; Zero = we left the hub (inside a mission or a dialog covers the column).
 BTT_HubNumbersVisible() {
@@ -460,7 +536,7 @@ BTT_ScanHubRobust(timeoutSec := 15) {
         } else {
             missions := BTT_ScanMissions()
             if (!IsObject(missions)) {
-                BTT_Tap(268, 370)        ; dev(511,649) - overlay dismiss
+                BTT_BlindTap(268, 370)        ; dev(511,649) - overlay dismiss
                 Sleep, 700
             }
         }
@@ -655,7 +731,7 @@ BTT_FinishMission(tag) {
         }
         if (A_TickCount > deadline)
             return BTT_Fail("mission " . tag . " never finished")
-        BTT_Tap(30, 360)
+        BTT_BlindTap(30, 360)
         Sleep, 120
         if (BTT_Match("BattleTutorial")) {
             ; same grace before calling it a repeat
@@ -667,7 +743,7 @@ BTT_FinishMission(tag) {
         }
         if (A_TickCount > deadline)
             return BTT_Fail("mission " . tag . " never finished")
-        BTT_Tap(30, 360)
+        BTT_BlindTap(30, 360)
         Sleep, 120
     }
 }
@@ -778,7 +854,7 @@ BTT_AttackMove(needle, tx, ty, altNeedle := "", altTx := 0, altTy := 0, alreadyS
             BTT_Tap(138, 330)
             lastCardTap := A_TickCount
         }
-        BTT_Tap(30, 360)
+        BTT_BlindTap(30, 360)
         Sleep, 120
     }
 }
@@ -1049,7 +1125,7 @@ BTT_BattleUntilWon() {
                 ; auto-navigates to the auto page, so the advance spam is
                 ; only needed on the first attempt (entry path)
                 if (attempt = 1)
-                    BTT_Tap(30, 360)
+                    BTT_BlindTap(30, 360)
                 Sleep, 300
             }
         }
@@ -1070,7 +1146,7 @@ BTT_BattleUntilWon() {
             else if (A_TickCount > deadline)
                 return BTT_Fail("battle never resolved")
             else {
-                BTT_Tap(30, 360)         ; same spam point as the missions
+                BTT_BlindTap(30, 360)         ; same spam point as the missions
                 Sleep, 300
             }
         }
@@ -1111,7 +1187,7 @@ BTT_BattleUntilWon() {
         while (A_TickCount < toastDeadline) {
             if (BTT_Match("BattleToast") || BTT_Match("AutoOn") || BTT_Match("AutoOff"))
                 break
-            BTT_Tap(30, 360)
+            BTT_BlindTap(30, 360)
             Sleep, 300
         }
         if (BTT_Match("BattleToast")) {
@@ -1128,6 +1204,7 @@ BTT_BattleUntilWon() {
 BTT_TapForHub(timeoutSec := 45) {
     deadline := A_TickCount + timeoutSec * 1000
     nextClick := 0
+    nextOcr := 0
     Loop {
         if (pos := BTT_Match("BattleTutorial")) {
             BTT_Log("BattleTutorial matched at " . pos[1] . "," . pos[2])
@@ -1135,6 +1212,16 @@ BTT_TapForHub(timeoutSec := 45) {
         }
         if (A_TickCount > deadline)
             return BTT_Fail("BattleTutorial never appeared")
+        ; the Guide tap sits on mission row 02 once the list is up. If the
+        ; badges are already readable, stop tapping and call it the hub.
+        if (A_TickCount >= nextOcr) {
+            n := BTT_HubNumbersVisible()
+            if (n > 0) {
+                BTT_Log("hub numbers visible (" . n . ") - in hub")
+                return true
+            }
+            nextOcr := A_TickCount + 1500
+        }
         if (!BTT_DismissCommunityTut())
             return false
         if (A_TickCount >= nextClick) {
@@ -1189,11 +1276,11 @@ BotBattleTutorial_Run() {
         return false
     BTT_Status("In tutorial hub")
 
-    ; the hub itself may chain first-time tutorials: dismiss with
-    ; dev(511,649). The chain ends on BattleTutorialEnd, dismissed with
-    ; dev(271,771). Exit only when numbers are readable AND BTEnd is gone.
+    ; the hub itself may chain first-time tutorials. Exit only when numbers
+    ; are readable AND BattleTutorialEnd is gone. OCR before any tap: the
+    ; dismiss point sits on a mission row while the list is already up.
     deadline := A_TickCount + 45000
-    nextOcr := A_TickCount + 800        ; first numbers check after ~1s
+    nextOcr := 0
     Loop {
         if (A_TickCount > deadline)
             return BTT_Fail("hub tutorials never cleared")
@@ -1209,69 +1296,36 @@ BotBattleTutorial_Run() {
                 break
             nextOcr := A_TickCount + 1500
         }
-        BTT_Tap(268, 370)            ; dev(511,649)
+        BTT_BlindTap(268, 370)            ; dev(511,649), top edge while the header is up
         Sleep, 150
     }
 
-    ; resume at the frontier: the last blue badge before the first gray
-    ; (locked) one. If no gray is visible after the last blue, scroll down
-    ; until one shows or the list ends - the gray number confirms it.
-    startNum := 0
-    frontier := BTT_ScanMissions()
+    ; each pass rereads the frontier. A reload that lands on the hub
+    ; enters the last blue badge, not whatever mission was in progress
+    ; when the script died.
     Loop, 8 {
-        if (!IsObject(frontier))
-            break
-        lastBlue := "", firstGray := "", maxSeen := ""
-        for _, m in frontier {
-            if (m.blue = 1 && (lastBlue = "" || m.num > lastBlue))
-                lastBlue := m.num
-            else if (m.blue = 0 && lastBlue != "" && m.num > lastBlue && (firstGray = "" || m.num < firstGray))
-                firstGray := m.num
-            if (maxSeen = "" || m.num > maxSeen)
-                maxSeen := m.num
-        }
-        ; the numbered list always continues past 06 to 07 (wider gap than
-        ; the 00-06 spacing) - keep scrolling until it is seen so a locked
-        ; badge behind the gap is not mistaken for the end of the list
-        if (lastBlue = "" || firstGray != "" || maxSeen >= 7) {
-            startNum := (lastBlue = "" ? 0 : lastBlue)
-            break
-        }
-        BTT_ScrollMissions("down")
-        frontier := BTT_ScanMissions()
-    }
-    if (firstGray = "" && lastBlue != "")
-        startNum := lastBlue
-    BTT_Log("start frontier: mission " . Format("{:02}", startNum) . (firstGray != "" ? " (next locked " . Format("{:02}", firstGray) . ")" : ""))
-
-    ; a frontier past 06 (07 or later unlocked) means every tutorial mission
-    ; is done - skip to the post-06 final branch, which only succeeds on the
-    ; completion badge
-    if (startNum > 6) {
-        BTT_Status("Tutorial already done - heading to battles")
-        return BTT_RepeatToBattles()
-    }
-
-    ; run the listed missions back to back; every mission ends in the hub
-    for _, num in [0, 1, 2, 3, 4, 5, 6] {
-        if (num < startNum)
-            continue
         missions := BTT_ScanHubRobust()
         if (!IsObject(missions))
             return BTT_Fail("no mission list found")
-        BTT_Status("Running mission 0" . num)
-        fn := "BTT_RunMission0" . num
-        if (!%fn%(missions))
-            return BTT_Fail("mission 0" . num . " failed - aborting sequence")
-        BTT_Status("Mission 0" . num . " done")
-        BTT_Log("mission 0" . num . " finished - rescanning hub")
+        frontier := BTT_Frontier(missions)
+        if (!IsObject(frontier))
+            return false
+        startNum := frontier.num
+        if (startNum > 6) {
+            BTT_Status("Tutorial already done - heading to battles")
+            return BTT_RepeatToBattles()
+        }
+        BTT_Status("Running mission 0" . startNum)
+        fn := "BTT_RunMission0" . startNum
+        if (!%fn%(frontier.missions))
+            return BTT_Fail("mission 0" . startNum . " failed - aborting sequence")
+        BTT_Status("Mission 0" . startNum . " done")
+        BTT_Log("mission 0" . startNum . " finished - rescanning hub")
         ; 06's post-flow lands outside the hub - nothing left to rescan
-        if (num >= 6) {
+        if (startNum >= 6) {
             BTT_Log("sequence complete")
             return true
         }
-        ; settle + dismiss any post-mission overlays before next entry
-        BTT_ScanHubRobust()
         Sleep, 500
     }
     return BTT_Fail("mission sequence ended without reaching the battle")
