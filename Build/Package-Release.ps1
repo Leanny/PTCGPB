@@ -35,7 +35,6 @@ $trackedFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ord
 $generatedPackageFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $null = $generatedPackageFiles.Add('Helper/carddb.exe')
 $null = $generatedPackageFiles.Add('Helper/cardimage.exe')
-$generatedPackageDirs = @('rapidocr/') # downloaded at packaging time, not git-tracked
 $gitPaths = @(& git -C $repositoryRoot ls-files)
 if ($LASTEXITCODE -ne 0) {
     throw 'Could not enumerate Git-tracked files for release packaging.'
@@ -64,16 +63,7 @@ function Add-PackageFile {
     }
     $relativePath = Get-RelativePath -Path $Path
     if (-not $trackedFiles.Contains($relativePath) -and -not $generatedPackageFiles.Contains($relativePath)) {
-        $generated = $false
-        foreach ($dir in $generatedPackageDirs) {
-            if ($relativePath.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase)) {
-                $generated = $true
-                break
-            }
-        }
-        if (-not $generated) {
-            return $false
-        }
+        return $false
     }
     $Files[$relativePath] = [IO.Path]::GetFullPath($Path)
     return $true
