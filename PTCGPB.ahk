@@ -38,6 +38,7 @@ DllCall("ntdll\ZwDelayExecution","Int",0,"Int64*",-5000)
 #Include Utils.ahk
 #Include AccountMetadata.ahk
 #Include GitManager.ahk
+#Include RapidOcrSetup.ahk
 
 version = Arturos PTCGP Bot
 
@@ -315,6 +316,7 @@ NextStep:
     if (botConfig.get("automaticUpdateChecks"))
         CheckForUpdate(false)
     PTCGPB_CheckHelperPrograms()
+    RapidOcr_EnsureInstalled()
 
     scriptName := StrReplace(A_ScriptName, ".ahk")
     winTitle := scriptName
