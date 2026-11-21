@@ -739,7 +739,7 @@ CheckCardsSimple(result) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
-    foundRGB         := CountOccurances(cards, rarity, 1000)
+    foundRGB         := CountOccurances(cards, rarity, 13)
 
     Wishlist_EnsureFresh()
     wishlistMap      := session.get("wishlistMap")
@@ -978,7 +978,7 @@ FilterCardsByS4T(cards, rarity) {
             continue
         }
 
-        if (r = 1000) {
+        if (r = 13) {
             if (botConfig.get("s4tRGB") = 1)
                 filteredCards.Push(c)
             continue
