@@ -1225,8 +1225,8 @@ BTT_TapForHub(timeoutSec := 45) {
         if (!BTT_DismissCommunityTut())
             return false
         if (A_TickCount >= nextClick) {
-            BTT_Tap(239, 346)
-            nextClick := A_TickCount + 400
+            BTT_BlindTap(239, 346)
+            nextClick := A_TickCount + 1000
         }
         Sleep, 100
     }
