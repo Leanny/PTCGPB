@@ -598,7 +598,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["flags"] := {}
     account["specialEvents"] := {}
 
-    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
     Loop, % flags.MaxIndex()
         account["flags"][flags[A_Index]] := AccountMetadata_NewFlag(0)
 
@@ -922,7 +922,7 @@ AccountMetadata_ParseAccount(accountJson) {
     flagsBrace := flagsPos ? InStr(accountJson, "{", false, flagsPos) : 0
     flagsBody := AccountMetadata_ExtractObjectBody(accountJson, flagsBrace)
     if (flagsBody != "") {
-        flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+        flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
         Loop, % flags.MaxIndex() {
             flag := flags[A_Index]
             flagPos := InStr(flagsBody, """" . flag . """")
@@ -986,7 +986,7 @@ AccountMetadata_SerializeStore(store) {
 }
 
 AccountMetadata_SerializeAccount(account, indent := "") {
-    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
     json := "{`r`n"
     firstField := true
 
@@ -1224,7 +1224,7 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
 
     if (!IsObject(baseAccount["flags"]))
         baseAccount["flags"] := {}
-    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
     Loop, % flags.MaxIndex() {
         flag := flags[A_Index]
         patchFlag := patchAccount["flags"][flag]

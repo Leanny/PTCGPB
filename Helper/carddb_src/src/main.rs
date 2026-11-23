@@ -2727,6 +2727,7 @@ fn eligible(
         "Create Bots (13P)" => true,
         "Rename Account" => rename_account_eligible(account),
         "Claim Shop Packs" => claim_shop_packs_eligible(account),
+        "Battle Tutorial" => !flag_value(account, "BT"),
         "Inject Rewards" => inject_rewards_eligible(account, options, active_events),
         "Inject 13P+" | "Inject Wonderpick 96P+" => inject_pack_eligible(account, options),
         _ => true,
@@ -3032,6 +3033,7 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
         if !options.force_inject
             && options.delete_method != "Rename Account"
             && options.delete_method != "Claim Shop Packs"
+            && options.delete_method != "Battle Tutorial"
             && used_account_matches(&used_state.used, &file_name, &device_account)
         {
             continue;
@@ -3142,6 +3144,7 @@ fn count_eligible_for_all_instances(
             if !options.force_inject
                 && options.delete_method != "Rename Account"
             && options.delete_method != "Claim Shop Packs"
+                && options.delete_method != "Battle Tutorial"
                 && used_account_matches(&used_state.used, &file_name, &device_account)
             {
                 continue;
@@ -4911,6 +4914,26 @@ mod tests {
         assert!(!eligible(&json!({ "lastShopClaimAttempt": now }), &options, &[]));
         assert!(!eligible(
             &json!({ "claimedShopPacks": [old], "lastShopClaimAttempt": now }),
+            &options,
+            &[]
+        ));
+    }
+
+    #[test]
+    fn battle_tutorial_eligibility_follows_the_bt_flag() {
+        let options = ScheduleOptions {
+            delete_method: "Battle Tutorial".to_owned(),
+            ..shop_options()
+        };
+
+        assert!(eligible(&json!({}), &options, &[]));
+        assert!(eligible(
+            &json!({ "flags": { "BT": new_flag(0, "", "") } }),
+            &options,
+            &[]
+        ));
+        assert!(!eligible(
+            &json!({ "flags": { "BT": new_flag(1, "20261115000000", "") } }),
             &options,
             &[]
         ));
