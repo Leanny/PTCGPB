@@ -391,6 +391,12 @@ CountShinedust() {
     prof := Prof_Scope(A_ThisFunc)
     global session
 
+    shineDustValue := GetShinedust()
+    if (shineDustValue > 0) {
+        CreateStatusMessage("Account has " . shineDustValue . " shinedust.")
+        return
+    }
+
     GoToMain()
 
     accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))

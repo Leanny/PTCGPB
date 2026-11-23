@@ -20,6 +20,9 @@ GoToMain() {
 TryDismisMyCardsTutorial(failSafeTime) {
     return
 }
+GetShinedust() {
+    return 0
+}
 pToken := Gdip_Startup()
 
 global session := new Session()

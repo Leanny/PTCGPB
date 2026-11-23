@@ -278,9 +278,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
         AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
         SetSpendHourglassMetadataFlag()
-        GetHistoryOfAccount()
-        EnsureAccountLanguageMetadata()
-        GetAccountCreationDate()
+        PopuplateMetadata()
         new_packcount := EvaluatePackCount()
         if (new_packcount != 0) {
             accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
@@ -458,9 +456,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             SetGameSpeed(3)
             AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
             SetSpendHourglassMetadataFlag()
-            GetHistoryOfAccount()
-            EnsureAccountLanguageMetadata()
-            GetAccountCreationDate()
+            PopuplateMetadata()
             new_packcount := EvaluatePackCount()
             if (new_packcount != 0) {
                 accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
@@ -734,6 +730,14 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         ; Daily Mission 4hg collection and/or extra 3rd pack opening
         if((botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" || botConfig.get("deleteMethod") = "Inject 13P+") && (botConfig.get("claimDailyMission") || botConfig.get("openExtraPack"))) {
+
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
+            LogInfo("Doing Wonder Pick for event missions")
+            GoToMain()
+            FindImageAndClick("WonderPick_WonderPickButtonInHome", 59, 429) ;click until in wonderpick Screen
+            DoWonderPickOnly()
+        }
+
 
             ; If only claiming daily missions (no extra pack)
             if(botConfig.get("claimDailyMission") && !botConfig.get("openExtraPack")) {
@@ -1814,6 +1818,14 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     if(session.get("dbg_bbox"))
         bboxAndPause_immage(OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
+}
+
+PopuplateMetadata() {
+    GetHistoryOfAccount()
+    EnsureAccountLanguageMetadata()
+    GetAccountCreationDate()
+    GetAccountInfo()
+    GetShinedust()
 }
 
 GetNeedle(Path) {
