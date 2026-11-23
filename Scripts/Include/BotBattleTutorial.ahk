@@ -1357,7 +1357,7 @@ BTT_RapidOcrLang(ocrTag) {
         return " --rec rec_japan_PP-OCRv3_infer.onnx --keys dict_japan.txt"
     if (ocrTag = "ko")
         return " --rec rec_korean_PP-OCRv3_infer.onnx --keys dict_korean.txt"
-    if (ocrTag ~ "^zh")
+    if (ocrTag ~= "^zh")
         return " --rec rec_chinese_cht_PP-OCRv3_infer.onnx --keys dict_chinese_cht.txt"
     return ""
 }
