@@ -24,6 +24,7 @@ pToken := Gdip_Startup()
 #Include BotWonderPick.ahk
 #Include BotShopPackPurchase.ahk
 #Include BotBattleTutorial.ahk
+#Include RapidOcrSetup.ahk
 #Include MaskMatch.ahk
 #Include BotTutorial.ahk
 #Include BotAccountMenu.ahk
@@ -117,6 +118,15 @@ if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
         botConfig.set("deleteMethod", "Create Bots (13P)", "General")
         botConfig.saveConfigToSettings("General")
     }
+}
+
+; Battle Tutorial reads the mission list with RapidOCR. This instance can be
+; started without PTCGPB.ahk (which checks on Start), so check here as well:
+; without the engine every account fails and is retried forever.
+if (botConfig.get("deleteMethod") = "Battle Tutorial" && !RapidOcr_IsInstalled(getScriptBaseFolder())) {
+    LogError("Battle Tutorial needs RapidOCR, which is not installed - exiting")
+    MsgBox, 0x40010, RapidOCR Required, % "Battle Tutorial mode needs the RapidOCR engine, which is not installed.`n`nStart PTCGPB.ahk to download it, or choose a different mode."
+    ExitApp
 }
 
 session.set("packMethod", botConfig.get("packMethod"))

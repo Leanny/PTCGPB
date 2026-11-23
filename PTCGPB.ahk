@@ -2280,7 +2280,15 @@ Save:
         return
     }
 
-    confirmMsg := dict["Confirm_SelectedMethod"] . botConfig.get("deleteMethod") . "`n"
+    ; Battle Tutorial reads the mission list with RapidOCR. Without the engine
+    ; every account fails and is retried forever, so refuse to start instead.
+    if (botConfig.get("deleteMethod") = "Battle Tutorial" && !RapidOcr_EnsureInstalled()) {
+        LogWarn("Start blocked: Battle Tutorial needs RapidOCR, which is not installed")
+        MsgBox, 0x40010, RapidOCR Required, Battle Tutorial mode needs the RapidOCR engine, which is not installed.`n`nClick Start again to download it, or choose a different mode.
+        return
+    }
+
+    confirmMsg :=dict["Confirm_SelectedMethod"] . botConfig.get("deleteMethod") . "`n"
 
     confirmMsg .= "Instances: " . botConfig.get("Instances")
     if (botConfig.get("runMain")) {
