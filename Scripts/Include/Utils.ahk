@@ -24,14 +24,14 @@
 ; Delay - Configurable delay based on global Delay setting
 ;-------------------------------------------------------------------------------
 Delay(n) {
-    prof := Prof_Scope(A_ThisFunc)
+    prof := Prof_ScopeWithCaller(A_ThisFunc)
     global botConfig
     msTime := botConfig.get("Delay") * n
     Sleep, msTime
 }
 
 DelayH(ms) {
-    prof := Prof_Scope(A_ThisFunc)
+    prof := Prof_ScopeWithCaller(A_ThisFunc)
     StartTime := A_TickCount
 
     while (A_TickCount - StartTime < ms) {
