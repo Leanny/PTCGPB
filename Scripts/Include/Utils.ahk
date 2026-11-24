@@ -774,10 +774,20 @@ restartInstance(){
     Sleep, 5000
 }
 
-GetVRAMByScriptName(scriptName) {
-    prof := Prof_Scope(A_ThisFunc)
-    mumuFolder := getMuMuFolder()
+; PID of the instance's MuMuVMMHeadless.exe. The WMI process scan behind it takes ~400ms,
+; so the PID is cached until that process exits (for example after an instance restart).
+GetMuMuVMProcessId(scriptName) {
+    static cache := {}
 
+    if (cache.HasKey(scriptName)) {
+        cachedPID := cache[scriptName]
+        Process, Exist, %cachedPID%
+        if (ErrorLevel = cachedPID)
+            return cachedPID
+        cache.Delete(scriptName)
+    }
+
+    mumuFolder := getMuMuFolder()
     mumuInstanceNo := getMumuInstanceNum(scriptName, mumuFolder)
     TargetProcessName := "MuMuVMMHeadless.exe"
     TargetFolder := "MuMuPlayerGlobal-12.0-" . mumuInstanceNo . " -"
@@ -794,6 +804,14 @@ GetVRAMByScriptName(scriptName) {
         }
     }
 
+    if (TargetPID)
+        cache[scriptName] := TargetPID
+    return TargetPID
+}
+
+GetVRAMByScriptName(scriptName) {
+    prof := Prof_Scope(A_ThisFunc)
+    TargetPID := GetMuMuVMProcessId(scriptName)
     VRAM_Result := GetGPUProcessMemory(TargetPID)
 
     if (VRAM_Result != "")

@@ -562,7 +562,7 @@ CheckPack(stopEarly := false) {
     if (!multiPullResult) {
         ; Wait for cards to render before checking.
         Loop {
-            if (CheckCardLoading(totalCardsInPack) = 0)
+            if (CheckCardLoading(totalCardsInPack))
                 break
             Delay(1)
         }
@@ -776,7 +776,7 @@ CheckPackFallback(detectedCardCount := 0) {
 
     ; Wait for cards to render before checking.
     Loop {
-        if (CheckCardLoading(totalCardsInPack) = 0)
+        if (CheckCardLoading(totalCardsInPack))
             break
         Delay(1)
     }

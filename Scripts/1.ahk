@@ -1680,7 +1680,11 @@ Return
 
 LiveMetricsTimer:
     updateTotalTime()
-    session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
+    ; VRAM is also refreshed at the end of every run; sampling it on every 5s tick blocks the bot thread.
+    if (!session.get("lastVRAMSampleTick") || (A_TickCount - session.get("lastVRAMSampleTick")) >= 60000) {
+        session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
+        session.set("lastVRAMSampleTick", A_TickCount)
+    }
     CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
 Return
 
