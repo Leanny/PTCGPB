@@ -576,6 +576,7 @@ startPTCGPApp(isMain := false) {
         session.set("ptcgpAppPid", appPid)
         ; a fresh app start resets the speed mod to 1x
         session.set("currentGameSpeed", 0)
+        session.set("speedMenuUsed", 0)
     }
     ADB_LogTrace("startPTCGPApp pid=" . appPid)
     ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)

@@ -344,6 +344,43 @@ GetSpeedModClickY(speed) {
 SetGameSpeed(speed) {
     global session
     if(session.get("setSpeed") > 1) {
+        if (!session.get("speedMenuUsed")) {
+            SetGameSpeedByMenu(1)
+            session.set("speedMenuUsed", 1)
+            if (speed = 1)
+                return
+        }
+        if (SetGameSpeedByShortcut(speed)) {
+            session.set("currentGameSpeed", speed)
+            return
+        }
+        SetGameSpeedByMenu(speed)
+    }
+}
+
+; Ctrl+1/2/3 reaches the SpeedMod only through MuMu's Qt input window
+; (Qt5156QWindowIcon1). Sending it to the top-level window or to the render
+; control (nemuwin1) does nothing, and adb key events are ignored.
+SetGameSpeedByShortcut(speed) {
+    global session
+    win := session.get("winTitle") . " ahk_class Qt5156QWindowIcon"
+    if (!WinExist(win))
+        return false
+
+    oldKeyDelay := A_KeyDelay, oldKeyDuration := A_KeyDuration
+    SetKeyDelay, 10, 10
+    ControlSend, Qt5156QWindowIcon1, {Ctrl down}%speed%{Ctrl up}, %win%
+    sent := !ErrorLevel
+    SetKeyDelay, %oldKeyDelay%, %oldKeyDuration%
+    if (!sent)
+        LogWarn("SetGameSpeed: shortcut Ctrl+" . speed . " could not be sent, using SpeedMod menu", "ADB.txt")
+    return sent
+}
+
+; Opens the SpeedMod menu and selects the given speed (1, 2 or 3).
+SetGameSpeedByMenu(speed) {
+    global session
+    if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)
         FindImageAndClick(GetSpeedModNeedle(speed), GetSpeedModClickX(speed), GetSpeedModClickY(speed))
         Delay(1)
