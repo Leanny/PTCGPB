@@ -1506,6 +1506,7 @@ restartGameInstance(reason, RL := true) {
 
         if (!RL && DeadCheck = 0) {
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml") ; delete account data
+            DeviceAccountCache_Invalidate()
         }
         Sleep, 100
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
@@ -1797,6 +1798,7 @@ return
 Logout:
     closePTCGPApp()
     adbWriteRaw("rm /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
+    DeviceAccountCache_Invalidate()
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     startPTCGPApp()
 return

@@ -170,6 +170,7 @@ loadAccount(favoritePackName := "") {
 
     RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
     CreateStatusMessage("Injecting: " . session.get("accountFileName"),,,, false)
+    DeviceAccountCache_Invalidate()
     adbWriteRaw("cp /sdcard/deviceAccount.xml /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
     adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
     Sleep, 100

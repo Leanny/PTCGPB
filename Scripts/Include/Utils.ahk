@@ -777,7 +777,7 @@ restartInstance(){
 ; PID of the instance's MuMuVMMHeadless.exe. The WMI process scan behind it takes ~400ms,
 ; so the PID is cached until that process exits (for example after an instance restart).
 GetMuMuVMProcessId(scriptName) {
-    static cache := {}
+    static cache := {}, missCache := {}
 
     if (cache.HasKey(scriptName)) {
         cachedPID := cache[scriptName]
@@ -787,31 +787,49 @@ GetMuMuVMProcessId(scriptName) {
         cache.Delete(scriptName)
     }
 
+    ; Don't repeat the slow WMI scan on every call when the VM wasn't found.
+    if (missCache.HasKey(scriptName) && A_TickCount - missCache[scriptName] < 60000)
+        return 0
+
     mumuFolder := getMuMuFolder()
     mumuInstanceNo := getMumuInstanceNum(scriptName, mumuFolder)
-    TargetProcessName := "MuMuVMMHeadless.exe"
-    TargetFolder := "MuMuPlayerGlobal-12.0-" . mumuInstanceNo . " -"
+
+    ; The VM name is MuMuPlayerGlobal-<android>-<n> (12.0 = Android 12, 15.0 = Android 15).
+    ; Android 12 VMs run in MuMuVMMHeadless.exe ("--comment <vm> --startvm"), which
+    ; holds the GPU memory. Android 15 VMs have no headless process: the GPU memory
+    ; sits in MuMuNxDevice.exe ("--vm <vm>"). Android 12 VMs also have a
+    ; MuMuNxDevice.exe, so the headless process wins when both exist.
+    vmPattern := "i)MuMuPlayer(Global)?-\d+\.\d+-" . mumuInstanceNo . "(\s|""|$)"
 
     objWMIService := ComObjGet("winmgmts:{impersonationLevel=impersonate}!\\.\root\cimv2")
-    TargetPID := 0
-    processQuery := "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = '" TargetProcessName "'"
+    headlessPID := 0, devicePID := 0
+    processQuery := "SELECT ProcessId, Name, CommandLine FROM Win32_Process WHERE Name = 'MuMuVMMHeadless.exe' OR Name = 'MuMuNxDevice.exe'"
     colProcesses := objWMIService.ExecQuery(processQuery)
 
     for objProcess in colProcesses {
-        if InStr(objProcess.CommandLine, TargetFolder) {
-            TargetPID := objProcess.ProcessId
-            break
-        }
+        if (mumuInstanceNo = "" || !RegExMatch(objProcess.CommandLine, vmPattern))
+            continue
+        if (objProcess.Name = "MuMuVMMHeadless.exe")
+            headlessPID := objProcess.ProcessId
+        else if (!devicePID)
+            devicePID := objProcess.ProcessId
     }
 
-    if (TargetPID)
+    TargetPID := headlessPID ? headlessPID : devicePID
+    if (TargetPID) {
         cache[scriptName] := TargetPID
+        missCache.Delete(scriptName)
+    } else {
+        missCache[scriptName] := A_TickCount
+    }
     return TargetPID
 }
 
 GetVRAMByScriptName(scriptName) {
     prof := Prof_Scope(A_ThisFunc)
     TargetPID := GetMuMuVMProcessId(scriptName)
+    if (!TargetPID)
+        return 0
     VRAM_Result := GetGPUProcessMemory(TargetPID)
 
     if (VRAM_Result != "")
