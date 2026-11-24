@@ -7,21 +7,21 @@
 ;-------------------------------------------------------------------------------
 
 RapidOcr_ArchiveUrl() {
-    return "https://github.com/hiroi-sora/RapidOCR-json/releases/download/v0.2.0/RapidOCR-json_v0.2.0.7z"
+    return "https://leanny.github.io/rapidocr/RapidOCR-json_v0.2.0.zip"
 }
 
 RapidOcr_ArchiveSize() {
-    return 73461693
+    return 61250980
 }
 
 ; Pinned: the archive is only installed if it matches this hash.
 RapidOcr_ArchiveSha256() {
-    return "7AD9B283D03436C6CD0296723188699299CB4E5CF9140B410C59543AA5793C40"
+    return "FCD857DFA461987CE1B93FDB0ED029C78E8C59920AE4AE7B13D5B2663D781CA0"
 }
 
 ; Total size of the extracted archive, only used to estimate extraction progress.
 RapidOcr_ExtractedSize() {
-    return 95442176
+    return 77479915
 }
 
 RapidOcr_InstallDir(baseDir := "") {
@@ -115,7 +115,7 @@ RapidOcr_DownloadAndInstall(baseDir := "") {
 ; Runs download, verify, extract and install. Returns "" on success, "CANCEL"
 ; if the user cancelled, or an error message.
 RapidOcr_RunSteps(baseDir, installDir, ocrRoot, tempRoot, staging) {
-    archive := tempRoot . "\rapidocr.7z"
+    archive := tempRoot . "\rapidocr.zip"
     total := RapidOcr_ArchiveSize()
 
     ; ---- Step 1: download (bar 0 - 800) ----
@@ -143,18 +143,32 @@ RapidOcr_RunSteps(baseDir, installDir, ocrRoot, tempRoot, staging) {
 
     ; ---- Step 3: extract (bar 850 - 950) ----
     RapidOcr_SetStep("Step 3 of 4: Extracting", "Unpacking archive...", 850)
-    tarExe := A_WinDir . "\System32\tar.exe"
-    if (!FileExist(tarExe))
-        return "Windows' built-in tar.exe was not found, so the archive cannot be extracted.`n`nExtract " . archive . " manually into " . installDir
-    tarErr := tempRoot . "\tar.err"
-    tarCmd := ComSpec . " /c """ . """" . tarExe . """ -xf """ . archive . """ -C """ . staging . """ 2> """ . tarErr . """"""
-    progressFn := Func("RapidOcr_ExtractProgress").Bind(staging)
-    if (RapidOcr_RunPump(tarCmd, progressFn) = "CANCEL")
-        return "CANCEL"
+    ; The archive is a plain Deflate zip so Windows 10's tar.exe (built without
+    ; LZMA support) can read it. PowerShell's Expand-Archive is the fallback.
     extractedRoot := staging . "\RapidOCR-json_v0.2.0"
+    progressFn := Func("RapidOcr_ExtractProgress").Bind(staging)
+    extractErr := tempRoot . "\extract.err"
+    tarExe := A_WinDir . "\System32\tar.exe"
+    if (FileExist(tarExe)) {
+        tarCmd := ComSpec . " /c """ . """" . tarExe . """ -xf """ . archive . """ -C """ . staging . """ 2> """ . extractErr . """"""
+        if (RapidOcr_RunPump(tarCmd, progressFn) = "CANCEL")
+            return "CANCEL"
+    }
     if (!FileExist(extractedRoot . "\RapidOCR-json.exe")) {
-        FileRead, tarText, %tarErr%
-        return "Extracting the archive failed." . (Trim(tarText) != "" ? "`n`n" . Trim(tarText) : "")
+        if (FileExist(tarExe))
+            LogWarn("RapidOCR: tar.exe extraction failed, falling back to Expand-Archive")
+        FileRemoveDir, %staging%, 1
+        FileCreateDir, %staging%
+        psExe := A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+        psCmd := ComSpec . " /c """ . """" . psExe . """ -NoProfile -NonInteractive -Command ""$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '"
+            . StrReplace(archive, "'", "''") . "' -DestinationPath '" . StrReplace(staging, "'", "''") . "' -Force"" 2>> """ . extractErr . """"""
+        if (RapidOcr_RunPump(psCmd, progressFn) = "CANCEL")
+            return "CANCEL"
+    }
+    if (!FileExist(extractedRoot . "\RapidOCR-json.exe")) {
+        FileRead, extractText, %extractErr%
+        return "Extracting the archive failed." . (Trim(extractText) != "" ? "`n`n" . Trim(extractText) : "")
+            . "`n`nYou can extract it manually: download " . RapidOcr_ArchiveUrl() . " and unzip it into " . ocrRoot
     }
 
     ; ---- Step 4: install (bar 950 - 1000) ----

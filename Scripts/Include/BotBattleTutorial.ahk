@@ -1346,8 +1346,8 @@ BotBattleTutorial_MarkDone() {
 }
 
 ;-------------------------------------------------------------------------------
-; BTT_RapidOcr - OCR via RapidOCR-json.exe (PP-OCR ONNX models), downloaded
-; into rapidocr\ at release packaging time. Returns a word array
+; BTT_RapidOcr - OCR via RapidOCR-json.exe (PP-OCR ONNX models), downloaded on
+; demand into rapidocr\ by RapidOcrSetup.ahk. Returns a word array
 ; ({text, x, y, w, h}) in device space.
 ;-------------------------------------------------------------------------------
 BTT_RapidOcrLang(ocrTag) {
