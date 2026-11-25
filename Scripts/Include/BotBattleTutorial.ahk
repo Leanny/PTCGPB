@@ -77,9 +77,9 @@ BTT_Needles() {
     g_bttNeedles["BattleLobby"]     := ["BattleLobby.png",     116,  89, 151, 120, 134, 104, 120]
     g_bttNeedles["AutoOn"]          := ["AutoOn.png",          242, 493, 256, 507, 249, 500, 25]
     g_bttNeedles["BattleToast"] := ["BattleToast.png", 127, 425, 140, 440, 134, 432, 25]
-    g_bttNeedles["BattleWon"]       := ["BattleWon.png",       240,  42, 273,  69, 256,  56, 25]
-    g_bttNeedles["BattleLost"]      := ["BattleLost.png",      240,  42, 273,  69, 256,  56, 25]
-    g_bttNeedles["BattleTie"]       := ["BattleTie.png",       240,  42, 273,  69, 256,  56, 25]
+    g_bttNeedles["BattleWon"]       := ["BattleWon.png",       240,  42, 273,  69, 256,  56, 35]
+    g_bttNeedles["BattleLost"]      := ["BattleLost.png",      240,  42, 273,  69, 256,  56, 35]
+    g_bttNeedles["BattleTie"]       := ["BattleTie.png",       240,  42, 273,  69, 256,  56, 35]
     g_bttNeedles["BattleTutorialComplete"] := ["BattleTutorialComplete.png", 198, 271, 256, 325, 227, 298, 25]
     g_bttNeedles["BattleSingleTutorialComplete"] := ["BattleSingleTutorialComplete.png", 129, 252, 150, 271, 140, 262, 25]
     g_bttNeedles["CommunityTut"] := ["HandPointingTopLeft.png", 99, 446, 159, 500, 0, 0, 85]
@@ -137,10 +137,232 @@ BTT_Drag(wx1, wy1, wx2, wy2, durMs) {
     BTT_Log("drag win(" . wx1 . "," . wy1 . ")->(" . wx2 . "," . wy2 . ") dev(" . x1 . "," . y1 . ")->(" . x2 . "," . y2 . ") " . durMs . "ms")
 }
 
+; ErrorCheckInScreen minus Common_Error_NoBackground_1Button. That needle
+; is a flat blue patch and matches tutorial UI that is not an error.
+BTT_ErrorCheck(pBitmap) {
+    global needlesDict, errorImageList, errorFuncList, interceptProc
+    if (interceptProc || !pBitmap)
+        return
+    imagePath := A_ScriptDir . "\Needles\"
+    For key, value in errorImageList {
+        if (value = "Common_Error_NoBackground_1Button")
+            continue
+        needleObj := needlesDict.Get(value)
+        pNeedle := GetNeedle(imagePath . needleObj.imageName . ".png")
+        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
+            , needleObj.coords.startX
+            , needleObj.coords.startY
+            , needleObj.coords.endX
+            , needleObj.coords.endY
+            , 20)
+        if (vRet = 1) {
+            LogThrottled("warn", "errorPopup_" . value, "Game error popup detected | popup=" . value)
+            errorFuncList[value].Call()
+        }
+    }
+}
+
+; Pack mask offsets once. Object string fields truncate at the first 0,
+; so the bytes live in the object's capacity buffer.
+BTT_StoreOffs(o, key, list) {
+    n := list.Length()
+    bytes := (n < 1 ? 1 : n) * 2
+    VarSetCapacity(buf, bytes, 0)
+    Loop, % n
+        NumPut(list[A_Index], buf, (A_Index - 1) * 2, "UShort")
+    o.SetCapacity(key, bytes)
+    DllCall("RtlMoveMemory", "ptr", o.GetAddress(key), "ptr", &buf, "ptr", bytes)
+    o[key . "N"] := n
+}
+
+BTT_MaskPacked(name) {
+    static cache := {}
+    if (cache.HasKey(name))
+        return cache[name]
+    n := BTT_Needles()[name]
+    mask := MM_LoadMask(A_ScriptDir . "\Needles\" . n[1])
+    o := {}
+    BTT_StoreOffs(o, "navy", mask.navy)
+    BTT_StoreOffs(o, "yellow", mask.yellow)
+    BTT_StoreOffs(o, "other", mask.other)
+    o.total := mask.total
+    o.w := mask.w
+    o.h := mask.h
+    cache[name] := o
+    return o
+}
+
+BTT_MaskDll() {
+    static path := "", tried := false
+    if (tried)
+        return path
+    tried := true
+    candidate := A_ScriptDir . "\Include\MaskMatch.dll"
+    if (FileExist(candidate) && DllCall("LoadLibrary", "Str", candidate, "Ptr"))
+        path := candidate
+    return path
+}
+
+; The window's already-composed surface. No print message, so the window is not asked to redraw.
+BTT_HandDll() {
+    static path := "", tried := false
+    if (tried)
+        return path
+    tried := true
+    candidate := A_ScriptDir . "\Include\HandCap.dll"
+    if (FileExist(candidate) && DllCall("LoadLibrary", "Str", candidate, "Ptr"))
+        path := candidate
+    return path
+}
+
+BTT_GrabFast(x, y, rw, rh) {
+    global session, g_bttScan, g_bttStride
+    static hdc := 0, hbm := 0, obm := 0, bits := 0, cw := 0, ch := 0, announced := 0
+    dll := BTT_HandDll()
+    if (!dll || rw < 2 || rh < 2)
+        return false
+    hwnd := getMuMuHwnd(session.get("winTitle"))
+    if (!hwnd)
+        return false
+    if (rw != cw || rh != ch) {
+        if (hdc) {
+            DllCall("SelectObject", "ptr", hdc, "ptr", obm)
+            DllCall("DeleteObject", "ptr", hbm)
+            DllCall("DeleteDC", "ptr", hdc)
+        }
+        hdc := DllCall("CreateCompatibleDC", "ptr", 0, "ptr")
+        VarSetCapacity(bi, 40, 0)
+        NumPut(40, bi, 0, "uint"), NumPut(rw, bi, 4, "uint"), NumPut(-rh, bi, 8, "int")
+        NumPut(1, bi, 12, "ushort"), NumPut(32, bi, 14, "ushort"), NumPut(0, bi, 16, "uint")
+        hbm := DllCall("CreateDIBSection", "ptr", hdc, "ptr", &bi, "uint", 0, "ptr*", bits:=0, "ptr", 0, "uint", 0, "ptr")
+        obm := DllCall("SelectObject", "ptr", hdc, "ptr", hbm, "ptr")
+        cw := rw, ch := rh
+    }
+    if (!DllCall(dll . "\HC_Copy", "ptr", hwnd, "int", x, "int", y, "int", rw, "int", rh, "ptr", bits, "int", rw * 4, "int"))
+        return false
+    if (!announced) {
+        announced := 1
+        BTT_Log("hand capture from the composed surface")
+    }
+    g_bttScan := bits
+    g_bttStride := rw * 4
+    return bits != 0
+}
+
+; Small rectangle for the completion banner only. Hands do not use this.
+BTT_GrabRect(x, y, rw, rh) {
+    global session, g_bttScan, g_bttStride, g_bttRectHbm
+    static hdc := 0, hbm := 0, obm := 0, bits := 0, cw := 0, ch := 0
+    if (rw < 2 || rh < 2)
+        return false
+    hwnd := getMuMuHwnd(session.get("winTitle"))
+    if (!hwnd)
+        return false
+    if DllCall("IsIconic", "ptr", hwnd)
+        DllCall("ShowWindow", "ptr", hwnd, "int", 4)
+    if (rw != cw || rh != ch) {
+        if (hdc) {
+            DllCall("SelectObject", "ptr", hdc, "ptr", obm)
+            DllCall("DeleteObject", "ptr", hbm)
+            DllCall("DeleteDC", "ptr", hdc)
+        }
+        hdc := DllCall("CreateCompatibleDC", "ptr", 0, "ptr")
+        VarSetCapacity(bi, 40, 0)
+        NumPut(40, bi, 0, "uint"), NumPut(rw, bi, 4, "uint"), NumPut(-rh, bi, 8, "int")
+        NumPut(1, bi, 12, "ushort"), NumPut(32, bi, 14, "ushort"), NumPut(0, bi, 16, "uint")
+        hbm := DllCall("CreateDIBSection", "ptr", hdc, "ptr", &bi, "uint", 0, "ptr*", bits:=0, "ptr", 0, "uint", 0, "ptr")
+        obm := DllCall("SelectObject", "ptr", hdc, "ptr", hbm, "ptr")
+        cw := rw, ch := rh
+        g_bttRectHbm := hbm
+    }
+    VarSetCapacity(pt, 8, 0)
+    NumPut(x, pt, 0, "int"), NumPut(y, pt, 4, "int")
+    DllCall("ClientToScreen", "ptr", hwnd, "ptr", &pt)
+    sx := NumGet(pt, 0, "int"), sy := NumGet(pt, 4, "int")
+    sdc := DllCall("GetDC", "ptr", 0, "ptr")
+    DllCall("BitBlt", "ptr", hdc, "int", 0, "int", 0, "int", rw, "int", rh, "ptr", sdc, "int", sx, "int", sy, "uint", 0x00CC0020)
+    DllCall("ReleaseDC", "ptr", 0, "ptr", sdc)
+    g_bttScan := bits, g_bttStride := rw * 4
+    return bits != 0
+}
+
+; BattleSingleTutorialComplete, copied from its own rectangle.
+BTT_BannerUp() {
+    global g_bttRectHbm
+    static pToken := 0
+    n := BTT_Needles()["BattleSingleTutorialComplete"]
+    if (!pToken)
+        pToken := Gdip_Startup()
+    x1 := n[2] - 20, y1 := n[3] - 20
+    rw := n[4] + 20 - x1, rh := n[5] + 20 - y1
+    if (!BTT_GrabRect(x1, y1, rw, rh))
+        return false
+    DllCall("gdiplus\GdipCreateBitmapFromHBITMAP", "ptr", g_bttRectHbm, "ptr", 0, "ptr*", pBitmap:=0)
+    if (!pBitmap)
+        return false
+    pNeedle := GetNeedle(A_ScriptDir . "\Needles\" . n[1])
+    found := Gdip_ImageSearch(pBitmap, pNeedle.needle, pos, 0, 0, rw, rh, n[8])
+    Gdip_DisposeImage(pBitmap)
+    return found = 1
+}
+
+; Hand mask inside its box, read from the composed surface. Returns [x,y] or 0.
+BTT_MaskAt(name, expand := 20) {
+    global session, g_bttScan, g_bttStride
+    writeLastActivityEpoch(session.get("scriptName"), 4000)
+    n := BTT_Needles()[name]
+    dll := BTT_MaskDll()
+    mask := BTT_MaskPacked(name)
+    if (!dll || !mask.total)
+        return 0
+    hwnd := getMuMuHwnd(session.get("winTitle"))
+    if (!hwnd)
+        return 0
+    VarSetCapacity(Rect, 16)
+    DllCall("GetClientRect", "ptr", hwnd, "ptr", &Rect)
+    fw := NumGet(Rect, 8, "int"), fh := NumGet(Rect, 12, "int")
+    x1 := n[2] - expand, y1 := n[3] - expand, x2 := n[4] + expand, y2 := n[5] + expand
+    if (x1 < 0)
+        x1 := 0
+    if (y1 < 0)
+        y1 := 0
+    if (x2 > fw)
+        x2 := fw
+    if (y2 > fh)
+        y2 := fh
+    rw := x2 - x1, rh := y2 - y1
+    if (rw < mask.w || rh < mask.h)
+        return 0
+    if (!BTT_GrabFast(x1, y1, rw, rh))
+        return 0
+    thr := BTT_MaskThreshold(name)
+    minHits := Ceil(mask.total * thr / 100.0)
+    VarSetCapacity(outX, 4, 0), VarSetCapacity(outY, 4, 0), VarSetCapacity(outHits, 4, 0)
+    found := DllCall(dll . "\MM_Search"
+        , "Ptr", g_bttScan, "Int", g_bttStride, "Int", rw, "Int", rh
+        , "Ptr", mask.GetAddress("navy"), "Int", mask.navyN
+        , "Ptr", mask.GetAddress("yellow"), "Int", mask.yellowN
+        , "Ptr", mask.GetAddress("other"), "Int", mask.otherN
+        , "Int", mask.w, "Int", mask.h, "Int", minHits
+        , "Ptr", &outX, "Ptr", &outY, "Ptr", &outHits, "Int")
+    if (!found)
+        return 0
+    x := x1 + NumGet(outX, 0, "Int"), y := y1 + NumGet(outY, 0, "Int")
+    score := NumGet(outHits, 0, "Int") / mask.total * 100
+    static lastName := "", lastX := -999, lastY := -999
+    if (name != lastName || Abs(x - lastX) > 3 || Abs(y - lastY) > 3) {
+        BTT_Log(name . " mask " . Format("{:.1f}", score) . "% at " . x . "," . y)
+        lastName := name, lastX := x, lastY := y
+    }
+    return [x, y]
+}
+
 ; Search needle inside its authored region on a fresh capture. Returns [x,y] or 0.
 ; expand=20: tutorial pointers bounce, a tight region misses them mid-animation
 BTT_Match(name, expand := 20) {
     global session
+    if (BTT_MaskThreshold(name))
+        return BTT_MaskAt(name, expand)
     static pTokenLocal := 0
     if (!pTokenLocal)
         pTokenLocal := Gdip_Startup()
@@ -170,7 +392,7 @@ BTT_Match(name, expand := 20) {
         y2 := bh
     if (thr := BTT_MaskThreshold(name)) {
         r := MM_MaskSearch(pBitmap, MM_LoadMask(A_ScriptDir . "\Needles\" . n[1]), x1, y1, x2, y2)
-        ErrorCheckInScreen(pBitmap)
+        BTT_ErrorCheck(pBitmap)
         Gdip_DisposeImage(pBitmap)
         if (r && r[3] * 100 >= thr) {
             BTT_Log(name . " mask " . Format("{:.1f}", r[3] * 100) . "% at " . r[1] . "," . r[2])
@@ -179,7 +401,7 @@ BTT_Match(name, expand := 20) {
         return 0
     }
     found := Gdip_ImageSearch_wbb(pBitmap, pNeedle, pos, x1, y1, x2, y2, n[8])
-    ErrorCheckInScreen(pBitmap)
+    BTT_ErrorCheck(pBitmap)
     Gdip_DisposeImage(pBitmap)
     if (found && RegExMatch(pos, "(\d+)\s*,\s*(\d+)", m))
         return [m1 + 0, m2 + 0]
@@ -782,10 +1004,11 @@ BTT_RunMission01(missions) {
 ; button when its needle shows. Back to 3x on the way out.
 BTT_AttackMove(needle, tx, ty, altNeedle := "", altTx := 0, altTy := 0, alreadySlow := false) {
     ; the card tap always runs at 1x - the active card is often still zooming
-    ; and a 3x tap misses it. Every exit restores 3x (the attack fires at 1x,
-    ; speed goes back up after it). Callers that already left the game at 1x
-    ; (e.g. an unrestored energy attach) pass alreadySlow to skip the menu
-    altHits := 0, slowed := true, altTapped := false
+    ; and a 3x tap misses it. Stay at 1x and retap until the hand has been
+    ; gone for 400ms, then restore 3x. Callers that already left the game at
+    ; 1x pass alreadySlow to skip the menu.
+    slowed := true, altTapped := false, altSince := 0
+    attackTapped := false, nextAttackTap := 0, goneSince := 0
     if (!alreadySlow)
         SetGameSpeed(1)
     BTT_Tap(138, 330)          ; active pokemon -> dev(263,570) - opens the attack list
@@ -793,40 +1016,61 @@ BTT_AttackMove(needle, tx, ty, altNeedle := "", altTx := 0, altTy := 0, alreadyS
     Sleep, 800
     deadline := A_TickCount + 45000
     nextOcr := A_TickCount + 1500
+    nextBlind := 0
+    nextBstc := 0
     Loop {
-        ; already at 1x from entry - the !slowed checks only matter if a
-        ; future caller skips the entry slowdown
-        if (pos := BTT_Match(needle)) {
+        needlePos := BTT_Match(needle)
+        altPos := 0
+        if (altNeedle != "")
+            altPos := BTT_Match(altNeedle)
+        bstc := 0
+        if (A_TickCount >= nextBstc) {
+            nextBstc := A_TickCount + 400
+            bstc := BTT_BannerUp()
+        }
+        if (needlePos) {
+            goneSince := 0
             if (!slowed) {
                 SetGameSpeed(1)
                 slowed := true
             }
-            BTT_Log(needle . " matched at " . pos[1] . "," . pos[2])
-            BTT_Tap(tx, ty)
-            SetGameSpeed(3)
-            Sleep, 800
-            return true
-        }
+            if (A_TickCount >= nextAttackTap) {
+                BTT_Log(needle . " matched at " . needlePos[1] . "," . needlePos[2])
+                BTT_Tap(tx, ty)
+                attackTapped := true
+                nextAttackTap := A_TickCount + 600
+            }
+        } else if (attackTapped) {
+            if (!goneSince)
+                goneSince := A_TickCount
+            if (A_TickCount - goneSince >= 400) {
+                BTT_Log(needle . " click taken")
+                if (slowed)
+                    SetGameSpeed(3)
+                return true
+            }
+        } else
+            goneSince := 0
         ; alternate parked spot for an intermediate prompt (e.g. hand on the
         ; zoomed card that opens the attack list). Its region sits on the
-        ; drag animation path, so require 2 consecutive hits - a passing hand
-        ; must not fake it. The tap dismisses the intermediate step only:
-        ; keep polling for the real attack prompt afterwards
-        if (altNeedle != "" && pos := BTT_Match(altNeedle)) {
-            altHits++
-            if (altHits >= 2) {
+        ; drag animation path, so it has to stay for 350ms - a passing hand
+        ; must not fake it. The tap dismisses the intermediate step only.
+        if (altPos && !needlePos && !attackTapped) {
+            if (!altSince)
+                altSince := A_TickCount
+            if (A_TickCount - altSince >= 350) {
                 if (!slowed) {
                     SetGameSpeed(1)
                     slowed := true
                 }
-                BTT_Log(altNeedle . " held 2 polls at " . pos[1] . "," . pos[2] . " - intermediate prompt")
+                BTT_Log(altNeedle . " held 350ms at " . altPos[1] . "," . altPos[2] . " - intermediate prompt")
                 BTT_Tap(altTx, altTy)
-                altHits := 0, altTapped := true
+                altSince := 0, altTapped := true
                 Sleep, 800
             }
         } else
-            altHits := 0
-        if (BTT_Match("BattleSingleTutorialComplete")) {
+            altSince := 0
+        if (bstc) {
             BTT_Log("BSTC before " . needle . " - attack already fired")
             if (slowed)
                 SetGameSpeed(3)
@@ -844,18 +1088,20 @@ BTT_AttackMove(needle, tx, ty, altNeedle := "", altTx := 0, altTy := 0, alreadyS
         if (A_TickCount > deadline) {
             if (slowed)
                 SetGameSpeed(3)
+            if (attackTapped)
+                return BTT_Fail(needle . " click never taken")
             return BTT_Fail(needle . " never appeared")
         }
-        ; re-tap the card until the attack prompt exists - a first tap lost on
-        ; a still-zooming card would otherwise poll to the deadline. Stops
-        ; once an intermediate prompt was tapped (the next prompt owns the
-        ; screen)
-        if (!altTapped && A_TickCount - lastCardTap >= 2000) {
+        if (!altTapped && !attackTapped && A_TickCount - lastCardTap >= 2000) {
             BTT_Tap(138, 330)
             lastCardTap := A_TickCount
         }
-        BTT_BlindTap(30, 360)
-        Sleep, 120
+        if (!needlePos && !attackTapped && A_TickCount >= nextBlind) {
+            BTT_BlindTap(30, 360)
+            nextBlind := A_TickCount + 300
+        }
+        if (!BTT_MaskDll())
+            Sleep, 120
     }
 }
 
@@ -1048,29 +1294,65 @@ BTT_PostMission06(branch) {
     return BTT_BattleUntilWon()
 }
 
-; On Guide (BattleGuide): dev(387,708) opens StepUp -> dev(389,704) battles.
+; On Guide (BattleGuide): dev(387,708) opens StepUp, dev(389,704) enters
+; the battle list, then the first battle. Repeated while Guide is still up,
+; because one tap often lands before StepUp has opened.
 BTT_RepeatFromGuide() {
-    BTT_Tap(203, 400)                    ; dev(387,708) - opens StepUp
-    Sleep, 800
-    if (!BTT_WaitNeedle("StepUp", 45))
-        return BTT_Fail("StepUp never appeared")
-    BTT_Tap(204, 398)                    ; dev(389,704) - enter battles
-    Sleep, 800
-    BTT_Log("entered battles via StepUp")
-    return BTT_RunFirstBattle()
+    deadline := A_TickCount + 45000
+    nextStep := 0
+    Loop {
+        if (BTT_Match("AutoOn") || BTT_Match("AutoOff")) {
+            BTT_Log("battle screen reached from Guide")
+            return BTT_BattleUntilWon()
+        }
+        if (BTT_Match("BattleLobby") && !BTT_Match("BattleGuide")) {
+            if (BTT_Match("BattleTutorialComplete")) {
+                BTT_Status("Account completed")
+                BTT_Log("first battle already complete")
+                return true
+            }
+            BTT_Status("Battle lobby reached")
+            BTT_Log("lobby -> first battle")
+            BTT_Tap(135, 282)            ; dev(258,476)
+            Sleep, 800
+            continue
+        }
+        if (A_TickCount >= nextStep) {
+            BTT_Log("Guide -> StepUp")
+            BTT_Tap(203, 400)            ; dev(387,708)
+            Sleep, 700
+            if (!(BTT_Match("AutoOn") || BTT_Match("AutoOff"))) {
+                BTT_Log("StepUp -> battles")
+                BTT_Tap(204, 398)        ; dev(389,704)
+            }
+            nextStep := A_TickCount + 900
+        }
+        if (A_TickCount > deadline)
+            return BTT_Fail("never reached the first battle from Guide")
+        Sleep, 200
+    }
 }
 
-; Tutorial already finished (07 unlocked, 08 locked): from the mission hub
-; walk back with dev(261,840) until Guide shows, then Guide -> StepUp.
+; Missions already finished. Guide is where this account lands: from there
+; open StepUp and take the first battle. Back is only for the mission hub.
 BTT_RepeatToBattles() {
-    if (!BTT_ClickUntilNeedle("BattleGuide", 137, 467, 45))
+    if (BTT_Match("BattleGuide"))
+        return BTT_RepeatFromGuide()
+    deadline := A_TickCount + 20000
+    Loop {
+        if (A_TickCount > deadline || BTT_Match("BattleGuide"))
+            break
+        BTT_Log("tutorial hub still up - tapping back")
+        BTT_Tap(137, 467)            ; dev(261,840)
+        Sleep, 500
+    }
+    if (!BTT_Match("BattleGuide"))
         return BTT_Fail("BattleGuide never appeared")
     return BTT_RepeatFromGuide()
 }
 
-; Scroll the lobby back to the top (drag down on the far-left edge) and
-; report whether the completion badge is there. No badge yet means the
-; scroll has not landed: it is repeated until timeoutSec runs out.
+; After a win the lobby comes back scrolled down. Drag the far-left edge
+; until the completion badge is at the top. Not used on the first entry.
 BTT_LobbyComplete(timeoutSec := 6) {
     deadline := A_TickCount + timeoutSec * 1000
     Loop {
@@ -1083,19 +1365,6 @@ BTT_LobbyComplete(timeoutSec := 6) {
         adbSwipe("8 400 8 800 400")
         Sleep, 700
     }
-}
-
-; Battle list (BattleLobby): if the completion badge is already there the
-; account is done - otherwise tap the first battle at dev(258,476).
-BTT_RunFirstBattle() {
-    if (!BTT_WaitNeedle("BattleLobby", 45))
-        return BTT_Fail("BattleLobby never appeared")
-    BTT_Status("Battle lobby reached")
-    if (BTT_LobbyComplete())
-        return true                     ; already done - no battle needed
-    BTT_Tap(135, 282)                    ; dev(258,476) - first battle
-    Sleep, 800
-    return BTT_BattleUntilWon()
 }
 
 ; Battle flow: flip the auto toggle on (verified by AutoOn, retried), start
@@ -1183,11 +1452,16 @@ BTT_BattleUntilWon() {
         ; it to actually appear (or for the auto-toggle if none comes) -
         ; ClickUntilGone's early misses would see "gone" mid-transition
         BTT_Status("Battle lost - retrying")
+        ; Result page. The corner color is the same in every language; the
+        ; button is the pill at the bottom, so the label is not read.
         toastDeadline := A_TickCount + 10000
         while (A_TickCount < toastDeadline) {
             if (BTT_Match("BattleToast") || BTT_Match("AutoOn") || BTT_Match("AutoOff"))
                 break
-            BTT_BlindTap(30, 360)
+            if (BTT_Match("BattleLost") || BTT_Match("BattleTie"))
+                BTT_Tap(137, 500)
+            else
+                BTT_BlindTap(30, 360)
             Sleep, 300
         }
         if (BTT_Match("BattleToast")) {
@@ -1225,7 +1499,11 @@ BTT_TapForHub(timeoutSec := 45) {
         if (!BTT_DismissCommunityTut())
             return false
         if (A_TickCount >= nextClick) {
-            BTT_BlindTap(239, 346)
+            ; Tie and loss share the result page. Next is the bottom pill.
+            if (BTT_Match("BattleLost") || BTT_Match("BattleTie"))
+                BTT_Tap(137, 500)
+            else
+                BTT_BlindTap(239, 346)
             nextClick := A_TickCount + 1000
         }
         Sleep, 100
@@ -1233,32 +1511,57 @@ BTT_TapForHub(timeoutSec := 45) {
 }
 
 ; Moving to the battle tab can raise a second tutorial chain, confirmed by
-; the TopLeft prompt glyph at win(111,458). dev(204,830) dismisses it into
-; the CommunityDeck screen; dev(355,771) clears each deck tutorial popup
-; until BattleActivated shows again, and dev(261,838) brings back Guide.
+; the TopLeft prompt glyph at win(111,458). dev(219,832) dismisses it into
+; the CommunityDeck screen. A slow Next clears each deck tutorial. Guide is
+; confirmed by its needle before anything else is tapped; dev(261,838) is
+; only used while Guide is still missing.
 BTT_DismissCommunityTut() {
     if (!BTT_Match("CommunityTut"))
         return true
     BTT_Log("second tutorial prompt - dismissing")
-    BTT_Tap(107, 462)                ; dev(204,830)
-    ; on CommunityDeck once the prompt glyph is confirmed gone
-    deadline := A_TickCount + 45000, gone := 0
+    ; the hand sits on the Community Decks button. One tap often misses,
+    ; so keep tapping the button until the glyph has been gone for 3 polls.
+    deadline := A_TickCount + 45000, gone := 0, nextTap := 0
     while (gone < 3) {
         if (A_TickCount > deadline)
             return BTT_Fail("second tutorial glyph never cleared")
-        gone := BTT_Match("CommunityTut") ? 0 : gone + 1
+        if (BTT_Match("CommunityTut")) {
+            gone := 0
+            if (A_TickCount >= nextTap) {
+                BTT_Tap(115, 463)        ; dev(219,832)
+                nextTap := A_TickCount + 600
+            }
+        } else
+            gone++
         Sleep, 200
     }
-    ; deck tutorial popups: dismiss until the battle tab shows again
+    ; The hand on Community Decks means the deck tutorials follow.
+    ; The battle tab is still sharp for a moment after the tap, so wait
+    ; until the tutorial covers it, then tap Next once a second until the
+    ; tab returns. Faster than that walks out of the deck.
+    BTT_Log("community hand gone - deck tutorials follow")
     deadline := A_TickCount + 45000
+    while (BTT_Match("BattleActivated")) {
+        if (A_TickCount > deadline)
+            return BTT_Fail("deck tutorial never covered the battle tab")
+        Sleep, 200
+    }
     while (!BTT_Match("BattleActivated")) {
         if (A_TickCount > deadline)
             return BTT_Fail("BattleActivated never reappeared")
-        BTT_Tap(186, 432)            ; dev(355,771)
-        Sleep, 300
+        BTT_Tap(186, 432)            ; dev(355,771), Next
+        Sleep, 1000
     }
-    BTT_Tap(137, 466)                ; dev(261,838) -> Guide visible
-    Sleep, 800
+    ; The battle tab coming back is not Guide. Leave only while Guide is
+    ; still missing, and stop at the first match.
+    deadline := A_TickCount + 20000
+    while (!BTT_Match("BattleGuide")) {
+        if (A_TickCount > deadline)
+            return BTT_Fail("BattleGuide never appeared")
+        BTT_Tap(137, 466)            ; dev(261,838)
+        Sleep, 1000
+    }
+    BTT_Log("Guide visible")
     return true
 }
 
