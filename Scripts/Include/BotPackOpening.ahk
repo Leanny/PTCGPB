@@ -464,6 +464,10 @@ SelectPack(HG := false) {
         session.set("failSafe", A_TickCount)
         failSafeTime := 0
         Loop {
+            if(FindOrLoseImage("Pack_SpecialPackNotification", 0, failSafeTime)) {
+                adbClick_wbb(37, 378)
+                Delay(1)
+            }
             if(FindOrLoseImage("Pack_CannotOpenMoreFreePacks", 0, failSafeTime) ) {
                 break ; no pack to open
             }
