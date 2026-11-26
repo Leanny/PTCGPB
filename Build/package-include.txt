@@ -21,3 +21,4 @@ Scripts/Mask/**
 Scripts/Needles/**
 SpecialEvents/SpecialEventExtractor.ahk
 SpecialEvents/Events/**
+rapidocr/**

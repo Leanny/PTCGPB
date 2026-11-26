@@ -8,6 +8,8 @@ CoordMode, Pixel, Screen
 
 #Include %A_ScriptDir%\Include\
 #Include BotCommon.ahk
+#Include StringCompare.ahk
+#Include %A_ScriptDir%\..\Accounts\CollectionShare.ahk
 pToken := Gdip_Startup()
 ;#Include %A_ScriptDir%\Include\Recorder.ahk
 #Include Packs.ahk
@@ -731,12 +733,12 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         ; Daily Mission 4hg collection and/or extra 3rd pack opening
         if((botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" || botConfig.get("deleteMethod") = "Inject 13P+") && (botConfig.get("claimDailyMission") || botConfig.get("openExtraPack"))) {
 
-        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
-            LogInfo("Doing Wonder Pick for event missions")
-            GoToMain()
-            FindImageAndClick("WonderPick_WonderPickButtonInHome", 59, 429) ;click until in wonderpick Screen
-            DoWonderPickOnly()
-        }
+            if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
+                LogInfo("Doing Wonder Pick for event missions")
+                GoToMain()
+                FindImageAndClick("WonderPick_WonderPickButtonInHome", 59, 429) ;click until in wonderpick Screen
+                DoWonderPickOnly()
+            }
 
 
             ; If only claiming daily missions (no extra pack)
@@ -927,6 +929,9 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
         if(botConfig.get("ocrShinedust") && session.get("injectMethod") && session.get("loadedAccount")) {
             CountShinedust()
         }
+
+        ; Daily collection share (before friend removal)
+        CollectionShare_CheckAndRun()
 
         ; Friend removal for Inject Wonderpick 96P+
         if (session.get("injectMethod") && session.get("friended") && !session.get("keepAccount")) {
