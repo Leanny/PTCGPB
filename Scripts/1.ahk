@@ -25,6 +25,9 @@ pToken := Gdip_Startup()
 #Include BotMissions.ahk
 #Include BotWonderPick.ahk
 #Include BotShopPackPurchase.ahk
+#Include BotBattleTutorial.ahk
+#Include RapidOcrSetup.ahk
+#Include MaskMatch.ahk
 #Include BotTutorial.ahk
 #Include BotAccountMenu.ahk
 #Include BotDebugTools.ahk
@@ -112,11 +115,20 @@ if (stopAfterRunPending = 1) {
 
 originalDeleteMethod := botConfig.get("deleteMethod")
 if (MigrateDeleteMethod(originalDeleteMethod) != originalDeleteMethod) {
-    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs"
+    validMethods := "Create Bots (13P)|Inject 13P+|Inject Wonderpick 96P+|Inject Rewards|Rename Account|Claim Shop Packs|Battle Tutorial"
     if (!InStr(validMethods, originalDeleteMethod)) {
         botConfig.set("deleteMethod", "Create Bots (13P)", "General")
         botConfig.saveConfigToSettings("General")
     }
+}
+
+; Battle Tutorial reads the mission list with RapidOCR. This instance can be
+; started without PTCGPB.ahk (which checks on Start), so check here as well:
+; without the engine every account fails and is retried forever.
+if (botConfig.get("deleteMethod") = "Battle Tutorial" && !RapidOcr_IsInstalled(getScriptBaseFolder())) {
+    LogError("Battle Tutorial needs RapidOCR, which is not installed - exiting")
+    MsgBox, 0x40010, RapidOCR Required, % "Battle Tutorial mode needs the RapidOCR engine, which is not installed.`n`nStart PTCGPB.ahk to download it, or choose a different mode."
+    ExitApp
 }
 
 session.set("packMethod", botConfig.get("packMethod"))
@@ -217,7 +229,7 @@ if(botConfig.get("slowMotion")) {
 } else {
     session.set("setSpeed", 3) ;always 1x/3x
 }
-if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs")
+if(InStr(botConfig.get("deleteMethod"), "Inject") || botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs" || botConfig.get("deleteMethod") = "Battle Tutorial")
     session.set("injectMethod", true)
 
 startPackList := ""
@@ -268,9 +280,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
     if (session.get("injectMethod") && session.get("loadedAccount") && session.get("deviceAccount") != "") {
         AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
         SetSpendHourglassMetadataFlag()
-        GetHistoryOfAccount()
-        EnsureAccountLanguageMetadata()
-        GetAccountCreationDate()
+        PopuplateMetadata()
         new_packcount := EvaluatePackCount()
         if (new_packcount != 0) {
             accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
@@ -448,9 +458,7 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             SetGameSpeed(3)
             AccountMetadata_SetLastLoggedInNow(session.get("deviceAccount"), session.get("scriptName"), session.get("accountFileName"))
             SetSpendHourglassMetadataFlag()
-            GetHistoryOfAccount()
-            EnsureAccountLanguageMetadata()
-            GetAccountCreationDate()
+            PopuplateMetadata()
             new_packcount := EvaluatePackCount()
             if (new_packcount != 0) {
                 accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
@@ -545,6 +553,42 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
             session.set("rerolls", session.get("rerolls") + 1)
             IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
             LogInfo("Run finished | shop claim | account=" . session.get("accountFileName"))
+            continue
+        }
+        if(botConfig.get("deleteMethod") = "Battle Tutorial") {
+            battleTutorialDone := BotBattleTutorial_Run()
+            if (battleTutorialDone) {
+                BotBattleTutorial_MarkDone()
+                LogInfo("Battle Tutorial completed | account=" . session.get("accountFileName"))
+                if (session.get("injectMethod") && session.get("loadedAccount")) {
+                    MarkAccountAsClaimed()
+                    session.set("loadedAccount", false)
+                }
+            } else {
+                ; failure: the account stays in list_current.txt, so the next
+                ; loadAccount re-picks it. It is retried until flags.BT=1.
+                LogWarn("Battle Tutorial failed - account will be retried | account=" . session.get("accountFileName"))
+                session.set("loadedAccount", false)
+                ClearLoadedAccountRecovery()
+            }
+            clearLastActivityEpoch(session.get("scriptName"))
+            now := A_NowUTC
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndTimeUTC
+            EnvSub, now, 1970, seconds
+            IniWrite, %now%, % session.get("scriptIniFile"), Metrics, LastEndEpoch
+            session.set("rerolls", session.get("rerolls") + 1)
+            session.set("rerolls_local", session.get("rerolls_local") + 1)
+            IniWrite, % session.get("rerolls"), % session.get("scriptIniFile"), Metrics, rerolls
+            totalSeconds := Round((A_TickCount - session.get("rerollStartTime")) / 1000)
+            totalSeconds_local := Round((A_TickCount - session.get("rerollStartTime_local")) / 1000)
+            session.set("avgtotalSeconds", Round(totalSeconds_local / session.get("rerolls_local")))
+            session.set("aminutes", Floor(session.get("avgtotalSeconds") / 60))
+            session.set("aseconds", Mod(session.get("avgtotalSeconds"), 60))
+            updateTotalTime()
+            session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
+            CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
+            LogInfo("Run finished | battle tutorial | account=" . session.get("accountFileName"))
+            SendMetadataToPTCGPB(session.get("packsThisRun"))
             continue
         }
         if(botConfig.get("deleteMethod") = "Rename Account") {
@@ -688,6 +732,14 @@ if(DeadCheck = 1 && botConfig.get("deleteMethod") != "Create Bots (13P)") {
 
         ; Daily Mission 4hg collection and/or extra 3rd pack opening
         if((botConfig.get("deleteMethod") = "Inject Wonderpick 96P+" || botConfig.get("deleteMethod") = "Inject 13P+") && (botConfig.get("claimDailyMission") || botConfig.get("openExtraPack"))) {
+
+        if(botConfig.get("deleteMethod") != "Create Bots (13P)" && botConfig.get("wonderpickForEventMissions") && (!IsObject(accountMeta) || AccountEligibility_FlagIsExpired(accountMeta, "W", 24))) {
+            LogInfo("Doing Wonder Pick for event missions")
+            GoToMain()
+            FindImageAndClick("WonderPick_WonderPickButtonInHome", 59, 429) ;click until in wonderpick Screen
+            DoWonderPickOnly()
+        }
+
 
             ; If only claiming daily missions (no extra pack)
             if(botConfig.get("claimDailyMission") && !botConfig.get("openExtraPack")) {
@@ -1459,6 +1511,7 @@ restartGameInstance(reason, RL := true) {
 
         if (!RL && DeadCheck = 0) {
             adbWriteRaw("rm -f /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml") ; delete account data
+            DeviceAccountCache_Invalidate()
         }
         Sleep, 100
         AccountMetadata_CloseTempForInstance(session.get("scriptName"))
@@ -1633,7 +1686,11 @@ Return
 
 LiveMetricsTimer:
     updateTotalTime()
-    session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
+    ; VRAM is also refreshed at the end of every run; sampling it on every 5s tick blocks the bot thread.
+    if (!session.get("lastVRAMSampleTick") || (A_TickCount - session.get("lastVRAMSampleTick")) >= 60000) {
+        session.set("VRAMUsage", GetVRAMByScriptName(session.get("scriptName")))
+        session.set("lastVRAMSampleTick", A_TickCount)
+    }
     CreateStatusMessage(generateStatusText(), "AvgRuns", 0, 605, false, true)
 Return
 
@@ -1746,6 +1803,7 @@ return
 Logout:
     closePTCGPApp()
     adbWriteRaw("rm /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
+    DeviceAccountCache_Invalidate()
     AccountMetadata_CloseTempForInstance(session.get("scriptName"))
     startPTCGPApp()
 return
@@ -1771,6 +1829,14 @@ Gdip_ImageSearch_wbb(pBitmapHaystack,pNeedle,ByRef OutputList=""
     if(session.get("dbg_bbox"))
         bboxAndPause_immage(OuterX1, OuterY1+bias, OuterX2, OuterY2+bias, pNeedle, vret, session.get("dbg_bboxNpause"))
     return vret
+}
+
+PopuplateMetadata() {
+    GetHistoryOfAccount()
+    EnsureAccountLanguageMetadata()
+    GetAccountCreationDate()
+    GetAccountInfo()
+    GetShinedust()
 }
 
 GetNeedle(Path) {

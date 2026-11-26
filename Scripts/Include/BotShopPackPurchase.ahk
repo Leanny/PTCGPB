@@ -1,4 +1,4 @@
-;-------------------------------------------------------------------------------
+﻿;-------------------------------------------------------------------------------
 ; GoToShopFromHome - Click the Shop tile on the Home screen.
 ; Requires the Home screen (Common_ShopButtonInMain visible). Clicks the tile
 ; and returns true as soon as Home has been left (the Shop needle disappears),
@@ -188,13 +188,12 @@ ShopPack_PickPack() {
 ;-------------------------------------------------------------------------------
 ; ShopPack_ScrollToRow - Scroll the (freshly opened, still at the top) pack list
 ; so grid row `row` (0-based) is on screen. Every drag moves the list by
-; ~198px (the grid rows are 285px apart) and the list stops at the bottom
+; ~200px (the grid rows are 285px apart) and the list stops at the bottom
 ; after ~2094px.
 ; Returns the device Y of the center of the pack artwork of that row.
 ;-------------------------------------------------------------------------------
 ShopPack_ScrollToRow(row) {
-    SHOP_DRAG_SHIFT := 198
-    SHOP_FIRST_DRAG_LOSS := 147 ; the first drag moves the list ~147px less
+    SHOP_DRAG_SHIFT := 200
     SHOP_DRAG_X := 8 ; far left gutter: left of the tiles, so a drag never taps a pack
     SHOP_LIST_MAX_SHIFT := 2094
 
@@ -206,14 +205,57 @@ ShopPack_ScrollToRow(row) {
     ; Device pixels. The artwork of row 0 starts at y=252 and is ~140px high.
     ; Aim for the artwork top at ~y=300.
     ; Rows 0 and 1 are already fully visible when the list is opened.
-    drags := (row <= 1) ? 0 : Max(1, Round((285 * row - 48 + SHOP_FIRST_DRAG_LOSS) / SHOP_DRAG_SHIFT))
+    drags := (row <= 1) ? 0 : Max(1, Round((285 * row - 48) / SHOP_DRAG_SHIFT))
     Loop, % drags {
         adbWriteRaw(dragCommand)
         ; adbWriteRaw returns when the drag is done; let the list settle.
         DelayH(1500)
     }
-    shift := (drags = 0) ? 0 : Min(drags * SHOP_DRAG_SHIFT - SHOP_FIRST_DRAG_LOSS, SHOP_LIST_MAX_SHIFT)
+    shift := Min(drags * SHOP_DRAG_SHIFT, SHOP_LIST_MAX_SHIFT)
     return 252 + 285 * row - shift + 70
+}
+
+;-------------------------------------------------------------------------------
+; ShopPack_RefineTapY - Find the exact vertical position of the pack tile.
+; The scroll position is only an estimate (drag distances differ a bit and the
+; event title above the grid wraps onto 1-3 lines depending on the language), so
+; look for the gold pack badge in the top right corner of the visible tiles of
+; the first column and take the one closest to the estimate. The estimate is at
+; most half a row (~72px) off, so the closest badge is always the right row.
+; Returns the logical Y to tap; the estimate itself if no badge is found.
+;-------------------------------------------------------------------------------
+ShopPack_RefineTapY(estimatedTapY) {
+    global session, needlesDict
+
+    SHOP_BADGE_TO_TAP_Y := 30 ; needle (inner part of the badge) top -> center of the tile artwork
+    needleObj := needlesDict.Get("Shop_TileBadge")
+    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
+    pNeedle := GetNeedle(A_ScriptDir . "\Needles\ShopTileBadge.png")
+    c := needleObj.coords
+    count := Gdip_ImageSearch_wbb(pBitmap, pNeedle, badgeList, c.startX, c.startY, c.endX, c.endY, 70, "", 1, 0)
+    Gdip_DisposeImage(pBitmap)
+
+    bestY := ""
+    bestDiff := 100000
+    Loop, Parse, badgeList, `n
+    {
+        pos := StrSplit(A_LoopField, ",")
+        if (pos[2] = "")
+            continue
+        tapY := pos[2] - MuMuBias() + SHOP_BADGE_TO_TAP_Y
+        diff := Abs(tapY - estimatedTapY)
+        if (diff < bestDiff) {
+            bestDiff := diff
+            bestY := tapY
+        }
+    }
+
+    if (bestY = "" || bestDiff > 72) {
+        LogWarn("ShopPack_RefineTapY: no matching tile badge (found " . count . "), using estimate " . estimatedTapY, "ShopClaim.txt")
+        return estimatedTapY
+    }
+    LogDebug("ShopPack_RefineTapY: estimate " . estimatedTapY . " -> " . bestY, "ShopClaim.txt")
+    return bestY
 }
 
 ;-------------------------------------------------------------------------------
@@ -296,6 +338,23 @@ GoToShopPack(packID, loadTimeoutSeconds := 60) {
     Delay(2)
     adbClick_wbb(204, 458)
     Delay(3)
+    ; finding correct tab
+    failSafeTime := 0
+    Loop {
+        if (FindOrLoseImage("Shop_SpecialTicket", 0, 0, , true)) {
+            break
+        }
+        adbClick_wbb(204, 458)
+        Delay(3)
+        adbClick_wbb(155, 428)
+        Delay(5)
+        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+        CreateStatusMessage("Waiting for navigation...(" . failSafeTime . "/" . loadTimeoutSeconds . " seconds)")
+        if (failSafeTime > loadTimeoutSeconds) {
+            LogWarn("GoToShopPack: navigation failed", "ShopClaim.txt")
+            return false
+        }
+    }
 
     if (ShopPack_HasNoCurrency()) {
         LogDebug("GoToShopPack: 0 tickets, nothing to buy", "ShopClaim.txt")
@@ -309,7 +368,7 @@ GoToShopPack(packID, loadTimeoutSeconds := 60) {
     LogDebug("GoToShopPack: pack=" . ShopPack_Name(packID) . " row=" . row . " col=" . col . " deviceY=" . deviceY, "ShopClaim.txt")
     CreateStatusMessage("Opening shop pack " . ShopPack_Name(packID))
     g_shopPackTapX := SHOP_PACK_COLUMNS_X[col]
-    g_shopPackTapY := ShopPack_DeviceToLogicalY(deviceY)
+    g_shopPackTapY := ShopPack_RefineTapY(ShopPack_DeviceToLogicalY(deviceY))
 
     return ShopPack_OpenDialog(g_shopPackTapX, g_shopPackTapY)
 }

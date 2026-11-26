@@ -262,6 +262,7 @@ needlesDict.Add(new Needle("Create_TutorialPremiumPass", "Hourglass1", new Coord
 needlesDict.Add(new Needle("Create_InfoIconInStandByOpenPack", "Hourglass2", new Coordinate(240, 197, 262, 218)))
 needlesDict.Add(new Needle("Create_TitleBottomBorderInWPSelectCard", "Pick", new Coordinate(65, 128, 198, 133)))
 needlesDict.Add(new Needle("Create_SoloBattleMissionIconInDetail", "1solobattlemission", new Coordinate(108, 135, 177, 163)))
+needlesDict.Add(new Needle("Battle_Activated", "BattleActivated", new Coordinate(180, 503, 198, 520)))
 needlesDict.Add(new Needle("Create_FullFreepackInMainCenter", "Main", new Coordinate(123, 314, 135, 323)))
 needlesDict.Add(new Needle("Create_SignupNotification", "SignupNotification", new Coordinate(218, 117, 253, 153)))
 needlesDict.Add(new Needle("Create_SignupsDataSharing", "SignupsDataSharing", new Coordinate(8, 488, 34, 512)))
@@ -289,6 +290,9 @@ needlesDict.Add(new Needle("Shop_PurchaseOKButton", "ShopPurchaseOK", new Coordi
 needlesDict.Add(new Needle("Shop_ExchangeDoneButton", "ShopExchangeDone", new Coordinate(83, 349, 193, 380)))
 needlesDict.Add(new Needle("Shop_PackDialogOK", "ShopPackDialogOK", new Coordinate(150, 372, 250, 404)))
 needlesDict.Add(new Needle("Shop_NoTickets", "ShopNoTickets", new Coordinate(182, 68, 206, 81)))
+needlesDict.Add(new Needle("Shop_SpecialTicket", "SpecialTicket", new Coordinate(153, 68, 167, 81)))
+needlesDict.Add(new Needle("Shop_ShopTicketLoaded", "ShopTicketLoaded", new Coordinate(72, 166, 86, 182)))
+needlesDict.Add(new Needle("Shop_TileBadge", "ShopTileBadge", new Coordinate(60, 98, 96, 420)))
 
 
 ; Do not use
@@ -338,6 +342,43 @@ GetSpeedModClickY(speed) {
 
 ; Opens the SpeedMod menu and selects the given speed (1, 2 or 3).
 SetGameSpeed(speed) {
+    global session
+    if(session.get("setSpeed") > 1) {
+        if (!session.get("speedMenuUsed")) {
+            SetGameSpeedByMenu(1)
+            session.set("speedMenuUsed", 1)
+            if (speed = 1)
+                return
+        }
+        if (SetGameSpeedByShortcut(speed)) {
+            session.set("currentGameSpeed", speed)
+            return
+        }
+        SetGameSpeedByMenu(speed)
+    }
+}
+
+; Ctrl+1/2/3 reaches the SpeedMod only through MuMu's Qt input window
+; (Qt5156QWindowIcon1). Sending it to the top-level window or to the render
+; control (nemuwin1) does nothing, and adb key events are ignored.
+SetGameSpeedByShortcut(speed) {
+    global session
+    win := session.get("winTitle") . " ahk_class Qt5156QWindowIcon"
+    if (!WinExist(win))
+        return false
+
+    oldKeyDelay := A_KeyDelay, oldKeyDuration := A_KeyDuration
+    SetKeyDelay, 10, 10
+    ControlSend, Qt5156QWindowIcon1, {Ctrl down}%speed%{Ctrl up}, %win%
+    sent := !ErrorLevel
+    SetKeyDelay, %oldKeyDelay%, %oldKeyDuration%
+    if (!sent)
+        LogWarn("SetGameSpeed: shortcut Ctrl+" . speed . " could not be sent, using SpeedMod menu", "ADB.txt")
+    return sent
+}
+
+; Opens the SpeedMod menu and selects the given speed (1, 2 or 3).
+SetGameSpeedByMenu(speed) {
     global session
     if(session.get("setSpeed") > 1) {
         FindImageAndClick("Common_SpeedModMenuButton", 18, 109, , 2000)

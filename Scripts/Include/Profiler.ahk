@@ -51,6 +51,25 @@ Prof_Scope(name) {
     return new ProfScope(name)
 }
 
+; Prof_ScopeWithCaller - Like Prof_Scope, but also times the call under
+; "<name>:<calling function>@<file>:<line>", so time spent in generic helpers
+; (Delay, DelayH, ...) can be attributed to the code that called them.
+; Must be called directly from the helper being profiled.
+Prof_ScopeWithCaller(name) {
+    global PROF_ENABLED
+
+    if (!PROF_ENABLED)
+        return ""
+    ; Frames: -1 = this function, -2 = the helper (Line/File = where the helper
+    ; was called), -3 = the function that called the helper.
+    site := Exception("", -2)
+    callerFunc := Exception("", -3).What
+    if callerFunc is integer
+        callerFunc := "(top level)"
+    SplitPath, % site.File, siteFile
+    return [new ProfScope(name), new ProfScope(name . ":" . callerFunc . "@" . siteFile . ":" . site.Line)]
+}
+
 Prof_Record(name, elapsedMs) {
     global PROF_DATA, PROF_ENABLED
 

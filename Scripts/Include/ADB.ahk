@@ -353,6 +353,7 @@ initializeAdbShell() {
                     }
                 }
                 session.set("adbShell", "")  ; Reset before reattempting
+                session.set("adbPendingAcks", 0)  ; markers of the old shell are gone
 
                 ; Validate adbPath and adbPort
                 if (!FileExist(session.get("adbPath"))) {
@@ -465,54 +466,32 @@ getPTCGPAppPid() {
     return ""
 }
 
-getPTCGPAppLogcatPath() {
-    prof := Prof_Scope(A_ThisFunc)
-    global session
-
-    scriptName := A_ScriptName
-    if (IsObject(session) && session.get("scriptName") != "")
-        scriptName := session.get("scriptName")
-
-    scriptName := RegExReplace(scriptName, "i)\.ahk$")
-    scriptName := RegExReplace(scriptName, "[^A-Za-z0-9_.-]", "_")
-    if (scriptName = "")
-        scriptName := "PTCGPB"
-
-    return "/data/tmp/" . scriptName . "_ptcgp_logcat.txt"
-}
-
-dumpPTCGPAppLogcatToFile() {
-    prof := Prof_Scope(A_ThisFunc)
-
-    logcatPath := getPTCGPAppLogcatPath()
-    ADB_LogTrace("dumpPTCGPAppLogcatToFile path=" . logcatPath)
-
-    if (!adbWriteRaw("mkdir -p /data/tmp", false, 10000)) {
-        LogWarn("[" . A_ScriptName . "] Failed to create Android /tmp for PTCGPApp logcat", "ADB.txt")
-        return ""
-    }
-
-    if (!adbWriteRaw("logcat -d > " . logcatPath, false, 30000)) {
-        LogWarn("[" . A_ScriptName . "] Failed to dump PTCGPApp logcat to " . logcatPath, "ADB.txt")
-        return ""
-    }
-
-    return logcatPath
+; Device-side filter for the Unity "CRASH" error tag. Only matching lines cross the adb pipe,
+; instead of dumping the whole logcat buffer to a file and grepping it in a second round trip.
+PTCGPAppCrashLogcatCommand() {
+    return "logcat -d -v threadtime -s CRASH:E 2>/dev/null"
 }
 
 readPTCGPAppCrashLogcat() {
     prof := Prof_Scope(A_ThisFunc)
-
-    logcatPath := dumpPTCGPAppLogcatToFile()
-    if (logcatPath = "")
-        return ""
-
-    ADB_LogTrace("readPTCGPAppCrashLogcat path=" . logcatPath)
-    return adbWriteRaw("grep ' E CRASH' " . logcatPath . " 2>/dev/null", true, 10000)
+    return adbWriteRaw(PTCGPAppCrashLogcatCommand(), true, 10000)
 }
 
-hasPTCGPAppCrashInLogcat() {
-    prof := Prof_Scope(A_ThisFunc)
+; Returns the first crash line logged by pid, or "" when there is none.
+findPTCGPAppCrashLine(logcat, pid) {
+    if (pid = "")
+        return ""
+
+    Loop, Parse, logcat, `n, `r
+    {
+        if (RegExMatch(A_LoopField, "^\d\d-\d\d\s+\d\d:\d\d:\d\d\.\d+\s+" . pid . "\s+\d+\s+E\s+CRASH\s*:"))
+            return A_LoopField
+    }
+    return ""
+}
+
+; The pid the crash log is matched against: the one recorded at app start, else the current one.
+resolvePTCGPAppPid(currentPid := "") {
     global session
 
     pid := ""
@@ -520,24 +499,26 @@ hasPTCGPAppCrashInLogcat() {
         pid := session.get("ptcgpAppPid")
 
     if (!RegExMatch(pid, "^\d+$")) {
-        pid := getPTCGPAppPid()
+        pid := (currentPid != "") ? currentPid : getPTCGPAppPid()
         if (IsObject(session) && pid != "")
             session.set("ptcgpAppPid", pid)
     }
+    return pid
+}
 
+hasPTCGPAppCrashInLogcat() {
+    prof := Prof_Scope(A_ThisFunc)
+
+    pid := resolvePTCGPAppPid()
     if (pid = "") {
         ADB_LogTrace("hasPTCGPAppCrashInLogcat skipped; no PTCGPApp pid")
         return false
     }
 
-    logcat := readPTCGPAppCrashLogcat()
-    Loop, Parse, logcat, `n, `r
-    {
-        line := A_LoopField
-        if (RegExMatch(line, "^\d\d-\d\d\s+\d\d:\d\d:\d\d\.\d+\s+" . pid . "\s+\d+\s+E\s+CRASH\s*:")) {
-            LogWarn("[" . A_ScriptName . "] PTCGPApp crash detected in logcat: " . line, "ADB.txt")
-            return true
-        }
+    line := findPTCGPAppCrashLine(readPTCGPAppCrashLogcat(), pid)
+    if (line != "") {
+        LogWarn("[" . A_ScriptName . "] PTCGPApp crash detected in logcat: " . line, "ADB.txt")
+        return true
     }
 
     ADB_LogTrace("hasPTCGPAppCrashInLogcat no crash pid=" . pid)
@@ -595,6 +576,7 @@ startPTCGPApp(isMain := false) {
         session.set("ptcgpAppPid", appPid)
         ; a fresh app start resets the speed mod to 1x
         session.set("currentGameSpeed", 0)
+        session.set("speedMenuUsed", 0)
     }
     ADB_LogTrace("startPTCGPApp pid=" . appPid)
     ADB_LogTrace("startPTCGPApp finished retryCount=" . retryCount)
@@ -833,6 +815,7 @@ isTerminatePTCGPAppByADBShell() {
     prof := Prof_Scope(A_ThisFunc)
     static cachedResult := ""
     static cachedAt := 0
+    static marker := "__PTCGPB_CRASHLOG__"
     cacheTtlMs := 5000
 
     if (cachedResult != "" && (A_TickCount - cachedAt) < cacheTtlMs) {
@@ -840,17 +823,24 @@ isTerminatePTCGPAppByADBShell() {
         return cachedResult
     }
 
-    adbCommand := session.get("adbPath") . " -s " . AdbAddress()
-    result := CmdRet(adbCommand . " shell pidof jp.pokemon.pokemontcgp")
-    ADB_LogTrace("isTerminatePTCGPAppByADBShell pidResult=" . Trim(result))
-    if (RegExMatch(result, "\d+")) {
-        cachedResult := false
-    }
-    else
-        cachedResult := true
+    ; One round trip through the persistent shell: pid check and crash log together.
+    result := adbWriteRaw("pidof jp.pokemon.pokemontcgp; echo " . marker . "; " . PTCGPAppCrashLogcatCommand(), true, 10000)
+    markerPos := InStr(result, marker)
+    pidPart := markerPos ? SubStr(result, 1, markerPos - 1) : result
+    crashLog := markerPos ? SubStr(result, markerPos + StrLen(marker)) : ""
+    ADB_LogTrace("isTerminatePTCGPAppByADBShell pidResult=" . Trim(pidPart, " `t`r`n"))
 
-    if(isCrashPTCGPApp()) {
+    if (!RegExMatch(pidPart, "(\d+)", currentPid)) {
         cachedResult := true
+    } else {
+        pid := resolvePTCGPAppPid(currentPid1)
+        crashLine := findPTCGPAppCrashLine(crashLog, pid)
+        if (crashLine != "") {
+            LogWarn("[" . A_ScriptName . "] PTCGPApp crash detected in logcat: " . crashLine, "ADB.txt")
+            cachedResult := true
+        } else {
+            cachedResult := false
+        }
     }
 
     cachedAt := A_TickCount
@@ -905,6 +895,133 @@ adbEnsureShell() {
     }
 }
 
+; Reads shell output until the next "done" marker.
+; status is set to "done", "dead" (shell died and was reinitialized) or "timeout" (shell was replaced).
+; StdOut.AtEndOfStream blocks until output arrives, so no polling sleep is needed between lines.
+adbReadUntilDone(isReturnning, timeoutMs, ByRef status, command := "") {
+    global session
+    result := ""
+    status := ""
+    startTime := A_TickCount
+
+    Loop {
+        shell := session.get("adbShell")
+
+        ; Status turns non-zero once adb.exe exits. "Process, Exist" costs ~14ms per call,
+        ; so it is only used below, when the output stream has ended.
+        if (adbShellIsDead(shell, false)) {
+            ADB_LogTrace("adbWriteRaw detected dead shell while waiting for command")
+            initializeAdbShell()
+            status := "dead"
+            return result
+        }
+
+        if (timeoutMs > 0 && (A_TickCount - startTime) > timeoutMs) {
+            ADB_LogTrace("adbWriteRaw timeout elapsedMs=" . (A_TickCount - startTime) . " command=" . ADB_RedactCommand(command))
+            try {
+                shell.Terminate()
+            } catch e2 {
+            }
+            session.set("adbShell", "")
+            initializeAdbShell()
+            status := "timeout"
+            return result
+        }
+
+        if (shell.StdOut.AtEndOfStream) {
+            if (adbShellIsDead(shell, true)) {
+                ADB_LogTrace("adbWriteRaw detected dead shell while waiting for command")
+                initializeAdbShell()
+                status := "dead"
+                return result
+            }
+            Sleep, 50
+            continue
+        }
+
+        line := RTrim(shell.StdOut.ReadLine(), "`r")
+        if (line = "done") {
+            status := "done"
+            return result
+        }
+
+        if (isReturnning)
+            result .= line . "`n"
+    }
+}
+
+; checkProcess=false only reads the exec object's Status (cheap). checkProcess=true also
+; asks Windows whether adb.exe still exists, which costs ~14ms.
+adbShellIsDead(shell, checkProcess := false) {
+    if (!IsObject(shell) || shell.Status != 0)
+        return true
+
+    if (checkProcess) {
+        pid := shell.ProcessID
+        Process, Exist, %pid%
+        if (!ErrorLevel)
+            return true
+    }
+    return false
+}
+
+adbPendingAckCount() {
+    global session
+    pending := session.get("adbPendingAcks")
+    return (pending = "") ? 0 : pending
+}
+
+; Consumes the "done" markers of commands sent with adbWriteNoWait, so the next reader
+; only sees output of its own command. Blocks until the device finished those commands.
+adbDrainPendingCommands() {
+    global session
+    pending := adbPendingAckCount()
+    if (pending <= 0)
+        return true
+
+    prof := Prof_Scope(A_ThisFunc)
+    session.set("adbPendingAcks", 0)
+    Loop, %pending% {
+        status := ""
+        adbReadUntilDone(false, 10000, status, "<pending ack>")
+        ; A dead or replaced shell takes the remaining markers with it.
+        if (status != "done")
+            return false
+    }
+    return true
+}
+
+; Sends a command without waiting for the device to finish it. Use for input events whose
+; output is not needed. At most one such command is in flight: the next ADB command first
+; waits for it, so ordering on the device is unchanged and taps cannot pile up.
+adbWriteNoWait(command) {
+    prof := Prof_Scope(A_ThisFunc)
+    global session
+
+    Loop, 3 {
+        try {
+            adbDrainPendingCommands()
+            ; A broken pipe makes WriteLine throw, which the catch below handles.
+            if (adbShellIsDead(session.get("adbShell"), false)) {
+                session.set("adbShell", "")
+                initializeAdbShell()
+            }
+            ADB_LogTrace("adbWriteNoWait send command=" . ADB_RedactCommand(command))
+            session.get("adbShell").StdIn.WriteLine(command . ";echo done;")
+            session.set("adbPendingAcks", adbPendingAckCount() + 1)
+            return true
+        } catch e {
+            errorMessage := IsObject(e) ? e.Message : e
+            LogWarn("[" . A_ScriptName . "] ADB no-wait write error(" . A_Index . "/3) Command: " . ADB_RedactCommand(command) . ", Error: " . errorMessage, "ADB.txt")
+            session.set("adbShell", "")
+            initializeAdbShell()
+        }
+    }
+
+    ; Fall back to a blocking write, which has its own retry and reconnect handling.
+    return adbWriteRaw(command)
+}
+
 adbWriteRaw(command, isReturnning := false, timeoutMs := 60000) {
     prof := Prof_Scope(A_ThisFunc)
     global session
@@ -913,65 +1030,26 @@ adbWriteRaw(command, isReturnning := false, timeoutMs := 60000) {
     loopCount := 0
 
     Loop {
-        result := ""
-        line := ""
-        startTime := A_TickCount
         try {
+            adbDrainPendingCommands()
             ADB_LogTrace("adbWriteRaw send returning=" . (isReturnning ? 1 : 0) . " timeoutMs=" . timeoutMs . " command=" . ADB_RedactCommand(command))
             session.get("adbShell").StdIn.WriteLine(command . ";echo done;")
-            Loop {
-                pid := session.get("adbShell").ProcessID
-                Process, Exist, %pid%
 
-                if (!ErrorLevel || session.get("adbShell").Status != 0) {
-                    ADB_LogTrace("adbWriteRaw detected dead shell while waiting for command")
-                    initializeAdbShell()
-                    break
+            status := ""
+            result := adbReadUntilDone(isReturnning, timeoutMs, status, command)
+            if (status = "done") {
+                if (isReturnning) {
+                    ADB_LogTrace("adbWriteRaw done outputBytes=" . StrLen(result))
+                    return result
                 }
-
-                if (timeoutMs > 0 && (A_TickCount - startTime) > timeoutMs) {
-                    ADB_LogTrace("adbWriteRaw timeout elapsedMs=" . (A_TickCount - startTime) . " command=" . ADB_RedactCommand(command))
-                    try {
-                        session.get("adbShell").Terminate()
-                    } catch e2 {
-                    }
-                    session.set("adbShell", "")
-                    initializeAdbShell()
-                    return isReturnning ? result : false
-                }
-
-                if (session.get("adbShell").StdOut.AtEndOfStream) {
-                    Sleep, 50
-                    continue
-                }
-
-                ch := session.get("adbShell").StdOut.Read(1)
-                if (ch = "`r")
-                    continue
-
-                if (ch != "`n") {
-                    line .= ch
-                    continue
-                }
-
-                if (line = "done"){
-                    if(isReturnning) {
-                        ADB_LogTrace("adbWriteRaw done outputBytes=" . StrLen(result))
-                        return result
-                    }
-                    else {
-                        ADB_LogTrace("adbWriteRaw done")
-                        return true
-                    }
-                }
-                else if(isReturnning)
-                    result .= line . "`n"
-
-                line := ""
-
-                Sleep, 50
+                ADB_LogTrace("adbWriteRaw done")
+                return true
             }
 
+            if (status = "timeout")
+                return isReturnning ? result : false
+
+            ; status = "dead": the shell was reinitialized, send the command again.
             if(loopCount > 5){
                 throw Exception("[adbWriteRaw] Command was attempted more than 5 times but failed.")
                 loopCount := 0
@@ -1026,7 +1104,7 @@ adbClick(X, Y) {
             , Round((Y - offset) * convY))
     }
     ADB_LogTrace("adbClick logical=(" . X . "," . Y . ") command=" . clickCommands[key])
-    adbWriteRaw(clickCommands[key])
+    adbWriteNoWait(clickCommands[key])
     lastClickTime := A_TickCount
 }
 
@@ -1042,10 +1120,10 @@ adbInputEvent(event) {
     ADB_LogTrace("adbInputEvent event=" . event)
     if InStr(event, " ") {
         ; If the event uses a space, we use keycombination
-        adbWriteRaw("input keycombination " . event)
+        adbWriteNoWait("input keycombination " . event)
     } else {
         ; It's a single key event (e.g., "67")
-        adbWriteRaw("input keyevent " . event)
+        adbWriteNoWait("input keyevent " . event)
     }
     waitadb()
 }

@@ -170,6 +170,7 @@ loadAccount(favoritePackName := "") {
 
     RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
     CreateStatusMessage("Injecting: " . session.get("accountFileName"),,,, false)
+    DeviceAccountCache_Invalidate()
     adbWriteRaw("cp /sdcard/deviceAccount.xml /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
     adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
     Sleep, 100
@@ -968,6 +969,9 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (method = "Claim Shop Packs")
         return AccountEligibility_ClaimShopPacksEligible(accountMeta)
 
+    if (method = "Battle Tutorial")
+        return !AccountEligibility_FlagIsSet(accountMeta, "BT")
+
     packCount := accountMeta["packCount"] + 0
     if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
         return false
@@ -1038,7 +1042,7 @@ CreateAccountList(instance) {
     global botConfig
 
     ; Clean up stale used accounts first (skipped for Rename — used accounts stay eligible)
-    if (botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs")
+    if (botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs" && botConfig.get("deleteMethod") != "Battle Tutorial")
         CleanupUsedAccounts()
 
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . instance
@@ -1052,7 +1056,7 @@ CreateAccountList(instance) {
 
     ; Rename Account must rescan all XMLs (including used) whenever the queue is built.
     ; Do not set forceRegeneration — that passes --force-clear-used and wipes used_accounts.txt.
-    if (botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs")
+    if (botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs" || botConfig.get("deleteMethod") = "Battle Tutorial")
         needRegeneration := true
 
     ; First check: Do list files exist and are they not empty?
@@ -1128,7 +1132,7 @@ CreateAccountList(instance) {
         command .= " --spend-hourglass"
     if (botConfig.get("forceInjectAccounts") && InStr(botConfig.get("deleteMethod"), "Inject"))
         command .= " --force-inject"
-    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs")
+    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs" && botConfig.get("deleteMethod") != "Battle Tutorial")
         command .= " --force-clear-used"
 
     hScheduleLock := CreateAccountListSchedule_AcquireLock()

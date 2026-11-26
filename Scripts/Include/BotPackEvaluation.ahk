@@ -562,7 +562,7 @@ CheckPack(stopEarly := false) {
     if (!multiPullResult) {
         ; Wait for cards to render before checking.
         Loop {
-            if (CheckCardLoading(totalCardsInPack) = 0)
+            if (CheckCardLoading(totalCardsInPack))
                 break
             Delay(1)
         }
@@ -581,7 +581,7 @@ CheckPack(stopEarly := false) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
-    foundRGB         := CountOccurances(cards, rarity, 1000)
+    foundRGB         := CountOccurances(cards, rarity, 13)
 
     PackMethod_UpdateSkipFriendRenewFromCounts(foundImmersive, foundCrown, foundShiny1Star, foundShiny2Star, foundRGB)
 
@@ -776,7 +776,7 @@ CheckPackFallback(detectedCardCount := 0) {
 
     ; Wait for cards to render before checking.
     Loop {
-        if (CheckCardLoading(totalCardsInPack) = 0)
+        if (CheckCardLoading(totalCardsInPack))
             break
         Delay(1)
     }

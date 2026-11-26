@@ -184,6 +184,91 @@ EnsureAccountLanguageMetadata() {
     return true
 }
 
+GetAccountInfo() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session, botConfig
+
+    if (session.get("accountFileName") = "")
+        return false
+    if ((!session.get("injectMethod") || !session.get("loadedAccount")) && botConfig.get("deleteMethod") != "Create Bots (13P)")
+        return false
+
+    deviceAccount := GetCurrentDeviceAccountForMetadata()
+    if (deviceAccount = "") {
+        LogWarn("GetAccountInfo skipped because device account could not be resolved for " . session.get("accountFileName"))
+        return false
+    }
+
+    ; Only query the device when username or friend code is still missing.
+    accountMeta := AccountMetadata_ReadAccountUnlocked(deviceAccount, session.get("scriptName"), session.get("accountFileName"))
+    if (accountMeta["accountName"] != "" && accountMeta["friendCode"] != "") {
+        LogDebug("GetAccountInfo skipped because username and friend code are already stored for " . session.get("accountFileName"))
+        return true
+    }
+
+    LogTrace("Ensuring ptcgpb helper exists before account info lookup", "ADB.txt")
+    if (!EnsurePTCGPBHelperInstalled())
+        return false
+
+    profilePath := "/data/ptcgp/profile.rc"
+    LogTrace("Running ptcgpb user to write " . profilePath, "ADB.txt")
+    adbWriteRaw("rm -f " . profilePath)
+    adbWriteRaw("/data/ptcgp/ptcgpb user")
+    profileOutput := adbWriteRaw("cat " . profilePath . " 2>/dev/null", true)
+    adbWriteRaw("rm -f " . profilePath)
+
+    profileOutput := Trim(StrReplace(profileOutput, "`r"), "`n`t ")
+    if (profileOutput = "") {
+        LogWarn("GetAccountInfo failed because " . profilePath . " was not created for " . session.get("accountFileName"))
+        return false
+    }
+
+    lines := StrSplit(profileOutput, "`n")
+    username := Trim(lines[1], " `t")
+    friendCode := RegExReplace(lines[2], "\D")
+    if (username = "" || !RegExMatch(friendCode, "^\d{16}$")) {
+        LogWarn("GetAccountInfo could not parse profile output for " . session.get("accountFileName") . ": " . profileOutput)
+        return false
+    }
+
+    if (!AccountMetadata_SetDeviceFields(deviceAccount, {"accountName": username, "friendCode": friendCode}, session.get("scriptName"), session.get("accountFileName"))) {
+        LogWarn("GetAccountInfo failed to save username and friend code for " . session.get("accountFileName"))
+        return false
+    }
+
+    LogInfo("Saved account info for " . session.get("accountFileName") . ": username=" . username . ", friendCode=" . friendCode)
+    return true
+}
+
+GetShinedust() {
+    prof := Prof_Scope(A_ThisFunc)
+    global session, botConfig
+
+    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+        return 0
+
+    LogTrace("Ensuring ptcgpb helper exists before shinedust lookup", "ADB.txt")
+    if (!EnsurePTCGPBHelperInstalled())
+        return 0
+
+    LogTrace("Running ptcgpb shinedust lookup", "ADB.txt")
+    output := adbWriteRaw("/data/ptcgp/ptcgpb shinedust", true)
+    output := Trim(StrReplace(output, "`r"), "`n`t ")
+    if (!RegExMatch(output, "^\d+$")) {
+        LogWarn("GetShinedust could not parse ptcgpb shinedust output for " . session.get("accountFileName") . ": " . output)
+        return 0
+    }
+
+    shinedustValue := output + 0
+    LogDebug("GetShinedust read " . shinedustValue . " for " . session.get("accountFileName"))
+    if (shinedustValue > 0) {
+        global shinedustValueGlobal
+        shinedustValueGlobal := shinedustValue
+        LogShinedustToDatabase(shinedustValue)
+    }
+    return shinedustValue
+}
+
 GetHistoryOfAccount() {
     prof := Prof_Scope(A_ThisFunc)
     global session, botConfig
