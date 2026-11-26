@@ -308,7 +308,7 @@ startPreProcess(methodType){
     }
     else if(methodType = "Inject Rewards"){
         findImageName := "Home"
-        needleName := "Common_InactiveSocialInMainMenu"
+        needleName := "Friend_BottomDarkHomeIcon"
         clickX := 33
         clickY := 511
     }
@@ -317,6 +317,18 @@ startPreProcess(methodType){
         needleName := "Common_InactiveSocialInMainMenu"
         clickX := 33
         clickY := 511
+    }
+    else if(methodType = "Claim Shop Packs"){
+        findImageName := "Home"
+        needleName := "Friend_BottomDarkHomeIcon"
+        clickX := 33
+        clickY := 511
+    }
+    else if(methodType = "Battle Tutorial"){
+        findImageName := "Battle"
+        needleName := "Battle_Activated"
+        clickX := 186
+        clickY := 512
     }
 
     findImageName .= "`n(Selected pack: " . session.get("openPack") . ")"
@@ -443,13 +455,9 @@ startPreProcess(methodType){
         vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 41, 378, 92, 393, searchVariation)
         if(vRet = 1){
             CreateStatusMessage("Downloading data",,,, false)
-            Sleep, 1000
-            adbClick_wbb(198, 375)
-            adbClick_wbb(198, 375)
-            Sleep, 10000
-
-            ;processPrivacyAgreement()
+            DownloadUpdate(true)
         }
+
         processPrivacyAgreement()
         Path = %imagePath%Privacy.png
         pNeedle := GetNeedle(Path)

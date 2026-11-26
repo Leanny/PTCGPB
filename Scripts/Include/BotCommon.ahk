@@ -16,6 +16,7 @@
 #Include %A_LineFile%\..\Database.ahk
 #Include %A_LineFile%\..\Wishlist.ahk
 #Include %A_LineFile%\..\CardNames.ahk
+#Include %A_LineFile%\..\CardLoading.ahk
 #Include %A_LineFile%\..\CardDetection.ahk
 #Include %A_LineFile%\..\AccountManager.ahk
 #Include %A_LineFile%\..\FriendManager.ahk

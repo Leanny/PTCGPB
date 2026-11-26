@@ -83,52 +83,9 @@ DoWonderPickOnly() {
         }
     }
     session.set("failSafe", A_TickCount)
-    failSafeTime := 0
     ;TODO thanks and wonder pick 5 times for missions
-    Loop {
-        if (TryWonderPickDexSwipeRegister()) {
-            failSafeTime := 0
-            continue
-        }
-        adbClick(142, 122)
-        Delay(1)
-        adbClick_wbb(146, 494)
-        Delay(1)
-        if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime) || FindOrLoseImage("WonderPick_WonderPickButtonInHome", 0, failSafeTime))
-            break
-        if(FindOrLoseImage("WonderPick_SelectCards", 0, failSafeTime)) {
-            adbClick_wbb(183, 350) ; click card
-        }
-        Delay(1)
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Waiting for Shop`n(" . failSafeTime . "/45 seconds)")
-    }
-
-    session.set("failSafe", A_TickCount)
-    failSafeTime := 0
-    Loop {
-        Delay(1)
-        if (TryWonderPickDexSwipeRegister()) {
-            failSafeTime := 0
-            continue
-        }
-        if(FindOrLoseImage("Common_ShopButtonInMain", 0, failSafeTime))
-            break
-        else if(FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, failSafeTime))
-            adbClick_wbb(239, 497)
-        else if(FindOrLoseImage("WonderPick_SelectCards", 0, failSafeTime)) {
-            adbClick_wbb(183, 350) ; click card
-        }
-        else if(FindOrLoseImage("Common_PopupXButtonInMain", 0, , , true)){
-            adbClick_wbb(137, 480)
-            Delay(1)
-        }
-        else
-            adbInputEvent("111") ;send ESC
-        Delay(4)
-        failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-        CreateStatusMessage("Waiting for Shop`n(" . failSafeTime . "/45 seconds)")
-    }
+    TryWonderPickDexSwipeRegister()
+    GoToMain()
     result := EvaluatePack()
     if (result) {
         LogToCardDatabase(result)

@@ -84,3 +84,6 @@ banned/
 
 # Large apks used by the instance manager
 apks/
+
+# RapidOCR engine
+/rapidocr/

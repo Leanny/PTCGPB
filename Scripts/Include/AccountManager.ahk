@@ -170,6 +170,7 @@ loadAccount(favoritePackName := "") {
 
     RunWait, % session.get("adbPath") . " -s " . AdbAddress() . " push " . loadFile . " /sdcard/deviceAccount.xml",, Hide
     CreateStatusMessage("Injecting: " . session.get("accountFileName"),,,, false)
+    DeviceAccountCache_Invalidate()
     adbWriteRaw("cp /sdcard/deviceAccount.xml /data/data/jp.pokemon.pokemontcgp/shared_prefs/deviceAccount:.xml")
     adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
     Sleep, 100
@@ -739,6 +740,20 @@ AccountEligibility_RenameAccountEligible(accountMeta) {
     return true
 }
 
+; Eligible while fewer than 2 shop packs were claimed (only 2 tickets are
+; obtainable right now) and no claim was attempted since the last daily reset.
+; Mirrors claim_shop_packs_eligible in carddb (main.rs).
+AccountEligibility_ClaimShopPacksEligible(accountMeta) {
+    if (!IsObject(accountMeta))
+        return true
+    if (AccountEligibility_WasAfterDailyReset(accountMeta["lastShopClaimAttempt"]))
+        return false
+    if (!IsObject(accountMeta["claimedShopPacks"]))
+        return true
+    claimedCount := accountMeta["claimedShopPacks"].MaxIndex()
+    return (claimedCount = "" ? 0 : claimedCount) < 2
+}
+
 AccountEligibility_ToUTC(timestamp) {
     if (timestamp = "" || timestamp = "0")
         return "0"
@@ -784,6 +799,16 @@ AccountEligibility_SpecialPackAvailable(accountMeta) {
     if (last = "" || last = "0")
         return true
     return AccountEligibility_ToUTC(last) < AccountEligibility_LastSpecialPackResetUTC()
+}
+
+; True when the current injected account may still pull the weekly special
+; pack. Non-injected accounts have no metadata, so the attempt is allowed.
+AccountEligibility_CanPullSpecialPack() {
+    global session
+    if (!session.get("injectMethod") || !session.get("loadedAccount") || session.get("accountFileName") = "")
+        return true
+    accountMeta := AccountMetadata_Get(session.get("scriptName"), session.get("accountFileName"), session.get("loadedAccount"))
+    return AccountEligibility_SpecialPackAvailable(accountMeta)
 }
 
 AccountEligibility_GetFlag(accountMeta, flag) {
@@ -941,6 +966,12 @@ AccountEligibility_IsEligible(instance, fileName, filePath, accountMeta := "") {
     if (method = "Rename Account")
         return AccountEligibility_RenameAccountEligible(accountMeta)
 
+    if (method = "Claim Shop Packs")
+        return AccountEligibility_ClaimShopPacksEligible(accountMeta)
+
+    if (method = "Battle Tutorial")
+        return !AccountEligibility_FlagIsSet(accountMeta, "BT")
+
     packCount := accountMeta["packCount"] + 0
     if (method = "Inject Wonderpick 96P+" && packCount > 0 && packCount < (botConfig.get("injectWonderpickMinPacks") + 0))
         return false
@@ -1011,7 +1042,7 @@ CreateAccountList(instance) {
     global botConfig
 
     ; Clean up stale used accounts first (skipped for Rename — used accounts stay eligible)
-    if (botConfig.get("deleteMethod") != "Rename Account")
+    if (botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs" && botConfig.get("deleteMethod") != "Battle Tutorial")
         CleanupUsedAccounts()
 
     saveDir := A_ScriptDir "\..\Accounts\Saved\" . instance
@@ -1025,7 +1056,7 @@ CreateAccountList(instance) {
 
     ; Rename Account must rescan all XMLs (including used) whenever the queue is built.
     ; Do not set forceRegeneration — that passes --force-clear-used and wipes used_accounts.txt.
-    if (botConfig.get("deleteMethod") = "Rename Account")
+    if (botConfig.get("deleteMethod") = "Rename Account" || botConfig.get("deleteMethod") = "Claim Shop Packs" || botConfig.get("deleteMethod") = "Battle Tutorial")
         needRegeneration := true
 
     ; First check: Do list files exist and are they not empty?
@@ -1101,7 +1132,7 @@ CreateAccountList(instance) {
         command .= " --spend-hourglass"
     if (botConfig.get("forceInjectAccounts") && InStr(botConfig.get("deleteMethod"), "Inject"))
         command .= " --force-inject"
-    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account")
+    if (forceRegeneration && botConfig.get("deleteMethod") != "Rename Account" && botConfig.get("deleteMethod") != "Claim Shop Packs" && botConfig.get("deleteMethod") != "Battle Tutorial")
         command .= " --force-clear-used"
 
     hScheduleLock := CreateAccountListSchedule_AcquireLock()

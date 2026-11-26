@@ -25,6 +25,7 @@
         , "ui_waitTime": "waitTime"}
 
     defaultValueMap := {"BotLanguage":"English"
+        , "shopClaimPacks":""
         , "IsLanguageSet":0
         , "shownLicense":0
         , "defaultBotLanguage":1
@@ -62,6 +63,7 @@
         , "claimSpecialMissions": 0
         , "SelectedMonitorIndex": 1
         , "instanceLaunchDelay": 5
+        , "stopBeforeDailyResetMin": 0
         , "folderPath": "C:\Program Files\Netease"
         , "RowGap": 105
         , "StartOffset": 5

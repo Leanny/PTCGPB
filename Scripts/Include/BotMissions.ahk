@@ -293,10 +293,6 @@ ClaimAllMissionRewards(claimDaily := false, claimSpecial := false, accountMeta :
         adbClick_wbb(197, 459)
         Delay(0.2)
         adbClick_wbb(175, 445)
-        Delay(0.5)
-        adbClick_wbb(261, 517)
-        Delay(0.5)
-        adbClick_wbb(261, 517)
         if (failSafeTime > 60 || movedRightCount >= maxMissionPages)
             break
     }
@@ -474,6 +470,19 @@ ClaimVisibleEventRewards(eventResult) {
                 adbClick_wbb(138, 451)
                 Delay(1)
 
+                ; a reward-card reveal may cover the page while claiming: the
+                ; clicks above bring Skip up, click through Skip/Next here
+                if (FindOrLoseImage("Mission_SkipEventReveal", 0, 0, , true) || FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, 0, , true) || FindOrLoseImage("Pack_AnimationToReadyOpenPack", 0, 0, , true)) {
+                    adbClick_wbb(247, 500)
+                    Delay(1)
+                    continue
+                }
+                if (FindOrLoseImage("Pack_NextButtonAfterOpenPack", 0, 0, , true) || FindOrLoseImage("Next2", 0, , , true)) {
+                    adbClick_wbb(146, 489)
+                    Delay(1)
+                    continue
+                }
+
                 ; Elite Deck events: do not wait for the usual claim-complete needle.
                 ; The Helper is already watching MissionUserPrefs; as soon as it writes
                 ; result.rc the claim has been processed and we can proceed to the
@@ -483,6 +492,9 @@ ClaimVisibleEventRewards(eventResult) {
                         eventResult[specialEventName] := true
                         return specialEventName
                     }
+                }
+                if (!FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
+                    SkipCardReveal()
                 }
                 if (FindOrLoseImage("Mission_CompleteGotAllClaims", 0, failSafeTime, , true)) {
                     eventResult[specialEventName] := true
@@ -496,6 +508,7 @@ ClaimVisibleEventRewards(eventResult) {
                 }
 
                 if (changedWindow > 3) { ; allow at most 3 checks with a different window
+                    SkipCardReveal() ; the window may just be covered by a card reveal
                     eventResult[specialEventName] := true
                     return specialEventName
                 }
@@ -533,4 +546,22 @@ HandleMissionDeckFailsafe() {
     adbInput("111") ; ESC to home screen
     Sleep, 1000
     return true
+}
+
+; After Mission_CompleteGotAllClaims a card reveal may still be running: it
+; ignores ESC and only shows Skip after a tap. The List tab can stay visible
+; under the toast, so only check it once the toast is gone: dismiss it first,
+; then probe-tap until List is back, clicking through Skip/Next as they appear.
+SkipCardReveal() {
+    Delay(1)
+    Loop, 15 {
+        if (FindOrLoseImage("Mission_ActivatedBeginnerMissionTabButton", 0, 0, , true))
+            break ; toast gone and List visible: back on the Missions page
+        if (FindOrLoseImage("Mission_SkipEventReveal", 0, 0, , true) || FindOrLoseImage("Pack_SkipButtonAfterOpenPack", 0, 0, , true) || FindOrLoseImage("Pack_AnimationToReadyOpenPack", 0, 0, , true)) {
+            adbClick_wbb(247, 500)
+            Delay(1)
+        }
+        adbClick_wbb(146, 459) ; reveal covering the screen: tap to bring Skip up
+        Delay(1)
+    }
 }

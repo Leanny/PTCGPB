@@ -56,52 +56,19 @@ DetectFourCardPack() {
 }
 
 CheckCardLoading(totalCardsInPack){
+    ; Returns true once the cards of ANY known layout (1-6 cards) have settled.
+    ; totalCardsInPack is only used for logging: the real count can differ
+    ; (e.g. bonus cards handed out after the opening).
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    count := 0
-    if (totalCardsInPack = 1) {
-        ; Single card (e.g. special pack): centered, bottom edge at y~338
-        borderCoords := [[128, 337, 148, 339]] ; Card 1
-    } else if (totalCardsInPack = 4) {
-        borderCoords := [[96, 279, 116, 281]  ; Card 1
-            ,[181, 279, 201, 281] ; Card 2
-            ,[96, 394, 116, 396] ; Card 3
-            ,[181, 394, 201, 396]] ; Card 4
-    } else if (totalCardsInPack = 6) {
-        borderCoords := [[56, 279, 76, 281]   ; Top row card 1
-            ,[139, 279, 159, 281] ; Top row card 2
-            ,[222, 279, 242, 281] ; Top row card 3
-            ,[56, 394, 76, 396]   ; Bottom row card 1
-            ,[139, 394, 159, 396] ; Bottom row card 2
-            ,[222, 394, 242, 396]] ; Bottom row card 3
-    } else {
-        ; 5-card pack
-        borderCoords := [[56, 279, 76, 281] ; Card 1
-            ,[139, 279, 159, 281] ; Card 2
-            ,[222, 279, 242, 281] ; Card 3
-            ,[96, 394, 116, 396] ; Card 4
-            ,[181, 394, 201, 396]] ; Card 5
-    }
-
     pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
-    bias := MuMuBias()
-    for index, value in borderCoords {
-        coords := borderCoords[A_Index]
-        imageName := "lag" . A_Index
-
-        Path := A_ScriptDir . "\Needles\" . imageName . ".png"
-        if (FileExist(Path)) {
-            pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, coords[1], coords[2] + bias, coords[3], coords[4]+ bias, 40)
-            if (vRet = 1) {
-                count += 1
-            }
-        }
-    }
-
+    loadedCount := CardLoading_FindLoadedLayout(pBitmap)
     Gdip_DisposeImage(pBitmap)
-    return count
+
+    if (loadedCount && loadedCount != totalCardsInPack)
+        LogDebug("CheckCardLoading: expected " . totalCardsInPack . " cards, screen shows " . loadedCount, "debug_cards.txt")
+    return loadedCount > 0
 }
 
 ;-------------------------------------------------------------------------------
@@ -739,7 +706,7 @@ CheckCardsSimple(result) {
     foundCrown       := CountOccurances(cards, rarity, 10)
     foundShiny1Star  := CountOccurances(cards, rarity, 11)
     foundShiny2Star  := CountOccurances(cards, rarity, 12)
-    foundRGB         := CountOccurances(cards, rarity, 1000)
+    foundRGB         := CountOccurances(cards, rarity, 13)
 
     Wishlist_EnsureFresh()
     wishlistMap      := session.get("wishlistMap")
@@ -978,7 +945,7 @@ FilterCardsByS4T(cards, rarity) {
             continue
         }
 
-        if (r = 1000) {
+        if (r = 13) {
             if (botConfig.get("s4tRGB") = 1)
                 filteredCards.Push(c)
             continue

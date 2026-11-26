@@ -2356,6 +2356,7 @@ struct Candidate {
     sort_time: String,
     last_login: String,
     pack_count: i64,
+    shop_pack_claims: usize,
 }
 
 struct UsedAccountsState {
@@ -2409,6 +2410,30 @@ fn rename_account_eligible(account: &Value) -> bool {
         return false;
     }
     true
+}
+
+const MAX_SHOP_PACK_CLAIMS: usize = 2;
+
+fn shop_pack_claim_count(account: &Value) -> usize {
+    account
+        .get("claimedShopPacks")
+        .and_then(Value::as_array)
+        .map(|claimed| claimed.len())
+        .unwrap_or(0)
+}
+
+// An account is eligible while it has fewer than MAX_SHOP_PACK_CLAIMS claims and
+// no claim attempt since the last daily reset. The attempt gate stops accounts
+// without tickets (or with a failed shop visit) from being re-queued forever.
+fn claim_shop_packs_eligible(account: &Value) -> bool {
+    shop_pack_claim_count(account) < MAX_SHOP_PACK_CLAIMS
+        && !was_after_daily_reset(field_str(account, "lastShopClaimAttempt"))
+}
+
+// Stable sort: accounts with fewer shop pack claims always come first, the
+// user's Sort By order is kept within each claim-count group.
+fn prioritize_fewest_shop_pack_claims(candidates: &mut Vec<Candidate>) {
+    candidates.sort_by_key(|c| c.shop_pack_claims);
 }
 
 fn timestamp_to_utc(timestamp: &str) -> Option<DateTime<Utc>> {
@@ -2701,6 +2726,8 @@ fn eligible(
     match options.delete_method.as_str() {
         "Create Bots (13P)" => true,
         "Rename Account" => rename_account_eligible(account),
+        "Claim Shop Packs" => claim_shop_packs_eligible(account),
+        "Battle Tutorial" => !flag_value(account, "BT"),
         "Inject Rewards" => inject_rewards_eligible(account, options, active_events),
         "Inject 13P+" | "Inject Wonderpick 96P+" => inject_pack_eligible(account, options),
         _ => true,
@@ -3005,6 +3032,8 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
         // Rename Account sweeps every saved XML, including those in used_accounts.txt.
         if !options.force_inject
             && options.delete_method != "Rename Account"
+            && options.delete_method != "Claim Shop Packs"
+            && options.delete_method != "Battle Tutorial"
             && used_account_matches(&used_state.used, &file_name, &device_account)
         {
             continue;
@@ -3052,10 +3081,14 @@ fn schedule_accounts(root: &Path, options: ScheduleOptions) -> Result<()> {
             sort_time,
             last_login,
             pack_count,
+            shop_pack_claims: shop_pack_claim_count(account),
         });
     }
 
     sort_candidates(&mut candidates, &options.sort_method);
+    if options.delete_method == "Claim Shop Packs" {
+        prioritize_fewest_shop_pack_claims(&mut candidates);
+    }
 
     let list = candidates
         .into_iter()
@@ -3110,6 +3143,8 @@ fn count_eligible_for_all_instances(
             let device_account = extract_device_account_from_xml(&path);
             if !options.force_inject
                 && options.delete_method != "Rename Account"
+            && options.delete_method != "Claim Shop Packs"
+                && options.delete_method != "Battle Tutorial"
                 && used_account_matches(&used_state.used, &file_name, &device_account)
             {
                 continue;
@@ -4846,6 +4881,93 @@ mod tests {
         assert!(!eligible(&completed, &options, &events));
     }
 
+    fn shop_options() -> ScheduleOptions {
+        ScheduleOptions {
+            instance: "1".to_owned(),
+            delete_method: "Claim Shop Packs".to_owned(),
+            sort_method: "ModifiedAsc".to_owned(),
+            inject_wonderpick_min_packs: 96,
+            wonderpick_for_event_missions: false,
+            claim_daily_mission: false,
+            claim_special_missions: false,
+            receive_gift: false,
+            ocr_shinedust: false,
+            s4t_enabled: false,
+            spend_hourglass: false,
+            force_inject: false,
+            force_clear_used: false,
+        }
+    }
+
+    #[test]
+    fn claim_shop_packs_eligibility_uses_claim_count_and_daily_attempt_gate() {
+        let options = shop_options();
+        let old = (Local::now() - Duration::days(2))
+            .format("%Y%m%d%H%M%S")
+            .to_string();
+        let now = Local::now().format("%Y%m%d%H%M%S").to_string();
+
+        assert!(eligible(&json!({}), &options, &[]));
+        assert!(eligible(&json!({ "claimedShopPacks": [old] }), &options, &[]));
+        assert!(!eligible(&json!({ "claimedShopPacks": [old, old] }), &options, &[]));
+        assert!(eligible(&json!({ "lastShopClaimAttempt": old }), &options, &[]));
+        assert!(!eligible(&json!({ "lastShopClaimAttempt": now }), &options, &[]));
+        assert!(!eligible(
+            &json!({ "claimedShopPacks": [old], "lastShopClaimAttempt": now }),
+            &options,
+            &[]
+        ));
+    }
+
+    #[test]
+    fn battle_tutorial_eligibility_follows_the_bt_flag() {
+        let options = ScheduleOptions {
+            delete_method: "Battle Tutorial".to_owned(),
+            ..shop_options()
+        };
+
+        assert!(eligible(&json!({}), &options, &[]));
+        assert!(eligible(
+            &json!({ "flags": { "BT": new_flag(0, "", "") } }),
+            &options,
+            &[]
+        ));
+        assert!(!eligible(
+            &json!({ "flags": { "BT": new_flag(1, "20261115000000", "") } }),
+            &options,
+            &[]
+        ));
+    }
+
+    #[test]
+    fn claim_shop_packs_puts_unclaimed_accounts_first_keeping_sort_order() {
+        let candidate = |name: &str, sort_time: &str, claims: usize| Candidate {
+            file_name: name.to_owned(),
+            sort_time: sort_time.to_owned(),
+            last_login: "0".to_owned(),
+            pack_count: 0,
+            shop_pack_claims: claims,
+        };
+        let mut candidates = vec![
+            candidate("one_old.xml", "20260501000000", 1),
+            candidate("zero_new.xml", "20260504000000", 0),
+            candidate("one_new.xml", "20260503000000", 1),
+            candidate("zero_old.xml", "20260502000000", 0),
+        ];
+
+        sort_candidates(&mut candidates, "ModifiedAsc");
+        prioritize_fewest_shop_pack_claims(&mut candidates);
+
+        let names = candidates
+            .iter()
+            .map(|candidate| candidate.file_name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            vec!["zero_old.xml", "zero_new.xml", "one_old.xml", "one_new.xml"]
+        );
+    }
+
     #[test]
     fn last_login_sort_orders_unset_login_first_then_oldest_login() {
         let mut candidates = vec![
@@ -4854,18 +4976,21 @@ mod tests {
                 sort_time: "20260503000000".to_owned(),
                 last_login: "20260505000000".to_owned(),
                 pack_count: 20,
+                shop_pack_claims: 0,
             },
             Candidate {
                 file_name: "unset.xml".to_owned(),
                 sort_time: "20260502000000".to_owned(),
                 last_login: "0".to_owned(),
                 pack_count: 30,
+                shop_pack_claims: 0,
             },
             Candidate {
                 file_name: "old.xml".to_owned(),
                 sort_time: "20260501000000".to_owned(),
                 last_login: "20260504000000".to_owned(),
                 pack_count: 10,
+                shop_pack_claims: 0,
             },
         ];
 

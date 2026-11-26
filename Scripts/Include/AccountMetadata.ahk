@@ -589,6 +589,8 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["packCount"] := 0
     account["createdAt"] := "0"
     account["lastRenamedAt"] := "0"
+    account["claimedShopPacks"] := []
+    account["lastShopClaimAttempt"] := "0"
     account["lastPackPulled"] := 0
     account["lastSpecialPackPulled"] := "0"
     account["lastLoggedIn"] := "0"
@@ -596,7 +598,7 @@ AccountMetadata_NewAccount(instance, fileName) {
     account["flags"] := {}
     account["specialEvents"] := {}
 
-    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
     Loop, % flags.MaxIndex()
         account["flags"][flags[A_Index]] := AccountMetadata_NewFlag(0)
 
@@ -855,6 +857,17 @@ AccountMetadata_ExtractArrayValue(ByRef jsonText, key) {
     return "[" . AccountMetadata_ExtractArrayBody(jsonText, arrStart) . "]"
 }
 
+AccountMetadata_ParseStringArray(json, key) {
+    result := []
+    arrayJson := AccountMetadata_ExtractArrayValue(json, key)
+    pos := 1
+    while (pos := RegExMatch(arrayJson, "s)""((?:[^""\\]|\\.)*)""", match, pos)) {
+        result.Push(AccountMetadata_Unescape(match1))
+        pos += StrLen(match)
+    }
+    return result
+}
+
 AccountMetadata_ParseString(json, key, defaultValue := "") {
     pattern := "s)""" . key . """\s*:\s*""((?:[^""\\]|\\.)*)"""
     if (RegExMatch(json, pattern, match))
@@ -887,6 +900,8 @@ AccountMetadata_ParseAccount(accountJson) {
     account["packCount"] := AccountMetadata_ParseNumber(accountJson, "packCount", account["packCount"])
     account["createdAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "createdAt", AccountMetadata_ParseNumber(accountJson, "createdAt", account["createdAt"])))
     account["lastRenamedAt"] := AccountMetadata_NormalizeCreatedAt(AccountMetadata_ParseString(accountJson, "lastRenamedAt", AccountMetadata_ParseNumber(accountJson, "lastRenamedAt", account["lastRenamedAt"])))
+    account["claimedShopPacks"] := AccountMetadata_ParseStringArray(accountJson, "claimedShopPacks")
+    account["lastShopClaimAttempt"] := AccountMetadata_ParseString(accountJson, "lastShopClaimAttempt", AccountMetadata_ParseNumber(accountJson, "lastShopClaimAttempt", 0))
     account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastPackPulled", AccountMetadata_ParseNumber(accountJson, "lastPackPulled", 0))
     if (account["lastPackPulled"] = "" || account["lastPackPulled"] = "0")
         account["lastPackPulled"] := AccountMetadata_ParseString(accountJson, "lastModified", account["lastPackPulled"])
@@ -907,7 +922,7 @@ AccountMetadata_ParseAccount(accountJson) {
     flagsBrace := flagsPos ? InStr(accountJson, "{", false, flagsPos) : 0
     flagsBody := AccountMetadata_ExtractObjectBody(accountJson, flagsBrace)
     if (flagsBody != "") {
-        flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+        flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
         Loop, % flags.MaxIndex() {
             flag := flags[A_Index]
             flagPos := InStr(flagsBody, """" . flag . """")
@@ -971,7 +986,7 @@ AccountMetadata_SerializeStore(store) {
 }
 
 AccountMetadata_SerializeAccount(account, indent := "") {
-    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
     json := "{`r`n"
     firstField := true
 
@@ -996,6 +1011,20 @@ AccountMetadata_SerializeAccount(account, indent := "") {
     lastRenamedAt := AccountMetadata_NormalizeCreatedAt(account["lastRenamedAt"])
     if (lastRenamedAt != "" && lastRenamedAt != "0")
         AccountMetadata_AppendJsonString(json, firstField, "lastRenamedAt", lastRenamedAt, "      ")
+
+    claimedShopPacks := account["claimedShopPacks"]
+    if (IsObject(claimedShopPacks) && claimedShopPacks.MaxIndex() != "") {
+        AccountMetadata_AppendComma(json, firstField)
+        json .= "      ""claimedShopPacks"": ["
+        Loop, % claimedShopPacks.MaxIndex() {
+            if (A_Index > 1)
+                json .= ", "
+            json .= """" . AccountMetadata_Escape(claimedShopPacks[A_Index]) . """"
+        }
+        json .= "]"
+    }
+    if (account["lastShopClaimAttempt"] != "" && account["lastShopClaimAttempt"] != "0")
+        AccountMetadata_AppendJsonString(json, firstField, "lastShopClaimAttempt", account["lastShopClaimAttempt"], "      ")
 
     if (account["lastPackPulled"] != "" && account["lastPackPulled"] != "0")
         AccountMetadata_AppendJsonString(json, firstField, "lastPackPulled", account["lastPackPulled"], "      ")
@@ -1178,6 +1207,10 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
         baseAccount["createdAt"] := patchAccount["createdAt"]
     if (patchAccount["lastRenamedAt"] != "" && patchAccount["lastRenamedAt"] != "0")
         baseAccount["lastRenamedAt"] := patchAccount["lastRenamedAt"]
+    if (IsObject(patchAccount["claimedShopPacks"]) && patchAccount["claimedShopPacks"].MaxIndex() != "")
+        baseAccount["claimedShopPacks"] := patchAccount["claimedShopPacks"]
+    if (patchAccount["lastShopClaimAttempt"] != "" && patchAccount["lastShopClaimAttempt"] != "0")
+        baseAccount["lastShopClaimAttempt"] := patchAccount["lastShopClaimAttempt"]
     if (patchAccount["lastPackPulled"] != "" && patchAccount["lastPackPulled"] != "0")
         baseAccount["lastPackPulled"] := patchAccount["lastPackPulled"]
     if (patchAccount["lastSpecialPackPulled"] != "" && patchAccount["lastSpecialPackPulled"] != "0")
@@ -1191,7 +1224,7 @@ AccountMetadata_MergeAccount(baseAccount, patchAccount) {
 
     if (!IsObject(baseAccount["flags"]))
         baseAccount["flags"] := {}
-    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI"]
+    flags := ["B", "X", "T", "R", "W", "H", "SH", "FI", "BT"]
     Loop, % flags.MaxIndex() {
         flag := flags[A_Index]
         patchFlag := patchAccount["flags"][flag]

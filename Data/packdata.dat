@@ -46,5 +46,34 @@ Pack:DualFusionPikachu|C|2|Col-First-Right|298|0|C1
 # SP Series
 Pack:SpecialPackFirstPartners|SP|1|Col-First|298|0|SP1
 
+# Shop packs (Claim Shop Packs mode): ShopPack:ItemID|Series
+ShopPack:AN001_0010_02_000|A
+ShopPack:AN001_0020_02_000|A
+ShopPack:AN001_0030_02_000|A
+ShopPack:AN002_0010_01_000|A
+ShopPack:AN003_0010_01_000|A
+ShopPack:AN003_0020_01_000|A
+ShopPack:AN004_0010_01_000|A
+ShopPack:AN005_0010_01_000|A
+ShopPack:AN006_0010_01_000|A
+ShopPack:AN006_0020_01_000|A
+ShopPack:AN007_0010_01_000|A
+ShopPack:AN008_0010_01_000|A
+ShopPack:AN009_0010_01_000|A
+ShopPack:AN009_0020_01_000|A
+ShopPack:AN010_0010_01_000|A
+ShopPack:BN001_0010_01_000|B
+ShopPack:BN001_0020_01_000|B
+ShopPack:BN001_0030_01_000|B
+ShopPack:BN002_0010_01_000|B
+ShopPack:BN003_0010_01_000|B
+ShopPack:BN004_0010_01_000|B
+ShopPack:BN005_0010_01_000|B
+ShopPack:BN006_0010_01_000|B
+ShopPack:BN007_0010_01_000|B
+ShopPack:BN008_0010_01_000|B
+ShopPack:BN009_0010_01_000|B
+ShopPack:BN010_0010_01_000|B
+
 # DO NOT Delete End
 ---END---

@@ -1,11 +1,28 @@
 ﻿global dictionaryData := {}
 
+; Set of ShopPack IDs selected for "Claim Shop Packs" (setting shopClaimPacks).
+GetSelectedShopPackIDs() {
+    global botConfig
+
+    selected := {}
+    shopClaimPacks := botConfig.get("shopClaimPacks")
+    Loop, Parse, shopClaimPacks, `,
+    {
+        packID := Trim(A_LoopField)
+        if (packID != "")
+            selected[packID] := true
+    }
+    return selected
+}
+
 parsePackData(){
     global session
 
     mainScreenPackList := {}
     pokemonPackObj := {}
     pokemonPackOrder := []
+    shopPackObj := {}
+    shopPackOrder := []
 
     packDataPath := getScriptBaseFolder() . "\Data\packdata.dat"
     FileRead, packRawData, %packDataPath%
@@ -47,6 +64,14 @@ parsePackData(){
             continue
         }
 
+        if (InStr(line, "ShopPack:") = 1) {
+            ; ShopPack:AN001_0010_02_000|A  (ItemID|Series) - packs of "Claim Shop Packs"
+            splitData := StrSplit(Trim(SubStr(line, 10)), "|")
+            shopPackObj[splitData[1]] := {"PackID":splitData[1], "Series":splitData[2]}
+            shopPackOrder.Push(splitData[1])
+            continue
+        }
+
         if (InStr(line, "Pack:") = 1) {
             ; Mewtwo|A|3|Col-First-Left|405|1|A1
             packValue := Trim(SubStr(line, 6))
@@ -69,6 +94,8 @@ parsePackData(){
     session.set("pokemonPackObj", pokemonPackObj)
     session.set("pokemonPackOrder", pokemonPackOrder)
     session.set("mainScreenPackList", mainScreenPackList)
+    session.set("shopPackObj", shopPackObj)
+    session.set("shopPackOrder", shopPackOrder)
 
     return lastPackID
 }

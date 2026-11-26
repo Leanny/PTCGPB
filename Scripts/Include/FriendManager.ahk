@@ -558,6 +558,11 @@ RemoveFriends() {
         return false
     }
 
+    ; The app may have been restarted since the last speed change (stuck recovery,
+    ; gift-claim restarts): a fresh process runs at 1x, so restore the configured speed
+    ; before spending time on the friend list.
+    SetConfiguredGameSpeed()
+
     session.set("friendIDs", ReadFile("ids"))
 
     if(!session.get("friendIDs") && botConfig.get("FriendID") = "") {
@@ -1366,7 +1371,20 @@ EnsureAccountFriendInfo(methodType := "", alreadyOnFriendSearch := false, force 
     accountMeta := AccountMetadata_Get(session.get("scriptName"), accountFileName, accountSourcePath)
     existingName := Trim(accountMeta["accountName"])
     existingFriendCode := RegExReplace(accountMeta["friendCode"], "\D", "")
-    if (existingName != "" && existingName != "Unknown" && RegExMatch(existingFriendCode, "^\d{16}$")) {
+    hasFriendInfo := (existingName != "" && existingName != "Unknown" && RegExMatch(existingFriendCode, "^\d{16}$"))
+
+    if (!hasFriendInfo && IsFunc("GetAccountInfo")) {
+        CreateStatusMessage("Retrieving account info`nReading from device...",,,, false)
+        getAccountInfoFn := Func("GetAccountInfo")
+        if (%getAccountInfoFn%()) {
+            accountMeta := AccountMetadata_Get(session.get("scriptName"), accountFileName, accountSourcePath)
+            existingName := Trim(accountMeta["accountName"])
+            existingFriendCode := RegExReplace(accountMeta["friendCode"], "\D", "")
+            hasFriendInfo := (existingName != "" && existingName != "Unknown" && RegExMatch(existingFriendCode, "^\d{16}$"))
+        }
+    }
+
+    if (hasFriendInfo) {
         session.set("accountName", existingName)
         session.set("friendCode", existingFriendCode)
         session.set("accountFriendInfoChecked", deviceAccount)

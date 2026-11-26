@@ -122,6 +122,9 @@ GoToMain() {
 TryDismisMyCardsTutorial(failSafeTime) {
     return
 }
+GetShinedust() {
+    return 0
+}
 ResetStatusMessage() {
 }
 LogToFile(message, logFile := "") {

@@ -18,9 +18,16 @@
 ;-------------------------------------------------------------------------------
 ; GetDeviceAccountFromXML - Extract device account ID from XML
 ;-------------------------------------------------------------------------------
+global DeviceAccountCache := ""
+
+DeviceAccountCache_Invalidate() {
+    global DeviceAccountCache
+    DeviceAccountCache := ""
+}
+
 GetDeviceAccountFromXML() {
     prof := Prof_Scope(A_ThisFunc)
-    global session
+    global session, DeviceAccountCache
 
     deviceAccount := ""
 
@@ -55,6 +62,9 @@ GetDeviceAccountFromXML() {
             LogWarn("Ambiguous XML match for " . session.get("accountFileName") . " in " . session.get("loadDir") . "; falling back to current device XML.")
     }
 
+    if (DeviceAccountCache != "")
+        return DeviceAccountCache
+
     tempDir := A_ScriptDir . "\temp"
     if !FileExist(tempDir)
         FileCreateDir, %tempDir%
@@ -79,6 +89,7 @@ GetDeviceAccountFromXML() {
         adbWriteRaw("rm -f /sdcard/deviceAccount.xml")
     }
 
+    DeviceAccountCache := deviceAccount
     return deviceAccount
 }
 
@@ -327,7 +338,7 @@ LogShinedustToDatabase(shinedustValue) {
 
     shinedustValueClean := StrReplace(shinedustValue, ",", "")
 
-    if (shinedustValueClean < 99 || shinedustValueClean > 999999) {
+    if (shinedustValueClean < 9 || shinedustValueClean > 9999999) {
         CreateStatusMessage("Invalid shinedust value: " . shinedustValue . " - not logging")
         Sleep, 2000
         return
