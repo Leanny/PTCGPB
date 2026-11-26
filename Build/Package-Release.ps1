@@ -35,6 +35,20 @@ $trackedFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ord
 $generatedPackageFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $null = $generatedPackageFiles.Add('Helper/carddb.exe')
 $null = $generatedPackageFiles.Add('Helper/cardimage.exe')
+$null = $generatedPackageFiles.Add('Scripts/Include/RegionCap.dll')
+$null = $generatedPackageFiles.Add('Scripts/Include/MaskMatch.dll')
+$nativeOutputs = @{
+    'Scripts/Native/RegionCap.cpp' = 'Scripts/Include/RegionCap.dll'
+    'Scripts/Native/MaskMatch.c' = 'Scripts/Include/MaskMatch.dll'
+}
+foreach ($source in @($nativeOutputs.Keys)) {
+    $sourcePath = Join-Path $repositoryRoot ($source.Replace('/', '\'))
+    $outputRel = $nativeOutputs[$source]
+    $outputPath = Join-Path $repositoryRoot ($outputRel.Replace('/', '\'))
+    if ((Test-Path -LiteralPath $sourcePath -PathType Leaf) -and -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+        throw "Missing $outputRel. Run Build/Build-Native.ps1 before packaging."
+    }
+}
 $gitPaths = @(& git -C $repositoryRoot ls-files)
 if ($LASTEXITCODE -ne 0) {
     throw 'Could not enumerate Git-tracked files for release packaging.'

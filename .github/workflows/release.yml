@@ -59,6 +59,10 @@ jobs:
           Pop-Location
           Copy-Item -LiteralPath "$env:CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/cardimage.exe" -Destination Helper/cardimage.exe -Force
 
+      - name: Build native search DLLs
+        shell: pwsh
+        run: ./Build/Build-Native.ps1
+
       - name: Build release bundle and checksums
         shell: pwsh
         run: ./Build/Package-Release.ps1 -Version $env:RELEASE_VERSION -OutputDirectory ./dist
