@@ -209,7 +209,7 @@ BTT_HandDll() {
     if (tried)
         return path
     tried := true
-    candidate := A_ScriptDir . "\Include\HandCap.dll"
+    candidate := A_ScriptDir . "\Include\RegionCap.dll"
     if (FileExist(candidate) && DllCall("LoadLibrary", "Str", candidate, "Ptr"))
         path := candidate
     return path
