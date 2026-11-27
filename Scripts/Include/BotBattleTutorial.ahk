@@ -307,9 +307,11 @@ BTT_BannerUp() {
 }
 
 ; Hand mask inside its box, read from the composed surface. Returns [x,y] or 0.
-BTT_MaskAt(name, expand := 20) {
+; ran is set to true only when both DLLs loaded and the copy succeeded, so a
+; false ran means "not searched" and the caller must use the AHK path.
+BTT_MaskAt(name, expand, ByRef ran) {
     global session, g_bttScan, g_bttStride
-    writeLastActivityEpoch(session.get("scriptName"), 4000)
+    ran := false
     n := BTT_Needles()[name]
     dll := BTT_MaskDll()
     mask := BTT_MaskPacked(name)
@@ -335,6 +337,7 @@ BTT_MaskAt(name, expand := 20) {
         return 0
     if (!BTT_GrabFast(x1, y1, rw, rh))
         return 0
+    ran := true
     thr := BTT_MaskThreshold(name)
     minHits := Ceil(mask.total * thr / 100.0)
     VarSetCapacity(outX, 4, 0), VarSetCapacity(outY, 4, 0), VarSetCapacity(outHits, 4, 0)
@@ -361,15 +364,28 @@ BTT_MaskAt(name, expand := 20) {
 ; expand=20: tutorial pointers bounce, a tight region misses them mid-animation
 BTT_Match(name, expand := 20) {
     global session
-    if (BTT_MaskThreshold(name))
-        return BTT_MaskAt(name, expand)
-    static pTokenLocal := 0
+    static pTokenLocal := 0, nextErrCheck := 0
     if (!pTokenLocal)
         pTokenLocal := Gdip_Startup()
     ; heartbeat: BT runs outlive the monitor's 11-minute stuck threshold
     ; (7 missions + unbounded battle retries). Every wait loop funnels
     ; through here, so this keeps the watchdog fed the whole run.
     writeLastActivityEpoch(session.get("scriptName"), 4000)
+    if (BTT_MaskThreshold(name)) {
+        pos := BTT_MaskAt(name, expand, ran)
+        if (ran) {
+            ; The fast path never sees the whole window, so error popups
+            ; are checked on a throttled full capture.
+            if (A_TickCount >= nextErrCheck) {
+                nextErrCheck := A_TickCount + 1500
+                if (pErr := from_window(getMuMuHwnd(session.get("winTitle")))) {
+                    BTT_ErrorCheck(pErr)
+                    Gdip_DisposeImage(pErr)
+                }
+            }
+            return pos
+        }
+    }
     n := BTT_Needles()[name]
     pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
     if (!pBitmap) {
