@@ -145,7 +145,7 @@ class RarityBorder {
                 break
 
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, coord.startX, coord.startY, coord.endX, coord.endY, 40)
+            vRet := ImageSearchClient(pNeedle, coord.startX, coord.startY, coord.endX, coord.endY, 40, vPosXY)
 
             if(vRet = 1)
                 return true
@@ -157,8 +157,23 @@ class RarityBorder {
     }
 
     DoMaskSearch(pBitmap, cardX, cardY) {
+        global session
         vRet := false
         Sleep, 20
+
+        disposeLocal := false
+        localBmp := CaptureClientBitmap(getMuMuHwnd(session.get("winTitle")), cardX, cardY, cardX + 75, cardY + 104)
+        if (localBmp) {
+            pBitmap := localBmp
+            cardX := 0
+            cardY := 0
+            disposeLocal := true
+        } else if (!pBitmap) {
+            pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
+            disposeLocal := (pBitmap != 0)
+        }
+        if (!pBitmap)
+            return false
 
         lImgW := Gdip_GetImageWidth(pBitmap)
         lImgH := Gdip_GetImageHeight(pBitmap)
@@ -181,6 +196,8 @@ class RarityBorder {
         }
 
         Gdip_UnlockBits(pBitmap, BitmapData)
+        if (disposeLocal)
+            Gdip_DisposeImage(pBitmap)
         return vRet
     }
 

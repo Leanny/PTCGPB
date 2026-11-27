@@ -44,11 +44,11 @@ CardLoading_SlotLoaded(pBitmap, pNeedle, x, y) {
     static SHADOW_VARIATION := 25 ; settled shadows measure <= 16, plain background 37-40
     static SHADOW_OFFSET := 3     ; rows between the edge row and the shadow row
 
-    edge := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, x, y, x + 20, y + 2, EDGE_VARIATION)
+    edge := ImageSearchClient(pNeedle, x, y, x + 20, y + 2, EDGE_VARIATION, vPosXY)
     if (edge = 1)
         return false
     sy := y + SHADOW_OFFSET
-    shadow := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, x, sy, x + 20, sy + 2, SHADOW_VARIATION)
+    shadow := ImageSearchClient(pNeedle, x, sy, x + 20, sy + 2, SHADOW_VARIATION, vPosXY)
     return (shadow = 1)
 }
 

@@ -189,10 +189,12 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
         cropH := 165
     }
 
-    pBitmapW := from_window(getMuMuHwnd(session.get("winTitle")))
-    pBitmap := Gdip_CloneBitmapArea(pBitmapW, cropX, cropY, cropW, cropH)
-
-    Gdip_DisposeImage(pBitmapW)
+    pBitmap := CaptureClientArea(getMuMuHwnd(session.get("winTitle")), cropX, cropY, cropW, cropH)
+    if (!pBitmap) {
+        pBitmapW := from_window(getMuMuHwnd(session.get("winTitle")))
+        pBitmap := Gdip_CloneBitmapArea(pBitmapW, cropX, cropY, cropW, cropH)
+        Gdip_DisposeImage(pBitmapW)
+    }
     Gdip_SaveBitmapToFile(pBitmap, filePath)
 
     ; Don't dispose pBitmap if it's a PACKSTATS screenshot

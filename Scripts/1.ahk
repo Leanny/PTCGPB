@@ -1118,7 +1118,6 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         CreateStatusMessage("Finding " . imageName . "...")
     }
 
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
     Path = %imagePath%%imageName%.png
     pNeedle := GetNeedle(Path)
 
@@ -1130,7 +1129,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     }
 
     ; ImageSearch within the region
-    vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+    vRet := ImageSearchClient(pNeedle, X1, Y1, X2, Y2, searchVariation, vPosXY)
     if(EL = 0)
         GDEL := 1
     else
@@ -1158,14 +1157,13 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
     if (imageName = "CommunityShowcase" || imageName = "Search" || imageName = "inHamburgerMenu" || imageName = "Trade") {
         Path = %imagePath%Tutorial.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 111, 115, 167, 121, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 111, 115, 167, 121, searchVariation, vPosXY)
         if (vRet = 1) {
             adbClick_wbb(145, 451)
         }
     }
 
     if (isTerminatePTCGPAppByADBShell()) {
-        Gdip_DisposeImage(pBitmap)
         TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
         return confirmed
     }
@@ -1174,7 +1172,7 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         Path = %imagePath%Delete2.png
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 118, 353, 135, 390, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 118, 353, 135, 390, searchVariation, vPosXY)
         if (vRet = 1) {
             adbClick_wbb(74, 353)
             Delay(1)
@@ -1185,13 +1183,13 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         TryHandleTradeTutorialForShowcase()
     }
 
-    ErrorCheckInScreen(pBitmap)
+    ErrorCheckInScreen(0)
 
     if(imageName = "Social" || imageName = "Country" || imageName = "Account2" || imageName = "Account" || imageName = "Points") { ;only look for deleted account on start up.
         Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 30, 331, 50, 449, searchVariation, vPosXY)
         if (vRet = 1) {
             adbWriteRaw("rm -rf /data/data/jp.pokemon.pokemontcgp/cache/*") ; clear cache
             waitadb()
@@ -1220,7 +1218,6 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         restartGameInstance("Stuck at " . imageName . "...")
         session.set("failSafe", A_TickCount)
     }
-    Gdip_DisposeImage(pBitmap)
     return confirmed
 }
 
@@ -1271,7 +1268,6 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             continue
         }
 
-        pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
         Path = %imagePath%%imageName%.png
         pNeedle := GetNeedle(Path)
         ; ImageSearch within the region
@@ -1279,7 +1275,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         Y1 := needleObj.coords.startY
         X2 := needleObj.coords.endX
         Y2 := needleObj.coords.endY
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, X1, Y1, X2, Y2, searchVariation)
+        vRet := ImageSearchClient(pNeedle, X1, Y1, X2, Y2, searchVariation, vPosXY)
         if (!confirmed && vRet = 1) {
             confirmed := vPosXY
         } else {
@@ -1310,7 +1306,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             }
         }
 
-        ErrorCheckInScreen(pBitmap)
+        ErrorCheckInScreen(0)
 
         if(imageName = "SelectExpansion" || imageName = "ExpansionSeries") {
             ; the special pack notification popup swallows every click on the expansion screen
@@ -1327,14 +1323,13 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if (imageName = "CommunityShowcase" || imageName = "Add" || imageName = "Search") {
             Path = %imagePath%Tutorial.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 111, 115, 167, 121, searchVariation)
+            vRet := ImageSearchClient(pNeedle, 111, 115, 167, 121, searchVariation, vPosXY)
             if (vRet = 1) {
                 adbClick_wbb(145, 451)
             }
         }
 
         if (isTerminatePTCGPAppByADBShell()) {
-            Gdip_DisposeImage(pBitmap)
             TriggerGameRestart("Stuck at " . imageName . "... (App terminated)")
             return false
         }
@@ -1343,7 +1338,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             Path = %imagePath%NoSave.png ; look for No Save Data error message > if loaded account > delete xml > reload
             pNeedle := GetNeedle(Path)
             ; ImageSearch within the region
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 30, 331, 50, 449, searchVariation)
+            vRet := ImageSearchClient(pNeedle, 30, 331, 50, 449, searchVariation, vPosXY)
             if (vRet = 1) {
                 adbWriteRaw("rm -rf /data/data/jp.pokemon.pokemontcgp/cache/*") ; clear cache
                 waitadb()
@@ -1361,7 +1356,7 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(imageName = "Skip2" || imageName = "Pack" || imageName = "Hourglass2") {
             Path = %imagePath%notenoughitems.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 92, 299, 115, 317, 0)
+            vRet := ImageSearchClient(pNeedle, 92, 299, 115, 317, 0, vPosXY)
             if(vRet = 1) {
                 session.set("cantOpenMorePacks", 1)
                 LogThrottled("info", "cantOpenMorePacks", "Not enough pack points or hourglasses to open more packs | pack=" . session.get("openPack"))
@@ -1372,14 +1367,13 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
         if(imageName = "Mission_dino2" || imageName = "Mission_dino3") {
             Path = %imagePath%1solobattlemission.png
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 108, 180, 177, 208, 0)
+            vRet := ImageSearchClient(pNeedle, 108, 180, 177, 208, 0, vPosXY)
             if(vRet = 1) {
                 SetBeginnerMissionsDone()
                 return
             }
         }
 
-        Gdip_DisposeImage(pBitmap)
 
         if(imageName = "CommunityShowcase") {
             TryHandleTradeTutorialForShowcase()
@@ -1402,7 +1396,6 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             break
         }
     }
-    Gdip_DisposeImage(pBitmap)
     return confirmed
 }
 

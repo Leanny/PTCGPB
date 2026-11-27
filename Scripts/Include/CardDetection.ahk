@@ -24,22 +24,15 @@ DetectSixCardPack() {
 
     imagePath := A_ScriptDir . "\Needles\"
 
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
-
     ; Look for 6cardpackindicator.png (background element visible only in 5-card packs)
     Path = %imagePath%6cardpackindicator.png
     if (FileExist(Path)) {
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 228, 324, 248, 351, searchVariation)
-        if (vRet = 1) {
-            ; Found the check image, so this is a 5-card pack
-            Gdip_DisposeImage(pBitmap)
+        vRet := ImageSearchClient(pNeedle, 228, 324, 248, 351, searchVariation, vPosXY)
+        if (vRet = 1)
             return false  ; Return false = 5-card pack
-        }
     }
 
-    ; Did not find check image, so this must be a 6-card pack
-    Gdip_DisposeImage(pBitmap)
     return true  ; Return true = 6-card pack
 }
 
@@ -62,9 +55,7 @@ CheckCardLoading(totalCardsInPack){
     prof := Prof_Scope(A_ThisFunc)
     global session
 
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
-    loadedCount := CardLoading_FindLoadedLayout(pBitmap)
-    Gdip_DisposeImage(pBitmap)
+    loadedCount := CardLoading_FindLoadedLayout(0)
 
     if (loadedCount && loadedCount != totalCardsInPack)
         LogDebug("CheckCardLoading: expected " . totalCardsInPack . " cards, screen shows " . loadedCount, "debug_cards.txt")
@@ -82,18 +73,14 @@ AnalysisBorder(totalCardsInPack) {
     loadingBorderCoords := [[121, 269, 154, 272], [121, 297, 154, 300]]
     pBitmap := 0
     Loop, {
-        pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
         Path := A_ScriptDir . "\Needles\LoadingBox.png"
         if (FileExist(Path)) {
             pNeedle := GetNeedle(Path)
-            vRet1 := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, loadingBorderCoords[1][1], loadingBorderCoords[1][2], loadingBorderCoords[1][3], loadingBorderCoords[1][4], 20)
-            vRet2 := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, loadingBorderCoords[2][1], loadingBorderCoords[2][2], loadingBorderCoords[2][3], loadingBorderCoords[2][4], 20)
+            vRet1 := ImageSearchClient(pNeedle, loadingBorderCoords[1][1], loadingBorderCoords[1][2], loadingBorderCoords[1][3], loadingBorderCoords[1][4], 20, vPosXY)
+            vRet2 := ImageSearchClient(pNeedle, loadingBorderCoords[2][1], loadingBorderCoords[2][2], loadingBorderCoords[2][3], loadingBorderCoords[2][4], 20, vPosXY)
             isExistLoadingBox := vRet1 | vRet2
 
             if(isExistLoadingBox = 0){
-                if(isDevelopment){
-                    ;getDevelopmentScreenShot(totalCardsInPack, pBitmap)
-                }
                 break
             }
             Sleep, 100
@@ -127,7 +114,6 @@ AnalysisBorder(totalCardsInPack) {
             currentPackInfo["TypeCount"][rarityName] := 0
     }
 
-    Gdip_DisposeImage(pBitmap)
     currentPackInfo["isVerified"] := true
     currentPackInfo["totalCardsInPack"] := totalCardsInPack
     return currentPackInfo
@@ -147,19 +133,17 @@ FindCard(prefix) {
         ,[189, 191, 242, 193]
         ,[63, 306, 116, 308]
         ,[146, 306, 199, 308]]
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
     for index, value in borderCoords {
         coords := borderCoords[A_Index]
         Path = %A_ScriptDir%\Needles\%prefix%%A_Index%.png
         if (FileExist(Path)) {
             pNeedle := GetNeedle(Path)
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, coords[1], coords[2], coords[3], coords[4], searchVariation)
+            vRet := ImageSearchClient(pNeedle, coords[1], coords[2], coords[3], coords[4], searchVariation, vPosXY)
             if (vRet = 1) {
                 count += 1
             }
         }
     }
-    Gdip_DisposeImage(pBitmap)
     return count
 }
 

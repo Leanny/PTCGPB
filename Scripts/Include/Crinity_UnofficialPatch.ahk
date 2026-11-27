@@ -404,11 +404,9 @@ startPreProcess(methodType){
             }
         }
 
-        pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
-
         Path = %imagePath%CrashWhilePackOpen.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 20, 180, 35, 182, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 20, 180, 35, 182, searchVariation, vPosXY)
         if(vRet = 1){
             CreateStatusMessage("Clearing problem opening pack pop-up",,,, false)
             adbClick_wbb(145, 370)
@@ -438,12 +436,8 @@ startPreProcess(methodType){
         */
         Path = %imagePath%closeduringpack.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
-            , needlesDict.Get("Common_AlertForAppCrachDuringOpenPack").coords.startX
-            , needlesDict.Get("Common_AlertForAppCrachDuringOpenPack").coords.startY
-            , needlesDict.Get("Common_AlertForAppCrachDuringOpenPack").coords.endX
-            , needlesDict.Get("Common_AlertForAppCrachDuringOpenPack").coords.endY
-            , searchVariation)
+        alertCoords := needlesDict.Get("Common_AlertForAppCrachDuringOpenPack").coords
+        vRet := ImageSearchClient(pNeedle, alertCoords.startX, alertCoords.startY, alertCoords.endX, alertCoords.endY, searchVariation, vPosXY)
         if(vRet = 1){
             CreateStatusMessage("Found closing during pack pop-up",,,, false)
             Delay(1)
@@ -452,7 +446,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%DataDownload.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 41, 378, 92, 393, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 41, 378, 92, 393, searchVariation, vPosXY)
         if(vRet = 1){
             CreateStatusMessage("Downloading data",,,, false)
             DownloadUpdate(true)
@@ -461,7 +455,7 @@ startPreProcess(methodType){
         processPrivacyAgreement()
         Path = %imagePath%Privacy.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 130, 473, 145, 488, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 130, 473, 145, 488, searchVariation, vPosXY)
         if(vRet = 1){
             adbClick_wbb(137, 480)
             Sleep, 1000
@@ -469,7 +463,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%LevelUp.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 100, 86, 167, 116, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 100, 86, 167, 116, searchVariation, vPosXY)
         if(vRet = 1){
             adbInputEvent("111") ;send ESC
             Sleep, 1000
@@ -477,7 +471,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%TradeUnlocked.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 114, 146, 163, 197, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 114, 146, 163, 197, searchVariation, vPosXY)
         if(vRet = 1){
             adbInputEvent("111") ;send ESC
             Sleep, 1000
@@ -485,7 +479,7 @@ startPreProcess(methodType){
 
         Path = %imagePath%LanguageBox.png
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 8, 374, 30, 398, searchVariation)
+        vRet := ImageSearchClient(pNeedle, 8, 374, 30, 398, searchVariation, vPosXY)
         if(vRet = 1){
             adbInputEvent("111") ;send ESC
             Sleep, 1000
@@ -494,7 +488,7 @@ startPreProcess(methodType){
         Path = %imagePath%Button.png
         pNeedle := GetNeedle(Path)
         if(!skipGenericButtonFallback){
-            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY, 95, 350, 195, 530, 80)
+            vRet := ImageSearchClient(pNeedle, 95, 350, 195, 530, 80, vPosXY)
             if(vRet = 1){
                 if (InStr(vPosXY, ",")) {
                     StringSplit, pos, vPosXY, `,
@@ -506,8 +500,6 @@ startPreProcess(methodType){
         }
 
         DelayH(20)
-
-        Gdip_DisposeImage(pBitmap)
 
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
         CreateStatusMessage("Entering...(" . failSafeTime "/90 seconds)`nFinding: " . findImageName)

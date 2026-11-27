@@ -23,12 +23,9 @@ ErrorCheckInScreen(pBitmap, searchVariation := 20){
 
         Path := imagePath . needleObj.imageName . ".png"
         pNeedle := GetNeedle(Path)
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
-            , needleObj.coords.startX
-            , needleObj.coords.startY
-            , needleObj.coords.endX
-            , needleObj.coords.endY
-            , searchVariation)
+        yBias := (A_ScriptName = "Main.ahk") ? -5 + MuMuBias() : MuMuBias()
+        vRet := ImageSearchClient(pNeedle, needleObj.coords.startX, needleObj.coords.startY
+            , needleObj.coords.endX, needleObj.coords.endY, searchVariation, vPosXY, yBias)
         if (vRet = 1 && !interceptProc) {
             LogThrottled("warn", "errorPopup_" . value, "Game error popup detected | popup=" . value)
             errorFuncList[value].Call()

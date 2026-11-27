@@ -4,7 +4,7 @@
 ; Ported from BattleTutorialTest.ahk onto bot primitives:
 ;   BT_Tap   -> adbClick_wbb (same window->device conversion)
 ;   BT_Adb   -> adbWriteRaw / adbSwipe (device coords)
-;   BT_Match -> from_window + GetNeedle (cached) + Gdip_ImageSearch_wbb
+;   BT_Match -> ImageSearchClient on the needle box; masks still use from_window
 ;   BT_Ocr   -> BTT_RapidOcr (RapidOCR-json.exe, device space)
 ;   BT_Log   -> LogInfo / LogWarn to Logs\BattleTutorial.txt
 ;   BTT_Status -> CreateStatusMessage (status bar) + BTT_Log
@@ -141,7 +141,7 @@ BTT_Drag(wx1, wy1, wx2, wy2, durMs) {
 ; is a flat blue patch and matches tutorial UI that is not an error.
 BTT_ErrorCheck(pBitmap) {
     global needlesDict, errorImageList, errorFuncList, interceptProc
-    if (interceptProc || !pBitmap)
+    if (interceptProc)
         return
     imagePath := A_ScriptDir . "\Needles\"
     For key, value in errorImageList {
@@ -149,12 +149,16 @@ BTT_ErrorCheck(pBitmap) {
             continue
         needleObj := needlesDict.Get(value)
         pNeedle := GetNeedle(imagePath . needleObj.imageName . ".png")
-        vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
-            , needleObj.coords.startX
-            , needleObj.coords.startY
-            , needleObj.coords.endX
-            , needleObj.coords.endY
-            , 20)
+        if (pBitmap)
+            vRet := Gdip_ImageSearch_wbb(pBitmap, pNeedle, vPosXY
+                , needleObj.coords.startX
+                , needleObj.coords.startY
+                , needleObj.coords.endX
+                , needleObj.coords.endY
+                , 20)
+        else
+            vRet := ImageSearchClient(pNeedle, needleObj.coords.startX, needleObj.coords.startY
+                , needleObj.coords.endX, needleObj.coords.endY, 20, vPosXY)
         if (vRet = 1) {
             LogThrottled("warn", "errorPopup_" . value, "Game error popup detected | popup=" . value)
             errorFuncList[value].Call()
@@ -387,26 +391,26 @@ BTT_Match(name, expand := 20) {
         }
     }
     n := BTT_Needles()[name]
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
-    if (!pBitmap) {
-        BTT_Log(name . ": capture failed")
-        return 0
-    }
     file := n[1]
     if (p := InStr(file, "@"))
         file := SubStr(file, 1, p - 1)
     pNeedle := GetNeedle(A_ScriptDir . "\Needles\" . file)
     x1 := n[2] - expand, y1 := n[3] - expand, x2 := n[4] + expand, y2 := n[5] + expand
-    Gdip_GetImageDimensions(pBitmap, bw, bh)
     if (x1 < 0)
         x1 := 0
     if (y1 < 0)
         y1 := 0
-    if (x2 > bw)
-        x2 := bw
-    if (y2 > bh)
-        y2 := bh
     if (thr := BTT_MaskThreshold(name)) {
+        pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
+        if (!pBitmap) {
+            BTT_Log(name . ": capture failed")
+            return 0
+        }
+        Gdip_GetImageDimensions(pBitmap, bw, bh)
+        if (x2 > bw)
+            x2 := bw
+        if (y2 > bh)
+            y2 := bh
         r := MM_MaskSearch(pBitmap, MM_LoadMask(A_ScriptDir . "\Needles\" . n[1]), x1, y1, x2, y2)
         BTT_ErrorCheck(pBitmap)
         Gdip_DisposeImage(pBitmap)
@@ -416,9 +420,8 @@ BTT_Match(name, expand := 20) {
         }
         return 0
     }
-    found := Gdip_ImageSearch_wbb(pBitmap, pNeedle, pos, x1, y1, x2, y2, n[8])
-    BTT_ErrorCheck(pBitmap)
-    Gdip_DisposeImage(pBitmap)
+    found := ImageSearchClient(pNeedle, x1, y1, x2, y2, n[8], pos)
+    BTT_ErrorCheck(0)
     if (found && RegExMatch(pos, "(\d+)\s*,\s*(\d+)", m))
         return [m1 + 0, m2 + 0]
     return 0
