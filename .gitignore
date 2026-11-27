@@ -73,6 +73,10 @@ Accounts3
 /Helper/carddb.exe
 /Helper/cardimage.exe
 
+# CI-built native DLLs. Sources live in Scripts/Native.
+/Scripts/Include/RegionCap.dll
+/Scripts/Include/MaskMatch.dll
+
 # Required pipeline input despite the global *.txt rule
 !/Build/package-include.txt
 

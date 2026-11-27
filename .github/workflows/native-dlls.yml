@@ -1,0 +1,34 @@
+name: Native DLLs
+
+on:
+  pull_request:
+    paths:
+      - "Scripts/Native/**"
+      - "Build/Build-Native.ps1"
+      - ".github/workflows/native-dlls.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build native DLLs
+    runs-on: windows-latest
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v6
+
+      - name: Build
+        shell: pwsh
+        run: ./Build/Build-Native.ps1
+
+      - name: Upload built DLLs
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-dlls
+          path: Scripts/Include/*.dll
+          if-no-files-found: error
