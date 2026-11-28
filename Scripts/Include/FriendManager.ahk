@@ -1187,26 +1187,10 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
         if (DismissFriendFlowBlockingPopup("Goto friends screen"))
             continue
 
-        if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime, , true)) {
-            if(FindOrLoseImage("Common_ColorChangeButton2", 0, , 80)) {
-                adbClick_wbb(200, 80)
-            }
-            if(!IsSocialHubReadyForFriends()) {
-                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
-                Delay(0.5)
-                CreateStatusMessage("Waiting for Social hub`n(" . failSafeTime . "/45 seconds)")
-                continue
-            }
-
-            ; If main screen(social): Click friends button
-            adbClick_wbb(38, 470)
-        }
-        else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime, , true)) {
-            ; If friends list screen: Click Search button
-            adbClick_wbb(240, 120)
-            Delay(1)
-        }
-        else if(FindOrLoseImage("Friend_SearchFriendButton", 0, failSafeTime, , true)) {
+        ; List and search win over the Social tab icon. That icon stays lit
+        ; while the friends list opens, so checking it first used to wait, then
+        ; miss Add/Search for a frame and blind-tap the third friend row.
+        if(FindOrLoseImage("Friend_SearchFriendButton", 0, failSafeTime, , true)) {
             if(!isKeepSearch){
                 Loop {
                     if (DismissFriendFlowBlockingPopup("Leaving friend search"))
@@ -1233,13 +1217,31 @@ GoToFriendsList(isKeepSearch := false, skipTutorialProc := false) {
             if(mainLoopBreak)
                 break
         }
-        else{
-            if(!skipTutorialProc) {
-                if(TryHandleTradeTutorial(failSafeTime))
-                    continue
-                else if(!TryDismissSocialFirstTutorial(failSafeTime))
-                    adbClick_wbb(155, 425)
+        else if(FindOrLoseImage("Friend_AddButtonInFriendList", 0, failSafeTime, , true)) {
+            ; If friends list screen: Click Search button
+            adbClick_wbb(240, 120)
+            Delay(1)
+        }
+        else if(FindOrLoseImage("Common_ActivatedSocialInMainMenu", 0, failSafeTime, , true)) {
+            if(!IsSocialHubReadyForFriends()) {
+                failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
+                Delay(0.5)
+                CreateStatusMessage("Waiting for Social hub`n(" . failSafeTime . "/45 seconds)")
+                continue
             }
+
+            if(FindOrLoseImage("Common_ColorChangeButton2", 0, , 80)) {
+                adbClick_wbb(200, 80)
+            }
+            ; If main screen(social): Click friends button
+            adbClick_wbb(38, 470)
+        }
+        else if(!skipTutorialProc) {
+            ; No per-frame tap. (155, 425) sits on the third friend once the
+            ; list is drawn but Add/Search have not matched yet.
+            if(TryHandleTradeTutorial(failSafeTime))
+                continue
+            TryDismissSocialFirstTutorial(failSafeTime)
         }
         Delay(0.25)
         failSafeTime := (A_TickCount - session.get("failSafe")) // 1000
