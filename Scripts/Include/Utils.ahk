@@ -1141,6 +1141,133 @@ HasVal(haystack, needle) {
     return 0
 }
 
+; RegionCap.dll copies one client rectangle from MuMu's own surface.
+RegionCap_DllPath() {
+    static path := "", tried := false
+    if (tried)
+        return path
+    tried := true
+    candidate := A_ScriptDir . "\Include\RegionCap.dll"
+    if (!FileExist(candidate))
+        candidate := A_ScriptDir . "\Scripts\Include\RegionCap.dll"
+    if (FileExist(candidate) && DllCall("LoadLibrary", "Str", candidate, "Ptr"))
+        path := candidate
+    return path
+}
+
+; Owned GDI+ bitmap of client pixels [x1,y1]..[x2,y2] inclusive. 0 on failure.
+CaptureClientBitmap(hwnd, x1, y1, x2, y2) {
+    static hdc := 0, hbm := 0, obm := 0, bits := 0, cw := 0, ch := 0
+    dll := RegionCap_DllPath()
+    if (!dll || !hwnd)
+        return 0
+    VarSetCapacity(rc, 16, 0)
+    DllCall("GetClientRect", "ptr", hwnd, "ptr", &rc)
+    clientW := NumGet(rc, 8, "int"), clientH := NumGet(rc, 12, "int")
+    if (x1 < 0)
+        x1 := 0
+    if (y1 < 0)
+        y1 := 0
+    if (x2 > clientW - 1)
+        x2 := clientW - 1
+    if (y2 > clientH - 1)
+        y2 := clientH - 1
+    w := x2 - x1 + 1, h := y2 - y1 + 1
+    if (w < 2 || h < 2)
+        return 0
+    if (w != cw || h != ch) {
+        if (hdc) {
+            DllCall("SelectObject", "ptr", hdc, "ptr", obm)
+            DllCall("DeleteObject", "ptr", hbm)
+            DllCall("DeleteDC", "ptr", hdc)
+        }
+        hdc := DllCall("CreateCompatibleDC", "ptr", 0, "ptr")
+        VarSetCapacity(bi, 40, 0)
+        NumPut(40, bi, 0, "uint"), NumPut(w, bi, 4, "uint"), NumPut(-h, bi, 8, "int")
+        NumPut(1, bi, 12, "ushort"), NumPut(32, bi, 14, "ushort"), NumPut(0, bi, 16, "uint")
+        hbm := DllCall("CreateDIBSection", "ptr", hdc, "ptr", &bi, "uint", 0, "ptr*", bits:=0, "ptr", 0, "uint", 0, "ptr")
+        obm := DllCall("SelectObject", "ptr", hdc, "ptr", hbm, "ptr")
+        cw := w, ch := h
+    }
+    if (!DllCall(dll . "\HC_Copy", "ptr", hwnd, "int", x1, "int", y1, "int", w, "int", h, "ptr", bits, "int", w * 4, "int"))
+        return 0
+    DllCall("gdiplus\GdipCreateBitmapFromHBITMAP", "ptr", hbm, "ptr", 0, "ptr*", pBitmap:=0)
+    return pBitmap
+}
+
+; Same result as Gdip_ImageSearch on a full-window capture, reading only the rect.
+; pNeedle is a GetNeedle() object or a raw bitmap pointer. yBias defaults to MuMuBias().
+; instances 0 finds every match. Returned points are in full-window coordinates.
+ImageSearchClient(pNeedle, x1, y1, x2, y2, variation, ByRef outPos, yBias := "", instances := 1, hwnd := "") {
+    global session
+    if (yBias = "")
+        yBias := MuMuBias()
+    y1 += yBias
+    y2 += yBias
+    needleBmp := IsObject(pNeedle) ? pNeedle.needle : pNeedle
+    if (hwnd = "")
+        hwnd := getMuMuHwnd(session.get("winTitle"))
+    VarSetCapacity(rc, 16, 0)
+    DllCall("GetClientRect", "ptr", hwnd, "ptr", &rc)
+    clientW := NumGet(rc, 8, "int"), clientH := NumGet(rc, 12, "int")
+    if (x1 < 0)
+        x1 := 0
+    if (y1 < 0)
+        y1 := 0
+    if (x2 > clientW - 1)
+        x2 := clientW - 1
+    if (y2 > clientH - 1)
+        y2 := clientH - 1
+    pBitmap := CaptureClientBitmap(hwnd, x1, y1, x2, y2)
+    if (pBitmap) {
+        ; Dynamic call: scripts that include Utils without Gdip_Imagesearch.ahk must still load.
+        searchFn := "Gdip_ImageSearch"
+        vRet := %searchFn%(pBitmap, needleBmp, outPos, 0, 0, x2 - x1, y2 - y1, variation, "", 1, instances)
+        disposeFn := "Gdip_DisposeImage"
+        %disposeFn%(pBitmap)
+        ImageSearchClient_Shift(outPos, x1, y1)
+        return vRet
+    }
+    static warned := false
+    if (!warned) {
+        warned := true
+        if (IsFunc("LogWarn")) {
+            logFn := "LogWarn"
+            %logFn%("Region capture unavailable; falling back to a full window capture")
+        }
+    }
+    pBitmap := from_window(hwnd)
+    if (!pBitmap)
+        return 0
+    searchFn := "Gdip_ImageSearch"
+    vRet := %searchFn%(pBitmap, needleBmp, outPos, x1, y1, x2, y2, variation, "", 1, instances)
+    disposeFn := "Gdip_DisposeImage"
+    %disposeFn%(pBitmap)
+    return vRet
+}
+
+ImageSearchClient_Shift(ByRef outPos, x1, y1) {
+    if (outPos = "")
+        return
+    rebuilt := ""
+    Loop, Parse, outPos, `n, `r
+    {
+        if (!RegExMatch(A_LoopField, "(\d+)\s*,\s*(\d+)", m))
+            continue
+        line := (x1 + m1) . "," . (y1 + m2)
+        if (rebuilt != "")
+            rebuilt .= "`n"
+        rebuilt .= line
+    }
+    outPos := rebuilt
+}
+
+CaptureClientArea(hwnd, x, y, w, h) {
+    if (w < 2 || h < 2)
+        return 0
+    return CaptureClientBitmap(hwnd, x, y, x + w - 1, y + h - 1)
+}
+
 from_window(ByRef image) {
     prof := Prof_Scope(A_ThisFunc)
     ; Thanks tic - https://www.autohotkey.com/boards/viewtopic.php?t=6517
@@ -1157,6 +1284,10 @@ from_window(ByRef image) {
     DllCall("GetClientRect", "ptr", image, "ptr", &Rect)
         , width  := NumGet(Rect, 8, "int")
         , height := NumGet(Rect, 12, "int")
+
+    pFast := CaptureClientBitmap(image, 0, 0, width - 1, height - 1)
+    if (pFast)
+        return pFast
 
     ; struct BITMAPINFOHEADER - https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader
     hdc := DllCall("CreateCompatibleDC", "ptr", 0, "ptr")

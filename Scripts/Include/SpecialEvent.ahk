@@ -94,7 +94,7 @@
 
     isExistNeedleInScreen(winTitle){
         existResult := 0
-        pBitmap := from_window(getMuMuHwnd(winTitle . " ahk_class Qt5156QWindowIcon"))
+        hwnd := getMuMuHwnd(winTitle . " ahk_class Qt5156QWindowIcon")
 
         Loop, 2{
             currentNeedleCoords := Object()
@@ -112,14 +112,11 @@
             }
 
             tempNeedleObj.needle := needleBitmap
-            vRet := Gdip_ImageSearch(pBitmap, needleBitmap, vPosXY, currentNeedleCoords.startX, currentNeedleCoords.startY
-                , currentNeedleCoords.endX, currentNeedleCoords.endY, 20)
+            vRet := ImageSearchClient(needleBitmap, currentNeedleCoords.startX, currentNeedleCoords.startY
+                , currentNeedleCoords.endX, currentNeedleCoords.endY, 20, vPosXY, 0, 1, hwnd)
 
             existResult += vRet
         }
-
-        if (pBitmap)
-            Gdip_DisposeImage(pBitmap)
 
         if(existResult = 2)
             return 2

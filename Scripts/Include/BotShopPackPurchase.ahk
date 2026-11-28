@@ -229,11 +229,9 @@ ShopPack_RefineTapY(estimatedTapY) {
 
     SHOP_BADGE_TO_TAP_Y := 30 ; needle (inner part of the badge) top -> center of the tile artwork
     needleObj := needlesDict.Get("Shop_TileBadge")
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
     pNeedle := GetNeedle(A_ScriptDir . "\Needles\ShopTileBadge.png")
     c := needleObj.coords
-    count := Gdip_ImageSearch_wbb(pBitmap, pNeedle, badgeList, c.startX, c.startY, c.endX, c.endY, 70, "", 1, 0)
-    Gdip_DisposeImage(pBitmap)
+    count := ImageSearchClient(pNeedle, c.startX, c.startY, c.endX, c.endY, 70, badgeList, "", 0)
 
     bestY := ""
     bestDiff := 100000

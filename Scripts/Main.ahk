@@ -364,7 +364,6 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         CreateStatusMessage("Finding " . imageName . "...")
     }
 
-    pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
     Path = %imagePath%%imageName%.png
     pNeedle := GetNeedle(Path)
     if (!coordinateMode) {
@@ -374,14 +373,8 @@ FindOrLoseImage(needleName := "DEFAULT", EL := 1, safeTime := 0, searchVariation
         Y2 := needleObj.coords.endY
     }
 
-    ;bboxAndPause(X1, Y1, X2, Y2)
-
-    ; ImageSearch within the region
-    yBias := MuMuBias()
-
-    vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1+yBias, X2, Y2+yBias, searchVariation)
-    ErrorCheckInScreen(pBitmap)
-    Gdip_DisposeImage(pBitmap)
+    vRet := ImageSearchClient(pNeedle, X1, Y1, X2, Y2, searchVariation, vPosXY, MuMuBias())
+    ErrorCheckInScreen(0)
     if(EL = 0)
         GDEL := 1
     else
@@ -447,20 +440,14 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             continue
         }
 
-        pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
         Path = %imagePath%%imageName%.png
         pNeedle := GetNeedle(Path)
         X1 := needleObj.coords.startX
         Y1 := needleObj.coords.startY
         X2 := needleObj.coords.endX
         Y2 := needleObj.coords.endY
-        ;bboxAndPause(X1, Y1, X2, Y2)
-        ; ImageSearch within the region
-        yBias := MuMuBias()
-
-        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, X1, Y1+yBias, X2, Y2+yBias, searchVariation)
-        ErrorCheckInScreen(pBitmap)
-        Gdip_DisposeImage(pBitmap)
+        vRet := ImageSearchClient(pNeedle, X1, Y1, X2, Y2, searchVariation, vPosXY, MuMuBias())
+        ErrorCheckInScreen(0)
         if (!confirmed && vRet = 1) {
             confirmed := vPosXY
         } else {
@@ -487,14 +474,9 @@ FindImageAndClick(needleName := "DEFAULT", clickx := 0, clicky := 0, searchVaria
             SafeReload("Main communication error")
         }
 
-        pBitmap := from_window(getMuMuHwnd(session.get("winTitle")))
         Path = %imagePath%Error1.png
         pNeedle := GetNeedle(Path)
-        ; ImageSearch within the region
-        yBias := MuMuBias()
-
-        vRet := Gdip_ImageSearch(pBitmap, pNeedle, vPosXY, 15, 155+yBias, 270, 420+yBias, searchVariation)
-        Gdip_DisposeImage(pBitmap)
+        vRet := ImageSearchClient(pNeedle, 15, 155, 270, 420, searchVariation, vPosXY, MuMuBias())
         if (vRet = 1) {
             CreateStatusMessage("Error message in " . session.get("scriptName") . ". Clicking retry...")
             LogWarn("Error message in " . session.get("scriptName") . ". Clicking retry...")
@@ -680,11 +662,12 @@ Screenshot(fileType := "Valid", subDir := "", ByRef fileName := "") {
     filePath := fileDir "\" . fileName
 
     yBias := 40 - 45
-    pBitmapW := from_window(getMuMuHwnd(session.get("winTitle")))
-    pBitmap := Gdip_CloneBitmapArea(pBitmapW, 18, 71+yBias, 240, 165)
-
-    ;scale 100%
-    Gdip_DisposeImage(pBitmapW)
+    pBitmap := CaptureClientArea(getMuMuHwnd(session.get("winTitle")), 18, 71+yBias, 240, 165)
+    if (!pBitmap) {
+        pBitmapW := from_window(getMuMuHwnd(session.get("winTitle")))
+        pBitmap := Gdip_CloneBitmapArea(pBitmapW, 18, 71+yBias, 240, 165)
+        Gdip_DisposeImage(pBitmapW)
+    }
     Gdip_SaveBitmapToFile(pBitmap, filePath)
 
     ; Don't dispose pBitmap if it's a PACKSTATS screenshot
