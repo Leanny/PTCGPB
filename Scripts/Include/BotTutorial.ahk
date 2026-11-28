@@ -293,10 +293,8 @@ DoTutorial() {
         Delay(1)
         if(FindOrLoseImage("Create_MustClickMissionBackground", 0, failSafeTime)){
             break
-        } else if(DownloadUpdate()){
-            ; update downloaded: restart the failsafe timer
-            session.set("failSafe", A_TickCount)
-            failSafeTime := 0
+        } else if(FindOrLoseImage("Create_DownloadAlertWindow", 0, failSafeTime)){
+            adbClick_wbb(203, 364)
         }
     }
 
